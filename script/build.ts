@@ -73,7 +73,14 @@ async function buildAll() {
     ...commonOptions,
     entryPoints: ["api/index.ts"],
     outfile: "api/index.js",
-    external: [],
+    format: "cjs" as const,
+    external: ["pg-native"],
+    banner: {
+      js: "/* Vercel Serverless Function */",
+    },
+    footer: {
+      js: "if(typeof module.exports.default==='function'){module.exports=module.exports.default;}",
+    },
   });
 }
 
