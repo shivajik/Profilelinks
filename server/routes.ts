@@ -455,6 +455,7 @@ export async function registerRoutes(
       });
       res.status(201).json(block);
     } catch (error: any) {
+      console.error("Block creation error:", error);
       res.status(500).json({ message: "Failed to create block" });
     }
   });
@@ -531,6 +532,7 @@ export async function registerRoutes(
         currentPage: currentPage ? { id: currentPage.id, title: currentPage.title, slug: currentPage.slug, isHome: currentPage.isHome } : null,
       });
     } catch (error: any) {
+      console.error("Profile load error:", error);
       res.status(500).json({ message: "Failed to load profile" });
     }
   });
