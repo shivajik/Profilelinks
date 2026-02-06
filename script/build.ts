@@ -72,12 +72,9 @@ async function buildAll() {
   await esbuild({
     ...commonOptions,
     entryPoints: ["server/vercel/handler.ts"],
-    outfile: "api/index.js",
+    outfile: "dist/vercel-handler.cjs",
     format: "cjs" as const,
     external: ["pg-native"],
-    banner: {
-      js: "/* Vercel Serverless Function */",
-    },
     footer: {
       js: "if(typeof module.exports.default==='function'){module.exports=module.exports.default;}",
     },
