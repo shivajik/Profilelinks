@@ -37,9 +37,8 @@ import {
   Smartphone,
   ChevronDown,
   HelpCircle,
-  MessageSquare,
-  AtSign,
   FileText,
+  Home,
 } from "lucide-react";
 import {
   Dialog,
@@ -47,6 +46,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   SidebarProvider,
   SidebarTrigger,
@@ -61,7 +67,7 @@ import {
 } from "@/components/ui/sidebar";
 import { SOCIAL_PLATFORMS, getPlatform } from "@/lib/social-platforms";
 import { SocialIcon } from "@/components/social-icon";
-import type { Link, Social } from "@shared/schema";
+import type { Link, Social, Page } from "@shared/schema";
 
 export default function Dashboard() {
   const { user, logout, isLoading: authLoading } = useAuth();
@@ -76,6 +82,9 @@ export default function Dashboard() {
   const [headerName, setHeaderName] = useState("");
   const [headerBio, setHeaderBio] = useState("");
   const [headerDirty, setHeaderDirty] = useState(false);
+  const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
+  const [addingPage, setAddingPage] = useState(false);
+  const [managingPages, setManagingPages] = useState(false);
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
     page: true,
     header: true,
@@ -83,9 +92,31 @@ export default function Dashboard() {
     blocks: true,
   });
 
-  const { data: links = [], isLoading: linksLoading } = useQuery<Link[]>({
-    queryKey: ["/api/links"],
+  const { data: userPages = [] } = useQuery<Page[]>({
+    queryKey: ["/api/pages"],
     enabled: !!user,
+  });
+
+  const currentPage = selectedPageId
+    ? userPages.find((p) => p.id === selectedPageId)
+    : userPages.find((p) => p.isHome) || userPages[0];
+
+  useEffect(() => {
+    if (userPages.length > 0 && !selectedPageId) {
+      const home = userPages.find((p) => p.isHome) || userPages[0];
+      setSelectedPageId(home.id);
+    }
+  }, [userPages, selectedPageId]);
+
+  const { data: links = [], isLoading: linksLoading } = useQuery<Link[]>({
+    queryKey: ["/api/links", { pageId: currentPage?.id }],
+    queryFn: async () => {
+      if (!currentPage) return [];
+      const res = await fetch(`/api/links?pageId=${currentPage.id}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch links");
+      return res.json();
+    },
+    enabled: !!user && !!currentPage,
   });
 
   const { data: userSocials = [] } = useQuery<Social[]>({
@@ -140,12 +171,19 @@ export default function Dashboard() {
     },
   });
 
+  const invalidateLinks = () => {
+    queryClient.invalidateQueries({ predicate: (query) => {
+      const key = query.queryKey;
+      return Array.isArray(key) && key[0] === "/api/links";
+    }});
+  };
+
   const deleteLinkMutation = useMutation({
     mutationFn: async (id: string) => {
       await apiRequest("DELETE", `/api/links/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/links"] });
+      invalidateLinks();
       toast({ title: "Link deleted" });
     },
   });
@@ -155,7 +193,7 @@ export default function Dashboard() {
       await apiRequest("PATCH", `/api/links/${id}`, { active });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/links"] });
+      invalidateLinks();
     },
   });
 
@@ -164,7 +202,7 @@ export default function Dashboard() {
       await apiRequest("POST", "/api/links/reorder", { linkIds });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/links"] });
+      invalidateLinks();
     },
   });
 
@@ -297,13 +335,49 @@ export default function Dashboard() {
                 <CategorySection
                   id="page"
                   label="Page:"
-                  sublabel="Home"
                   icon={<FileText className="w-4 h-4 text-muted-foreground" />}
                   open={openCategories.page}
                   onToggle={() => toggleCategory("page")}
+                  trailing={
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="gap-1" data-testid="button-page-selector">
+                            {currentPage?.title || "Home"}
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                          {userPages.map((page) => (
+                            <DropdownMenuItem
+                              key={page.id}
+                              onClick={() => setSelectedPageId(page.id)}
+                              data-testid={`page-option-${page.id}`}
+                            >
+                              <span className="flex items-center gap-2">
+                                {page.isHome && <Home className="w-3.5 h-3.5 text-muted-foreground" />}
+                                {page.title}
+                              </span>
+                            </DropdownMenuItem>
+                          ))}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => setAddingPage(true)} data-testid="button-add-new-page">
+                            <Plus className="w-3.5 h-3.5" />
+                            Add New Page +
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <Button variant="outline" size="sm" onClick={() => setManagingPages(true)} data-testid="button-manage-pages">
+                        Manage
+                      </Button>
+                    </div>
+                  }
                 >
                   <div className="px-4 pb-3 pt-1">
-                    <p className="text-sm text-muted-foreground">Your main profile page configuration.</p>
+                    <p className="text-sm text-muted-foreground">
+                      Editing: <span className="font-medium">{currentPage?.title || "Home"}</span>
+                      {currentPage?.isHome && <span className="text-xs ml-1 text-muted-foreground">(Home page)</span>}
+                    </p>
                   </div>
                 </CategorySection>
 
@@ -459,7 +533,7 @@ export default function Dashboard() {
                         </div>
                         <h3 className="font-semibold mb-1">No blocks yet</h3>
                         <p className="text-sm text-muted-foreground mb-4 max-w-xs">
-                          Add your first link block to start building your profile page.
+                          Add your first link block to start building this page.
                         </p>
                         <Button size="sm" onClick={() => setAddingLink(true)} data-testid="button-add-first-link">
                           <Plus className="w-4 h-4" />
@@ -519,6 +593,8 @@ export default function Dashboard() {
                   username={user.username}
                   links={sortedLinks}
                   socials={userSocials}
+                  pages={userPages}
+                  currentPage={currentPage || null}
                   mode={previewMode}
                 />
               </div>
@@ -535,16 +611,22 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <AddLinkDialog open={addingLink} onClose={() => setAddingLink(false)} />
+      <AddLinkDialog open={addingLink} onClose={() => setAddingLink(false)} pageId={currentPage?.id} />
       <AddSocialDialog
         open={addingSocial}
         onClose={() => setAddingSocial(false)}
         onSelect={(platform) => {
-          const p = getPlatform(platform);
           addSocialMutation.mutate({ platform, url: "" });
           setAddingSocial(false);
         }}
         existingPlatforms={userSocials.map((s) => s.platform)}
+      />
+      <AddPageDialog open={addingPage} onClose={() => setAddingPage(false)} />
+      <ManagePagesDialog
+        open={managingPages}
+        onClose={() => setManagingPages(false)}
+        pages={userPages}
+        onSelectPage={(id) => { setSelectedPageId(id); setManagingPages(false); }}
       />
     </SidebarProvider>
   );
@@ -664,6 +746,8 @@ function PhonePreview({
   username,
   links,
   socials,
+  pages,
+  currentPage,
   mode,
 }: {
   template: (typeof TEMPLATES)[0];
@@ -673,6 +757,8 @@ function PhonePreview({
   username: string;
   links: Link[];
   socials: Social[];
+  pages: Page[];
+  currentPage: Page | null;
   mode: "mobile" | "desktop";
 }) {
   const activeLinks = links.filter((l) => l.active);
@@ -711,6 +797,23 @@ function PhonePreview({
                 {activeSocials.map((social) => (
                   <div key={social.id} className={`${template.textColor} opacity-70`}>
                     <SocialIcon platform={social.platform} className="w-3.5 h-3.5" />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {pages.length > 1 && (
+              <div className="flex items-center gap-1.5 mt-3 flex-wrap justify-center">
+                {pages.map((page) => (
+                  <div
+                    key={page.id}
+                    className={`text-[10px] px-2 py-0.5 rounded-full ${
+                      currentPage?.id === page.id
+                        ? `${template.cardBg} ${template.cardTextColor} font-medium`
+                        : `${template.textColor} opacity-50`
+                    }`}
+                  >
+                    {page.title}
                   </div>
                 ))}
               </div>
@@ -755,17 +858,17 @@ function PhonePreview({
   );
 }
 
-function AddLinkDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+function AddLinkDialog({ open, onClose, pageId }: { open: boolean; onClose: () => void; pageId?: string }) {
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const { toast } = useToast();
 
   const mutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/links", { title, url });
+      await apiRequest("POST", "/api/links", { title, url, pageId });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/links"] });
+      queryClient.invalidateQueries({ predicate: (query) => Array.isArray(query.queryKey) && query.queryKey[0] === "/api/links" });
       setTitle("");
       setUrl("");
       onClose();
@@ -822,6 +925,194 @@ function AddLinkDialog({ open, onClose }: { open: boolean; onClose: () => void }
             </Button>
           </div>
         </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AddPageDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [title, setTitle] = useState("");
+  const { toast } = useToast();
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/pages", { title });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pages"] });
+      setTitle("");
+      onClose();
+      toast({ title: "Page created!" });
+    },
+    onError: (e: any) => {
+      toast({ title: "Failed to create page", description: e.message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add New Page</DialogTitle>
+        </DialogHeader>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            mutation.mutate();
+          }}
+          className="space-y-4"
+        >
+          <div className="space-y-2">
+            <Label htmlFor="page-title">Page Title</Label>
+            <Input
+              id="page-title"
+              placeholder="About Us"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+              data-testid="input-page-title"
+            />
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button type="button" variant="ghost" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={mutation.isPending} data-testid="button-confirm-add-page">
+              {mutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              Create Page
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ManagePagesDialog({
+  open,
+  onClose,
+  pages,
+  onSelectPage,
+}: {
+  open: boolean;
+  onClose: () => void;
+  pages: Page[];
+  onSelectPage: (id: string) => void;
+}) {
+  const { toast } = useToast();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: { title?: string; isHome?: boolean } }) => {
+      await apiRequest("PATCH", `/api/pages/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pages"] });
+      setEditingId(null);
+      toast({ title: "Page updated!" });
+    },
+    onError: (e: any) => {
+      toast({ title: "Failed to update page", description: e.message, variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/pages/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pages"] });
+      toast({ title: "Page deleted!" });
+    },
+    onError: (e: any) => {
+      toast({ title: "Failed to delete page", description: e.message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Manage Pages</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+          {pages.map((page) => (
+            <div
+              key={page.id}
+              className="flex items-center gap-2 border rounded-md p-3"
+              data-testid={`manage-page-${page.id}`}
+            >
+              {editingId === page.id ? (
+                <div className="flex-1 flex items-center gap-2 flex-wrap">
+                  <Input
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="flex-1"
+                    data-testid={`input-rename-page-${page.id}`}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => updateMutation.mutate({ id: page.id, data: { title: editTitle } })}
+                    disabled={updateMutation.isPending}
+                    data-testid={`button-save-rename-${page.id}`}
+                  >
+                    Save
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <Button
+                    variant="ghost"
+                    className="flex-1 justify-start gap-2 p-0 h-auto"
+                    onClick={() => onSelectPage(page.id)}
+                    data-testid={`button-select-page-${page.id}`}
+                  >
+                    {page.isHome && <Home className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+                    <span className="truncate">{page.title}</span>
+                    {page.isHome && (
+                      <span className="text-xs text-muted-foreground ml-1">(Home)</span>
+                    )}
+                  </Button>
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    {!page.isHome && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => updateMutation.mutate({ id: page.id, data: { isHome: true } })}
+                        title="Set as home page"
+                        data-testid={`button-set-home-${page.id}`}
+                      >
+                        <Home className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => { setEditingId(page.id); setEditTitle(page.title); }}
+                      data-testid={`button-rename-page-${page.id}`}
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                    {!page.isHome && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteMutation.mutate(page.id)}
+                        data-testid={`button-delete-page-${page.id}`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -901,7 +1192,7 @@ function InlineLinkBlock({
       await apiRequest("PATCH", `/api/links/${link.id}`, { title, url });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/links"] });
+      queryClient.invalidateQueries({ predicate: (query) => Array.isArray(query.queryKey) && query.queryKey[0] === "/api/links" });
       onStopEdit();
       toast({ title: "Link updated!" });
     },

@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { Loader2, ExternalLink } from "lucide-react";
 import { getTemplate } from "@/lib/templates";
 import { SocialIcon } from "@/components/social-icon";
@@ -20,17 +22,30 @@ function normalizeUrl(url: string, platform?: string): string {
   return `https://${trimmed}`;
 }
 
+type PageInfo = { id: string; title: string; slug: string; isHome: boolean };
+
 type PublicProfile = {
   user: Omit<User, "password" | "email">;
   links: Link[];
   socials: Social[];
+  pages: PageInfo[];
+  currentPage: PageInfo | null;
 };
 
 export default function PublicProfile() {
   const { username } = useParams<{ username: string }>();
+  const [activePageSlug, setActivePageSlug] = useState<string | null>(null);
 
   const { data, isLoading, error } = useQuery<PublicProfile>({
-    queryKey: ["/api/profile", username],
+    queryKey: ["/api/profile", username, activePageSlug],
+    queryFn: async () => {
+      const url = activePageSlug
+        ? `/api/profile/${username}?page=${activePageSlug}`
+        : `/api/profile/${username}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Not found");
+      return res.json();
+    },
   });
 
   if (isLoading) {
@@ -57,10 +72,11 @@ export default function PublicProfile() {
     );
   }
 
-  const { user, links, socials = [] } = data;
+  const { user, links, socials = [], pages = [], currentPage } = data;
   const activeLinks = links.filter((l) => l.active).sort((a, b) => a.position - b.position);
   const activeSocials = socials.filter((s) => s.url).sort((a, b) => a.position - b.position);
   const template = getTemplate(user.template);
+  const hasMultiplePages = pages.length > 1;
 
   return (
     <div className={`min-h-screen ${template.bg}`}>
@@ -101,6 +117,30 @@ export default function PublicProfile() {
                   <SocialIcon platform={social.platform} className="w-5 h-5" />
                 </a>
               ))}
+            </div>
+          )}
+
+          {hasMultiplePages && (
+            <div className="flex items-center gap-2 mt-5 flex-wrap justify-center" data-testid="page-nav">
+              {pages.map((page) => {
+                const isActive = currentPage?.slug === page.slug;
+                return (
+                  <Button
+                    key={page.id}
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setActivePageSlug(page.isHome ? null : page.slug)}
+                    className={`rounded-full px-4 ${
+                      isActive
+                        ? `${template.cardBg} ${template.cardTextColor}`
+                        : `${template.textColor} opacity-60 hover:opacity-100`
+                    }`}
+                    data-testid={`page-tab-${page.slug}`}
+                  >
+                    {page.title}
+                  </Button>
+                );
+              })}
             </div>
           )}
         </div>

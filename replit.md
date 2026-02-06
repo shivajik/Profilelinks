@@ -4,6 +4,7 @@
 A link-in-bio web application that allows users to create personalized landing pages with multiple links to their social profiles, websites, and content - all accessible through a single custom URL.
 
 ## Recent Changes
+- 2026-02-06: Added multi-page system (Home, About Us, Services, etc.) with page-scoped links, page selector dropdown, manage pages dialog, public page navigation tabs
 - 2026-02-06: Switched Vercel deployment to Build Output API v3 (eliminates ncc bundling issues, self-contained .vercel/output/)
 - 2026-02-06: Added Vercel deployment compatibility (vercel.json, serverless API entry, memory uploads)
 - 2026-02-06: Added social media management (50+ platforms) with inline editing in dashboard
@@ -37,17 +38,23 @@ A link-in-bio web application that allows users to create personalized landing p
 - `POST /api/auth/logout` - Logout
 - `GET /api/auth/me` - Get current user
 - `PATCH /api/auth/profile` - Update profile
-- `GET /api/links` - Get user's links (authenticated)
-- `POST /api/links` - Create link
+- `GET /api/pages` - Get user's pages (authenticated)
+- `POST /api/pages` - Create page
+- `PATCH /api/pages/:id` - Update page (rename, set as home)
+- `DELETE /api/pages/:id` - Delete page (not home)
+- `GET /api/links?pageId=X` - Get page-scoped links (authenticated, ownership verified)
+- `POST /api/links` - Create link (auto-assigns to page)
 - `PATCH /api/links/:id` - Update link
 - `DELETE /api/links/:id` - Delete link
 - `POST /api/links/reorder` - Reorder links
 - `POST /api/upload` - Upload profile image (multipart/form-data, max 5MB)
-- `GET /api/profile/:username` - Get public profile + links
+- `GET /api/profile/:username?page=slug` - Get public profile + page-scoped links
 
 ## Database Schema
-- `users` - id, username, email, password, displayName, bio, profileImage
-- `links` - id, userId, title, url, position, active
+- `users` - id, username, email, password, displayName, bio, profileImage, onboardingCompleted, template
+- `pages` - id, userId, title, slug, position, isHome (each user has one home page)
+- `links` - id, userId, pageId (FK to pages), title, url, position, active
+- `socials` - id, userId, platform, url, position
 - `session` - managed by connect-pg-simple
 
 ## User Preferences

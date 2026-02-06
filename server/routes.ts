@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import session from "express-session";
 import { storage } from "./storage";
 import bcrypt from "bcryptjs";
-import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema } from "@shared/schema";
+import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema, createPageSchema, updatePageSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import connectPgSimple from "connect-pg-simple";
 import pg from "pg";
@@ -128,6 +128,8 @@ export async function registerRoutes(
         password: hashedPassword,
       });
 
+      await storage.ensureHomePage(user.id);
+
       req.session.userId = user.id;
       const { password: _, ...safeUser } = user;
       res.status(201).json(safeUser);
@@ -154,6 +156,8 @@ export async function registerRoutes(
       if (!valid) {
         return res.status(401).json({ message: "Invalid email or password" });
       }
+
+      await storage.ensureHomePage(user.id);
 
       req.session.userId = user.id;
       const { password: _, ...safeUser } = user;
@@ -235,9 +239,69 @@ export async function registerRoutes(
     });
   });
 
+  // Pages routes
+  app.get("/api/pages", requireAuth, async (req, res) => {
+    const userPages = await storage.getPagesByUserId(req.session.userId!);
+    res.json(userPages);
+  });
+
+  app.post("/api/pages", requireAuth, async (req, res) => {
+    try {
+      const result = createPageSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+      const page = await storage.createPage({
+        ...result.data,
+        slug: "",
+        position: 0,
+        isHome: false,
+        userId: req.session.userId!,
+      });
+      res.status(201).json(page);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to create page" });
+    }
+  });
+
+  app.patch("/api/pages/:id", requireAuth, async (req, res) => {
+    try {
+      const result = updatePageSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+      const updated = await storage.updatePage(req.params.id as string, req.session.userId!, result.data);
+      if (!updated) {
+        return res.status(404).json({ message: "Page not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to update page" });
+    }
+  });
+
+  app.delete("/api/pages/:id", requireAuth, async (req, res) => {
+    const deleted = await storage.deletePage(req.params.id as string, req.session.userId!);
+    if (!deleted) {
+      return res.status(400).json({ message: "Cannot delete home page or page not found" });
+    }
+    res.json({ message: "Deleted" });
+  });
+
+  // Links routes (page-aware)
   app.get("/api/links", requireAuth, async (req, res) => {
-    const links = await storage.getLinksByUserId(req.session.userId!);
-    res.json(links);
+    const pageId = req.query.pageId as string | undefined;
+    if (pageId) {
+      const userPages = await storage.getPagesByUserId(req.session.userId!);
+      const ownsPage = userPages.some((p) => p.id === pageId);
+      if (!ownsPage) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      const pageLinks = await storage.getLinksByPageId(pageId);
+      return res.json(pageLinks);
+    }
+    const allLinks = await storage.getLinksByUserId(req.session.userId!);
+    res.json(allLinks);
   });
 
   app.post("/api/links", requireAuth, async (req, res) => {
@@ -247,10 +311,18 @@ export async function registerRoutes(
         return res.status(400).json({ message: fromZodError(result.error).message });
       }
 
-      const maxPos = await storage.getMaxLinkPosition(req.session.userId!);
+      let pageId = result.data.pageId;
+      if (!pageId) {
+        const homePage = await storage.ensureHomePage(req.session.userId!);
+        pageId = homePage.id;
+      }
+
+      const maxPos = await storage.getMaxLinkPositionByPage(pageId);
       const link = await storage.createLink({
-        ...result.data,
+        title: result.data.title,
+        url: result.data.url,
         userId: req.session.userId!,
+        pageId,
         position: maxPos + 1,
         active: true,
       });
@@ -350,10 +422,28 @@ export async function registerRoutes(
         return res.status(404).json({ message: "User not found" });
       }
 
-      const userLinks = await storage.getLinksByUserId(user.id);
+      const userPages = await storage.getPagesByUserId(user.id);
       const userSocials = await storage.getSocialsByUserId(user.id);
+
+      const pageSlug = req.query.page as string | undefined;
+      let currentPage = userPages.find((p) => p.isHome) || userPages[0];
+      if (pageSlug) {
+        const found = userPages.find((p) => p.slug === pageSlug);
+        if (found) currentPage = found;
+      }
+
+      const userLinks = currentPage
+        ? await storage.getLinksByPageId(currentPage.id)
+        : await storage.getLinksByUserId(user.id);
+
       const { password: _, email: __, ...publicUser } = user;
-      res.json({ user: publicUser, links: userLinks, socials: userSocials });
+      res.json({
+        user: publicUser,
+        links: userLinks,
+        socials: userSocials,
+        pages: userPages.map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome })),
+        currentPage: currentPage ? { id: currentPage.id, title: currentPage.title, slug: currentPage.slug, isHome: currentPage.isHome } : null,
+      });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to load profile" });
     }

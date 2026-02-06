@@ -15,13 +15,31 @@ export const users = pgTable("users", {
   template: text("template").default("minimal"),
 });
 
+export const pages = pgTable("pages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  slug: text("slug").notNull(),
+  position: integer("position").notNull().default(0),
+  isHome: boolean("is_home").notNull().default(false),
+});
+
 export const links = pgTable("links", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  pageId: varchar("page_id").references(() => pages.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   url: text("url").notNull(),
   position: integer("position").notNull().default(0),
   active: boolean("active").notNull().default(true),
+});
+
+export const socials = pgTable("socials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  platform: text("platform").notNull(),
+  url: text("url").notNull(),
+  position: integer("position").notNull().default(0),
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({
@@ -48,12 +66,18 @@ export const updateProfileSchema = z.object({
   template: z.string().optional(),
 });
 
-export const socials = pgTable("socials", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  platform: text("platform").notNull(),
-  url: text("url").notNull(),
-  position: integer("position").notNull().default(0),
+export const insertPageSchema = createInsertSchema(pages).omit({
+  id: true,
+  userId: true,
+});
+
+export const createPageSchema = z.object({
+  title: z.string().min(1, "Title is required").max(100),
+});
+
+export const updatePageSchema = z.object({
+  title: z.string().min(1).max(100).optional(),
+  isHome: z.boolean().optional(),
 });
 
 export const insertLinkSchema = createInsertSchema(links).omit({
@@ -69,6 +93,7 @@ export const insertSocialSchema = createInsertSchema(socials).omit({
 export const createLinkSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
   url: z.string().url("Must be a valid URL"),
+  pageId: z.string().optional(),
 });
 
 export const updateLinkSchema = z.object({
@@ -76,6 +101,7 @@ export const updateLinkSchema = z.object({
   url: z.string().url().optional(),
   active: z.boolean().optional(),
   position: z.number().int().min(0).optional(),
+  pageId: z.string().optional(),
 });
 
 export const createSocialSchema = z.object({
@@ -90,6 +116,8 @@ export const updateSocialSchema = z.object({
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+export type Page = typeof pages.$inferSelect;
+export type InsertPage = z.infer<typeof insertPageSchema>;
 export type InsertLink = z.infer<typeof insertLinkSchema>;
 export type Link = typeof links.$inferSelect;
 export type InsertSocial = z.infer<typeof insertSocialSchema>;
