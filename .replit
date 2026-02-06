@@ -37,3 +37,9 @@ author = "agent"
 task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
+
+[userenv]
+
+[userenv.shared]
+SUPABASE_DIRECT_URL = "postgresql://postgres:no7K2Y8pMA2cmJJl@db.wmiozfgednwavljqxkar.supabase.co:5432/postgres"
+SUPABASE_POOLER_URL = "postgresql://postgres.wmiozfgednwavljqxkar:no7K2Y8pMA2cmJJl@aws-1-ap-south-1.pooler.supabase.co:6543/postgres"
