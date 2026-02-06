@@ -41,6 +41,11 @@ async function ensureInitialized() {
 }
 
 export default async function handler(req: any, res: any) {
-  await ensureInitialized();
-  app(req, res);
+  try {
+    await ensureInitialized();
+    app(req, res);
+  } catch (err: any) {
+    console.error("Serverless handler error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
 }

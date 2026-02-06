@@ -50,10 +50,37 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   const PgSession = connectPgSimple(session);
+
+  const poolerUrl = process.env.SUPABASE_POOLER_URL || process.env.DATABASE_URL;
+  const useSSL = !!(process.env.SUPABASE_POOLER_URL);
+
   const sessionPool = new pg.Pool({
-    connectionString: process.env.SUPABASE_POOLER_URL || process.env.DATABASE_URL,
-    ssl: process.env.SUPABASE_POOLER_URL ? { rejectUnauthorized: false } : undefined,
+    connectionString: poolerUrl,
+    ssl: useSSL ? { rejectUnauthorized: false } : undefined,
   });
+
+  if (process.env.SUPABASE_DIRECT_URL) {
+    const directPool = new pg.Pool({
+      connectionString: process.env.SUPABASE_DIRECT_URL,
+      ssl: { rejectUnauthorized: false },
+      connectionTimeoutMillis: 5000,
+      max: 1,
+    });
+    try {
+      await directPool.query(`
+        CREATE TABLE IF NOT EXISTS "session" (
+          "sid" varchar NOT NULL COLLATE "default",
+          "sess" json NOT NULL,
+          "expire" timestamp(6) NOT NULL,
+          CONSTRAINT "session_pkey" PRIMARY KEY ("sid")
+        ) WITH (OIDS=FALSE);
+        CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
+      `);
+    } catch (e) {
+      console.log("Session table check skipped:", (e as Error).message);
+    }
+    try { await directPool.end(); } catch (_) {}
+  }
 
   app.use("/uploads", express.static(uploadsDir));
 
@@ -66,7 +93,7 @@ export async function registerRoutes(
     session({
       store: new PgSession({
         pool: sessionPool,
-        createTableIfMissing: true,
+        createTableIfMissing: false,
       }),
       secret: process.env.SESSION_SECRET || "linkfolio-secret-key",
       resave: false,
