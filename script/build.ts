@@ -71,7 +71,7 @@ async function buildAll() {
   console.log("building vercel api...");
   await esbuild({
     ...commonOptions,
-    entryPoints: ["api/index.ts"],
+    entryPoints: ["server/vercel/handler.ts"],
     outfile: "api/index.js",
     format: "cjs" as const,
     external: ["pg-native"],
