@@ -7,7 +7,9 @@ A link-in-bio web application that allows users to create personalized landing p
 - 2026-02-06: Migrated database to Supabase PostgreSQL (transaction pooler for app, direct URL for migrations)
 - 2026-02-06: Added email case normalization (lowercase) in register/login
 - 2026-02-06: Secured session cookies (secure flag in production, trust proxy)
-- 2026-02-06: Redesigned dashboard with shadcn Sidebar primitives (3-column layout)
+- 2026-02-06: Added collapsible category sections (Page, Header, Socials, Blocks) to dashboard center panel
+- 2026-02-06: Replaced edit link popup dialog with inline editing (expand card to show title/url inputs)
+- 2026-02-06: Redesigned dashboard with shadcn Sidebar primitives (4-column layout)
 - 2026-02-06: Added profile picture file upload (multer) in onboarding wizard and dashboard
 - 2026-02-06: Added 4-step onboarding wizard with templates, profile, socials, URL claim
 - 2026-02-06: Initial MVP built with auth, dashboard, and public profiles
