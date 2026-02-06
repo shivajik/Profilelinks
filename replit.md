@@ -4,6 +4,7 @@
 A link-in-bio web application that allows users to create personalized landing pages with multiple links to their social profiles, websites, and content - all accessible through a single custom URL.
 
 ## Recent Changes
+- 2026-02-06: Added "Add to Contact" (vCard download) and "Share" (QR code, copy URL, social media sharing) buttons to public profile page
 - 2026-02-06: Added block-based content system (URL Button, Email Button, Text, Divider, Video, Audio, Image) replacing simple links; block type picker in dashboard, inline editing per type, public profile renders all block types with video/audio embeds
 - 2026-02-06: Added multi-page system (Home, About Us, Services, etc.) with page-scoped links, page selector dropdown, manage pages dialog, public page navigation tabs
 - 2026-02-06: Switched Vercel deployment to Build Output API v3 (eliminates ncc bundling issues, self-contained .vercel/output/)

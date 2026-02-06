@@ -3,7 +3,16 @@ import { useQuery } from "@tanstack/react-query";
 import { useParams } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Loader2, ExternalLink, Mail, Play, Music } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Loader2, ExternalLink, Mail, Play, Music, UserPlus, Share2, QrCode, Copy, Check } from "lucide-react";
+import { SiFacebook, SiX, SiPinterest, SiReddit, SiLinkedin } from "react-icons/si";
+import { QRCodeSVG } from "qrcode.react";
 import { getTemplate } from "@/lib/templates";
 import { SocialIcon } from "@/components/social-icon";
 import { getPlatform } from "@/lib/social-platforms";
@@ -36,6 +45,10 @@ type PublicProfile = {
 export default function PublicProfile() {
   const { username } = useParams<{ username: string }>();
   const [activePageSlug, setActivePageSlug] = useState<string | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
+  const [showQr, setShowQr] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const { data, isLoading, error } = useQuery<PublicProfile>({
     queryKey: ["/api/profile", username, activePageSlug],
@@ -81,9 +94,66 @@ export default function PublicProfile() {
   const hasMultiplePages = pages.length > 1;
   const hasBlocks = activeBlocks.length > 0;
 
+  const profileUrl = typeof window !== "undefined" ? `${window.location.origin}/${username}` : `/${username}`;
+  const displayName = user.displayName || user.username;
+
+  function handleCopyUrl() {
+    navigator.clipboard.writeText(profileUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  function handleAddContact() {
+    const vcard = [
+      "BEGIN:VCARD",
+      "VERSION:3.0",
+      `FN:${displayName}`,
+      `URL:${profileUrl}`,
+      user.bio ? `NOTE:${user.bio}` : "",
+      "END:VCARD",
+    ].filter(Boolean).join("\n");
+
+    const blob = new Blob([vcard], { type: "text/vcard" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${username}.vcf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const socialShareItems = [
+    { icon: SiFacebook, color: "#1877F2", label: "Facebook", url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(profileUrl)}` },
+    { icon: SiX, color: "#000000", label: "X", url: `https://x.com/intent/tweet?url=${encodeURIComponent(profileUrl)}&text=${encodeURIComponent(`Check out ${displayName}'s profile`)}` },
+    { icon: SiPinterest, color: "#E60023", label: "Pinterest", url: `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(profileUrl)}&description=${encodeURIComponent(displayName)}` },
+    { icon: SiReddit, color: "#FF4500", label: "Reddit", url: `https://reddit.com/submit?url=${encodeURIComponent(profileUrl)}&title=${encodeURIComponent(displayName)}` },
+    { icon: SiLinkedin, color: "#0A66C2", label: "LinkedIn", url: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(profileUrl)}` },
+  ];
+
   return (
     <div className={`min-h-screen ${template.bg}`}>
       <div className="max-w-lg mx-auto px-6 py-12">
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setContactOpen(true)}
+            className={`${template.textColor}`}
+            data-testid="button-add-contact"
+          >
+            <UserPlus className="w-5 h-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShareOpen(true)}
+            className={`${template.textColor}`}
+            data-testid="button-share"
+          >
+            <Share2 className="w-5 h-5" />
+          </Button>
+        </div>
+
         <div className="flex flex-col items-center text-center mb-10">
           <Avatar className="w-24 h-24 border-4 border-white/20 shadow-lg mb-5">
             <AvatarImage src={user.profileImage || undefined} alt={user.displayName || user.username} />
@@ -113,7 +183,7 @@ export default function PublicProfile() {
                   href={normalizeUrl(social.url, social.platform)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`p-2 rounded-full transition-all hover:scale-110 ${template.textColor} opacity-70 hover:opacity-100`}
+                  className={`p-2 rounded-full ${template.textColor} opacity-70 hover-elevate active-elevate-2`}
                   title={getPlatform(social.platform)?.name || social.platform}
                   data-testid={`social-icon-${social.platform}`}
                 >
@@ -183,6 +253,98 @@ export default function PublicProfile() {
           </a>
         </div>
       </div>
+
+      <Dialog open={contactOpen} onOpenChange={setContactOpen}>
+        <DialogContent className="max-w-sm" data-testid="dialog-add-contact">
+          <DialogHeader className="items-center text-center">
+            <div className="flex justify-center mb-3">
+              <UserPlus className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <DialogTitle>Add {displayName} as a contact.</DialogTitle>
+            <DialogDescription className="sr-only">Download contact card</DialogDescription>
+          </DialogHeader>
+          <Button
+            onClick={handleAddContact}
+            className="w-full"
+            data-testid="button-download-contact"
+          >
+            Add Contact
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={shareOpen} onOpenChange={(open) => { setShareOpen(open); if (!open) setShowQr(false); }}>
+        <DialogContent className="max-w-sm" data-testid="dialog-share">
+          <DialogHeader className="items-center text-center">
+            <DialogTitle>{displayName}</DialogTitle>
+            <DialogDescription className="sr-only">Share this profile</DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center">
+            <Avatar className="w-24 h-24 border-4 border-primary/20 shadow-lg">
+              <AvatarImage src={user.profileImage || undefined} alt={displayName} />
+              <AvatarFallback
+                className="text-2xl"
+                style={{ backgroundColor: template.accent + "30", color: template.accent }}
+              >
+                {displayName.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+
+          {showQr ? (
+            <div className="flex flex-col items-center gap-4">
+              <div className="bg-white p-4 rounded-md">
+                <QRCodeSVG value={profileUrl} size={180} />
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => setShowQr(false)}
+                className="w-full"
+                data-testid="button-back-from-qr"
+              >
+                Back
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <Button
+                variant="secondary"
+                className="w-full justify-center gap-2"
+                onClick={() => setShowQr(true)}
+                data-testid="button-view-qr"
+              >
+                View QR Code
+                <QrCode className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="secondary"
+                className="w-full justify-center gap-2"
+                onClick={handleCopyUrl}
+                data-testid="button-copy-url"
+              >
+                {copied ? "Copied!" : "Copy Page URL"}
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              </Button>
+              <div className="flex items-center justify-center gap-3 pt-2" data-testid="share-social-row">
+                {socialShareItems.map((item) => (
+                  <a
+                    key={item.label}
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white hover-elevate active-elevate-2"
+                    style={{ backgroundColor: item.color }}
+                    title={`Share on ${item.label}`}
+                    data-testid={`share-${item.label.toLowerCase()}`}
+                  >
+                    <item.icon className="w-5 h-5" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
