@@ -51,6 +51,10 @@ import {
   ExternalLink,
   User as UserIcon,
   MousePointerClick,
+  Upload,
+  Share2,
+  Circle,
+  Square,
 } from "lucide-react";
 import {
   Dialog,
@@ -78,6 +82,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { QRCodeSVG } from "qrcode.react";
+import { Slider } from "@/components/ui/slider";
 import { SOCIAL_PLATFORMS, getPlatform } from "@/lib/social-platforms";
 import { SocialIcon } from "@/components/social-icon";
 import type { Link, Social, Page, Block, BlockContent, BlockType } from "@shared/schema";
@@ -794,10 +799,104 @@ function AnalyticsPanel({ username }: { username: string }) {
   );
 }
 
+type QRStyle = "circle" | "square" | "stripe" | "full";
+
+interface SavedQRCode {
+  id: string;
+  style: QRStyle;
+  color: string;
+  borderRadius: number;
+  borderWidth: number;
+  logoUrl: string | null;
+}
+
 function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: string }) {
   const { toast } = useToast();
-  const downloadQR = () => {
-    const svg = document.getElementById("dashboard-qr-code");
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [savedQRCodes, setSavedQRCodes] = useState<SavedQRCode[]>(() => {
+    try {
+      const stored = localStorage.getItem(`qrcodes-${username}`);
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return [];
+  });
+
+  const [qrStyle, setQrStyle] = useState<QRStyle>("circle");
+  const [qrColor, setQrColor] = useState("#6C5CE7");
+  const [borderRadius, setBorderRadius] = useState(0);
+  const [borderWidth, setBorderWidth] = useState(2);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem(`qrcodes-${username}`, JSON.stringify(savedQRCodes));
+  }, [savedQRCodes, username]);
+
+  const resetForm = () => {
+    setQrStyle("circle");
+    setQrColor("#6C5CE7");
+    setBorderRadius(0);
+    setBorderWidth(2);
+    setLogoPreview(null);
+    setEditingId(null);
+  };
+
+  const openCreate = () => {
+    resetForm();
+    setShowCreateDialog(true);
+  };
+
+  const openEdit = (qr: SavedQRCode) => {
+    setQrStyle(qr.style);
+    setQrColor(qr.color);
+    setBorderRadius(qr.borderRadius);
+    setBorderWidth(qr.borderWidth);
+    setLogoPreview(qr.logoUrl);
+    setEditingId(qr.id);
+    setShowCreateDialog(true);
+  };
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setLogoPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleCreate = () => {
+    if (editingId) {
+      setSavedQRCodes((prev) =>
+        prev.map((qr) =>
+          qr.id === editingId
+            ? { ...qr, style: qrStyle, color: qrColor, borderRadius, borderWidth, logoUrl: logoPreview }
+            : qr
+        )
+      );
+      toast({ title: "QR code updated!" });
+    } else {
+      const newQR: SavedQRCode = {
+        id: Date.now().toString(),
+        style: qrStyle,
+        color: qrColor,
+        borderRadius,
+        borderWidth,
+        logoUrl: logoPreview,
+      };
+      setSavedQRCodes((prev) => [...prev, newQR]);
+      toast({ title: "QR code created!" });
+    }
+    setShowCreateDialog(false);
+    resetForm();
+  };
+
+  const handleDelete = (id: string) => {
+    setSavedQRCodes((prev) => prev.filter((qr) => qr.id !== id));
+    toast({ title: "QR code deleted" });
+  };
+
+  const downloadQR = (elementId: string, filename: string) => {
+    const svg = document.getElementById(elementId);
     if (!svg) return;
     const svgData = new XMLSerializer().serializeToString(svg);
     const canvas = document.createElement("canvas");
@@ -814,49 +913,238 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
       const pngUrl = canvas.toDataURL("image/png");
       const a = document.createElement("a");
       a.href = pngUrl;
-      a.download = `${username}-qrcode.png`;
+      a.download = filename;
       a.click();
       toast({ title: "QR code downloaded!" });
     };
-    img.src = "data:image/svg+xml;base64," + btoa(svgData);
+    img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
   };
 
-  const copyQRLink = () => {
+  const copyLink = () => {
     navigator.clipboard.writeText(profileUrl);
     toast({ title: "Profile link copied!" });
   };
 
+  const getQRProps = (qr: { style: QRStyle; color: string; logoUrl: string | null }) => {
+    const base = {
+      value: profileUrl,
+      level: "H" as const,
+      fgColor: qr.style === "full" ? "#ffffff" : qr.color,
+      bgColor: "transparent",
+      imageSettings: qr.logoUrl
+        ? { src: qr.logoUrl, height: 30, width: 30, excavate: true }
+        : undefined,
+    };
+    return base;
+  };
+
+  const getContainerStyle = (qr: { style: QRStyle; borderRadius: number; borderWidth: number; color: string }) => {
+    const style: React.CSSProperties = {
+      overflow: "hidden",
+      padding: "12px",
+      background: "white",
+    };
+    switch (qr.style) {
+      case "circle":
+        style.borderRadius = "50%";
+        style.border = `${qr.borderWidth}px solid ${qr.color}`;
+        break;
+      case "square":
+        style.borderRadius = `${qr.borderRadius}px`;
+        style.border = `${qr.borderWidth}px solid ${qr.color}`;
+        break;
+      case "stripe":
+        style.borderRadius = `${qr.borderRadius}px`;
+        style.borderTop = `${Math.max(qr.borderWidth, 3)}px solid ${qr.color}`;
+        style.borderBottom = `${Math.max(qr.borderWidth, 3)}px solid ${qr.color}`;
+        break;
+      case "full":
+        style.borderRadius = `${qr.borderRadius}px`;
+        style.background = qr.color;
+        style.padding = "16px";
+        break;
+    }
+    return style;
+  };
+
+  const styleOptions: { value: QRStyle; label: string }[] = [
+    { value: "circle", label: "Circle" },
+    { value: "square", label: "Square" },
+    { value: "stripe", label: "Stripe" },
+    { value: "full", label: "Full" },
+  ];
+
   return (
     <div className="p-4 space-y-6">
-      <SectionHeader title="QR Code" />
-      <div>
-        <h3 className="text-sm font-semibold mb-1">Your QR Code</h3>
-        <p className="text-xs text-muted-foreground mb-4">Share your profile with a scannable QR code.</p>
+      <SectionHeader title="QR Codes" />
+      <div className="text-center space-y-1">
+        <h2 className="text-lg font-bold" data-testid="text-qr-title">QR Codes</h2>
+        <p className="text-sm text-muted-foreground">Create unlimited dynamic QR codes and track their usage.</p>
       </div>
-      <Card>
-        <CardContent className="p-6 flex flex-col items-center">
-          <div className="bg-white p-4 rounded-lg mb-4">
-            <QRCodeSVG
-              id="dashboard-qr-code"
-              value={profileUrl}
-              size={180}
-              level="H"
-              data-testid="display-qr-code"
-            />
+      <div className="flex justify-center">
+        <Button onClick={openCreate} className="gap-2" data-testid="button-create-qr">
+          Create QR Code
+          <Plus className="w-4 h-4" />
+        </Button>
+      </div>
+
+      {savedQRCodes.length === 0 && (
+        <div className="text-center py-8">
+          <QrCode className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">No QR codes yet. Create your first one!</p>
+        </div>
+      )}
+
+      <div className="space-y-4">
+        {savedQRCodes.map((qr) => (
+          <Card key={qr.id}>
+            <CardContent className="p-4 flex items-center gap-4 flex-wrap">
+              <div className="flex-1 min-w-[120px] space-y-1">
+                <p className="text-sm font-semibold" data-testid={`text-qr-views-${qr.id}`}>Total Views: 0</p>
+                <p className="text-sm text-muted-foreground">Code Type: Profile</p>
+                <div className="flex gap-1 pt-2">
+                  <Button size="icon" variant="outline" onClick={() => openEdit(qr)} data-testid={`button-edit-qr-${qr.id}`}>
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button size="icon" variant="outline" onClick={copyLink} data-testid={`button-share-qr-${qr.id}`}>
+                    <Share2 className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={() => downloadQR(`qr-saved-${qr.id}`, `${username}-qrcode-${qr.id}.png`)}
+                    data-testid={`button-download-qr-${qr.id}`}
+                  >
+                    <Download className="w-4 h-4" />
+                  </Button>
+                  <Button size="icon" variant="outline" onClick={() => handleDelete(qr.id)} data-testid={`button-delete-qr-${qr.id}`}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+              <div style={getContainerStyle(qr)} className="shrink-0">
+                <QRCodeSVG
+                  id={`qr-saved-${qr.id}`}
+                  {...getQRProps(qr)}
+                  size={100}
+                  data-testid={`display-qr-${qr.id}`}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle data-testid="text-create-qr-title">{editingId ? "Edit QR Code" : "Create QR Code"}</DialogTitle>
+            <p className="text-sm text-muted-foreground">Create a dynamic QR Code and track its usage over time.</p>
+          </DialogHeader>
+          <div className="flex flex-col sm:flex-row gap-6 mt-4">
+            <div className="flex-1 space-y-5">
+              <div className="flex gap-1 rounded-md border p-1" data-testid="tabs-qr-style">
+                {styleOptions.map((opt) => (
+                  <button
+                    type="button"
+                    key={opt.value}
+                    onClick={() => setQrStyle(opt.value)}
+                    className={`flex-1 text-sm py-1.5 px-2 rounded transition-colors ${
+                      qrStyle === opt.value
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover-elevate"
+                    }`}
+                    data-testid={`button-qr-style-${opt.value}`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-3 p-3 rounded-md border">
+                <span className="text-sm flex-1">Color</span>
+                <input
+                  type="color"
+                  value={qrColor}
+                  onChange={(e) => setQrColor(e.target.value)}
+                  className="w-8 h-8 rounded-full border-0 cursor-pointer"
+                  style={{ padding: 0, background: "transparent" }}
+                  data-testid="input-qr-color"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 p-3 rounded-md border">
+                <span className="text-sm shrink-0 w-28">Border Radius</span>
+                <Slider
+                  value={[borderRadius]}
+                  onValueChange={(val) => setBorderRadius(val[0])}
+                  min={0}
+                  max={50}
+                  step={1}
+                  className="flex-1"
+                  data-testid="slider-border-radius"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 p-3 rounded-md border">
+                <span className="text-sm shrink-0 w-28">Border Width</span>
+                <Slider
+                  value={[borderWidth]}
+                  onValueChange={(val) => setBorderWidth(val[0])}
+                  min={0}
+                  max={10}
+                  step={1}
+                  className="flex-1"
+                  data-testid="slider-border-width"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 p-3 rounded-md border">
+                <span className="text-sm flex-1">Logo</span>
+                <label className="cursor-pointer" data-testid="button-upload-logo">
+                  <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+                  <div className="w-9 h-9 rounded-md border flex items-center justify-center hover-elevate">
+                    <Upload className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                </label>
+              </div>
+
+              {logoPreview && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <img src={logoPreview} alt="Logo preview" className="w-6 h-6 rounded object-cover" />
+                  <span>Logo added</span>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => setLogoPreview(null)}
+                    data-testid="button-remove-logo"
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              )}
+
+              <Button onClick={handleCreate} className="w-full" data-testid="button-save-qr">
+                {editingId ? "Save Changes" : "Create"}
+              </Button>
+            </div>
+
+            <div className="flex items-center justify-center sm:w-[200px]">
+              <div
+                style={getContainerStyle({ style: qrStyle, borderRadius, borderWidth, color: qrColor })}
+                data-testid="preview-qr-container"
+              >
+                <QRCodeSVG
+                  id="create-qr-preview"
+                  {...getQRProps({ style: qrStyle, color: qrColor, logoUrl: logoPreview })}
+                  size={160}
+                  data-testid="preview-qr-code"
+                />
+              </div>
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground text-center mb-4 break-all" data-testid="text-qr-url">{profileUrl}</p>
-          <div className="flex gap-2 w-full">
-            <Button variant="outline" className="flex-1 gap-2" onClick={downloadQR} data-testid="button-download-qr">
-              <Download className="w-4 h-4" />
-              Download
-            </Button>
-            <Button variant="outline" className="flex-1 gap-2" onClick={copyQRLink} data-testid="button-copy-qr-link">
-              <Copy className="w-4 h-4" />
-              Copy Link
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
