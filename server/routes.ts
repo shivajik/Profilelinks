@@ -63,6 +63,11 @@ export async function registerRoutes(
 
   app.use("/uploads", express.static(uploadsDir));
 
+  const isProduction = process.env.NODE_ENV === "production";
+  if (isProduction) {
+    app.set("trust proxy", 1);
+  }
+
   app.use(
     session({
       store: new PgSession({
@@ -75,7 +80,7 @@ export async function registerRoutes(
       cookie: {
         maxAge: 30 * 24 * 60 * 60 * 1000,
         httpOnly: true,
-        secure: false,
+        secure: isProduction,
         sameSite: "lax",
       },
     })
@@ -87,7 +92,8 @@ export async function registerRoutes(
       if (!result.success) {
         return res.status(400).json({ message: fromZodError(result.error).message });
       }
-      const { username, email, password } = result.data;
+      const { username, password } = result.data;
+      const email = result.data.email.toLowerCase();
 
       const existingEmail = await storage.getUserByEmail(email);
       if (existingEmail) {
@@ -120,7 +126,8 @@ export async function registerRoutes(
       if (!result.success) {
         return res.status(400).json({ message: fromZodError(result.error).message });
       }
-      const { email, password } = result.data;
+      const { password } = result.data;
+      const email = result.data.email.toLowerCase();
 
       const user = await storage.getUserByEmail(email);
       if (!user) {
