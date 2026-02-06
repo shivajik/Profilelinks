@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import session from "express-session";
 import { storage } from "./storage";
 import bcrypt from "bcryptjs";
-import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema, createPageSchema, updatePageSchema, createBlockSchema, updateBlockSchema } from "@shared/schema";
+import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema, createPageSchema, updatePageSchema, createBlockSchema, updateBlockSchema, changePasswordSchema, deleteAccountSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import connectPgSimple from "connect-pg-simple";
 import pg from "pg";
@@ -209,6 +209,72 @@ export async function registerRoutes(
       res.json(safeUser);
     } catch (error: any) {
       res.status(500).json({ message: "Profile update failed" });
+    }
+  });
+
+  app.get("/api/auth/username-available", requireAuth, async (req, res) => {
+    try {
+      const username = req.query.username as string;
+      if (!username || username.length < 3 || username.length > 30 || !/^[a-zA-Z0-9_-]+$/.test(username)) {
+        return res.json({ available: false });
+      }
+      const existing = await storage.getUserByUsername(username.toLowerCase());
+      const available = !existing || existing.id === req.session.userId;
+      res.json({ available });
+    } catch {
+      res.status(500).json({ message: "Check failed" });
+    }
+  });
+
+  app.post("/api/auth/change-password", requireAuth, async (req, res) => {
+    try {
+      const result = changePasswordSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const valid = await bcrypt.compare(result.data.currentPassword, user.password);
+      if (!valid) {
+        return res.status(400).json({ message: "Current password is incorrect" });
+      }
+
+      const hashedPassword = await bcrypt.hash(result.data.newPassword, 10);
+      await storage.updateUserPassword(req.session.userId!, hashedPassword);
+      res.json({ message: "Password changed successfully" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Password change failed" });
+    }
+  });
+
+  app.delete("/api/auth/account", requireAuth, async (req, res) => {
+    try {
+      const result = deleteAccountSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const valid = await bcrypt.compare(result.data.password, user.password);
+      if (!valid) {
+        return res.status(400).json({ message: "Incorrect password" });
+      }
+
+      await storage.deleteUser(req.session.userId!);
+      req.session.destroy((err) => {
+        res.clearCookie("connect.sid");
+        res.json({ message: "Account deleted" });
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: "Account deletion failed" });
     }
   });
 

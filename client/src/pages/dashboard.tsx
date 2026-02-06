@@ -55,6 +55,11 @@ import {
   Share2,
   Circle,
   Square,
+  Shield,
+  KeyRound,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import {
   Dialog,
@@ -708,38 +713,242 @@ function SettingsPanel({
   profileUrl,
   onLogout,
 }: {
-  user: { username: string; email: string; displayName: string | null };
+  user: { id: string; username: string; email: string; displayName: string | null; bio: string | null; profileImage: string | null; template: string | null };
   profileUrl: string;
   onLogout: () => void;
 }) {
+  const { toast } = useToast();
+  const [editUsername, setEditUsername] = useState(user.username);
+  const [editName, setEditName] = useState(user.displayName || "");
+  const [editBio, setEditBio] = useState(user.bio || "");
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [checkingUsername, setCheckingUsername] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState(user.template || "minimal");
+
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+
+  useEffect(() => {
+    setEditUsername(user.username);
+    setEditName(user.displayName || "");
+    setEditBio(user.bio || "");
+    setSelectedTemplate(user.template || "minimal");
+  }, [user]);
+
+  const profileMutation = useMutation({
+    mutationFn: async (data: { displayName?: string | null; bio?: string | null; profileImage?: string | null; username?: string; template?: string }) => {
+      await apiRequest("PATCH", "/api/auth/profile", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      setUsernameAvailable(null);
+      toast({ title: "Profile updated!" });
+    },
+    onError: (err: any) => {
+      setUsernameAvailable(null);
+      setEditUsername(user.username);
+      toast({ title: "Update failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const passwordMutation = useMutation({
+    mutationFn: async (data: { currentPassword: string; newPassword: string; confirmPassword: string }) => {
+      const res = await apiRequest("POST", "/api/auth/change-password", data);
+      return res;
+    },
+    onSuccess: () => {
+      toast({ title: "Password changed successfully!" });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    },
+    onError: (err: any) => {
+      toast({ title: "Password change failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (password: string) => {
+      await apiRequest("DELETE", "/api/auth/account", { password });
+    },
+    onSuccess: () => {
+      window.location.href = "/";
+    },
+    onError: (err: any) => {
+      toast({ title: "Deletion failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const checkUsername = async (username: string) => {
+    if (username === user.username) {
+      setUsernameAvailable(null);
+      return;
+    }
+    if (username.length < 3 || !/^[a-zA-Z0-9_-]+$/.test(username)) {
+      setUsernameAvailable(false);
+      return;
+    }
+    setCheckingUsername(true);
+    try {
+      const res = await fetch(`/api/auth/username-available?username=${encodeURIComponent(username)}`, { credentials: "include" });
+      const data = await res.json();
+      setUsernameAvailable(data.available);
+    } catch {
+      setUsernameAvailable(null);
+    }
+    setCheckingUsername(false);
+  };
+
   return (
-    <div className="p-4 space-y-6">
+    <div className="p-4 space-y-6 overflow-y-auto">
       <SectionHeader title="Settings" />
+
       <div>
-        <h3 className="text-sm font-semibold mb-4">Account</h3>
-        <div className="space-y-3">
-          <div className="flex items-center gap-3 p-3 rounded-md border">
-            <UserIcon className="w-4 h-4 text-muted-foreground shrink-0" />
-            <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">Username</p>
-              <p className="text-sm font-medium truncate" data-testid="text-settings-username">@{user.username}</p>
+        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+          <UserIcon className="w-4 h-4" />
+          Profile
+        </h3>
+        <div className="space-y-4">
+          <div className="flex items-center gap-4 p-3 rounded-md border">
+            <div className="relative group">
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                className="hidden"
+                id="settings-avatar-upload"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const formData = new FormData();
+                  formData.append("file", file);
+                  try {
+                    const res = await fetch("/api/upload", { method: "POST", body: formData });
+                    const data = await res.json();
+                    if (res.ok) {
+                      profileMutation.mutate({ profileImage: data.url });
+                    }
+                  } catch {}
+                }}
+                data-testid="input-settings-avatar-upload"
+              />
+              <label htmlFor="settings-avatar-upload" className="cursor-pointer block">
+                <Avatar className="w-16 h-16 border-2 border-border">
+                  <AvatarImage src={user.profileImage || undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-lg">
+                    {(user.displayName || user.username).charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Camera className="w-4 h-4 text-white" />
+                </div>
+              </label>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{user.displayName || user.username}</p>
+              <p className="text-xs text-muted-foreground truncate">{user.email}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-3 rounded-md border">
-            <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
-            <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">Email</p>
-              <p className="text-sm font-medium truncate" data-testid="text-settings-email">{user.email}</p>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="settings-name" className="text-xs text-muted-foreground">Display Name</Label>
+            <Input
+              id="settings-name"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              onBlur={() => {
+                if (editName !== (user.displayName || "")) {
+                  profileMutation.mutate({ displayName: editName || null });
+                }
+              }}
+              placeholder="Your name"
+              data-testid="input-settings-name"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="settings-bio" className="text-xs text-muted-foreground">Bio</Label>
+            <Textarea
+              id="settings-bio"
+              value={editBio}
+              onChange={(e) => setEditBio(e.target.value)}
+              onBlur={() => {
+                if (editBio !== (user.bio || "")) {
+                  profileMutation.mutate({ bio: editBio || null });
+                }
+              }}
+              placeholder="Tell the world about yourself..."
+              maxLength={500}
+              rows={3}
+              data-testid="input-settings-bio"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="settings-username" className="text-xs text-muted-foreground">Username</Label>
+            <div className="relative">
+              <Input
+                id="settings-username"
+                value={editUsername}
+                onChange={(e) => {
+                  const val = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, "");
+                  setEditUsername(val);
+                  setUsernameAvailable(null);
+                }}
+                onBlur={() => {
+                  if (editUsername !== user.username && editUsername.length >= 3) {
+                    checkUsername(editUsername);
+                  }
+                }}
+                placeholder="username"
+                data-testid="input-settings-username"
+              />
+              {checkingUsername && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              {!checkingUsername && usernameAvailable === true && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <CheckCircle2 className="w-4 h-4 text-green-500" />
+                </div>
+              )}
+              {!checkingUsername && usernameAvailable === false && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <XCircle className="w-4 h-4 text-destructive" />
+                </div>
+              )}
             </div>
+            {usernameAvailable === false && (
+              <p className="text-xs text-destructive">Username is not available or invalid</p>
+            )}
+            {usernameAvailable === true && editUsername !== user.username && (
+              <Button
+                size="sm"
+                onClick={() => {
+                  profileMutation.mutate({ username: editUsername });
+                  setUsernameAvailable(null);
+                }}
+                disabled={profileMutation.isPending}
+                data-testid="button-save-username"
+              >
+                Save Username
+              </Button>
+            )}
           </div>
         </div>
       </div>
+
       <div>
-        <h3 className="text-sm font-semibold mb-4">Your Profile</h3>
+        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+          <Globe className="w-4 h-4" />
+          Public URL
+        </h3>
         <div className="flex items-center gap-3 p-3 rounded-md border">
-          <Globe className="w-4 h-4 text-muted-foreground shrink-0" />
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-muted-foreground">Public URL</p>
             <p className="text-sm font-medium truncate" data-testid="text-settings-url">{profileUrl}</p>
           </div>
           <Button
@@ -752,12 +961,148 @@ function SettingsPanel({
           </Button>
         </div>
       </div>
-      <div className="pt-2">
+
+      <div>
+        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+          <Palette className="w-4 h-4" />
+          Theme
+        </h3>
+        <div className="grid grid-cols-3 gap-2">
+          {TEMPLATES.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => {
+                setSelectedTemplate(t.id);
+                profileMutation.mutate({ template: t.id });
+              }}
+              className={`relative rounded-md border-2 p-2 text-center transition-colors ${
+                selectedTemplate === t.id ? "border-primary" : "border-border"
+              }`}
+              data-testid={`template-${t.id}`}
+            >
+              <div className={`w-full h-8 rounded-sm mb-1.5 ${t.bg}`} />
+              <p className="text-xs font-medium">{t.name}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+          <KeyRound className="w-4 h-4" />
+          Change Password
+        </h3>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="current-password" className="text-xs text-muted-foreground">Current Password</Label>
+            <Input
+              id="current-password"
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="Enter current password"
+              data-testid="input-current-password"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="new-password" className="text-xs text-muted-foreground">New Password</Label>
+            <Input
+              id="new-password"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Enter new password"
+              data-testid="input-new-password"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="confirm-password" className="text-xs text-muted-foreground">Confirm New Password</Label>
+            <Input
+              id="confirm-password"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Confirm new password"
+              data-testid="input-confirm-password"
+            />
+          </div>
+          {newPassword && confirmPassword && newPassword !== confirmPassword && (
+            <p className="text-xs text-destructive">Passwords do not match</p>
+          )}
+          <Button
+            onClick={() => {
+              passwordMutation.mutate({ currentPassword, newPassword, confirmPassword });
+            }}
+            disabled={!currentPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword || passwordMutation.isPending}
+            className="w-full"
+            data-testid="button-change-password"
+          >
+            {passwordMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Change Password"}
+          </Button>
+        </div>
+      </div>
+
+      <div className="pt-2 space-y-3">
         <Button variant="outline" className="w-full gap-2" onClick={onLogout} data-testid="button-settings-logout">
           <LogOut className="w-4 h-4" />
           Sign Out
         </Button>
+        <Button
+          variant="outline"
+          className="w-full gap-2 text-destructive border-destructive/30"
+          onClick={() => setShowDeleteDialog(true)}
+          data-testid="button-delete-account"
+        >
+          <AlertTriangle className="w-4 h-4" />
+          Delete Account
+        </Button>
       </div>
+
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              Delete Account
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              This action is permanent and cannot be undone. All your pages, blocks, social links, and analytics data will be permanently deleted.
+            </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="delete-password" className="text-xs text-muted-foreground">Enter your password to confirm</Label>
+              <Input
+                id="delete-password"
+                type="password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                placeholder="Your password"
+                data-testid="input-delete-password"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => { setShowDeleteDialog(false); setDeletePassword(""); }}
+                data-testid="button-cancel-delete"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1 gap-2"
+                disabled={!deletePassword || deleteMutation.isPending}
+                onClick={() => deleteMutation.mutate(deletePassword)}
+                data-testid="button-confirm-delete"
+              >
+                {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete Forever"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

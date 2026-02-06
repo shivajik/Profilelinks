@@ -65,6 +65,9 @@ export interface IStorage {
   getMaxBlockPositionByPage(pageId: string): Promise<number>;
   reorderBlocks(userId: string, blockIds: string[]): Promise<void>;
 
+  updateUserPassword(id: string, hashedPassword: string): Promise<boolean>;
+  deleteUser(id: string): Promise<boolean>;
+
   recordAnalyticsEvent(data: { userId: string; eventType: string; blockId?: string; pageSlug?: string; referrer?: string }): Promise<void>;
   getAnalyticsSummary(userId: string): Promise<{
     totalViews: number;
@@ -109,6 +112,16 @@ export class DatabaseStorage implements IStorage {
   async updateUser(id: string, data: Partial<Pick<User, "displayName" | "bio" | "profileImage" | "username" | "onboardingCompleted" | "template">>): Promise<User | undefined> {
     const [user] = await db.update(users).set(data).where(eq(users.id, id)).returning();
     return user;
+  }
+
+  async updateUserPassword(id: string, hashedPassword: string): Promise<boolean> {
+    const result = await db.update(users).set({ password: hashedPassword }).where(eq(users.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    const result = await db.delete(users).where(eq(users.id, id)).returning();
+    return result.length > 0;
   }
 
   async getPagesByUserId(userId: string): Promise<Page[]> {
