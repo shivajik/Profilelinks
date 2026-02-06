@@ -45,6 +45,12 @@ import {
   Video,
   Music,
   ImageIcon,
+  Download,
+  Globe,
+  Eye,
+  ExternalLink,
+  User as UserIcon,
+  MousePointerClick,
 } from "lucide-react";
 import {
   Dialog,
@@ -71,6 +77,7 @@ import {
   SidebarMenuButton,
   SidebarFooter,
 } from "@/components/ui/sidebar";
+import { QRCodeSVG } from "qrcode.react";
 import { SOCIAL_PLATFORMS, getPlatform } from "@/lib/social-platforms";
 import { SocialIcon } from "@/components/social-icon";
 import type { Link, Social, Page, Block, BlockContent, BlockType } from "@shared/schema";
@@ -359,7 +366,8 @@ export default function Dashboard() {
 
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 flex overflow-hidden">
-            <div className="flex-1 overflow-y-auto border-r bg-background w-full md:min-w-[300px] md:max-w-[420px]">
+            <div className={`flex-1 overflow-y-auto border-r bg-background w-full ${activeSection === "design" ? "md:min-w-[300px] md:max-w-[420px]" : ""}`}>
+              {activeSection === "design" && (
               <div className="p-4 space-y-4">
                 <div className="flex items-center gap-2 mb-2">
                   <SidebarTrigger data-testid="button-sidebar-toggle" />
@@ -600,9 +608,19 @@ export default function Dashboard() {
                   </div>
                 </CategorySection>
               </div>
+              )}
+              {activeSection === "settings" && (
+                <SettingsPanel user={user} profileUrl={profileUrl} onLogout={handleLogout} />
+              )}
+              {activeSection === "analytics" && (
+                <AnalyticsPanel username={user.username} />
+              )}
+              {activeSection === "qrcodes" && (
+                <QRCodePanel profileUrl={profileUrl} username={user.username} />
+              )}
             </div>
 
-            <div className="hidden md:flex flex-1 bg-muted/30 items-center justify-center p-6">
+            <div className={`${activeSection === "design" ? "hidden md:flex" : "hidden"} flex-1 bg-muted/30 items-center justify-center p-6`}>
               <div className="flex flex-col items-center gap-3">
                 <div className="flex items-center gap-2">
                   <Button
@@ -639,7 +657,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="hidden lg:block w-[280px] border-l bg-background overflow-y-auto shrink-0">
+            <div className={`${activeSection === "design" ? "hidden lg:block" : "hidden"} w-[280px] border-l bg-background overflow-y-auto shrink-0`}>
               <DesignPanel
                 currentTemplateId={user.template || "minimal"}
                 onSelectTemplate={(id) => templateMutation.mutate(id)}
@@ -668,6 +686,178 @@ export default function Dashboard() {
         onSelectPage={(id) => { setSelectedPageId(id); setManagingPages(false); }}
       />
     </SidebarProvider>
+  );
+}
+
+function SectionHeader({ title }: { title: string }) {
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      <SidebarTrigger data-testid="button-sidebar-toggle" />
+      <h2 className="text-base font-semibold">{title}</h2>
+    </div>
+  );
+}
+
+function SettingsPanel({
+  user,
+  profileUrl,
+  onLogout,
+}: {
+  user: { username: string; email: string; displayName: string | null };
+  profileUrl: string;
+  onLogout: () => void;
+}) {
+  return (
+    <div className="p-4 space-y-6">
+      <SectionHeader title="Settings" />
+      <div>
+        <h3 className="text-sm font-semibold mb-4">Account</h3>
+        <div className="space-y-3">
+          <div className="flex items-center gap-3 p-3 rounded-md border">
+            <UserIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Username</p>
+              <p className="text-sm font-medium truncate" data-testid="text-settings-username">@{user.username}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-3 rounded-md border">
+            <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Email</p>
+              <p className="text-sm font-medium truncate" data-testid="text-settings-email">{user.email}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h3 className="text-sm font-semibold mb-4">Your Profile</h3>
+        <div className="flex items-center gap-3 p-3 rounded-md border">
+          <Globe className="w-4 h-4 text-muted-foreground shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-muted-foreground">Public URL</p>
+            <p className="text-sm font-medium truncate" data-testid="text-settings-url">{profileUrl}</p>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => window.open(`/${user.username}`, "_blank")}
+            data-testid="button-settings-visit"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      </div>
+      <div className="pt-2">
+        <Button variant="outline" className="w-full gap-2" onClick={onLogout} data-testid="button-settings-logout">
+          <LogOut className="w-4 h-4" />
+          Sign Out
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function AnalyticsPanel({ username }: { username: string }) {
+  return (
+    <div className="p-4 space-y-6">
+      <SectionHeader title="Analytics" />
+      <div>
+        <h3 className="text-sm font-semibold mb-1">Overview</h3>
+        <p className="text-xs text-muted-foreground mb-4">Track how your profile is performing.</p>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Card>
+          <CardContent className="p-4 flex flex-col items-center text-center">
+            <Eye className="w-5 h-5 text-primary mb-2" />
+            <p className="text-2xl font-bold" data-testid="text-analytics-views">--</p>
+            <p className="text-xs text-muted-foreground">Profile Views</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex flex-col items-center text-center">
+            <MousePointerClick className="w-5 h-5 text-primary mb-2" />
+            <p className="text-2xl font-bold" data-testid="text-analytics-clicks">--</p>
+            <p className="text-xs text-muted-foreground">Link Clicks</p>
+          </CardContent>
+        </Card>
+      </div>
+      <Card>
+        <CardContent className="p-6 text-center">
+          <BarChart3 className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+          <p className="text-sm font-medium mb-1">Analytics Coming Soon</p>
+          <p className="text-xs text-muted-foreground">
+            Detailed analytics with views, clicks, and visitor insights will be available in a future update.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: string }) {
+  const { toast } = useToast();
+  const downloadQR = () => {
+    const svg = document.getElementById("dashboard-qr-code");
+    if (!svg) return;
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = 1024;
+      canvas.height = 1024;
+      if (ctx) {
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, 1024, 1024);
+        ctx.drawImage(img, 0, 0, 1024, 1024);
+      }
+      const pngUrl = canvas.toDataURL("image/png");
+      const a = document.createElement("a");
+      a.href = pngUrl;
+      a.download = `${username}-qrcode.png`;
+      a.click();
+      toast({ title: "QR code downloaded!" });
+    };
+    img.src = "data:image/svg+xml;base64," + btoa(svgData);
+  };
+
+  const copyQRLink = () => {
+    navigator.clipboard.writeText(profileUrl);
+    toast({ title: "Profile link copied!" });
+  };
+
+  return (
+    <div className="p-4 space-y-6">
+      <SectionHeader title="QR Code" />
+      <div>
+        <h3 className="text-sm font-semibold mb-1">Your QR Code</h3>
+        <p className="text-xs text-muted-foreground mb-4">Share your profile with a scannable QR code.</p>
+      </div>
+      <Card>
+        <CardContent className="p-6 flex flex-col items-center">
+          <div className="bg-white p-4 rounded-lg mb-4">
+            <QRCodeSVG
+              id="dashboard-qr-code"
+              value={profileUrl}
+              size={180}
+              level="H"
+              data-testid="display-qr-code"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground text-center mb-4 break-all" data-testid="text-qr-url">{profileUrl}</p>
+          <div className="flex gap-2 w-full">
+            <Button variant="outline" className="flex-1 gap-2" onClick={downloadQR} data-testid="button-download-qr">
+              <Download className="w-4 h-4" />
+              Download
+            </Button>
+            <Button variant="outline" className="flex-1 gap-2" onClick={copyQRLink} data-testid="button-copy-qr-link">
+              <Copy className="w-4 h-4" />
+              Copy Link
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
