@@ -80,7 +80,7 @@ export const updateLinkSchema = z.object({
 
 export const createSocialSchema = z.object({
   platform: z.string().min(1, "Platform is required"),
-  url: z.string().min(1, "URL is required"),
+  url: z.string().default(""),
 });
 
 export const updateSocialSchema = z.object({
