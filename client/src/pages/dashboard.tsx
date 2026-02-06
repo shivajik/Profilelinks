@@ -359,7 +359,7 @@ export default function Dashboard() {
 
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 flex overflow-hidden">
-            <div className="flex-1 overflow-y-auto border-r bg-background min-w-[300px] max-w-[420px]">
+            <div className="flex-1 overflow-y-auto border-r bg-background w-full md:min-w-[300px] md:max-w-[420px]">
               <div className="p-4 space-y-4">
                 <div className="flex items-center gap-2 mb-2">
                   <SidebarTrigger data-testid="button-sidebar-toggle" />

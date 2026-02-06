@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link as WouterLink } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -15,6 +16,8 @@ import {
   MousePointerClick,
   Layers,
   ChevronRight,
+  Menu,
+  X,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import heroPhoneImg from "@/assets/images/hero-phone.png";
@@ -100,6 +103,7 @@ const TESTIMONIALS = [
 
 export default function Landing() {
   const { user } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
@@ -122,7 +126,7 @@ export default function Landing() {
               Testimonials
             </a>
           </nav>
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="hidden md:flex items-center gap-3 flex-wrap">
             {user ? (
               <WouterLink href="/dashboard">
                 <Button data-testid="button-dashboard">Dashboard</Button>
@@ -138,7 +142,62 @@ export default function Landing() {
               </>
             )}
           </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            data-testid="button-mobile-menu"
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </Button>
         </div>
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-xl">
+            <div className="flex flex-col px-6 py-4 gap-3">
+              <a
+                href="#how-it-works"
+                className="text-sm font-medium text-muted-foreground py-2"
+                onClick={() => setMobileMenuOpen(false)}
+                data-testid="mobile-link-how-it-works"
+              >
+                How it works
+              </a>
+              <a
+                href="#features"
+                className="text-sm font-medium text-muted-foreground py-2"
+                onClick={() => setMobileMenuOpen(false)}
+                data-testid="mobile-link-features"
+              >
+                Features
+              </a>
+              <a
+                href="#testimonials"
+                className="text-sm font-medium text-muted-foreground py-2"
+                onClick={() => setMobileMenuOpen(false)}
+                data-testid="mobile-link-testimonials"
+              >
+                Testimonials
+              </a>
+              <div className="flex items-center gap-3 pt-2 border-t border-border flex-wrap">
+                {user ? (
+                  <WouterLink href="/dashboard">
+                    <Button data-testid="mobile-button-dashboard" onClick={() => setMobileMenuOpen(false)}>Dashboard</Button>
+                  </WouterLink>
+                ) : (
+                  <>
+                    <WouterLink href="/auth">
+                      <Button variant="ghost" data-testid="mobile-button-login" onClick={() => setMobileMenuOpen(false)}>Log in</Button>
+                    </WouterLink>
+                    <WouterLink href="/auth?tab=register">
+                      <Button data-testid="mobile-button-signup" onClick={() => setMobileMenuOpen(false)}>Sign up free</Button>
+                    </WouterLink>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       <main>
