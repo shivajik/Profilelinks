@@ -147,17 +147,18 @@ export default function PublicProfile() {
   const profileUrl = typeof window !== "undefined" ? `${window.location.origin}/${username}` : `/${username}`;
   const displayName = user.displayName || user.username;
 
-  const viewTracked = useRef(false);
+  const viewTracked = useRef<string | null>(null);
   useEffect(() => {
-    if (username && !viewTracked.current) {
-      viewTracked.current = true;
+    const slug = currentPage?.slug || "home";
+    if (username && viewTracked.current !== slug) {
+      viewTracked.current = slug;
       fetch("/api/analytics/track", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           username,
           eventType: "page_view",
-          pageSlug: currentPage?.slug || null,
+          pageSlug: slug,
           referrer: document.referrer || null,
         }),
       }).catch(() => {});

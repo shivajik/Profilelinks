@@ -66,7 +66,15 @@ export interface IStorage {
   reorderBlocks(userId: string, blockIds: string[]): Promise<void>;
 
   recordAnalyticsEvent(data: { userId: string; eventType: string; blockId?: string; pageSlug?: string; referrer?: string }): Promise<void>;
-  getAnalyticsSummary(userId: string): Promise<{ totalViews: number; totalClicks: number; viewsByDay: { date: string; count: number }[]; clicksByDay: { date: string; count: number }[]; topBlocks: { blockId: string; clicks: number }[] }>;
+  getAnalyticsSummary(userId: string): Promise<{
+    totalViews: number;
+    totalClicks: number;
+    viewsByDay: { date: string; count: number }[];
+    clicksByDay: { date: string; count: number }[];
+    topBlocks: { blockId: string; title: string; type: string; clicks: number }[];
+    topReferrers: { referrer: string; count: number }[];
+    topPages: { pageSlug: string; views: number }[];
+  }>;
 }
 
 function slugify(title: string): string {
@@ -310,7 +318,9 @@ export class DatabaseStorage implements IStorage {
     totalClicks: number;
     viewsByDay: { date: string; count: number }[];
     clicksByDay: { date: string; count: number }[];
-    topBlocks: { blockId: string; clicks: number }[];
+    topBlocks: { blockId: string; title: string; type: string; clicks: number }[];
+    topReferrers: { referrer: string; count: number }[];
+    topPages: { pageSlug: string; views: number }[];
   }> {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -349,12 +359,55 @@ export class DatabaseStorage implements IStorage {
         blockClickMap.set(event.blockId, (blockClickMap.get(event.blockId) || 0) + 1);
       }
     }
-    const topBlocks = Array.from(blockClickMap.entries())
-      .map(([blockId, clicks]) => ({ blockId, clicks }))
-      .sort((a, b) => b.clicks - a.clicks)
+    const topBlockIds = Array.from(blockClickMap.entries())
+      .sort((a, b) => b[1] - a[1])
       .slice(0, 10);
 
-    return { totalViews, totalClicks, viewsByDay, clicksByDay, topBlocks };
+    const userBlocks = await db.select().from(blocks).where(eq(blocks.userId, userId));
+    const blockMap = new Map(userBlocks.map((b) => [b.id, b]));
+
+    const topBlocks = topBlockIds.map(([blockId, clicks]) => {
+      const block = blockMap.get(blockId);
+      const content = block?.content as any;
+      let title = "Deleted block";
+      if (block) {
+        if (block.type === "url_button") title = content?.title || content?.url || "Link";
+        else if (block.type === "email_button") title = content?.title || content?.email || "Email";
+        else if (block.type === "text") title = (content?.text || "Text").slice(0, 40);
+        else if (block.type === "video") title = content?.title || "Video";
+        else if (block.type === "audio") title = content?.title || "Audio";
+        else if (block.type === "image") title = content?.alt || "Image";
+        else if (block.type === "divider") title = "Divider";
+        else title = block.type;
+      }
+      return { blockId, title, type: block?.type || "unknown", clicks };
+    });
+
+    const referrerMap = new Map<string, number>();
+    for (const event of allEvents) {
+      if (event.referrer) {
+        let ref = event.referrer;
+        try { ref = new URL(event.referrer).hostname; } catch {}
+        referrerMap.set(ref, (referrerMap.get(ref) || 0) + 1);
+      }
+    }
+    const topReferrers = Array.from(referrerMap.entries())
+      .map(([referrer, count]) => ({ referrer, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    const pageViewMap = new Map<string, number>();
+    for (const event of allEvents) {
+      if (event.eventType === "page_view" && event.pageSlug) {
+        pageViewMap.set(event.pageSlug, (pageViewMap.get(event.pageSlug) || 0) + 1);
+      }
+    }
+    const topPages = Array.from(pageViewMap.entries())
+      .map(([pageSlug, views]) => ({ pageSlug, views }))
+      .sort((a, b) => b.views - a.views)
+      .slice(0, 10);
+
+    return { totalViews, totalClicks, viewsByDay, clicksByDay, topBlocks, topReferrers, topPages };
   }
 }
 

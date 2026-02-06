@@ -767,7 +767,21 @@ interface AnalyticsSummary {
   totalClicks: number;
   viewsByDay: { date: string; count: number }[];
   clicksByDay: { date: string; count: number }[];
-  topBlocks: { blockId: string; clicks: number }[];
+  topBlocks: { blockId: string; title: string; type: string; clicks: number }[];
+  topReferrers: { referrer: string; count: number }[];
+  topPages: { pageSlug: string; views: number }[];
+}
+
+function getBlockTypeIcon(type: string) {
+  switch (type) {
+    case "url_button": return <Link2 className="w-3.5 h-3.5" />;
+    case "email_button": return <Mail className="w-3.5 h-3.5" />;
+    case "text": return <Type className="w-3.5 h-3.5" />;
+    case "video": return <Video className="w-3.5 h-3.5" />;
+    case "audio": return <Music className="w-3.5 h-3.5" />;
+    case "image": return <ImageIcon className="w-3.5 h-3.5" />;
+    default: return <Link2 className="w-3.5 h-3.5" />;
+  }
 }
 
 function AnalyticsPanel({ username }: { username: string }) {
@@ -775,15 +789,6 @@ function AnalyticsPanel({ username }: { username: string }) {
     queryKey: ["/api/analytics"],
     refetchInterval: 30000,
   });
-
-  const maxBarValue = Math.max(
-    ...(data?.viewsByDay?.map((d) => d.count) || [0]),
-    ...(data?.clicksByDay?.map((d) => d.count) || [0]),
-    1
-  );
-
-  const last7Views = data?.viewsByDay?.slice(-7) || [];
-  const last7Clicks = data?.clicksByDay?.slice(-7) || [];
 
   const allDays: string[] = [];
   const today = new Date();
@@ -799,39 +804,67 @@ function AnalyticsPanel({ username }: { username: string }) {
   const chartData = allDays.map((date) => ({
     date,
     label: new Date(date + "T00:00:00").toLocaleDateString("en", { weekday: "short" }),
+    fullDate: new Date(date + "T00:00:00").toLocaleDateString("en", { month: "short", day: "numeric" }),
     views: viewsMap.get(date) || 0,
     clicks: clicksMap.get(date) || 0,
   }));
 
   const chartMax = Math.max(...chartData.map((d) => Math.max(d.views, d.clicks)), 1);
 
+  const totalViews = data?.totalViews ?? 0;
+  const totalClicks = data?.totalClicks ?? 0;
+  const ctr = totalViews > 0 ? ((totalClicks / totalViews) * 100).toFixed(1) : "0.0";
+  const hasData = totalViews > 0 || totalClicks > 0;
+
   return (
     <div className="p-4 space-y-6">
       <SectionHeader title="Analytics" />
       <div>
-        <h3 className="text-sm font-semibold mb-1">Overview</h3>
-        <p className="text-xs text-muted-foreground mb-4">Last 30 days of profile activity.</p>
+        <h3 className="text-sm font-semibold mb-1">Performance</h3>
+        <p className="text-xs text-muted-foreground mb-4">Real-time stats from the last 30 days.</p>
       </div>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-5 h-5 animate-spin text-primary" />
         </div>
+      ) : !hasData ? (
+        <Card>
+          <CardContent className="p-6 text-center">
+            <BarChart3 className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+            <p className="text-sm font-medium mb-1">No visitors yet</p>
+            <p className="text-xs text-muted-foreground mb-3">
+              Share your profile link to start tracking real views and clicks.
+            </p>
+            <div className="flex items-center gap-2 justify-center">
+              <code className="text-xs bg-muted px-2 py-1 rounded" data-testid="text-profile-url-analytics">
+                {window.location.origin}/{username}
+              </code>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-2">
             <Card>
-              <CardContent className="p-4 flex flex-col items-center text-center">
-                <Eye className="w-5 h-5 text-primary mb-2" />
-                <p className="text-2xl font-bold" data-testid="text-analytics-views">{data?.totalViews ?? 0}</p>
-                <p className="text-xs text-muted-foreground">Profile Views</p>
+              <CardContent className="p-3 flex flex-col items-center text-center">
+                <Eye className="w-4 h-4 text-primary mb-1" />
+                <p className="text-xl font-bold" data-testid="text-analytics-views">{totalViews}</p>
+                <p className="text-[10px] text-muted-foreground">Views</p>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-4 flex flex-col items-center text-center">
-                <MousePointerClick className="w-5 h-5 text-primary mb-2" />
-                <p className="text-2xl font-bold" data-testid="text-analytics-clicks">{data?.totalClicks ?? 0}</p>
-                <p className="text-xs text-muted-foreground">Link Clicks</p>
+              <CardContent className="p-3 flex flex-col items-center text-center">
+                <MousePointerClick className="w-4 h-4 text-primary mb-1" />
+                <p className="text-xl font-bold" data-testid="text-analytics-clicks">{totalClicks}</p>
+                <p className="text-[10px] text-muted-foreground">Clicks</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3 flex flex-col items-center text-center">
+                <BarChart3 className="w-4 h-4 text-primary mb-1" />
+                <p className="text-xl font-bold" data-testid="text-analytics-ctr">{ctr}%</p>
+                <p className="text-[10px] text-muted-foreground">CTR</p>
               </CardContent>
             </Card>
           </div>
@@ -841,24 +874,26 @@ function AnalyticsPanel({ username }: { username: string }) {
               <h4 className="text-sm font-semibold mb-3">Last 7 Days</h4>
               <div className="space-y-2">
                 {chartData.map((day) => (
-                  <div key={day.date} className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground w-8 shrink-0">{day.label}</span>
-                    <div className="flex-1 flex flex-col gap-1">
+                  <div key={day.date} className="flex items-center gap-2" data-testid={`chart-row-${day.date}`}>
+                    <div className="text-right shrink-0 w-14">
+                      <span className="text-[10px] text-muted-foreground">{day.fullDate}</span>
+                    </div>
+                    <div className="flex-1 flex flex-col gap-0.5">
                       <div className="flex items-center gap-1">
                         <div
-                          className="h-3 rounded-sm bg-primary/70 transition-all"
-                          style={{ width: `${Math.max((day.views / chartMax) * 100, 2)}%` }}
+                          className="h-2.5 rounded-sm bg-primary transition-all"
+                          style={{ width: `${Math.max((day.views / chartMax) * 100, day.views > 0 ? 4 : 1)}%` }}
                           data-testid={`bar-views-${day.date}`}
                         />
-                        <span className="text-[10px] text-muted-foreground">{day.views}</span>
+                        {day.views > 0 && <span className="text-[10px] font-medium">{day.views}</span>}
                       </div>
                       <div className="flex items-center gap-1">
                         <div
-                          className="h-3 rounded-sm bg-primary/30 transition-all"
-                          style={{ width: `${Math.max((day.clicks / chartMax) * 100, 2)}%` }}
+                          className="h-2.5 rounded-sm bg-primary/40 transition-all"
+                          style={{ width: `${Math.max((day.clicks / chartMax) * 100, day.clicks > 0 ? 4 : 1)}%` }}
                           data-testid={`bar-clicks-${day.date}`}
                         />
-                        <span className="text-[10px] text-muted-foreground">{day.clicks}</span>
+                        {day.clicks > 0 && <span className="text-[10px] font-medium">{day.clicks}</span>}
                       </div>
                     </div>
                   </div>
@@ -866,11 +901,11 @@ function AnalyticsPanel({ username }: { username: string }) {
               </div>
               <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
                 <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded-sm bg-primary/70" />
+                  <div className="w-3 h-2 rounded-sm bg-primary" />
                   <span>Views</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded-sm bg-primary/30" />
+                  <div className="w-3 h-2 rounded-sm bg-primary/40" />
                   <span>Clicks</span>
                 </div>
               </div>
@@ -880,13 +915,14 @@ function AnalyticsPanel({ username }: { username: string }) {
           {data?.topBlocks && data.topBlocks.length > 0 && (
             <Card>
               <CardContent className="p-4">
-                <h4 className="text-sm font-semibold mb-3">Top Clicked Blocks</h4>
+                <h4 className="text-sm font-semibold mb-3">Top Clicked</h4>
                 <div className="space-y-2">
                   {data.topBlocks.slice(0, 5).map((item, idx) => (
-                    <div key={item.blockId} className="flex items-center justify-between gap-2 text-sm">
-                      <span className="text-muted-foreground">#{idx + 1}</span>
-                      <span className="flex-1 truncate text-xs font-mono">{item.blockId.slice(0, 8)}...</span>
-                      <span className="font-semibold">{item.clicks}</span>
+                    <div key={item.blockId} className="flex items-center gap-2 text-sm" data-testid={`top-block-${idx}`}>
+                      <span className="text-muted-foreground text-xs w-4 shrink-0">{idx + 1}.</span>
+                      <span className="text-muted-foreground shrink-0">{getBlockTypeIcon(item.type)}</span>
+                      <span className="flex-1 truncate text-xs">{item.title}</span>
+                      <span className="font-semibold text-xs tabular-nums">{item.clicks}</span>
                     </div>
                   ))}
                 </div>
@@ -894,14 +930,36 @@ function AnalyticsPanel({ username }: { username: string }) {
             </Card>
           )}
 
-          {(data?.totalViews === 0 && data?.totalClicks === 0) && (
+          {data?.topPages && data.topPages.length > 0 && (
             <Card>
-              <CardContent className="p-6 text-center">
-                <BarChart3 className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
-                <p className="text-sm font-medium mb-1">No activity yet</p>
-                <p className="text-xs text-muted-foreground">
-                  Share your profile link to start seeing views and click data here.
-                </p>
+              <CardContent className="p-4">
+                <h4 className="text-sm font-semibold mb-3">Top Pages</h4>
+                <div className="space-y-2">
+                  {data.topPages.map((p, idx) => (
+                    <div key={p.pageSlug} className="flex items-center gap-2 text-sm" data-testid={`top-page-${idx}`}>
+                      <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      <span className="flex-1 truncate text-xs capitalize">{p.pageSlug === "home" ? "Home" : p.pageSlug}</span>
+                      <span className="font-semibold text-xs tabular-nums">{p.views} views</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {data?.topReferrers && data.topReferrers.length > 0 && (
+            <Card>
+              <CardContent className="p-4">
+                <h4 className="text-sm font-semibold mb-3">Traffic Sources</h4>
+                <div className="space-y-2">
+                  {data.topReferrers.map((r, idx) => (
+                    <div key={r.referrer} className="flex items-center gap-2 text-sm" data-testid={`referrer-${idx}`}>
+                      <Globe className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      <span className="flex-1 truncate text-xs">{r.referrer}</span>
+                      <span className="font-semibold text-xs tabular-nums">{r.count}</span>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           )}
