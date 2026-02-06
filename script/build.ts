@@ -1,9 +1,7 @@
 import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
-import { rm, readFile } from "fs/promises";
+import { rm, readFile, mkdir, cp, writeFile } from "fs/promises";
 
-// server deps to bundle to reduce openat(2) syscalls
-// which helps cold start times
 const allowlist = [
   "@google/generative-ai",
   "axios",
@@ -68,7 +66,7 @@ async function buildAll() {
     outfile: "dist/index.cjs",
   });
 
-  console.log("building vercel api...");
+  console.log("building vercel handler...");
   await esbuild({
     ...commonOptions,
     entryPoints: ["server/vercel/handler.ts"],
@@ -79,6 +77,43 @@ async function buildAll() {
       js: "if(typeof module.exports.default==='function'){module.exports=module.exports.default;}",
     },
   });
+
+  console.log("building vercel output...");
+  const vercelOut = ".vercel/output";
+  await rm(".vercel", { recursive: true, force: true });
+
+  const { existsSync } = await import("fs");
+  if (!existsSync("dist/public")) {
+    throw new Error("dist/public not found — client build may have failed");
+  }
+  if (!existsSync("dist/vercel-handler.cjs")) {
+    throw new Error("dist/vercel-handler.cjs not found — server build may have failed");
+  }
+
+  await mkdir(`${vercelOut}/static`, { recursive: true });
+  await cp("dist/public", `${vercelOut}/static`, { recursive: true });
+
+  const funcDir = `${vercelOut}/functions/api.func`;
+  await mkdir(funcDir, { recursive: true });
+  await cp("dist/vercel-handler.cjs", `${funcDir}/index.cjs`);
+
+  await writeFile(`${funcDir}/.vc-config.json`, JSON.stringify({
+    runtime: "nodejs20.x",
+    handler: "index.cjs",
+    launcherType: "Nodejs",
+    maxDuration: 30,
+  }, null, 2));
+
+  await writeFile(`${vercelOut}/config.json`, JSON.stringify({
+    version: 3,
+    routes: [
+      { src: "/api/(.*)", dest: "/api" },
+      { handle: "filesystem" },
+      { src: "/(.*)", dest: "/index.html" },
+    ],
+  }, null, 2));
+
+  console.log("vercel build output created at .vercel/output/");
 }
 
 buildAll().catch((err) => {

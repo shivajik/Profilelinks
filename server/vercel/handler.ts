@@ -3,7 +3,6 @@ import { registerRoutes } from "../routes";
 import { createServer } from "http";
 
 const app = express();
-const httpServer = createServer(app);
 
 declare module "http" {
   interface IncomingMessage {
@@ -21,23 +20,33 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
-let initialized = false;
+app.set("trust proxy", 1);
 
-async function ensureInitialized() {
-  if (!initialized) {
-    await registerRoutes(httpServer, app);
+let initPromise: Promise<void> | null = null;
 
-    app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
-      const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
-      if (res.headersSent) {
-        return next(err);
+function ensureInitialized(): Promise<void> {
+  if (!initPromise) {
+    initPromise = (async () => {
+      try {
+        const dummyServer = createServer(app);
+        await registerRoutes(dummyServer, app);
+
+        app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
+          const status = err.status || err.statusCode || 500;
+          const message = err.message || "Internal Server Error";
+          console.error("Express error:", err);
+          if (res.headersSent) {
+            return next(err);
+          }
+          return res.status(status).json({ message });
+        });
+      } catch (err) {
+        initPromise = null;
+        throw err;
       }
-      return res.status(status).json({ message });
-    });
-
-    initialized = true;
+    })();
   }
+  return initPromise;
 }
 
 export default async function handler(req: any, res: any) {
@@ -46,6 +55,8 @@ export default async function handler(req: any, res: any) {
     app(req, res);
   } catch (err: any) {
     console.error("Serverless handler error:", err);
-    res.status(500).json({ message: "Internal server error" });
+    if (!res.headersSent) {
+      res.status(500).json({ message: "Internal server error", detail: err.message });
+    }
   }
 }
