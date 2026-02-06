@@ -68,12 +68,6 @@ async function buildAll() {
     outfile: "dist/index.cjs",
   });
 
-  console.log("building vercel api...");
-  await esbuild({
-    ...commonOptions,
-    entryPoints: ["api/index.ts"],
-    outfile: "api/index.js",
-  });
 }
 
 buildAll().catch((err) => {
