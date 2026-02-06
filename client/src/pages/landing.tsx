@@ -10,33 +10,74 @@ import {
   LayoutGrid,
   Users,
   Sparkles,
-  ChevronRight,
   Star,
-  Shield,
   Globe,
   MousePointerClick,
   Layers,
-  CheckCircle2,
+  ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import heroPhoneImg from "@/assets/images/hero-phone.png";
-import featureOrganizeImg from "@/assets/images/feature-organize.png";
-import featureCustomizeImg from "@/assets/images/feature-customize.png";
-import featureShareImg from "@/assets/images/feature-share.png";
 
-const TICKER_ITEMS = [
-  { icon: Zap, label: "Powerful Link Builder" },
-  { icon: Palette, label: "Fully Customizable" },
-  { icon: MousePointerClick, label: "Go Live in Minutes" },
-  { icon: Shield, label: "Powerful Link Builder" },
-  { icon: Sparkles, label: "Fully Customizable" },
-  { icon: Globe, label: "Go Live in Minutes" },
-  { icon: Zap, label: "Powerful Link Builder" },
-  { icon: Palette, label: "Fully Customizable" },
-  { icon: MousePointerClick, label: "Go Live in Minutes" },
-  { icon: Shield, label: "Powerful Link Builder" },
-  { icon: Sparkles, label: "Fully Customizable" },
-  { icon: Globe, label: "Go Live in Minutes" },
+const STATS = [
+  { value: "10K+", label: "Creators" },
+  { value: "50+", label: "Platforms" },
+  { value: "99.9%", label: "Uptime" },
+  { value: "Free", label: "To start" },
+];
+
+const STEPS = [
+  {
+    number: "01",
+    title: "Sign up in seconds",
+    description: "Create your account with just an email and password. No credit card needed.",
+    icon: Zap,
+  },
+  {
+    number: "02",
+    title: "Add your content",
+    description: "Drop in your links, social profiles, and anything else you want to share.",
+    icon: Layers,
+  },
+  {
+    number: "03",
+    title: "Share your page",
+    description: "Get your custom URL and share it everywhere. Your audience finds everything in one tap.",
+    icon: Share2,
+  },
+];
+
+const BENTO_FEATURES = [
+  {
+    title: "Unlimited Links",
+    description: "Add as many links as you need. Organize them your way with drag-and-drop.",
+    icon: Link2,
+    span: "sm:col-span-2",
+  },
+  {
+    title: "50+ Platforms",
+    description: "Connect Instagram, TikTok, YouTube, Twitter, and dozens more.",
+    icon: LayoutGrid,
+    span: "",
+  },
+  {
+    title: "Custom Themes",
+    description: "Make it yours with colors, fonts, and layout options.",
+    icon: Palette,
+    span: "",
+  },
+  {
+    title: "Mobile First",
+    description: "Looks perfect on every screen size, from phones to desktops.",
+    icon: Globe,
+    span: "",
+  },
+  {
+    title: "Lightning Fast",
+    description: "Optimized for speed. Your page loads instantly, every time.",
+    icon: Zap,
+    span: "sm:col-span-2",
+  },
 ];
 
 const TESTIMONIALS = [
@@ -44,52 +85,16 @@ const TESTIMONIALS = [
     name: "Sarah M.",
     role: "Content Creator",
     text: "Linkfolio made it so easy to organize all my links in one place. My followers can now find everything instantly!",
-    rating: 5,
   },
   {
     name: "Jason R.",
     role: "Freelance Designer",
     text: "The customization options are incredible. My link page matches my brand perfectly and looks super professional.",
-    rating: 5,
   },
   {
     name: "Priya K.",
     role: "Small Business Owner",
     text: "I switched from Linktree and haven't looked back. Linkfolio is more powerful and so much easier to use.",
-    rating: 5,
-  },
-  {
-    name: "Alex T.",
-    role: "Musician",
-    text: "Setup took less than 5 minutes. Now all my streaming links, merch, and tour dates are in one clean page.",
-    rating: 5,
-  },
-];
-
-const WHY_CHOOSE = [
-  {
-    icon: Palette,
-    title: "More customizable",
-    description: "Full control over your page design with themes, colors, fonts, and layout options.",
-    color: "#E8D5F5",
-  },
-  {
-    icon: Zap,
-    title: "More powerful",
-    description: "Advanced analytics, scheduling, and smart links that adapt to your audience.",
-    color: "#D5F0E8",
-  },
-  {
-    icon: Star,
-    title: "More affordable",
-    description: "Get premium features for free. No hidden fees, no surprise charges.",
-    color: "#F5E6D5",
-  },
-  {
-    icon: Users,
-    title: "Great for teams",
-    description: "Share and collaborate with your team. Perfect for brands and organizations.",
-    color: "#D5E5F5",
   },
 ];
 
@@ -97,23 +102,24 @@ export default function Landing() {
   const { user } = useAuth();
 
   return (
-    <div className="min-h-screen bg-white dark:bg-background overflow-x-hidden">
-      <header className="fixed top-0 left-0 right-0 z-[999] bg-white/90 dark:bg-background/90 backdrop-blur-md border-b border-gray-100 dark:border-border">
+    <div className="min-h-screen bg-background overflow-x-hidden">
+      <header className="fixed top-0 left-0 right-0 z-[999] bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 px-6 py-3">
           <WouterLink href="/">
             <span className="text-xl font-bold tracking-tight" data-testid="text-logo">
-              <span className="text-primary">link</span>folio
+              <span className="text-primary">link</span>
+              <span className="text-foreground">folio</span>
             </span>
           </WouterLink>
           <nav className="hidden md:flex items-center gap-6 flex-wrap">
-            <a href="#features" className="text-sm font-medium text-gray-600 dark:text-muted-foreground" data-testid="link-features">
+            <a href="#how-it-works" className="text-sm font-medium text-muted-foreground" data-testid="link-how-it-works">
+              How it works
+            </a>
+            <a href="#features" className="text-sm font-medium text-muted-foreground" data-testid="link-features">
               Features
             </a>
-            <a href="#testimonials" className="text-sm font-medium text-gray-600 dark:text-muted-foreground" data-testid="link-testimonials">
+            <a href="#testimonials" className="text-sm font-medium text-muted-foreground" data-testid="link-testimonials">
               Testimonials
-            </a>
-            <a href="#why-choose" className="text-sm font-medium text-gray-600 dark:text-muted-foreground" data-testid="link-why-choose">
-              Why Linkfolio
             </a>
           </nav>
           <div className="flex items-center gap-3 flex-wrap">
@@ -136,46 +142,48 @@ export default function Landing() {
       </header>
 
       <main>
-        <section className="relative pt-28 pb-8 px-6" style={{ background: "linear-gradient(180deg, #F3EAFF 0%, #FFF8E1 50%, #E8F5E9 100%)" }}>
-          <div className="max-w-6xl mx-auto">
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
+        <section className="relative pt-32 pb-20 px-6 overflow-hidden">
+          <div className="landing-orb landing-orb-1" />
+          <div className="landing-orb landing-orb-2" />
+          <div className="landing-orb landing-orb-3" />
+          <div className="max-w-6xl mx-auto relative">
+            <div className="grid lg:grid-cols-2 gap-16 items-center">
               <div className="text-center lg:text-left">
-                <div className="flex flex-wrap justify-center lg:justify-start gap-2 mb-6">
-                  <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold" style={{ background: "#FFD54F", color: "#5D4037" }}>
-                    <Star className="w-3 h-3" /> New
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold" style={{ background: "#CE93D8", color: "#4A148C" }}>
-                    <Sparkles className="w-3 h-3" /> 50+ Social Platforms
-                  </span>
+                <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-xs font-medium text-muted-foreground mb-8">
+                  <Sparkles className="w-3.5 h-3.5 text-primary" />
+                  Your link-in-bio, reimagined
                 </div>
-                <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-[1.1] mb-6 text-gray-900">
-                  Centralize your{" "}
-                  <span className="text-primary">online presence</span>
+                <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold tracking-tight leading-[1.05] mb-6 text-foreground">
+                  One link.{" "}
+                  <span className="landing-gradient-text">
+                    Infinite
+                  </span>{" "}
+                  possibilities.
                 </h1>
-                <p className="text-lg md:text-xl text-gray-600 max-w-lg mx-auto lg:mx-0 mb-8 leading-relaxed">
-                  Gather your social media, videos, articles, and more into a beautiful, customizable link page. Share one URL everywhere.
+                <p className="text-lg text-muted-foreground max-w-lg mx-auto lg:mx-0 mb-10 leading-relaxed">
+                  Create a beautiful, personalized page that houses all your important links. Share it once, connect everywhere.
                 </p>
-                <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
+                <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 flex-wrap">
                   <WouterLink href="/auth?tab=register">
                     <Button size="lg" data-testid="button-get-started">
                       Get started for free
                       <ArrowRight className="w-4 h-4" />
                     </Button>
                   </WouterLink>
-                  <a href="#features">
-                    <Button variant="outline" size="lg" className="bg-white/60 dark:bg-background/60" data-testid="button-learn-more">
-                      Learn more
+                  <a href="#how-it-works">
+                    <Button variant="outline" size="lg" data-testid="button-see-how">
+                      See how it works
                     </Button>
                   </a>
                 </div>
               </div>
               <div className="flex justify-center lg:justify-end flex-wrap">
                 <div className="relative">
-                  <div className="absolute -inset-4 rounded-3xl opacity-30 blur-2xl" style={{ background: "linear-gradient(135deg, #CE93D8 0%, #FFD54F 50%, #81C784 100%)" }} />
+                  <div className="absolute -inset-8 rounded-[2rem] landing-phone-glow" />
                   <img
                     src={heroPhoneImg}
                     alt="Linkfolio profile page preview"
-                    className="relative w-64 md:w-72 rounded-2xl shadow-2xl"
+                    className="relative w-60 md:w-72 rounded-2xl"
                     data-testid="img-hero-phone"
                   />
                 </div>
@@ -184,42 +192,147 @@ export default function Landing() {
           </div>
         </section>
 
-        <section className="py-4 overflow-hidden" style={{ background: "#6C5CE7" }}>
-          <div className="ticker-wrapper">
-            <div className="ticker-track">
-              {TICKER_ITEMS.map((item, i) => (
-                <div key={i} className="flex items-center gap-2 px-6 whitespace-nowrap">
-                  <item.icon className="w-4 h-4 text-white/80" />
-                  <span className="text-sm font-semibold text-white tracking-wide uppercase">{item.label}</span>
-                  <ChevronRight className="w-3 h-3 text-white/40" />
+        <section className="py-4 border-y border-border bg-card">
+          <div className="max-w-4xl mx-auto flex items-center justify-around gap-6 flex-wrap px-6">
+            {STATS.map((stat, i) => (
+              <div key={i} className="text-center px-4 py-2">
+                <p className="text-2xl font-extrabold text-foreground" data-testid={`text-stat-value-${i}`}>{stat.value}</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-1">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section id="how-it-works" className="py-24 px-6">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-16">
+              <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-3">How it works</p>
+              <h2 className="text-3xl md:text-4xl font-extrabold text-foreground mb-4">
+                Up and running in three steps
+              </h2>
+              <p className="text-muted-foreground text-lg max-w-md mx-auto">
+                No technical knowledge required. If you can type a URL, you can use Linkfolio.
+              </p>
+            </div>
+            <div className="grid md:grid-cols-3 gap-8">
+              {STEPS.map((step, i) => (
+                <div key={i} className="relative">
+                  <div className="flex items-center gap-4 mb-4 flex-wrap">
+                    <span className="text-5xl font-black text-primary/15 leading-none select-none">{step.number}</span>
+                    <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                      <step.icon className="w-5 h-5 text-primary" />
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-bold text-foreground mb-2">{step.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{step.description}</p>
+                  {i < STEPS.length - 1 && (
+                    <ChevronRight className="hidden md:block absolute top-6 -right-5 w-5 h-5 text-border" />
+                  )}
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        <section id="testimonials" className="py-20 px-6" style={{ background: "#FFF8E1" }}>
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-14">
-              <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
-                What are people saying<br />about us?
+        <section id="features" className="py-24 px-6 bg-card border-y border-border">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-16">
+              <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-3">Features</p>
+              <h2 className="text-3xl md:text-4xl font-extrabold text-foreground mb-4">
+                Everything you need, nothing you don't
               </h2>
-              <p className="text-gray-600 text-lg max-w-md mx-auto">
-                Thousands of creators trust Linkfolio to power their online presence.
+              <p className="text-muted-foreground text-lg max-w-md mx-auto">
+                Powerful tools wrapped in a simple interface. Built for creators who value their time.
               </p>
             </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div className="grid sm:grid-cols-3 gap-4">
+              {BENTO_FEATURES.map((feature, i) => (
+                <Card
+                  key={i}
+                  className={`p-6 border-border/60 group ${feature.span}`}
+                  data-testid={`card-feature-${i}`}
+                >
+                  <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center mb-4">
+                    <feature.icon className="w-5 h-5 text-primary" />
+                  </div>
+                  <h3 className="font-bold text-foreground mb-1.5">{feature.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="py-24 px-6">
+          <div className="max-w-5xl mx-auto">
+            <div className="grid lg:grid-cols-2 gap-16 items-center">
+              <div>
+                <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-3">Why Linkfolio</p>
+                <h2 className="text-3xl md:text-4xl font-extrabold text-foreground mb-6">
+                  Built different, on purpose
+                </h2>
+                <p className="text-muted-foreground text-lg mb-8 leading-relaxed">
+                  We're not another cookie-cutter link tool. Linkfolio gives you real creative control without the learning curve.
+                </p>
+                <div className="space-y-4">
+                  {[
+                    { icon: Palette, text: "Full design control with themes, colors, and fonts" },
+                    { icon: MousePointerClick, text: "Drag-and-drop simplicity for organizing links" },
+                    { icon: Users, text: "50+ social platform integrations" },
+                    { icon: Star, text: "Premium features at zero cost" },
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-start gap-3 flex-wrap">
+                      <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                        <item.icon className="w-4 h-4 text-primary" />
+                      </div>
+                      <span className="text-foreground text-sm leading-relaxed pt-1.5">{item.text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="flex justify-center flex-wrap">
+                <div className="relative">
+                  <div className="absolute -inset-6 rounded-[2rem] landing-phone-glow opacity-60" />
+                  <img
+                    src={heroPhoneImg}
+                    alt="Linkfolio customization preview"
+                    className="relative w-52 md:w-64 rounded-2xl"
+                    data-testid="img-why-phone"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="testimonials" className="py-24 px-6 bg-card border-y border-border">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-16">
+              <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-3">Testimonials</p>
+              <h2 className="text-3xl md:text-4xl font-extrabold text-foreground mb-4">
+                Loved by creators everywhere
+              </h2>
+              <p className="text-muted-foreground text-lg max-w-md mx-auto">
+                Don't take our word for it. Here's what our community has to say.
+              </p>
+            </div>
+            <div className="grid md:grid-cols-3 gap-6">
               {TESTIMONIALS.map((t, i) => (
-                <Card key={i} className="p-5 bg-white dark:bg-card border-0 shadow-sm">
-                  <div className="flex items-center gap-1 mb-3">
-                    {Array.from({ length: t.rating }).map((_, j) => (
-                      <Star key={j} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                <Card key={i} className="p-6 border-border/60" data-testid={`card-testimonial-${i}`}>
+                  <div className="flex items-center gap-1 mb-4 flex-wrap">
+                    {Array.from({ length: 5 }).map((_, j) => (
+                      <Star key={j} className="w-4 h-4 fill-primary text-primary" />
                     ))}
                   </div>
-                  <p className="text-sm text-gray-700 dark:text-card-foreground mb-4 leading-relaxed">{t.text}</p>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-card-foreground">{t.name}</p>
-                    <p className="text-xs text-gray-500 dark:text-muted-foreground">{t.role}</p>
+                  <p className="text-sm text-muted-foreground mb-6 leading-relaxed">"{t.text}"</p>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="w-9 h-9 rounded-full bg-primary/15 flex items-center justify-center">
+                      <span className="text-sm font-bold text-primary">{t.name[0]}</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{t.name}</p>
+                      <p className="text-xs text-muted-foreground">{t.role}</p>
+                    </div>
                   </div>
                 </Card>
               ))}
@@ -227,215 +340,19 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="why-choose" className="py-20 px-6 bg-white dark:bg-background">
-          <div className="max-w-6xl mx-auto">
-            <div className="grid lg:grid-cols-2 gap-12 items-start">
-              <div className="lg:sticky lg:top-28 z-[999]">
-                <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-foreground mb-6">
-                  Why choose<br />Linkfolio?
-                </h2>
-                <p className="text-gray-600 dark:text-muted-foreground text-lg mb-8 leading-relaxed max-w-md">
-                  Built with creators and businesses in mind. We offer the most customizable and powerful link-in-bio tool that grows with you.
-                </p>
-                <WouterLink href="/auth?tab=register">
-                  <Button size="lg" data-testid="button-try-free">
-                    Try it free
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </WouterLink>
-              </div>
-              <div className="grid sm:grid-cols-2 gap-5">
-                {WHY_CHOOSE.map((item, i) => (
-                  <Card key={i} className="p-6 border-0 shadow-sm" style={{ background: item.color }}>
-                    <div className="w-10 h-10 rounded-md bg-white/70 flex items-center justify-center mb-4">
-                      <item.icon className="w-5 h-5 text-gray-800" />
-                    </div>
-                    <h3 className="font-bold text-gray-900 mb-2">{item.title}</h3>
-                    <p className="text-sm text-gray-700 leading-relaxed">{item.description}</p>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="features" className="py-20 px-6" style={{ background: "#E8D5F5" }}>
-          <div className="max-w-6xl mx-auto">
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
-              <div>
-                <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-6">
-                  Organize your links beautifully
-                </h2>
-                <p className="text-gray-700 text-lg mb-6 leading-relaxed max-w-md">
-                  Group related links into sections, reorder with drag-and-drop, and keep your page clean and organized for your audience.
-                </p>
-                <div className="space-y-3 mb-8">
-                  {["Drag-and-drop reordering", "Unlimited link blocks", "Custom link titles & descriptions"].map((item, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
-                      <span className="text-gray-800 font-medium">{item}</span>
-                    </div>
-                  ))}
-                </div>
-                <WouterLink href="/auth?tab=register">
-                  <Button size="lg" data-testid="button-start-organizing">
-                    Start organizing
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </WouterLink>
-              </div>
-              <div className="flex justify-center">
-                <div className="relative">
-                  <div className="absolute -inset-6 rounded-3xl opacity-20 blur-2xl" style={{ background: "#9C27B0" }} />
-                  <img
-                    src={featureOrganizeImg}
-                    alt="Organize links feature"
-                    className="relative w-56 md:w-64 rounded-2xl shadow-xl"
-                    data-testid="img-feature-organize"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="py-20 px-6" style={{ background: "#D5F0E8" }}>
-          <div className="max-w-6xl mx-auto">
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
-              <div className="flex justify-center order-2 lg:order-1">
-                <div className="relative">
-                  <div className="absolute -inset-6 rounded-3xl opacity-20 blur-2xl" style={{ background: "#26A69A" }} />
-                  <img
-                    src={featureCustomizeImg}
-                    alt="Customize your page"
-                    className="relative w-56 md:w-64 rounded-2xl shadow-xl"
-                    data-testid="img-feature-customize"
-                  />
-                </div>
-              </div>
-              <div className="order-1 lg:order-2">
-                <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-6">
-                  Customize every detail
-                </h2>
-                <p className="text-gray-700 text-lg mb-6 leading-relaxed max-w-md">
-                  Choose from beautiful templates, customize colors and fonts, add your profile picture, and make your page truly yours.
-                </p>
-                <div className="space-y-3 mb-8">
-                  {["Multiple design templates", "Custom colors & fonts", "Profile picture & bio"].map((item, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
-                      <span className="text-gray-800 font-medium">{item}</span>
-                    </div>
-                  ))}
-                </div>
-                <WouterLink href="/auth?tab=register">
-                  <Button size="lg" data-testid="button-start-customizing">
-                    Start customizing
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </WouterLink>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="py-20 px-6" style={{ background: "#FCE4EC" }}>
-          <div className="max-w-6xl mx-auto">
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
-              <div>
-                <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-6">
-                  Share with the world
-                </h2>
-                <p className="text-gray-700 text-lg mb-6 leading-relaxed max-w-md">
-                  Get your own custom URL and share it everywhere. Connect 50+ social media platforms and let your audience find you instantly.
-                </p>
-                <div className="space-y-3 mb-8">
-                  {["Custom shareable URL", "50+ social platforms", "Works on any device"].map((item, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
-                      <span className="text-gray-800 font-medium">{item}</span>
-                    </div>
-                  ))}
-                </div>
-                <WouterLink href="/auth?tab=register">
-                  <Button size="lg" data-testid="button-claim-url">
-                    Claim your URL
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </WouterLink>
-              </div>
-              <div className="flex justify-center">
-                <div className="relative">
-                  <div className="absolute -inset-6 rounded-3xl opacity-20 blur-2xl" style={{ background: "#E91E63" }} />
-                  <img
-                    src={featureShareImg}
-                    alt="Share everywhere feature"
-                    className="relative w-56 md:w-64 rounded-2xl shadow-xl"
-                    data-testid="img-feature-share"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="py-20 px-6 bg-white dark:bg-background">
-          <div className="max-w-5xl mx-auto">
-            <div className="text-center mb-14">
-              <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-foreground mb-4">
-                Everything you need in one place
-              </h2>
-              <p className="text-gray-600 dark:text-muted-foreground text-lg max-w-lg mx-auto">
-                Simple, powerful tools designed for creators, businesses, and anyone who wants to share their online presence.
-              </p>
-            </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              <FeatureCard
-                icon={<Link2 className="w-5 h-5" />}
-                title="Unlimited Links"
-                description="Add as many links as you want. Organize and customize each one to match your brand."
-              />
-              <FeatureCard
-                icon={<Palette className="w-5 h-5" />}
-                title="Beautiful Profiles"
-                description="Personalize your page with themes, colors, profile pictures, and your personal bio."
-              />
-              <FeatureCard
-                icon={<Share2 className="w-5 h-5" />}
-                title="Share Everywhere"
-                description="Get your custom URL to share on social media, email signatures, or anywhere."
-              />
-              <FeatureCard
-                icon={<LayoutGrid className="w-5 h-5" />}
-                title="Social Integration"
-                description="Connect 50+ social media platforms and display them beautifully on your page."
-              />
-              <FeatureCard
-                icon={<Layers className="w-5 h-5" />}
-                title="Drag & Drop"
-                description="Reorder your links effortlessly with intuitive drag-and-drop functionality."
-              />
-              <FeatureCard
-                icon={<Globe className="w-5 h-5" />}
-                title="Mobile Friendly"
-                description="Your page looks stunning on every device, from phones to desktops."
-              />
-            </div>
-          </div>
-        </section>
-
-        <section className="py-24 px-6 relative overflow-hidden" style={{ background: "linear-gradient(135deg, #6C5CE7 0%, #A29BFE 50%, #6C5CE7 100%)" }}>
-          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 20% 50%, #fff 1px, transparent 1px), radial-gradient(circle at 80% 20%, #fff 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
-          <div className="max-w-3xl mx-auto text-center relative">
-            <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-6">
-              Try Linkfolio now!
+        <section className="py-28 px-6 relative overflow-hidden">
+          <div className="landing-orb landing-orb-cta-1" />
+          <div className="landing-orb landing-orb-cta-2" />
+          <div className="max-w-2xl mx-auto text-center relative">
+            <h2 className="text-3xl md:text-5xl font-extrabold text-foreground mb-6">
+              Ready to claim your page?
             </h2>
-            <p className="text-white/80 text-lg md:text-xl mb-10 max-w-lg mx-auto leading-relaxed">
-              Join thousands of creators who trust Linkfolio to power their online presence. It's free to get started.
+            <p className="text-muted-foreground text-lg md:text-xl mb-10 max-w-lg mx-auto leading-relaxed">
+              Join thousands of creators who use Linkfolio to share their world. Free forever, upgrade anytime.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 flex-wrap">
               <WouterLink href="/auth?tab=register">
-                <Button size="lg" className="bg-white text-primary border-white" data-testid="button-create-page">
+                <Button size="lg" data-testid="button-create-page">
                   Create your page
                   <ArrowRight className="w-4 h-4" />
                 </Button>
@@ -445,64 +362,52 @@ export default function Landing() {
         </section>
       </main>
 
-      <footer className="bg-gray-900 text-gray-300 py-14 px-6">
+      <footer className="border-t border-border py-12 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-10 mb-12">
             <div>
-              <span className="text-xl font-bold tracking-tight text-white mb-4 block">
+              <span className="text-xl font-bold tracking-tight text-foreground mb-4 block">
                 <span className="text-primary">link</span>folio
               </span>
-              <p className="text-sm text-gray-400 leading-relaxed">
+              <p className="text-sm text-muted-foreground leading-relaxed">
                 The simplest way to share your online presence. One link for everything.
               </p>
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-white mb-4 uppercase tracking-wider">Product</h4>
+              <h4 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wider">Product</h4>
               <ul className="space-y-2.5">
-                <li><a href="#features" className="text-sm text-gray-400" data-testid="link-footer-features">Features</a></li>
-                <li><a href="#testimonials" className="text-sm text-gray-400" data-testid="link-footer-testimonials">Testimonials</a></li>
-                <li><a href="#why-choose" className="text-sm text-gray-400" data-testid="link-footer-pricing">Pricing</a></li>
+                <li><a href="#features" className="text-sm text-muted-foreground" data-testid="link-footer-features">Features</a></li>
+                <li><a href="#testimonials" className="text-sm text-muted-foreground" data-testid="link-footer-testimonials">Testimonials</a></li>
+                <li><a href="#how-it-works" className="text-sm text-muted-foreground" data-testid="link-footer-how">How it works</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-white mb-4 uppercase tracking-wider">Company</h4>
+              <h4 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wider">Company</h4>
               <ul className="space-y-2.5">
-                <li><span className="text-sm text-gray-400">About</span></li>
-                <li><span className="text-sm text-gray-400">Blog</span></li>
-                <li><span className="text-sm text-gray-400">Careers</span></li>
+                <li><span className="text-sm text-muted-foreground">About</span></li>
+                <li><span className="text-sm text-muted-foreground">Blog</span></li>
+                <li><span className="text-sm text-muted-foreground">Careers</span></li>
               </ul>
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-white mb-4 uppercase tracking-wider">Support</h4>
+              <h4 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wider">Support</h4>
               <ul className="space-y-2.5">
-                <li><span className="text-sm text-gray-400">Help Center</span></li>
-                <li><span className="text-sm text-gray-400">Privacy Policy</span></li>
-                <li><span className="text-sm text-gray-400">Terms of Service</span></li>
+                <li><span className="text-sm text-muted-foreground">Help Center</span></li>
+                <li><span className="text-sm text-muted-foreground">Privacy Policy</span></li>
+                <li><span className="text-sm text-muted-foreground">Terms of Service</span></li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-gray-800 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 flex-wrap">
-            <span className="text-sm text-gray-500">
+          <div className="border-t border-border pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 flex-wrap">
+            <span className="text-sm text-muted-foreground">
               Linkfolio. All rights reserved.
             </span>
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-muted-foreground">
               Built with care
             </span>
           </div>
         </div>
       </footer>
     </div>
-  );
-}
-
-function FeatureCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
-  return (
-    <Card className="flex flex-col items-center text-center p-7 bg-card border-border/50">
-      <div className="w-12 h-12 rounded-md bg-primary/10 text-primary flex items-center justify-center mb-5">
-        {icon}
-      </div>
-      <h3 className="font-bold text-base mb-2">{title}</h3>
-      <p className="text-muted-foreground text-sm leading-relaxed">{description}</p>
-    </Card>
   );
 }
