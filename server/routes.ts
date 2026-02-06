@@ -184,7 +184,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: fromZodError(result.error).message });
       }
 
-      const updated = await storage.updateLink(req.params.id, req.session.userId!, result.data);
+      const updated = await storage.updateLink(req.params.id as string, req.session.userId!, result.data);
       if (!updated) {
         return res.status(404).json({ message: "Link not found" });
       }
@@ -195,7 +195,7 @@ export async function registerRoutes(
   });
 
   app.delete("/api/links/:id", requireAuth, async (req, res) => {
-    const deleted = await storage.deleteLink(req.params.id, req.session.userId!);
+    const deleted = await storage.deleteLink(req.params.id as string, req.session.userId!);
     if (!deleted) {
       return res.status(404).json({ message: "Link not found" });
     }
