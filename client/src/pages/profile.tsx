@@ -4,6 +4,57 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, ExternalLink } from "lucide-react";
 import type { Link, User } from "@shared/schema";
 
+const TEMPLATES: Record<string, {
+  bg: string;
+  cardBg: string;
+  textColor: string;
+  cardTextColor: string;
+  accent: string;
+}> = {
+  minimal: {
+    bg: "bg-[#f5f0eb]",
+    cardBg: "bg-[#e8dfd6]",
+    textColor: "text-[#4a3f35]",
+    cardTextColor: "text-[#4a3f35]",
+    accent: "#8b7355",
+  },
+  ocean: {
+    bg: "bg-gradient-to-b from-[#0f2027] via-[#203a43] to-[#2c5364]",
+    cardBg: "bg-white/15",
+    textColor: "text-white",
+    cardTextColor: "text-white",
+    accent: "#64ffda",
+  },
+  sunset: {
+    bg: "bg-gradient-to-b from-[#f093fb] via-[#f5576c] to-[#fda085]",
+    cardBg: "bg-white/20",
+    textColor: "text-white",
+    cardTextColor: "text-white",
+    accent: "#fff",
+  },
+  dark: {
+    bg: "bg-[#0a0a0a]",
+    cardBg: "bg-[#1a1a1a]",
+    textColor: "text-white",
+    cardTextColor: "text-gray-200",
+    accent: "#6C5CE7",
+  },
+  forest: {
+    bg: "bg-gradient-to-b from-[#1a3c2a] to-[#2d5a3e]",
+    cardBg: "bg-white/15",
+    textColor: "text-white",
+    cardTextColor: "text-white",
+    accent: "#4ade80",
+  },
+  lavender: {
+    bg: "bg-gradient-to-b from-[#e8dff5] to-[#fce4ec]",
+    cardBg: "bg-white/60",
+    textColor: "text-[#4a3068]",
+    cardTextColor: "text-[#4a3068]",
+    accent: "#7c3aed",
+  },
+};
+
 type PublicProfile = {
   user: Omit<User, "password" | "email">;
   links: Link[];
@@ -42,32 +93,36 @@ export default function PublicProfile() {
 
   const { user, links } = data;
   const activeLinks = links.filter((l) => l.active).sort((a, b) => a.position - b.position);
+  const template = TEMPLATES[user.template || "minimal"] || TEMPLATES.minimal;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary/5 via-background to-background">
+    <div className={`min-h-screen ${template.bg}`}>
       <div className="max-w-lg mx-auto px-6 py-12">
         <div className="flex flex-col items-center text-center mb-10">
-          <Avatar className="w-24 h-24 border-4 border-background shadow-lg mb-5">
+          <Avatar className="w-24 h-24 border-4 border-white/20 shadow-lg mb-5">
             <AvatarImage src={user.profileImage || undefined} alt={user.displayName || user.username} />
-            <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
+            <AvatarFallback
+              className="text-2xl"
+              style={{ backgroundColor: template.accent + "30", color: template.accent }}
+            >
               {(user.displayName || user.username).charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <h1 className="text-2xl font-bold mb-1" data-testid="text-profile-name">
+          <h1 className={`text-2xl font-bold mb-1 ${template.textColor}`} data-testid="text-profile-name">
             {user.displayName || user.username}
           </h1>
-          <p className="text-sm text-muted-foreground mb-2" data-testid="text-profile-username">
+          <p className={`text-sm mb-2 ${template.textColor} opacity-70`} data-testid="text-profile-username">
             @{user.username}
           </p>
           {user.bio && (
-            <p className="text-sm text-muted-foreground max-w-sm leading-relaxed" data-testid="text-profile-bio">
+            <p className={`text-sm max-w-sm leading-relaxed ${template.textColor} opacity-80`} data-testid="text-profile-bio">
               {user.bio}
             </p>
           )}
         </div>
 
         {activeLinks.length === 0 ? (
-          <p className="text-center text-sm text-muted-foreground">No links yet.</p>
+          <p className={`text-center text-sm ${template.textColor} opacity-60`}>No links yet.</p>
         ) : (
           <div className="space-y-3">
             {activeLinks.map((link) => (
@@ -76,12 +131,12 @@ export default function PublicProfile() {
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block w-full rounded-xl border bg-card p-4 text-center font-medium transition-all hover:scale-[1.02] hover:shadow-md group"
+                className={`block w-full rounded-xl ${template.cardBg} p-4 text-center font-medium transition-all hover:scale-[1.02] hover:shadow-md group backdrop-blur-sm`}
                 data-testid={`link-card-${link.id}`}
               >
                 <div className="flex items-center justify-center gap-2">
-                  <span className="truncate">{link.title}</span>
-                  <ExternalLink className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                  <span className={`truncate ${template.cardTextColor}`}>{link.title}</span>
+                  <ExternalLink className={`w-3.5 h-3.5 ${template.cardTextColor} opacity-0 group-hover:opacity-100 transition-opacity shrink-0`} />
                 </div>
               </a>
             ))}
@@ -89,8 +144,8 @@ export default function PublicProfile() {
         )}
 
         <div className="mt-12 text-center">
-          <a href="/" className="text-xs text-muted-foreground/60 transition-colors">
-            <span className="text-primary/60">link</span>folio
+          <a href="/" className={`text-xs ${template.textColor} opacity-40 transition-opacity hover:opacity-60`}>
+            <span style={{ color: template.accent }}>link</span>folio
           </a>
         </div>
       </div>
