@@ -57,7 +57,8 @@ export async function registerRoutes(
 ): Promise<Server> {
   const PgSession = connectPgSimple(session);
   const sessionPool = new pg.Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: process.env.SUPABASE_POOLER_URL || process.env.DATABASE_URL,
+    ssl: process.env.SUPABASE_POOLER_URL ? { rejectUnauthorized: false } : undefined,
   });
 
   app.use("/uploads", express.static(uploadsDir));

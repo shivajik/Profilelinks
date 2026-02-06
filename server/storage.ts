@@ -11,7 +11,8 @@ import {
 } from "@shared/schema";
 
 const pool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.SUPABASE_POOLER_URL || process.env.DATABASE_URL,
+  ssl: process.env.SUPABASE_POOLER_URL ? { rejectUnauthorized: false } : undefined,
 });
 
 export const db = drizzle(pool);
