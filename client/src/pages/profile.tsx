@@ -7,6 +7,19 @@ import { SocialIcon } from "@/components/social-icon";
 import { getPlatform } from "@/lib/social-platforms";
 import type { Link, User, Social } from "@shared/schema";
 
+function normalizeUrl(url: string, platform?: string): string {
+  if (!url) return "#";
+  const trimmed = url.trim();
+  if (platform === "email" || trimmed.startsWith("mailto:")) {
+    return trimmed.startsWith("mailto:") ? trimmed : `mailto:${trimmed}`;
+  }
+  if (platform === "phone" || trimmed.startsWith("tel:")) {
+    return trimmed.startsWith("tel:") ? trimmed : `tel:${trimmed}`;
+  }
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
 type PublicProfile = {
   user: Omit<User, "password" | "email">;
   links: Link[];
@@ -78,7 +91,7 @@ export default function PublicProfile() {
               {activeSocials.map((social) => (
                 <a
                   key={social.id}
-                  href={social.url}
+                  href={normalizeUrl(social.url, social.platform)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`p-2 rounded-full transition-all hover:scale-110 ${template.textColor} opacity-70 hover:opacity-100`}
@@ -99,7 +112,7 @@ export default function PublicProfile() {
             {activeLinks.map((link) => (
               <a
                 key={link.id}
-                href={link.url}
+                href={normalizeUrl(link.url)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className={`block w-full rounded-xl ${template.cardBg} p-4 text-center font-medium transition-all hover:scale-[1.02] hover:shadow-md group backdrop-blur-sm`}
