@@ -39,6 +39,12 @@ import {
   HelpCircle,
   FileText,
   Home,
+  Mail,
+  Type,
+  Minus,
+  Video,
+  Music,
+  ImageIcon,
 } from "lucide-react";
 import {
   Dialog,
@@ -67,14 +73,15 @@ import {
 } from "@/components/ui/sidebar";
 import { SOCIAL_PLATFORMS, getPlatform } from "@/lib/social-platforms";
 import { SocialIcon } from "@/components/social-icon";
-import type { Link, Social, Page } from "@shared/schema";
+import type { Link, Social, Page, Block, BlockContent, BlockType } from "@shared/schema";
+import { BLOCK_TYPES } from "@shared/schema";
 
 export default function Dashboard() {
   const { user, logout, isLoading: authLoading } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
-  const [addingLink, setAddingLink] = useState(false);
+  const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
+  const [addingBlock, setAddingBlock] = useState(false);
   const [addingSocial, setAddingSocial] = useState(false);
   const [copied, setCopied] = useState(false);
   const [activeSection, setActiveSection] = useState<string>("design");
@@ -108,12 +115,12 @@ export default function Dashboard() {
     }
   }, [userPages, selectedPageId]);
 
-  const { data: links = [], isLoading: linksLoading } = useQuery<Link[]>({
-    queryKey: ["/api/links", { pageId: currentPage?.id }],
+  const { data: pageBlocks = [], isLoading: blocksLoading } = useQuery<Block[]>({
+    queryKey: ["/api/blocks", { pageId: currentPage?.id }],
     queryFn: async () => {
       if (!currentPage) return [];
-      const res = await fetch(`/api/links?pageId=${currentPage.id}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch links");
+      const res = await fetch(`/api/blocks?pageId=${currentPage.id}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch blocks");
       return res.json();
     },
     enabled: !!user && !!currentPage,
@@ -171,38 +178,38 @@ export default function Dashboard() {
     },
   });
 
-  const invalidateLinks = () => {
+  const invalidateBlocks = () => {
     queryClient.invalidateQueries({ predicate: (query) => {
       const key = query.queryKey;
-      return Array.isArray(key) && key[0] === "/api/links";
+      return Array.isArray(key) && key[0] === "/api/blocks";
     }});
   };
 
-  const deleteLinkMutation = useMutation({
+  const deleteBlockMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/links/${id}`);
+      await apiRequest("DELETE", `/api/blocks/${id}`);
     },
     onSuccess: () => {
-      invalidateLinks();
-      toast({ title: "Link deleted" });
+      invalidateBlocks();
+      toast({ title: "Block deleted" });
     },
   });
 
-  const toggleLinkMutation = useMutation({
+  const toggleBlockMutation = useMutation({
     mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
-      await apiRequest("PATCH", `/api/links/${id}`, { active });
+      await apiRequest("PATCH", `/api/blocks/${id}`, { active });
     },
     onSuccess: () => {
-      invalidateLinks();
+      invalidateBlocks();
     },
   });
 
-  const reorderMutation = useMutation({
-    mutationFn: async (linkIds: string[]) => {
-      await apiRequest("POST", "/api/links/reorder", { linkIds });
+  const reorderBlocksMutation = useMutation({
+    mutationFn: async (blockIds: string[]) => {
+      await apiRequest("POST", "/api/blocks/reorder", { blockIds });
     },
     onSuccess: () => {
-      invalidateLinks();
+      invalidateBlocks();
     },
   });
 
@@ -247,16 +254,16 @@ export default function Dashboard() {
     navigate("/");
   };
 
-  const moveLink = (index: number, direction: "up" | "down") => {
-    const sorted = [...links].sort((a, b) => a.position - b.position);
+  const moveBlock = (index: number, direction: "up" | "down") => {
+    const sorted = [...pageBlocks].sort((a, b) => a.position - b.position);
     const newIndex = direction === "up" ? index - 1 : index + 1;
     if (newIndex < 0 || newIndex >= sorted.length) return;
     const newOrder = [...sorted];
     [newOrder[index], newOrder[newIndex]] = [newOrder[newIndex], newOrder[index]];
-    reorderMutation.mutate(newOrder.map((l) => l.id));
+    reorderBlocksMutation.mutate(newOrder.map((b) => b.id));
   };
 
-  const sortedLinks = [...links].sort((a, b) => a.position - b.position);
+  const sortedBlocks = [...pageBlocks].sort((a, b) => a.position - b.position);
 
   const toggleCategory = (key: string) => {
     setOpenCategories((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -516,44 +523,41 @@ export default function Dashboard() {
                   open={openCategories.blocks}
                   onToggle={() => toggleCategory("blocks")}
                   action={
-                    <Button size="sm" onClick={() => setAddingLink(true)} data-testid="button-add-link">
+                    <Button size="sm" onClick={() => setAddingBlock(true)} data-testid="button-add-block">
                       New Block +
                     </Button>
                   }
                 >
                   <div className="px-4 pb-3 pt-1">
-                    {linksLoading ? (
+                    {blocksLoading ? (
                       <div className="flex items-center justify-center py-8">
                         <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                       </div>
-                    ) : sortedLinks.length === 0 ? (
+                    ) : sortedBlocks.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-8 text-center">
                         <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                           <Link2 className="w-6 h-6 text-primary" />
                         </div>
                         <h3 className="font-semibold mb-1">No blocks yet</h3>
                         <p className="text-sm text-muted-foreground mb-4 max-w-xs">
-                          Add your first link block to start building this page.
+                          Add your first content block to start building this page.
                         </p>
-                        <Button size="sm" onClick={() => setAddingLink(true)} data-testid="button-add-first-link">
+                        <Button size="sm" onClick={() => setAddingBlock(true)} data-testid="button-add-first-block">
                           <Plus className="w-4 h-4" />
-                          Add your first link
+                          Add your first block
                         </Button>
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {sortedLinks.map((link) => (
-                          <InlineLinkBlock
-                            key={link.id}
-                            link={link}
-                            isEditing={editingLinkId === link.id}
-                            onStartEdit={() => setEditingLinkId(link.id)}
-                            onStopEdit={() => setEditingLinkId(null)}
-                            onDelete={() => deleteLinkMutation.mutate(link.id)}
-                            onCopy={() => {
-                              navigator.clipboard.writeText(link.url);
-                              toast({ title: "URL copied!" });
-                            }}
+                        {sortedBlocks.map((block) => (
+                          <InlineBlockCard
+                            key={block.id}
+                            block={block}
+                            isEditing={editingBlockId === block.id}
+                            onStartEdit={() => setEditingBlockId(block.id)}
+                            onStopEdit={() => setEditingBlockId(null)}
+                            onDelete={() => deleteBlockMutation.mutate(block.id)}
+                            onToggle={(active) => toggleBlockMutation.mutate({ id: block.id, active })}
                           />
                         ))}
                       </div>
@@ -591,7 +595,7 @@ export default function Dashboard() {
                   bio={headerBio}
                   profileImage={user.profileImage || ""}
                   username={user.username}
-                  links={sortedLinks}
+                  blocks={sortedBlocks}
                   socials={userSocials}
                   pages={userPages}
                   currentPage={currentPage || null}
@@ -611,7 +615,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <AddLinkDialog open={addingLink} onClose={() => setAddingLink(false)} pageId={currentPage?.id} />
+      <AddBlockDialog open={addingBlock} onClose={() => setAddingBlock(false)} pageId={currentPage?.id} />
       <AddSocialDialog
         open={addingSocial}
         onClose={() => setAddingSocial(false)}
@@ -744,7 +748,7 @@ function PhonePreview({
   bio,
   profileImage,
   username,
-  links,
+  blocks,
   socials,
   pages,
   currentPage,
@@ -755,13 +759,13 @@ function PhonePreview({
   bio: string;
   profileImage: string;
   username: string;
-  links: Link[];
+  blocks: Block[];
   socials: Social[];
   pages: Page[];
   currentPage: Page | null;
   mode: "mobile" | "desktop";
 }) {
-  const activeLinks = links.filter((l) => l.active);
+  const activeBlocks = blocks.filter((b) => b.active);
   const activeSocials = socials.filter((s) => s.url);
 
   return (
@@ -820,27 +824,17 @@ function PhonePreview({
             )}
 
             <div className="w-full mt-5 space-y-2">
-              {activeLinks.length > 0 ? (
-                activeLinks.map((link) => (
-                  <div
-                    key={link.id}
-                    className={`${template.cardBg} rounded-lg py-2.5 px-4 text-center backdrop-blur-sm`}
-                  >
-                    <span className={`text-xs font-medium ${template.cardTextColor}`}>
-                      {link.title}
-                    </span>
-                  </div>
+              {activeBlocks.length > 0 ? (
+                activeBlocks.map((block) => (
+                  <PreviewBlock key={block.id} block={block} template={template} />
                 ))
               ) : (
                 <>
                   <div className={`${template.cardBg} rounded-lg py-2.5 px-4 text-center`}>
-                    <span className={`text-xs font-medium ${template.cardTextColor}`}>Link 1</span>
+                    <span className={`text-xs font-medium ${template.cardTextColor}`}>Block 1</span>
                   </div>
                   <div className={`${template.cardBg} rounded-lg py-2.5 px-4 text-center`}>
-                    <span className={`text-xs font-medium ${template.cardTextColor}`}>Link 2</span>
-                  </div>
-                  <div className={`${template.cardBg} rounded-lg py-2.5 px-4 text-center`}>
-                    <span className={`text-xs font-medium ${template.cardTextColor}`}>Link 3</span>
+                    <span className={`text-xs font-medium ${template.cardTextColor}`}>Block 2</span>
                   </div>
                 </>
               )}
@@ -858,73 +852,133 @@ function PhonePreview({
   );
 }
 
-function AddLinkDialog({ open, onClose, pageId }: { open: boolean; onClose: () => void; pageId?: string }) {
-  const [title, setTitle] = useState("");
-  const [url, setUrl] = useState("");
+function PreviewBlock({ block, template }: { block: Block; template: (typeof TEMPLATES)[0] }) {
+  const content = block.content as BlockContent;
+  switch (block.type) {
+    case "url_button":
+      return (
+        <div className={`${template.cardBg} rounded-lg py-2.5 px-4 text-center backdrop-blur-sm`}>
+          <span className={`text-xs font-medium ${template.cardTextColor}`}>
+            {content.title || "Untitled Link"}
+          </span>
+        </div>
+      );
+    case "email_button":
+      return (
+        <div className={`${template.cardBg} rounded-lg py-2.5 px-4 text-center backdrop-blur-sm`}>
+          <span className={`text-xs font-medium ${template.cardTextColor}`}>
+            {content.title || "Email"}
+          </span>
+        </div>
+      );
+    case "text":
+      return (
+        <div className="px-2 py-1.5">
+          <p className={`text-[11px] ${template.textColor} opacity-80 text-left leading-relaxed`}>
+            {content.text || "Text block"}
+          </p>
+        </div>
+      );
+    case "divider":
+      return (
+        <div className="py-2">
+          <hr className={`border-t ${template.textColor} opacity-20`} />
+        </div>
+      );
+    case "video":
+      return (
+        <div className={`${template.cardBg} rounded-lg py-2.5 px-4 text-center backdrop-blur-sm`}>
+          <span className={`text-xs font-medium ${template.cardTextColor}`}>
+            {content.title || "Video"}
+          </span>
+        </div>
+      );
+    case "audio":
+      return (
+        <div className={`${template.cardBg} rounded-lg py-2.5 px-4 text-center backdrop-blur-sm`}>
+          <span className={`text-xs font-medium ${template.cardTextColor}`}>
+            {content.title || "Audio"}
+          </span>
+        </div>
+      );
+    case "image":
+      if (content.imageUrl) {
+        return (
+          <div className="rounded-lg overflow-hidden">
+            <img src={content.imageUrl} alt={content.title || ""} className="w-full h-auto" />
+          </div>
+        );
+      }
+      return (
+        <div className={`${template.cardBg} rounded-lg py-4 px-4 text-center backdrop-blur-sm`}>
+          <span className={`text-xs ${template.cardTextColor} opacity-60`}>Image</span>
+        </div>
+      );
+    default:
+      return null;
+  }
+}
+
+const BLOCK_TYPE_CONFIG: Record<string, { label: string; description: string; icon: typeof Link2 }> = {
+  url_button: { label: "URL Button", description: "Opens a web page to the specified URL.", icon: Link2 },
+  email_button: { label: "Email Button", description: "Opens an email to the specified address.", icon: Mail },
+  text: { label: "Text", description: "Tell your page's story with a text section.", icon: Type },
+  divider: { label: "Divider", description: "Organize your content with dividers.", icon: Minus },
+  video: { label: "Video", description: "Embed YouTube, Vimeo, and more...", icon: Video },
+  audio: { label: "Audio", description: "Embed Spotify, Apple Music and more...", icon: Music },
+  image: { label: "Image", description: "Display an image on your page.", icon: ImageIcon },
+};
+
+function AddBlockDialog({ open, onClose, pageId }: { open: boolean; onClose: () => void; pageId?: string }) {
   const { toast } = useToast();
 
   const mutation = useMutation({
-    mutationFn: async () => {
-      await apiRequest("POST", "/api/links", { title, url, pageId });
+    mutationFn: async (type: string) => {
+      const defaultContent: Record<string, any> = {
+        url_button: { title: "My Link", url: "" },
+        email_button: { title: "Email Me", email: "" },
+        text: { text: "" },
+        divider: {},
+        video: { title: "Video", url: "" },
+        audio: { title: "Audio", url: "" },
+        image: { title: "", imageUrl: "", linkUrl: "" },
+      };
+      await apiRequest("POST", "/api/blocks", { type, content: defaultContent[type] || {}, pageId });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ predicate: (query) => Array.isArray(query.queryKey) && query.queryKey[0] === "/api/links" });
-      setTitle("");
-      setUrl("");
+      queryClient.invalidateQueries({ predicate: (query) => Array.isArray(query.queryKey) && query.queryKey[0] === "/api/blocks" });
       onClose();
-      toast({ title: "Link added!" });
+      toast({ title: "Block added!" });
     },
     onError: (e: any) => {
-      toast({ title: "Failed to add link", description: e.message, variant: "destructive" });
+      toast({ title: "Failed to add block", description: e.message, variant: "destructive" });
     },
   });
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent>
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Add Link</DialogTitle>
+          <DialogTitle>Add Block</DialogTitle>
         </DialogHeader>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            mutation.mutate();
-          }}
-          className="space-y-4"
-        >
-          <div className="space-y-2">
-            <Label htmlFor="add-title">Title</Label>
-            <Input
-              id="add-title"
-              placeholder="My Website"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-              data-testid="input-add-link-title"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="add-url">URL</Label>
-            <Input
-              id="add-url"
-              placeholder="https://example.com"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              required
-              type="url"
-              data-testid="input-add-link-url"
-            />
-          </div>
-          <div className="flex justify-end gap-3">
-            <Button type="button" variant="ghost" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={mutation.isPending} data-testid="button-confirm-add-link">
-              {mutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-              Add Link
-            </Button>
-          </div>
-        </form>
+        <div className="grid grid-cols-2 gap-2">
+          {Object.entries(BLOCK_TYPE_CONFIG).map(([type, config]) => {
+            const Icon = config.icon;
+            return (
+              <button
+                key={type}
+                onClick={() => mutation.mutate(type)}
+                disabled={mutation.isPending}
+                className="border rounded-md p-3 text-center hover-elevate transition-all flex flex-col items-center gap-1.5"
+                data-testid={`block-type-${type}`}
+              >
+                <Icon className="w-5 h-5 text-muted-foreground" />
+                <span className="text-xs font-semibold">{config.label}</span>
+                <span className="text-[10px] text-muted-foreground leading-tight">{config.description}</span>
+              </button>
+            );
+          })}
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -1163,38 +1217,37 @@ function CategorySection({
   );
 }
 
-function InlineLinkBlock({
-  link,
+function InlineBlockCard({
+  block,
   isEditing,
   onStartEdit,
   onStopEdit,
   onDelete,
-  onCopy,
+  onToggle,
 }: {
-  link: Link;
+  block: Block;
   isEditing: boolean;
   onStartEdit: () => void;
   onStopEdit: () => void;
   onDelete: () => void;
-  onCopy: () => void;
+  onToggle: (active: boolean) => void;
 }) {
-  const [title, setTitle] = useState(link.title);
-  const [url, setUrl] = useState(link.url);
+  const content = block.content as BlockContent;
+  const [editContent, setEditContent] = useState<BlockContent>({ ...content });
   const { toast } = useToast();
 
   useEffect(() => {
-    setTitle(link.title);
-    setUrl(link.url);
-  }, [link.title, link.url]);
+    setEditContent({ ...(block.content as BlockContent) });
+  }, [block.content]);
 
   const mutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("PATCH", `/api/links/${link.id}`, { title, url });
+      await apiRequest("PATCH", `/api/blocks/${block.id}`, { content: editContent });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ predicate: (query) => Array.isArray(query.queryKey) && query.queryKey[0] === "/api/links" });
+      queryClient.invalidateQueries({ predicate: (query) => Array.isArray(query.queryKey) && query.queryKey[0] === "/api/blocks" });
       onStopEdit();
-      toast({ title: "Link updated!" });
+      toast({ title: "Block updated!" });
     },
     onError: (e: any) => {
       toast({ title: "Failed to update", description: e.message, variant: "destructive" });
@@ -1202,80 +1255,66 @@ function InlineLinkBlock({
   });
 
   const handleSave = () => {
-    if (title !== link.title || url !== link.url) {
-      mutation.mutate();
-    } else {
-      onStopEdit();
-    }
+    mutation.mutate();
   };
 
   const handleCancel = () => {
-    setTitle(link.title);
-    setUrl(link.url);
+    setEditContent({ ...(block.content as BlockContent) });
     onStopEdit();
   };
 
+  const typeConfig = BLOCK_TYPE_CONFIG[block.type];
+  const TypeIcon = typeConfig?.icon || Link2;
+  const blockTitle = content.title || content.text?.slice(0, 30) || typeConfig?.label || block.type;
+
   return (
-    <Card className={`overflow-hidden transition-opacity ${!link.active ? "opacity-50" : ""}`}>
+    <Card className={`overflow-visible transition-opacity ${!block.active ? "opacity-50" : ""}`}>
       <CardContent className="p-0">
         <div className="flex items-center gap-0">
-          <div className={`w-1 self-stretch shrink-0 ${!link.active ? "bg-muted-foreground/20" : "bg-primary"}`} />
+          <div className={`w-1 self-stretch shrink-0 rounded-l-md ${!block.active ? "bg-muted-foreground/20" : "bg-primary"}`} />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 py-2.5 px-3">
               <GripVertical className="w-4 h-4 text-muted-foreground/40 shrink-0 cursor-grab" />
               <div className="flex-1 min-w-0">
                 <Button
                   variant="ghost"
-                  className="p-0 h-auto font-medium text-sm text-primary truncate justify-start"
+                  className="p-0 h-auto font-medium text-sm truncate justify-start"
                   onClick={onStartEdit}
-                  data-testid={`text-link-title-${link.id}`}
+                  data-testid={`text-block-title-${block.id}`}
                 >
-                  {link.title}
+                  {blockTitle}
                 </Button>
-                <p className="text-xs text-muted-foreground" data-testid={`text-link-type-${link.id}`}>
-                  URL Button
+                <p className="text-xs text-muted-foreground" data-testid={`text-block-type-${block.id}`}>
+                  {typeConfig?.label || block.type}
                 </p>
               </div>
               <div className="flex items-center gap-0.5 shrink-0">
-                <Button variant="ghost" size="icon" onClick={onCopy} data-testid={`button-copy-link-${link.id}`}>
-                  <Copy className="w-3.5 h-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon" onClick={onDelete} data-testid={`button-delete-link-${link.id}`}>
+                <Switch
+                  checked={block.active}
+                  onCheckedChange={(checked) => onToggle(checked)}
+                  data-testid={`switch-block-active-${block.id}`}
+                />
+                <Button variant="ghost" size="icon" onClick={onDelete} data-testid={`button-delete-block-${block.id}`}>
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={isEditing ? onStopEdit : onStartEdit} data-testid={`button-edit-link-${link.id}`}>
+                <Button variant="ghost" size="icon" onClick={isEditing ? onStopEdit : onStartEdit} data-testid={`button-edit-block-${block.id}`}>
                   <Settings className="w-3.5 h-3.5" />
                 </Button>
               </div>
             </div>
             {isEditing && (
-              <div className="border-t px-3 py-3 space-y-3" data-testid={`inline-edit-${link.id}`}>
-                <div className="space-y-1.5">
-                  <Label htmlFor={`edit-title-${link.id}`} className="text-xs">Title</Label>
-                  <Input
-                    id={`edit-title-${link.id}`}
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Link title"
-                    data-testid={`input-edit-link-title-${link.id}`}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor={`edit-url-${link.id}`} className="text-xs">URL</Label>
-                  <Input
-                    id={`edit-url-${link.id}`}
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    placeholder="https://example.com"
-                    type="url"
-                    data-testid={`input-edit-link-url-${link.id}`}
-                  />
-                </div>
+              <div className="border-t px-3 py-3 space-y-3" data-testid={`inline-edit-block-${block.id}`}>
+                <BlockEditFields
+                  type={block.type}
+                  content={editContent}
+                  onChange={setEditContent}
+                  blockId={block.id}
+                />
                 <div className="flex justify-end gap-2">
-                  <Button variant="ghost" size="sm" onClick={handleCancel} data-testid={`button-cancel-edit-${link.id}`}>
+                  <Button variant="ghost" size="sm" onClick={handleCancel} data-testid={`button-cancel-edit-block-${block.id}`}>
                     Cancel
                   </Button>
-                  <Button size="sm" onClick={handleSave} disabled={mutation.isPending} data-testid={`button-save-edit-${link.id}`}>
+                  <Button size="sm" onClick={handleSave} disabled={mutation.isPending} data-testid={`button-save-edit-block-${block.id}`}>
                     {mutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                     Save
                   </Button>
@@ -1287,6 +1326,179 @@ function InlineLinkBlock({
       </CardContent>
     </Card>
   );
+}
+
+function BlockEditFields({
+  type,
+  content,
+  onChange,
+  blockId,
+}: {
+  type: string;
+  content: BlockContent;
+  onChange: (content: BlockContent) => void;
+  blockId: string;
+}) {
+  switch (type) {
+    case "url_button":
+      return (
+        <>
+          <div className="space-y-1.5">
+            <Label htmlFor={`block-title-${blockId}`} className="text-xs">Title</Label>
+            <Input
+              id={`block-title-${blockId}`}
+              value={content.title || ""}
+              onChange={(e) => onChange({ ...content, title: e.target.value })}
+              placeholder="Link title"
+              data-testid={`input-block-title-${blockId}`}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`block-url-${blockId}`} className="text-xs">URL</Label>
+            <Input
+              id={`block-url-${blockId}`}
+              value={content.url || ""}
+              onChange={(e) => onChange({ ...content, url: e.target.value })}
+              placeholder="https://example.com"
+              data-testid={`input-block-url-${blockId}`}
+            />
+          </div>
+        </>
+      );
+    case "email_button":
+      return (
+        <>
+          <div className="space-y-1.5">
+            <Label htmlFor={`block-title-${blockId}`} className="text-xs">Button Label</Label>
+            <Input
+              id={`block-title-${blockId}`}
+              value={content.title || ""}
+              onChange={(e) => onChange({ ...content, title: e.target.value })}
+              placeholder="Email Me"
+              data-testid={`input-block-title-${blockId}`}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`block-email-${blockId}`} className="text-xs">Email Address</Label>
+            <Input
+              id={`block-email-${blockId}`}
+              value={content.email || ""}
+              onChange={(e) => onChange({ ...content, email: e.target.value })}
+              placeholder="you@example.com"
+              type="email"
+              data-testid={`input-block-email-${blockId}`}
+            />
+          </div>
+        </>
+      );
+    case "text":
+      return (
+        <div className="space-y-1.5">
+          <Label htmlFor={`block-text-${blockId}`} className="text-xs">Text Content</Label>
+          <Textarea
+            id={`block-text-${blockId}`}
+            value={content.text || ""}
+            onChange={(e) => onChange({ ...content, text: e.target.value })}
+            placeholder="Write your text here..."
+            rows={4}
+            data-testid={`input-block-text-${blockId}`}
+          />
+        </div>
+      );
+    case "divider":
+      return (
+        <p className="text-xs text-muted-foreground">
+          A horizontal divider line. No settings needed.
+        </p>
+      );
+    case "video":
+      return (
+        <>
+          <div className="space-y-1.5">
+            <Label htmlFor={`block-title-${blockId}`} className="text-xs">Title</Label>
+            <Input
+              id={`block-title-${blockId}`}
+              value={content.title || ""}
+              onChange={(e) => onChange({ ...content, title: e.target.value })}
+              placeholder="Video title"
+              data-testid={`input-block-title-${blockId}`}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`block-url-${blockId}`} className="text-xs">Video URL</Label>
+            <Input
+              id={`block-url-${blockId}`}
+              value={content.url || ""}
+              onChange={(e) => onChange({ ...content, url: e.target.value })}
+              placeholder="https://youtube.com/watch?v=..."
+              data-testid={`input-block-url-${blockId}`}
+            />
+          </div>
+        </>
+      );
+    case "audio":
+      return (
+        <>
+          <div className="space-y-1.5">
+            <Label htmlFor={`block-title-${blockId}`} className="text-xs">Title</Label>
+            <Input
+              id={`block-title-${blockId}`}
+              value={content.title || ""}
+              onChange={(e) => onChange({ ...content, title: e.target.value })}
+              placeholder="Track title"
+              data-testid={`input-block-title-${blockId}`}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`block-url-${blockId}`} className="text-xs">Audio URL</Label>
+            <Input
+              id={`block-url-${blockId}`}
+              value={content.url || ""}
+              onChange={(e) => onChange({ ...content, url: e.target.value })}
+              placeholder="https://open.spotify.com/track/..."
+              data-testid={`input-block-url-${blockId}`}
+            />
+          </div>
+        </>
+      );
+    case "image":
+      return (
+        <>
+          <div className="space-y-1.5">
+            <Label htmlFor={`block-title-${blockId}`} className="text-xs">Alt Text</Label>
+            <Input
+              id={`block-title-${blockId}`}
+              value={content.title || ""}
+              onChange={(e) => onChange({ ...content, title: e.target.value })}
+              placeholder="Image description"
+              data-testid={`input-block-title-${blockId}`}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`block-imageUrl-${blockId}`} className="text-xs">Image URL</Label>
+            <Input
+              id={`block-imageUrl-${blockId}`}
+              value={content.imageUrl || ""}
+              onChange={(e) => onChange({ ...content, imageUrl: e.target.value })}
+              placeholder="https://example.com/image.jpg"
+              data-testid={`input-block-imageUrl-${blockId}`}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`block-linkUrl-${blockId}`} className="text-xs">Link URL (optional)</Label>
+            <Input
+              id={`block-linkUrl-${blockId}`}
+              value={content.linkUrl || ""}
+              onChange={(e) => onChange({ ...content, linkUrl: e.target.value })}
+              placeholder="https://example.com"
+              data-testid={`input-block-linkUrl-${blockId}`}
+            />
+          </div>
+        </>
+      );
+    default:
+      return <p className="text-xs text-muted-foreground">No editable fields for this block type.</p>;
+  }
 }
 
 function SocialLinkRow({

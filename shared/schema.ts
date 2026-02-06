@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -40,6 +40,28 @@ export const socials = pgTable("socials", {
   platform: text("platform").notNull(),
   url: text("url").notNull(),
   position: integer("position").notNull().default(0),
+});
+
+export const BLOCK_TYPES = [
+  "url_button",
+  "email_button",
+  "text",
+  "divider",
+  "video",
+  "audio",
+  "image",
+] as const;
+
+export type BlockType = typeof BLOCK_TYPES[number];
+
+export const blocks = pgTable("blocks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  pageId: varchar("page_id").references(() => pages.id, { onDelete: "cascade" }),
+  type: text("type").notNull(),
+  content: jsonb("content").notNull().default({}),
+  position: integer("position").notNull().default(0),
+  active: boolean("active").notNull().default(true),
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({
@@ -120,5 +142,34 @@ export type Page = typeof pages.$inferSelect;
 export type InsertPage = z.infer<typeof insertPageSchema>;
 export type InsertLink = z.infer<typeof insertLinkSchema>;
 export type Link = typeof links.$inferSelect;
+export const insertBlockSchema = createInsertSchema(blocks).omit({
+  id: true,
+  userId: true,
+});
+
+export const blockContentSchema = z.object({
+  title: z.string().optional(),
+  url: z.string().optional(),
+  email: z.string().optional(),
+  text: z.string().optional(),
+  imageUrl: z.string().optional(),
+  linkUrl: z.string().optional(),
+});
+
+export const createBlockSchema = z.object({
+  type: z.enum(BLOCK_TYPES),
+  content: blockContentSchema.optional().default({}),
+  pageId: z.string().optional(),
+});
+
+export const updateBlockSchema = z.object({
+  content: blockContentSchema.optional(),
+  active: z.boolean().optional(),
+  position: z.number().int().min(0).optional(),
+});
+
 export type InsertSocial = z.infer<typeof insertSocialSchema>;
 export type Social = typeof socials.$inferSelect;
+export type Block = typeof blocks.$inferSelect;
+export type InsertBlock = z.infer<typeof insertBlockSchema>;
+export type BlockContent = z.infer<typeof blockContentSchema>;

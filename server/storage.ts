@@ -6,6 +6,7 @@ import {
   links,
   socials,
   pages,
+  blocks,
   type User,
   type InsertUser,
   type Link,
@@ -14,6 +15,8 @@ import {
   type InsertSocial,
   type Page,
   type InsertPage,
+  type Block,
+  type InsertBlock,
 } from "@shared/schema";
 
 const pool = new pg.Pool({
@@ -51,6 +54,14 @@ export interface IStorage {
   createSocial(social: InsertSocial & { userId: string }): Promise<Social>;
   updateSocial(id: string, userId: string, data: Partial<Pick<Social, "url" | "position">>): Promise<Social | undefined>;
   deleteSocial(id: string, userId: string): Promise<boolean>;
+
+  getBlocksByPageId(pageId: string): Promise<Block[]>;
+  getBlocksByUserId(userId: string): Promise<Block[]>;
+  createBlock(block: InsertBlock & { userId: string }): Promise<Block>;
+  updateBlock(id: string, userId: string, data: Partial<Pick<Block, "content" | "active" | "position">>): Promise<Block | undefined>;
+  deleteBlock(id: string, userId: string): Promise<boolean>;
+  getMaxBlockPositionByPage(pageId: string): Promise<number>;
+  reorderBlocks(userId: string, blockIds: string[]): Promise<void>;
 }
 
 function slugify(title: string): string {
@@ -239,6 +250,50 @@ export class DatabaseStorage implements IStorage {
     if (!existing.length || existing[0].userId !== userId) return false;
     await db.delete(socials).where(eq(socials.id, id));
     return true;
+  }
+
+  async getBlocksByPageId(pageId: string): Promise<Block[]> {
+    return db.select().from(blocks).where(eq(blocks.pageId, pageId)).orderBy(asc(blocks.position));
+  }
+
+  async getBlocksByUserId(userId: string): Promise<Block[]> {
+    return db.select().from(blocks).where(eq(blocks.userId, userId)).orderBy(asc(blocks.position));
+  }
+
+  async createBlock(block: InsertBlock & { userId: string }): Promise<Block> {
+    const [created] = await db.insert(blocks).values(block).returning();
+    return created;
+  }
+
+  async updateBlock(id: string, userId: string, data: Partial<Pick<Block, "content" | "active" | "position">>): Promise<Block | undefined> {
+    const existing = await db.select().from(blocks).where(eq(blocks.id, id));
+    if (!existing.length || existing[0].userId !== userId) return undefined;
+    const [updated] = await db.update(blocks).set(data).where(eq(blocks.id, id)).returning();
+    return updated;
+  }
+
+  async deleteBlock(id: string, userId: string): Promise<boolean> {
+    const existing = await db.select().from(blocks).where(eq(blocks.id, id));
+    if (!existing.length || existing[0].userId !== userId) return false;
+    await db.delete(blocks).where(eq(blocks.id, id));
+    return true;
+  }
+
+  async getMaxBlockPositionByPage(pageId: string): Promise<number> {
+    const pageBlocks = await this.getBlocksByPageId(pageId);
+    if (pageBlocks.length === 0) return -1;
+    return Math.max(...pageBlocks.map((b) => b.position));
+  }
+
+  async reorderBlocks(userId: string, blockIds: string[]): Promise<void> {
+    const userBlocks = await this.getBlocksByUserId(userId);
+    const userBlockIds = new Set(userBlocks.map((b) => b.id));
+    for (const id of blockIds) {
+      if (!userBlockIds.has(id)) return;
+    }
+    for (let i = 0; i < blockIds.length; i++) {
+      await db.update(blocks).set({ position: i }).where(eq(blocks.id, blockIds[i]));
+    }
   }
 }
 

@@ -4,6 +4,7 @@
 A link-in-bio web application that allows users to create personalized landing pages with multiple links to their social profiles, websites, and content - all accessible through a single custom URL.
 
 ## Recent Changes
+- 2026-02-06: Added block-based content system (URL Button, Email Button, Text, Divider, Video, Audio, Image) replacing simple links; block type picker in dashboard, inline editing per type, public profile renders all block types with video/audio embeds
 - 2026-02-06: Added multi-page system (Home, About Us, Services, etc.) with page-scoped links, page selector dropdown, manage pages dialog, public page navigation tabs
 - 2026-02-06: Switched Vercel deployment to Build Output API v3 (eliminates ncc bundling issues, self-contained .vercel/output/)
 - 2026-02-06: Added Vercel deployment compatibility (vercel.json, serverless API entry, memory uploads)
@@ -42,8 +43,13 @@ A link-in-bio web application that allows users to create personalized landing p
 - `POST /api/pages` - Create page
 - `PATCH /api/pages/:id` - Update page (rename, set as home)
 - `DELETE /api/pages/:id` - Delete page (not home)
-- `GET /api/links?pageId=X` - Get page-scoped links (authenticated, ownership verified)
-- `POST /api/links` - Create link (auto-assigns to page)
+- `GET /api/blocks?pageId=X` - Get page-scoped blocks (authenticated, ownership verified)
+- `POST /api/blocks` - Create block (type + content JSON)
+- `PATCH /api/blocks/:id` - Update block content/active
+- `DELETE /api/blocks/:id` - Delete block
+- `POST /api/blocks/reorder` - Reorder blocks
+- `GET /api/links?pageId=X` - Get page-scoped links (legacy, authenticated)
+- `POST /api/links` - Create link (legacy)
 - `PATCH /api/links/:id` - Update link
 - `DELETE /api/links/:id` - Delete link
 - `POST /api/links/reorder` - Reorder links
@@ -53,7 +59,8 @@ A link-in-bio web application that allows users to create personalized landing p
 ## Database Schema
 - `users` - id, username, email, password, displayName, bio, profileImage, onboardingCompleted, template
 - `pages` - id, userId, title, slug, position, isHome (each user has one home page)
-- `links` - id, userId, pageId (FK to pages), title, url, position, active
+- `blocks` - id, userId, pageId, type (url_button/email_button/text/divider/video/audio/image), content (JSONB), position, active
+- `links` - id, userId, pageId (FK to pages), title, url, position, active (legacy, migrated to blocks)
 - `socials` - id, userId, platform, url, position
 - `session` - managed by connect-pg-simple
 

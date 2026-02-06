@@ -3,11 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useParams } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Loader2, ExternalLink } from "lucide-react";
+import { Loader2, ExternalLink, Mail, Play, Music } from "lucide-react";
 import { getTemplate } from "@/lib/templates";
 import { SocialIcon } from "@/components/social-icon";
 import { getPlatform } from "@/lib/social-platforms";
-import type { Link, User, Social } from "@shared/schema";
+import type { Link, User, Social, Block, BlockContent } from "@shared/schema";
 
 function normalizeUrl(url: string, platform?: string): string {
   if (!url) return "#";
@@ -27,6 +27,7 @@ type PageInfo = { id: string; title: string; slug: string; isHome: boolean };
 type PublicProfile = {
   user: Omit<User, "password" | "email">;
   links: Link[];
+  blocks: Block[];
   socials: Social[];
   pages: PageInfo[];
   currentPage: PageInfo | null;
@@ -72,11 +73,13 @@ export default function PublicProfile() {
     );
   }
 
-  const { user, links, socials = [], pages = [], currentPage } = data;
+  const { user, links, blocks = [], socials = [], pages = [], currentPage } = data;
   const activeLinks = links.filter((l) => l.active).sort((a, b) => a.position - b.position);
+  const activeBlocks = blocks.filter((b) => b.active).sort((a, b) => a.position - b.position);
   const activeSocials = socials.filter((s) => s.url).sort((a, b) => a.position - b.position);
   const template = getTemplate(user.template);
   const hasMultiplePages = pages.length > 1;
+  const hasBlocks = activeBlocks.length > 0;
 
   return (
     <div className={`min-h-screen ${template.bg}`}>
@@ -145,9 +148,13 @@ export default function PublicProfile() {
           )}
         </div>
 
-        {activeLinks.length === 0 ? (
-          <p className={`text-center text-sm ${template.textColor} opacity-60`}>No links yet.</p>
-        ) : (
+        {hasBlocks ? (
+          <div className="space-y-3">
+            {activeBlocks.map((block) => (
+              <PublicBlock key={block.id} block={block} template={template} />
+            ))}
+          </div>
+        ) : activeLinks.length > 0 ? (
           <div className="space-y-3">
             {activeLinks.map((link) => (
               <a
@@ -165,6 +172,8 @@ export default function PublicProfile() {
               </a>
             ))}
           </div>
+        ) : (
+          <p className={`text-center text-sm ${template.textColor} opacity-60`}>No content yet.</p>
         )}
 
         <div className="mt-12 text-center">
@@ -176,4 +185,198 @@ export default function PublicProfile() {
       </div>
     </div>
   );
+}
+
+function getYouTubeEmbedUrl(url: string): string | null {
+  try {
+    const u = new URL(url);
+    let videoId = "";
+    if (u.hostname.includes("youtube.com") || u.hostname.includes("youtube-nocookie.com")) {
+      videoId = u.searchParams.get("v") || "";
+      if (!videoId && u.pathname.startsWith("/embed/")) {
+        videoId = u.pathname.split("/embed/")[1];
+      }
+    } else if (u.hostname === "youtu.be") {
+      videoId = u.pathname.slice(1);
+    }
+    if (videoId) return `https://www.youtube-nocookie.com/embed/${videoId}`;
+  } catch {}
+  return null;
+}
+
+function getVimeoEmbedUrl(url: string): string | null {
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes("vimeo.com")) {
+      const id = u.pathname.split("/").filter(Boolean).pop();
+      if (id && /^\d+$/.test(id)) return `https://player.vimeo.com/video/${id}`;
+    }
+  } catch {}
+  return null;
+}
+
+function getSpotifyEmbedUrl(url: string): string | null {
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes("spotify.com")) {
+      const path = u.pathname;
+      return `https://open.spotify.com/embed${path}`;
+    }
+  } catch {}
+  return null;
+}
+
+function PublicBlock({ block, template }: { block: Block; template: ReturnType<typeof getTemplate> }) {
+  const content = block.content as BlockContent;
+
+  switch (block.type) {
+    case "url_button": {
+      const href = content.url ? normalizeUrl(content.url) : "#";
+      return (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`block w-full rounded-xl ${template.cardBg} p-4 text-center font-medium transition-all hover:scale-[1.02] hover:shadow-md group backdrop-blur-sm`}
+          data-testid={`block-url-${block.id}`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <span className={`truncate ${template.cardTextColor}`}>{content.title || "Untitled Link"}</span>
+            <ExternalLink className={`w-3.5 h-3.5 ${template.cardTextColor} opacity-0 group-hover:opacity-100 transition-opacity shrink-0`} />
+          </div>
+        </a>
+      );
+    }
+    case "email_button": {
+      const href = content.email ? `mailto:${content.email}` : "#";
+      return (
+        <a
+          href={href}
+          className={`block w-full rounded-xl ${template.cardBg} p-4 text-center font-medium transition-all hover:scale-[1.02] hover:shadow-md group backdrop-blur-sm`}
+          data-testid={`block-email-${block.id}`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <Mail className={`w-4 h-4 ${template.cardTextColor} shrink-0`} />
+            <span className={`truncate ${template.cardTextColor}`}>{content.title || "Email"}</span>
+          </div>
+        </a>
+      );
+    }
+    case "text":
+      return (
+        <div className="py-2 px-1" data-testid={`block-text-${block.id}`}>
+          <p className={`text-sm ${template.textColor} opacity-80 leading-relaxed whitespace-pre-wrap`}>
+            {content.text || ""}
+          </p>
+        </div>
+      );
+    case "divider":
+      return (
+        <div className="py-3" data-testid={`block-divider-${block.id}`}>
+          <hr className={`border-t ${template.textColor} opacity-20`} />
+        </div>
+      );
+    case "video": {
+      const ytEmbed = content.url ? getYouTubeEmbedUrl(content.url) : null;
+      const vimeoEmbed = content.url ? getVimeoEmbedUrl(content.url) : null;
+      const embedUrl = ytEmbed || vimeoEmbed;
+      if (embedUrl) {
+        return (
+          <div className="rounded-xl overflow-hidden" data-testid={`block-video-${block.id}`}>
+            {content.title && (
+              <p className={`text-sm font-medium ${template.textColor} mb-2`}>{content.title}</p>
+            )}
+            <iframe
+              src={embedUrl}
+              className="w-full aspect-video rounded-xl"
+              allowFullScreen
+              allow="autoplay; encrypted-media"
+              title={content.title || "Video"}
+            />
+          </div>
+        );
+      }
+      return (
+        <a
+          href={content.url ? normalizeUrl(content.url) : "#"}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`block w-full rounded-xl ${template.cardBg} p-4 text-center font-medium transition-all hover:scale-[1.02] hover:shadow-md group backdrop-blur-sm`}
+          data-testid={`block-video-${block.id}`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <Play className={`w-4 h-4 ${template.cardTextColor} shrink-0`} />
+            <span className={`truncate ${template.cardTextColor}`}>{content.title || "Video"}</span>
+          </div>
+        </a>
+      );
+    }
+    case "audio": {
+      const spotifyEmbed = content.url ? getSpotifyEmbedUrl(content.url) : null;
+      if (spotifyEmbed) {
+        return (
+          <div className="rounded-xl overflow-hidden" data-testid={`block-audio-${block.id}`}>
+            {content.title && (
+              <p className={`text-sm font-medium ${template.textColor} mb-2`}>{content.title}</p>
+            )}
+            <iframe
+              src={spotifyEmbed}
+              className="w-full rounded-xl"
+              height="152"
+              allow="autoplay; encrypted-media"
+              title={content.title || "Audio"}
+            />
+          </div>
+        );
+      }
+      return (
+        <a
+          href={content.url ? normalizeUrl(content.url) : "#"}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`block w-full rounded-xl ${template.cardBg} p-4 text-center font-medium transition-all hover:scale-[1.02] hover:shadow-md group backdrop-blur-sm`}
+          data-testid={`block-audio-${block.id}`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <Music className={`w-4 h-4 ${template.cardTextColor} shrink-0`} />
+            <span className={`truncate ${template.cardTextColor}`}>{content.title || "Audio"}</span>
+          </div>
+        </a>
+      );
+    }
+    case "image": {
+      const imgElement = content.imageUrl ? (
+        <img
+          src={content.imageUrl}
+          alt={content.title || ""}
+          className="w-full h-auto rounded-xl"
+        />
+      ) : (
+        <div className={`w-full ${template.cardBg} rounded-xl p-8 text-center backdrop-blur-sm`}>
+          <span className={`text-sm ${template.cardTextColor} opacity-60`}>Image</span>
+        </div>
+      );
+
+      if (content.linkUrl) {
+        return (
+          <a
+            href={normalizeUrl(content.linkUrl)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block rounded-xl overflow-hidden transition-all hover:scale-[1.02] hover:shadow-md"
+            data-testid={`block-image-${block.id}`}
+          >
+            {imgElement}
+          </a>
+        );
+      }
+      return (
+        <div className="rounded-xl overflow-hidden" data-testid={`block-image-${block.id}`}>
+          {imgElement}
+        </div>
+      );
+    }
+    default:
+      return null;
+  }
 }

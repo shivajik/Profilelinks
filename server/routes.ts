@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import session from "express-session";
 import { storage } from "./storage";
 import bcrypt from "bcryptjs";
-import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema, createPageSchema, updatePageSchema } from "@shared/schema";
+import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema, createPageSchema, updatePageSchema, createBlockSchema, updateBlockSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import connectPgSimple from "connect-pg-simple";
 import pg from "pg";
@@ -415,6 +415,87 @@ export async function registerRoutes(
     res.json({ message: "Deleted" });
   });
 
+  // Blocks routes
+  app.get("/api/blocks", requireAuth, async (req, res) => {
+    const pageId = req.query.pageId as string | undefined;
+    if (pageId) {
+      const userPages = await storage.getPagesByUserId(req.session.userId!);
+      const ownsPage = userPages.some((p) => p.id === pageId);
+      if (!ownsPage) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      const pageBlocks = await storage.getBlocksByPageId(pageId);
+      return res.json(pageBlocks);
+    }
+    const allBlocks = await storage.getBlocksByUserId(req.session.userId!);
+    res.json(allBlocks);
+  });
+
+  app.post("/api/blocks", requireAuth, async (req, res) => {
+    try {
+      const result = createBlockSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+
+      let pageId = result.data.pageId;
+      if (!pageId) {
+        const homePage = await storage.ensureHomePage(req.session.userId!);
+        pageId = homePage.id;
+      }
+
+      const maxPos = await storage.getMaxBlockPositionByPage(pageId);
+      const block = await storage.createBlock({
+        type: result.data.type,
+        content: result.data.content || {},
+        userId: req.session.userId!,
+        pageId,
+        position: maxPos + 1,
+        active: true,
+      });
+      res.status(201).json(block);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to create block" });
+    }
+  });
+
+  app.patch("/api/blocks/:id", requireAuth, async (req, res) => {
+    try {
+      const result = updateBlockSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+      const updated = await storage.updateBlock(req.params.id as string, req.session.userId!, result.data);
+      if (!updated) {
+        return res.status(404).json({ message: "Block not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to update block" });
+    }
+  });
+
+  app.delete("/api/blocks/:id", requireAuth, async (req, res) => {
+    const deleted = await storage.deleteBlock(req.params.id as string, req.session.userId!);
+    if (!deleted) {
+      return res.status(404).json({ message: "Block not found" });
+    }
+    res.json({ message: "Deleted" });
+  });
+
+  app.post("/api/blocks/reorder", requireAuth, async (req, res) => {
+    try {
+      const { blockIds } = req.body;
+      if (!Array.isArray(blockIds)) {
+        return res.status(400).json({ message: "blockIds must be an array" });
+      }
+      await storage.reorderBlocks(req.session.userId!, blockIds);
+      res.json({ message: "Reordered" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to reorder blocks" });
+    }
+  });
+
   app.get("/api/profile/:username", async (req, res) => {
     try {
       const user = await storage.getUserByUsername(req.params.username);
@@ -436,10 +517,15 @@ export async function registerRoutes(
         ? await storage.getLinksByPageId(currentPage.id)
         : await storage.getLinksByUserId(user.id);
 
+      const pageBlocks = currentPage
+        ? await storage.getBlocksByPageId(currentPage.id)
+        : await storage.getBlocksByUserId(user.id);
+
       const { password: _, email: __, ...publicUser } = user;
       res.json({
         user: publicUser,
         links: userLinks,
+        blocks: pageBlocks,
         socials: userSocials,
         pages: userPages.map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome })),
         currentPage: currentPage ? { id: currentPage.id, title: currentPage.title, slug: currentPage.slug, isHome: currentPage.isHome } : null,
