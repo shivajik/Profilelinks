@@ -513,8 +513,8 @@ export default function Dashboard() {
                 </div>
                 <PhonePreview
                   template={currentTemplate}
-                  displayName={user.displayName || user.username}
-                  bio={user.bio || ""}
+                  displayName={headerName || user.username}
+                  bio={headerBio}
                   profileImage={user.profileImage || ""}
                   username={user.username}
                   links={sortedLinks}
