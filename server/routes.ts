@@ -25,18 +25,12 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-const uploadsDir = path.resolve(process.cwd(), "uploads");
+const uploadsDir = path.resolve(process.env.VERCEL ? "/tmp/uploads" : path.join(process.cwd(), "uploads"));
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-const uploadStorage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadsDir),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname) || ".jpg";
-    cb(null, crypto.randomUUID() + ext);
-  },
-});
+const uploadStorage = multer.memoryStorage();
 
 const upload = multer({
   storage: uploadStorage,
@@ -63,7 +57,7 @@ export async function registerRoutes(
 
   app.use("/uploads", express.static(uploadsDir));
 
-  const isProduction = process.env.NODE_ENV === "production";
+  const isProduction = process.env.NODE_ENV === "production" || !!process.env.VERCEL;
   if (isProduction) {
     app.set("trust proxy", 1);
   }
@@ -206,7 +200,15 @@ export async function registerRoutes(
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
-      const url = `/uploads/${req.file.filename}`;
+      if (process.env.VERCEL) {
+        const base64 = req.file.buffer.toString("base64");
+        const dataUri = `data:${req.file.mimetype};base64,${base64}`;
+        return res.json({ url: dataUri });
+      }
+      const filename = crypto.randomUUID() + (path.extname(req.file.originalname) || ".jpg");
+      const filepath = path.join(uploadsDir, filename);
+      fs.writeFileSync(filepath, req.file.buffer);
+      const url = `/uploads/${filename}`;
       res.json({ url });
     });
   });

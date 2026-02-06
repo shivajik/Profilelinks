@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist/public",
+  "framework": null,
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/((?!assets/).*)", "destination": "/index.html" }
+  ],
+  "functions": {
+    "api/index.ts": {
+      "maxDuration": 30,
+      "includeFiles": "server/**,shared/**"
+    }
+  }
+}

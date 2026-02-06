@@ -4,6 +4,8 @@
 A link-in-bio web application that allows users to create personalized landing pages with multiple links to their social profiles, websites, and content - all accessible through a single custom URL.
 
 ## Recent Changes
+- 2026-02-06: Added Vercel deployment compatibility (vercel.json, serverless API entry, memory uploads)
+- 2026-02-06: Added social media management (50+ platforms) with inline editing in dashboard
 - 2026-02-06: Migrated database to Supabase PostgreSQL (transaction pooler for app, direct URL for migrations)
 - 2026-02-06: Added email case normalization (lowercase) in register/login
 - 2026-02-06: Secured session cookies (secure flag in production, trust proxy)
@@ -20,6 +22,7 @@ A link-in-bio web application that allows users to create personalized landing p
 - **Database**: Supabase PostgreSQL with Drizzle ORM
 - **DB Connection**: Uses SUPABASE_POOLER_URL (transaction pooler, port 6543) for app, SUPABASE_DIRECT_URL (port 5432) for migrations
 - **Routing**: wouter for client-side routing
+- **Deployment**: Vercel-compatible (vercel.json + api/index.ts serverless wrapper)
 
 ## Key Pages
 - `/` - Landing page
