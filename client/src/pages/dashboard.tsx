@@ -3,6 +3,7 @@ import { useLocation, Redirect } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
+import { TEMPLATES, getTemplate } from "@/lib/templates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,9 +24,13 @@ import {
   Loader2,
   Eye,
   Link2,
-  User as UserIcon,
   Camera,
   X,
+  Palette,
+  Settings,
+  Share2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import {
   Dialog,
@@ -33,6 +38,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  SidebarProvider,
+  SidebarTrigger,
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarFooter,
+} from "@/components/ui/sidebar";
 import type { Link } from "@shared/schema";
 
 export default function Dashboard() {
@@ -43,6 +60,8 @@ export default function Dashboard() {
   const [addingLink, setAddingLink] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState<"design" | "settings">("design");
+  const [headerOpen, setHeaderOpen] = useState(true);
 
   const { data: links = [], isLoading: linksLoading } = useQuery<Link[]>({
     queryKey: ["/api/links"],
@@ -77,6 +96,16 @@ export default function Dashboard() {
     },
   });
 
+  const templateMutation = useMutation({
+    mutationFn: async (template: string) => {
+      await apiRequest("PATCH", "/api/auth/profile", { template });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      toast({ title: "Template updated!" });
+    },
+  });
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -94,6 +123,7 @@ export default function Dashboard() {
   }
 
   const profileUrl = `${window.location.origin}/${user.username}`;
+  const currentTemplate = getTemplate(user.template);
 
   const copyUrl = () => {
     navigator.clipboard.writeText(profileUrl);
@@ -118,145 +148,411 @@ export default function Dashboard() {
 
   const sortedLinks = [...links].sort((a, b) => a.position - b.position);
 
-  return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b">
-        <div className="max-w-3xl mx-auto flex items-center justify-between gap-4 px-6 py-3">
-          <span className="text-lg font-bold tracking-tight">
-            <span className="text-primary">link</span>folio
-          </span>
-          <div className="flex items-center gap-2">
-            <a href={`/${user.username}`} target="_blank" rel="noopener noreferrer">
-              <Button variant="ghost" size="sm" data-testid="button-preview">
-                <Eye className="w-4 h-4" />
-                Preview
-              </Button>
-            </a>
-            <Button variant="ghost" size="icon" onClick={handleLogout} data-testid="button-logout">
-              <LogOut className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      </header>
+  const sidebarStyle = {
+    "--sidebar-width": "13rem",
+    "--sidebar-width-icon": "3rem",
+  };
 
-      <div className="max-w-3xl mx-auto px-6 py-8 space-y-8">
-        <section>
-          <div className="flex items-center gap-4 mb-6">
-            <Avatar className="w-16 h-16 border-2 border-border">
-              <AvatarImage src={user.profileImage || undefined} alt={user.displayName || user.username} />
-              <AvatarFallback className="text-lg bg-primary/10 text-primary">
-                {(user.displayName || user.username).charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-xl font-bold truncate" data-testid="text-display-name">
-                {user.displayName || user.username}
-              </h1>
-              <div className="flex items-center gap-2 mt-1">
-                <code className="text-sm text-muted-foreground truncate" data-testid="text-profile-url">
-                  {profileUrl}
-                </code>
-                <button onClick={copyUrl} className="text-muted-foreground shrink-0" data-testid="button-copy-url">
-                  {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
-                </button>
+  return (
+    <SidebarProvider style={sidebarStyle as React.CSSProperties}>
+      <div className="flex h-screen w-full">
+        <Sidebar>
+          <SidebarContent>
+            <div className="px-4 py-4">
+              <span className="text-lg font-bold tracking-tight">
+                <span className="text-primary">link</span>folio
+              </span>
+            </div>
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      onClick={() => setActiveTab("design")}
+                      isActive={activeTab === "design"}
+                      data-testid="sidebar-design"
+                    >
+                      <Palette className="w-4 h-4" />
+                      <span>Design</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      onClick={() => setActiveTab("settings")}
+                      isActive={activeTab === "settings"}
+                      data-testid="sidebar-settings"
+                    >
+                      <Settings className="w-4 h-4" />
+                      <span>Settings</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
+          <SidebarFooter>
+            <div className="flex items-center gap-3 px-2 mb-2">
+              <Avatar className="w-8 h-8 border border-border">
+                <AvatarImage src={user.profileImage || undefined} />
+                <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                  {(user.displayName || user.username).charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{user.displayName || user.username}</p>
               </div>
             </div>
-            <Button variant="outline" size="sm" onClick={() => setEditingProfile(true)} data-testid="button-edit-profile">
-              <UserIcon className="w-4 h-4" />
-              Edit
-            </Button>
-          </div>
-        </section>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton onClick={handleLogout} data-testid="button-logout">
+                  <LogOut className="w-4 h-4" />
+                  <span>Log Out</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarFooter>
+        </Sidebar>
 
-        <section>
-          <div className="flex items-center justify-between gap-4 mb-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Link2 className="w-5 h-5 text-primary" />
-              Your Links
-            </h2>
-            <Button size="sm" onClick={() => setAddingLink(true)} data-testid="button-add-link">
-              <Plus className="w-4 h-4" />
-              Add Link
-            </Button>
-          </div>
-
-          {linksLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+        <div className="flex-1 flex flex-col min-w-0">
+          <header className="sticky top-0 z-50 bg-background border-b px-4 py-2 flex items-center gap-3">
+            <SidebarTrigger data-testid="button-sidebar-toggle" />
+            <div className="flex items-center gap-2 bg-muted rounded-md px-3 py-1.5 flex-1 max-w-md">
+              <Link2 className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span className="text-sm text-muted-foreground truncate" data-testid="text-profile-url">
+                {profileUrl}
+              </span>
+              <button onClick={copyUrl} className="text-muted-foreground shrink-0 ml-auto" data-testid="button-copy-url">
+                {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+              </button>
             </div>
-          ) : sortedLinks.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                  <Link2 className="w-6 h-6 text-primary" />
-                </div>
-                <h3 className="font-semibold mb-1">No links yet</h3>
-                <p className="text-sm text-muted-foreground mb-4 max-w-xs">
-                  Add your first link to start building your profile page.
-                </p>
-                <Button size="sm" onClick={() => setAddingLink(true)} data-testid="button-add-first-link">
-                  <Plus className="w-4 h-4" />
-                  Add your first link
+            <div className="flex items-center gap-2 ml-auto">
+              <a href={`/${user.username}`} target="_blank" rel="noopener noreferrer">
+                <Button variant="ghost" size="icon" data-testid="button-preview">
+                  <Eye className="w-4 h-4" />
                 </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {sortedLinks.map((link, index) => (
-                <Card key={link.id} className={`transition-opacity ${!link.active ? "opacity-50" : ""}`}>
-                  <CardContent className="flex items-center gap-3 py-3 px-4">
-                    <div className="flex flex-col gap-0.5 shrink-0">
-                      <button
-                        onClick={() => moveLink(index, "up")}
-                        disabled={index === 0}
-                        className="text-muted-foreground disabled:opacity-30 p-0.5"
-                        data-testid={`button-move-up-${link.id}`}
-                      >
-                        <GripVertical className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate" data-testid={`text-link-title-${link.id}`}>
-                        {link.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate" data-testid={`text-link-url-${link.id}`}>
-                        {link.url}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Switch
-                        checked={link.active}
-                        onCheckedChange={(checked) => toggleLinkMutation.mutate({ id: link.id, active: checked })}
-                        data-testid={`switch-link-active-${link.id}`}
-                      />
-                      <a href={link.url} target="_blank" rel="noopener noreferrer">
-                        <Button variant="ghost" size="icon" data-testid={`button-open-link-${link.id}`}>
-                          <ExternalLink className="w-4 h-4" />
-                        </Button>
-                      </a>
-                      <Button variant="ghost" size="icon" onClick={() => setEditingLink(link)} data-testid={`button-edit-link-${link.id}`}>
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => deleteLinkMutation.mutate(link.id)}
-                        data-testid={`button-delete-link-${link.id}`}
-                      >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+              </a>
+              <Button variant="outline" size="sm" onClick={() => window.open(`/${user.username}`, '_blank')} data-testid="button-share">
+                <Share2 className="w-4 h-4" />
+                Share
+              </Button>
             </div>
-          )}
-        </section>
+          </header>
+
+          <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 overflow-y-auto p-4 lg:p-6">
+              <div className="max-w-lg mx-auto space-y-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <button
+                    onClick={() => setHeaderOpen(!headerOpen)}
+                    className="flex items-center gap-2 text-sm font-semibold text-foreground"
+                    data-testid="button-toggle-header"
+                  >
+                    {headerOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    Header
+                  </button>
+                  <Avatar className="w-6 h-6 border border-border">
+                    <AvatarImage src={user.profileImage || undefined} />
+                    <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                      {(user.displayName || user.username).charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+
+                {headerOpen && (
+                  <Card>
+                    <CardContent className="py-4 px-4">
+                      <div className="flex items-center gap-4">
+                        <div className="relative group">
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/gif,image/webp"
+                            className="hidden"
+                            id="dash-avatar-upload"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              const formData = new FormData();
+                              formData.append("file", file);
+                              try {
+                                const res = await fetch("/api/upload", { method: "POST", body: formData });
+                                const data = await res.json();
+                                if (res.ok) {
+                                  await apiRequest("PATCH", "/api/auth/profile", { profileImage: data.url });
+                                  queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+                                  toast({ title: "Profile picture updated!" });
+                                }
+                              } catch { /* silently ignore */ }
+                            }}
+                            data-testid="input-header-avatar-upload"
+                          />
+                          <label htmlFor="dash-avatar-upload" className="cursor-pointer block">
+                            <Avatar className="w-14 h-14 border-2 border-border">
+                              <AvatarImage src={user.profileImage || undefined} />
+                              <AvatarFallback className="bg-primary/10 text-primary text-lg">
+                                {(user.displayName || user.username).charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Camera className="w-4 h-4 text-white" />
+                            </div>
+                          </label>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold truncate" data-testid="text-display-name">
+                            {user.displayName || user.username}
+                          </p>
+                          {user.bio && (
+                            <p className="text-xs text-muted-foreground truncate mt-0.5">{user.bio}</p>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setEditingProfile(true)}
+                          data-testid="button-edit-profile"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                <div className="flex items-center justify-between gap-4">
+                  <h2 className="text-sm font-semibold">Blocks</h2>
+                  <Button size="sm" onClick={() => setAddingLink(true)} data-testid="button-add-link">
+                    <Plus className="w-4 h-4" />
+                    New Block
+                  </Button>
+                </div>
+
+                {linksLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : sortedLinks.length === 0 ? (
+                  <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                      <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                        <Link2 className="w-6 h-6 text-primary" />
+                      </div>
+                      <h3 className="font-semibold mb-1">No links yet</h3>
+                      <p className="text-sm text-muted-foreground mb-4 max-w-xs">
+                        Add your first link to start building your profile page.
+                      </p>
+                      <Button size="sm" onClick={() => setAddingLink(true)} data-testid="button-add-first-link">
+                        <Plus className="w-4 h-4" />
+                        Add your first link
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-2">
+                    {sortedLinks.map((link, index) => (
+                      <Card
+                        key={link.id}
+                        className={`transition-opacity ${!link.active ? "opacity-50" : ""}`}
+                      >
+                        <CardContent className="flex items-center gap-2 py-2.5 px-3">
+                          <GripVertical className="w-4 h-4 text-muted-foreground/40 shrink-0 cursor-grab" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate" data-testid={`text-link-title-${link.id}`}>
+                              {link.title}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate" data-testid={`text-link-url-${link.id}`}>
+                              {link.url}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <div className="flex flex-col">
+                              <button
+                                onClick={() => moveLink(index, "up")}
+                                disabled={index === 0}
+                                className="text-muted-foreground disabled:opacity-20 p-0.5"
+                                data-testid={`button-move-up-${link.id}`}
+                              >
+                                <ChevronUp className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => moveLink(index, "down")}
+                                disabled={index === sortedLinks.length - 1}
+                                className="text-muted-foreground disabled:opacity-20 p-0.5"
+                                data-testid={`button-move-down-${link.id}`}
+                              >
+                                <ChevronDown className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                            <Button variant="ghost" size="icon" onClick={() => setEditingLink(link)} data-testid={`button-edit-link-${link.id}`}>
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => deleteLinkMutation.mutate(link.id)}
+                              data-testid={`button-delete-link-${link.id}`}
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                            </Button>
+                            <Switch
+                              checked={link.active}
+                              onCheckedChange={(checked) => toggleLinkMutation.mutate({ id: link.id, active: checked })}
+                              data-testid={`switch-link-active-${link.id}`}
+                            />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="hidden lg:flex w-[340px] border-l bg-muted/20 items-center justify-center p-6 shrink-0">
+              <PhonePreview
+                template={currentTemplate}
+                displayName={user.displayName || user.username}
+                bio={user.bio || ""}
+                profileImage={user.profileImage || ""}
+                username={user.username}
+                links={sortedLinks}
+              />
+            </div>
+
+            {activeTab === "design" && (
+              <div className="hidden xl:block w-[280px] border-l bg-background overflow-y-auto shrink-0">
+                <AppearancePanel
+                  currentTemplateId={user.template || "minimal"}
+                  onSelectTemplate={(id) => templateMutation.mutate(id)}
+                  saving={templateMutation.isPending}
+                />
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       <AddLinkDialog open={addingLink} onClose={() => setAddingLink(false)} />
       <EditLinkDialog link={editingLink} onClose={() => setEditingLink(null)} />
       <EditProfileDialog open={editingProfile} onClose={() => setEditingProfile(false)} user={user} />
+    </SidebarProvider>
+  );
+}
+
+function AppearancePanel({
+  currentTemplateId,
+  onSelectTemplate,
+  saving,
+}: {
+  currentTemplateId: string;
+  onSelectTemplate: (id: string) => void;
+  saving: boolean;
+}) {
+  return (
+    <div className="p-4 space-y-6">
+      <div>
+        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+          <Palette className="w-4 h-4 text-primary" />
+          Theme
+        </h3>
+        <div className="grid grid-cols-3 gap-2">
+          {TEMPLATES.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => onSelectTemplate(t.id)}
+              disabled={saving}
+              className={`relative rounded-lg overflow-hidden aspect-[3/4] p-2 flex flex-col items-center justify-center text-center transition-all border-2 ${
+                currentTemplateId === t.id ? "border-primary ring-1 ring-primary/20" : "border-transparent"
+              } ${t.bg}`}
+              data-testid={`theme-${t.id}`}
+            >
+              {currentTemplateId === t.id && (
+                <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                  <Check className="w-2.5 h-2.5" />
+                </div>
+              )}
+              <div className="w-5 h-5 rounded-full bg-white/20 mb-1.5" />
+              <span className={`text-[10px] font-semibold ${t.textColor}`}>{t.name}</span>
+              <div className="mt-1.5 space-y-1 w-full">
+                <div className={`h-3 rounded-sm ${t.cardBg} w-full`} />
+                <div className={`h-3 rounded-sm ${t.cardBg} w-full`} />
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PhonePreview({
+  template,
+  displayName,
+  bio,
+  profileImage,
+  username,
+  links,
+}: {
+  template: (typeof TEMPLATES)[0];
+  displayName: string;
+  bio: string;
+  profileImage: string;
+  username: string;
+  links: Link[];
+}) {
+  const activeLinks = links.filter((l) => l.active);
+
+  return (
+    <div className="w-[280px] mx-auto" data-testid="phone-preview">
+      <div className="rounded-[2rem] border-4 border-foreground/10 overflow-hidden shadow-xl">
+        <div className="bg-foreground/10 h-7 flex items-center justify-center">
+          <span className="text-[10px] text-muted-foreground font-medium truncate px-4">
+            linkfolio/{username}
+          </span>
+        </div>
+        <div className={`min-h-[480px] ${template.bg} p-5`}>
+          <div className="flex flex-col items-center text-center">
+            <Avatar className="w-16 h-16 border-2 border-white/30 mb-3">
+              <AvatarImage src={profileImage || undefined} />
+              <AvatarFallback className="bg-white/20 text-lg" style={{ color: template.accent }}>
+                {displayName ? displayName.charAt(0).toUpperCase() : "?"}
+              </AvatarFallback>
+            </Avatar>
+            <p className={`font-bold text-sm ${template.textColor}`}>{displayName || "Your Name"}</p>
+            {bio && (
+              <p className={`text-[11px] mt-1 ${template.textColor} opacity-80 leading-relaxed max-w-[200px]`}>
+                {bio.length > 100 ? bio.slice(0, 100) + "..." : bio}
+              </p>
+            )}
+
+            <div className="w-full mt-5 space-y-2">
+              {activeLinks.length > 0 ? (
+                activeLinks.map((link) => (
+                  <div
+                    key={link.id}
+                    className={`${template.cardBg} rounded-lg py-2.5 px-4 text-center backdrop-blur-sm`}
+                  >
+                    <span className={`text-xs font-medium ${template.cardTextColor}`}>
+                      {link.title}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <>
+                  <div className={`${template.cardBg} rounded-lg py-2.5 px-4 text-center`}>
+                    <span className={`text-xs font-medium ${template.cardTextColor}`}>Link 1</span>
+                  </div>
+                  <div className={`${template.cardBg} rounded-lg py-2.5 px-4 text-center`}>
+                    <span className={`text-xs font-medium ${template.cardTextColor}`}>Link 2</span>
+                  </div>
+                  <div className={`${template.cardBg} rounded-lg py-2.5 px-4 text-center`}>
+                    <span className={`text-xs font-medium ${template.cardTextColor}`}>Link 3</span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

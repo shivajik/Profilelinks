@@ -2,58 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useParams } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, ExternalLink } from "lucide-react";
+import { getTemplate } from "@/lib/templates";
 import type { Link, User } from "@shared/schema";
-
-const TEMPLATES: Record<string, {
-  bg: string;
-  cardBg: string;
-  textColor: string;
-  cardTextColor: string;
-  accent: string;
-}> = {
-  minimal: {
-    bg: "bg-[#f5f0eb]",
-    cardBg: "bg-[#e8dfd6]",
-    textColor: "text-[#4a3f35]",
-    cardTextColor: "text-[#4a3f35]",
-    accent: "#8b7355",
-  },
-  ocean: {
-    bg: "bg-gradient-to-b from-[#0f2027] via-[#203a43] to-[#2c5364]",
-    cardBg: "bg-white/15",
-    textColor: "text-white",
-    cardTextColor: "text-white",
-    accent: "#64ffda",
-  },
-  sunset: {
-    bg: "bg-gradient-to-b from-[#f093fb] via-[#f5576c] to-[#fda085]",
-    cardBg: "bg-white/20",
-    textColor: "text-white",
-    cardTextColor: "text-white",
-    accent: "#fff",
-  },
-  dark: {
-    bg: "bg-[#0a0a0a]",
-    cardBg: "bg-[#1a1a1a]",
-    textColor: "text-white",
-    cardTextColor: "text-gray-200",
-    accent: "#6C5CE7",
-  },
-  forest: {
-    bg: "bg-gradient-to-b from-[#1a3c2a] to-[#2d5a3e]",
-    cardBg: "bg-white/15",
-    textColor: "text-white",
-    cardTextColor: "text-white",
-    accent: "#4ade80",
-  },
-  lavender: {
-    bg: "bg-gradient-to-b from-[#e8dff5] to-[#fce4ec]",
-    cardBg: "bg-white/60",
-    textColor: "text-[#4a3068]",
-    cardTextColor: "text-[#4a3068]",
-    accent: "#7c3aed",
-  },
-};
 
 type PublicProfile = {
   user: Omit<User, "password" | "email">;
@@ -93,7 +43,7 @@ export default function PublicProfile() {
 
   const { user, links } = data;
   const activeLinks = links.filter((l) => l.active).sort((a, b) => a.position - b.position);
-  const template = TEMPLATES[user.template || "minimal"] || TEMPLATES.minimal;
+  const template = getTemplate(user.template);
 
   return (
     <div className={`min-h-screen ${template.bg}`}>
@@ -144,8 +94,9 @@ export default function PublicProfile() {
         )}
 
         <div className="mt-12 text-center">
-          <a href="/" className={`text-xs ${template.textColor} opacity-40 transition-opacity hover:opacity-60`}>
-            <span style={{ color: template.accent }}>link</span>folio
+          <a href="/" className="text-xs transition-opacity hover:opacity-80">
+            <span style={{ color: template.accent, opacity: 0.6 }}>link</span>
+            <span className={`${template.textColor}`} style={{ opacity: 0.4 }}>folio</span>
           </a>
         </div>
       </div>
