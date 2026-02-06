@@ -7,6 +7,7 @@ import { AuthProvider } from "@/lib/auth";
 import Landing from "@/pages/landing";
 import AuthPage from "@/pages/auth";
 import Dashboard from "@/pages/dashboard";
+import Onboarding from "@/pages/onboarding";
 import PublicProfile from "@/pages/profile";
 import NotFound from "@/pages/not-found";
 
@@ -15,6 +16,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Landing} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/onboarding" component={Onboarding} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/:username" component={PublicProfile} />
       <Route component={NotFound} />

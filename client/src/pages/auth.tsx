@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useLocation, useSearch } from "wouter";
+import { useState, useEffect } from "react";
+import { useLocation, useSearch, Redirect } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,8 +19,7 @@ export default function AuthPage() {
   const { toast } = useToast();
 
   if (user) {
-    navigate("/dashboard");
-    return null;
+    return <Redirect to={user.onboardingCompleted ? "/dashboard" : "/onboarding"} />;
   }
 
   return (
@@ -68,7 +67,6 @@ export default function AuthPage() {
                 <LoginForm onSubmit={async (email, password) => {
                   try {
                     await login(email, password);
-                    navigate("/dashboard");
                   } catch (e: any) {
                     toast({ title: "Login failed", description: e.message, variant: "destructive" });
                   }
@@ -77,7 +75,6 @@ export default function AuthPage() {
                 <RegisterForm onSubmit={async (username, email, password) => {
                   try {
                     await register(username, email, password);
-                    navigate("/dashboard");
                   } catch (e: any) {
                     toast({ title: "Registration failed", description: e.message, variant: "destructive" });
                   }

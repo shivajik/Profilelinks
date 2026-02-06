@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Redirect } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
@@ -84,8 +84,11 @@ export default function Dashboard() {
   }
 
   if (!user) {
-    navigate("/auth");
-    return null;
+    return <Redirect to="/auth" />;
+  }
+
+  if (!user.onboardingCompleted) {
+    return <Redirect to="/onboarding" />;
   }
 
   const profileUrl = `${window.location.origin}/${user.username}`;
