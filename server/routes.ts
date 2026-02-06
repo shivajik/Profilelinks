@@ -537,5 +537,42 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/analytics/track", async (req, res) => {
+    try {
+      const { username, eventType, blockId, pageSlug, referrer } = req.body;
+      if (!username || !eventType) {
+        return res.status(400).json({ message: "username and eventType are required" });
+      }
+      const user = await storage.getUserByUsername(username);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      await storage.recordAnalyticsEvent({
+        userId: user.id,
+        eventType,
+        blockId: blockId || undefined,
+        pageSlug: pageSlug || undefined,
+        referrer: referrer || undefined,
+      });
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Analytics track error:", error);
+      res.status(500).json({ message: "Failed to record event" });
+    }
+  });
+
+  app.get("/api/analytics", async (req, res) => {
+    if (!req.session?.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    try {
+      const summary = await storage.getAnalyticsSummary(req.session.userId);
+      res.json(summary);
+    } catch (error: any) {
+      console.error("Analytics fetch error:", error);
+      res.status(500).json({ message: "Failed to load analytics" });
+    }
+  });
+
   return httpServer;
 }

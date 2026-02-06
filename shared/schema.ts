@@ -64,6 +64,16 @@ export const blocks = pgTable("blocks", {
   active: boolean("active").notNull().default(true),
 });
 
+export const analyticsEvents = pgTable("analytics_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  eventType: text("event_type").notNull(),
+  blockId: varchar("block_id"),
+  pageSlug: text("page_slug"),
+  referrer: text("referrer"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
 });
@@ -173,3 +183,4 @@ export type Social = typeof socials.$inferSelect;
 export type Block = typeof blocks.$inferSelect;
 export type InsertBlock = z.infer<typeof insertBlockSchema>;
 export type BlockContent = z.infer<typeof blockContentSchema>;
+export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;

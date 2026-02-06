@@ -762,39 +762,151 @@ function SettingsPanel({
   );
 }
 
+interface AnalyticsSummary {
+  totalViews: number;
+  totalClicks: number;
+  viewsByDay: { date: string; count: number }[];
+  clicksByDay: { date: string; count: number }[];
+  topBlocks: { blockId: string; clicks: number }[];
+}
+
 function AnalyticsPanel({ username }: { username: string }) {
+  const { data, isLoading } = useQuery<AnalyticsSummary>({
+    queryKey: ["/api/analytics"],
+    refetchInterval: 30000,
+  });
+
+  const maxBarValue = Math.max(
+    ...(data?.viewsByDay?.map((d) => d.count) || [0]),
+    ...(data?.clicksByDay?.map((d) => d.count) || [0]),
+    1
+  );
+
+  const last7Views = data?.viewsByDay?.slice(-7) || [];
+  const last7Clicks = data?.clicksByDay?.slice(-7) || [];
+
+  const allDays: string[] = [];
+  const today = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    allDays.push(d.toISOString().slice(0, 10));
+  }
+
+  const viewsMap = new Map(data?.viewsByDay?.map((d) => [d.date, d.count]) || []);
+  const clicksMap = new Map(data?.clicksByDay?.map((d) => [d.date, d.count]) || []);
+
+  const chartData = allDays.map((date) => ({
+    date,
+    label: new Date(date + "T00:00:00").toLocaleDateString("en", { weekday: "short" }),
+    views: viewsMap.get(date) || 0,
+    clicks: clicksMap.get(date) || 0,
+  }));
+
+  const chartMax = Math.max(...chartData.map((d) => Math.max(d.views, d.clicks)), 1);
+
   return (
     <div className="p-4 space-y-6">
       <SectionHeader title="Analytics" />
       <div>
         <h3 className="text-sm font-semibold mb-1">Overview</h3>
-        <p className="text-xs text-muted-foreground mb-4">Track how your profile is performing.</p>
+        <p className="text-xs text-muted-foreground mb-4">Last 30 days of profile activity.</p>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <Card>
-          <CardContent className="p-4 flex flex-col items-center text-center">
-            <Eye className="w-5 h-5 text-primary mb-2" />
-            <p className="text-2xl font-bold" data-testid="text-analytics-views">--</p>
-            <p className="text-xs text-muted-foreground">Profile Views</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex flex-col items-center text-center">
-            <MousePointerClick className="w-5 h-5 text-primary mb-2" />
-            <p className="text-2xl font-bold" data-testid="text-analytics-clicks">--</p>
-            <p className="text-xs text-muted-foreground">Link Clicks</p>
-          </CardContent>
-        </Card>
-      </div>
-      <Card>
-        <CardContent className="p-6 text-center">
-          <BarChart3 className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
-          <p className="text-sm font-medium mb-1">Analytics Coming Soon</p>
-          <p className="text-xs text-muted-foreground">
-            Detailed analytics with views, clicks, and visitor insights will be available in a future update.
-          </p>
-        </CardContent>
-      </Card>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-5 h-5 animate-spin text-primary" />
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <Card>
+              <CardContent className="p-4 flex flex-col items-center text-center">
+                <Eye className="w-5 h-5 text-primary mb-2" />
+                <p className="text-2xl font-bold" data-testid="text-analytics-views">{data?.totalViews ?? 0}</p>
+                <p className="text-xs text-muted-foreground">Profile Views</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 flex flex-col items-center text-center">
+                <MousePointerClick className="w-5 h-5 text-primary mb-2" />
+                <p className="text-2xl font-bold" data-testid="text-analytics-clicks">{data?.totalClicks ?? 0}</p>
+                <p className="text-xs text-muted-foreground">Link Clicks</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardContent className="p-4">
+              <h4 className="text-sm font-semibold mb-3">Last 7 Days</h4>
+              <div className="space-y-2">
+                {chartData.map((day) => (
+                  <div key={day.date} className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground w-8 shrink-0">{day.label}</span>
+                    <div className="flex-1 flex flex-col gap-1">
+                      <div className="flex items-center gap-1">
+                        <div
+                          className="h-3 rounded-sm bg-primary/70 transition-all"
+                          style={{ width: `${Math.max((day.views / chartMax) * 100, 2)}%` }}
+                          data-testid={`bar-views-${day.date}`}
+                        />
+                        <span className="text-[10px] text-muted-foreground">{day.views}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div
+                          className="h-3 rounded-sm bg-primary/30 transition-all"
+                          style={{ width: `${Math.max((day.clicks / chartMax) * 100, 2)}%` }}
+                          data-testid={`bar-clicks-${day.date}`}
+                        />
+                        <span className="text-[10px] text-muted-foreground">{day.clicks}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-sm bg-primary/70" />
+                  <span>Views</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-sm bg-primary/30" />
+                  <span>Clicks</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {data?.topBlocks && data.topBlocks.length > 0 && (
+            <Card>
+              <CardContent className="p-4">
+                <h4 className="text-sm font-semibold mb-3">Top Clicked Blocks</h4>
+                <div className="space-y-2">
+                  {data.topBlocks.slice(0, 5).map((item, idx) => (
+                    <div key={item.blockId} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="text-muted-foreground">#{idx + 1}</span>
+                      <span className="flex-1 truncate text-xs font-mono">{item.blockId.slice(0, 8)}...</span>
+                      <span className="font-semibold">{item.clicks}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {(data?.totalViews === 0 && data?.totalClicks === 0) && (
+            <Card>
+              <CardContent className="p-6 text-center">
+                <BarChart3 className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+                <p className="text-sm font-medium mb-1">No activity yet</p>
+                <p className="text-xs text-muted-foreground">
+                  Share your profile link to start seeing views and click data here.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
     </div>
   );
 }

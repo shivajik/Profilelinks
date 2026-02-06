@@ -1,4 +1,4 @@
-import { eq, asc, and, isNull } from "drizzle-orm";
+import { eq, asc, and, isNull, sql, gte, count } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import {
@@ -7,6 +7,7 @@ import {
   socials,
   pages,
   blocks,
+  analyticsEvents,
   type User,
   type InsertUser,
   type Link,
@@ -17,6 +18,7 @@ import {
   type InsertPage,
   type Block,
   type InsertBlock,
+  type AnalyticsEvent,
 } from "@shared/schema";
 
 const pool = new pg.Pool({
@@ -62,6 +64,9 @@ export interface IStorage {
   deleteBlock(id: string, userId: string): Promise<boolean>;
   getMaxBlockPositionByPage(pageId: string): Promise<number>;
   reorderBlocks(userId: string, blockIds: string[]): Promise<void>;
+
+  recordAnalyticsEvent(data: { userId: string; eventType: string; blockId?: string; pageSlug?: string; referrer?: string }): Promise<void>;
+  getAnalyticsSummary(userId: string): Promise<{ totalViews: number; totalClicks: number; viewsByDay: { date: string; count: number }[]; clicksByDay: { date: string; count: number }[]; topBlocks: { blockId: string; clicks: number }[] }>;
 }
 
 function slugify(title: string): string {
@@ -294,6 +299,62 @@ export class DatabaseStorage implements IStorage {
     for (let i = 0; i < blockIds.length; i++) {
       await db.update(blocks).set({ position: i }).where(eq(blocks.id, blockIds[i]));
     }
+  }
+
+  async recordAnalyticsEvent(data: { userId: string; eventType: string; blockId?: string; pageSlug?: string; referrer?: string }): Promise<void> {
+    await db.insert(analyticsEvents).values(data);
+  }
+
+  async getAnalyticsSummary(userId: string): Promise<{
+    totalViews: number;
+    totalClicks: number;
+    viewsByDay: { date: string; count: number }[];
+    clicksByDay: { date: string; count: number }[];
+    topBlocks: { blockId: string; clicks: number }[];
+  }> {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const allEvents = await db
+      .select()
+      .from(analyticsEvents)
+      .where(and(eq(analyticsEvents.userId, userId), gte(analyticsEvents.createdAt, thirtyDaysAgo)));
+
+    const totalViews = allEvents.filter((e) => e.eventType === "page_view").length;
+    const totalClicks = allEvents.filter((e) => e.eventType === "click").length;
+
+    const viewsByDayMap = new Map<string, number>();
+    const clicksByDayMap = new Map<string, number>();
+
+    for (const event of allEvents) {
+      const day = event.createdAt.toISOString().slice(0, 10);
+      if (event.eventType === "page_view") {
+        viewsByDayMap.set(day, (viewsByDayMap.get(day) || 0) + 1);
+      } else if (event.eventType === "click") {
+        clicksByDayMap.set(day, (clicksByDayMap.get(day) || 0) + 1);
+      }
+    }
+
+    const viewsByDay = Array.from(viewsByDayMap.entries())
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const clicksByDay = Array.from(clicksByDayMap.entries())
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const blockClickMap = new Map<string, number>();
+    for (const event of allEvents) {
+      if (event.eventType === "click" && event.blockId) {
+        blockClickMap.set(event.blockId, (blockClickMap.get(event.blockId) || 0) + 1);
+      }
+    }
+    const topBlocks = Array.from(blockClickMap.entries())
+      .map(([blockId, clicks]) => ({ blockId, clicks }))
+      .sort((a, b) => b.clicks - a.clicks)
+      .slice(0, 10);
+
+    return { totalViews, totalClicks, viewsByDay, clicksByDay, topBlocks };
   }
 }
 

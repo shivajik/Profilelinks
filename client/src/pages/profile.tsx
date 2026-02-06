@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -147,6 +147,37 @@ export default function PublicProfile() {
   const profileUrl = typeof window !== "undefined" ? `${window.location.origin}/${username}` : `/${username}`;
   const displayName = user.displayName || user.username;
 
+  const viewTracked = useRef(false);
+  useEffect(() => {
+    if (username && !viewTracked.current) {
+      viewTracked.current = true;
+      fetch("/api/analytics/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username,
+          eventType: "page_view",
+          pageSlug: currentPage?.slug || null,
+          referrer: document.referrer || null,
+        }),
+      }).catch(() => {});
+    }
+  }, [username, currentPage?.slug]);
+
+  const trackClick = useCallback((blockId?: string) => {
+    if (!username) return;
+    fetch("/api/analytics/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username,
+        eventType: "click",
+        blockId: blockId || null,
+        pageSlug: currentPage?.slug || null,
+      }),
+    }).catch(() => {});
+  }, [username, currentPage?.slug]);
+
   function handleCopyUrl() {
     navigator.clipboard.writeText(profileUrl);
     setCopied(true);
@@ -281,7 +312,7 @@ export default function PublicProfile() {
         {hasBlocks ? (
           <div className="space-y-3">
             {activeBlocks.map((block) => (
-              <PublicBlock key={block.id} block={block} template={template} />
+              <PublicBlock key={block.id} block={block} template={template} onClickTrack={trackClick} />
             ))}
           </div>
         ) : activeLinks.length > 0 ? (
@@ -292,6 +323,7 @@ export default function PublicProfile() {
                 href={normalizeUrl(link.url)}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => trackClick(link.id)}
                 className={`block w-full rounded-xl ${template.cardBg} p-4 text-center font-medium transition-all hover:scale-[1.02] hover:shadow-md group backdrop-blur-sm`}
                 data-testid={`link-card-${link.id}`}
               >
@@ -448,7 +480,7 @@ function getSpotifyEmbedUrl(url: string): string | null {
   return null;
 }
 
-function PublicBlock({ block, template }: { block: Block; template: ReturnType<typeof getTemplate> }) {
+function PublicBlock({ block, template, onClickTrack }: { block: Block; template: ReturnType<typeof getTemplate>; onClickTrack?: (blockId: string) => void }) {
   const content = block.content as BlockContent;
 
   switch (block.type) {
@@ -459,6 +491,7 @@ function PublicBlock({ block, template }: { block: Block; template: ReturnType<t
           href={href}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => onClickTrack?.(block.id)}
           className={`block w-full rounded-xl ${template.cardBg} p-4 text-center font-medium transition-all hover:scale-[1.02] hover:shadow-md group backdrop-blur-sm`}
           data-testid={`block-url-${block.id}`}
         >
@@ -474,6 +507,7 @@ function PublicBlock({ block, template }: { block: Block; template: ReturnType<t
       return (
         <a
           href={href}
+          onClick={() => onClickTrack?.(block.id)}
           className={`block w-full rounded-xl ${template.cardBg} p-4 text-center font-medium transition-all hover:scale-[1.02] hover:shadow-md group backdrop-blur-sm`}
           data-testid={`block-email-${block.id}`}
         >
