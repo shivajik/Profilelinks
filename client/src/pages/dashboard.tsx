@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, Redirect } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -17,20 +17,19 @@ import {
   GripVertical,
   Pencil,
   Trash2,
-  ExternalLink,
   LogOut,
   Copy,
   Check,
   Loader2,
-  Eye,
   Link2,
   Camera,
   X,
   Palette,
   Settings,
-  Share2,
-  ChevronDown,
-  ChevronUp,
+  BarChart3,
+  QrCode,
+  Monitor,
+  Smartphone,
 } from "lucide-react";
 import {
   Dialog,
@@ -60,8 +59,8 @@ export default function Dashboard() {
   const [addingLink, setAddingLink] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<"design" | "settings">("design");
-  const [headerOpen, setHeaderOpen] = useState(true);
+  const [activeSection, setActiveSection] = useState<string>("design");
+  const [previewMode, setPreviewMode] = useState<"mobile" | "desktop">("mobile");
 
   const { data: links = [], isLoading: linksLoading } = useQuery<Link[]>({
     queryKey: ["/api/links"],
@@ -148,8 +147,15 @@ export default function Dashboard() {
 
   const sortedLinks = [...links].sort((a, b) => a.position - b.position);
 
+  const sidebarItems = [
+    { id: "design", label: "Design", icon: Palette, active: true },
+    { id: "settings", label: "Settings", icon: Settings },
+    { id: "analytics", label: "Analytics", icon: BarChart3 },
+    { id: "qrcodes", label: "QR Codes", icon: QrCode },
+  ];
+
   const sidebarStyle = {
-    "--sidebar-width": "13rem",
+    "--sidebar-width": "11rem",
     "--sidebar-width-icon": "3rem",
   };
 
@@ -166,42 +172,23 @@ export default function Dashboard() {
             <SidebarGroup>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={() => setActiveTab("design")}
-                      isActive={activeTab === "design"}
-                      data-testid="sidebar-design"
-                    >
-                      <Palette className="w-4 h-4" />
-                      <span>Design</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={() => setActiveTab("settings")}
-                      isActive={activeTab === "settings"}
-                      data-testid="sidebar-settings"
-                    >
-                      <Settings className="w-4 h-4" />
-                      <span>Settings</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                  {sidebarItems.map((item) => (
+                    <SidebarMenuItem key={item.id}>
+                      <SidebarMenuButton
+                        onClick={() => setActiveSection(item.id)}
+                        isActive={activeSection === item.id}
+                        data-testid={`sidebar-${item.id}`}
+                      >
+                        <item.icon className="w-4 h-4" />
+                        <span>{item.label}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>
           <SidebarFooter>
-            <div className="flex items-center gap-3 px-2 mb-2">
-              <Avatar className="w-8 h-8 border border-border">
-                <AvatarImage src={user.profileImage || undefined} />
-                <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                  {(user.displayName || user.username).charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{user.displayName || user.username}</p>
-              </div>
-            </div>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton onClick={handleLogout} data-testid="button-logout">
@@ -214,115 +201,89 @@ export default function Dashboard() {
         </Sidebar>
 
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="sticky top-0 z-50 bg-background border-b px-4 py-2 flex items-center gap-3">
-            <SidebarTrigger data-testid="button-sidebar-toggle" />
-            <div className="flex items-center gap-2 bg-muted rounded-md px-3 py-1.5 flex-1 max-w-md">
-              <Link2 className="w-4 h-4 text-muted-foreground shrink-0" />
-              <span className="text-sm text-muted-foreground truncate" data-testid="text-profile-url">
-                {profileUrl}
-              </span>
-              <button onClick={copyUrl} className="text-muted-foreground shrink-0 ml-auto" data-testid="button-copy-url">
-                {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
-              </button>
-            </div>
-            <div className="flex items-center gap-2 ml-auto">
-              <a href={`/${user.username}`} target="_blank" rel="noopener noreferrer">
-                <Button variant="ghost" size="icon" data-testid="button-preview">
-                  <Eye className="w-4 h-4" />
-                </Button>
-              </a>
-              <Button variant="outline" size="sm" onClick={() => window.open(`/${user.username}`, '_blank')} data-testid="button-share">
-                <Share2 className="w-4 h-4" />
-                Share
-              </Button>
-            </div>
-          </header>
-
           <div className="flex-1 flex overflow-hidden">
-            <div className="flex-1 overflow-y-auto p-4 lg:p-6">
-              <div className="max-w-lg mx-auto space-y-4">
-                <div className="flex items-center gap-3 mb-2">
-                  <button
-                    onClick={() => setHeaderOpen(!headerOpen)}
-                    className="flex items-center gap-2 text-sm font-semibold text-foreground"
-                    data-testid="button-toggle-header"
-                  >
-                    {headerOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    Header
-                  </button>
-                  <Avatar className="w-6 h-6 border border-border">
-                    <AvatarImage src={user.profileImage || undefined} />
-                    <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                      {(user.displayName || user.username).charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+            <div className="flex-1 overflow-y-auto border-r bg-background min-w-[300px] max-w-[420px]">
+              <div className="p-4 space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <SidebarTrigger data-testid="button-sidebar-toggle" />
+                  <div className="flex items-center gap-2 bg-muted rounded-md px-3 py-1.5 flex-1">
+                    <Link2 className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="text-sm text-muted-foreground truncate" data-testid="text-profile-url">
+                      {profileUrl}
+                    </span>
+                    <Button variant="ghost" size="icon" onClick={copyUrl} className="shrink-0 ml-auto" data-testid="button-copy-url">
+                      {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                    </Button>
+                  </div>
                 </div>
 
-                {headerOpen && (
-                  <Card>
-                    <CardContent className="py-4 px-4">
-                      <div className="flex items-center gap-4">
-                        <div className="relative group">
-                          <input
-                            type="file"
-                            accept="image/jpeg,image/png,image/gif,image/webp"
-                            className="hidden"
-                            id="dash-avatar-upload"
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              const formData = new FormData();
-                              formData.append("file", file);
-                              try {
-                                const res = await fetch("/api/upload", { method: "POST", body: formData });
-                                const data = await res.json();
-                                if (res.ok) {
-                                  await apiRequest("PATCH", "/api/auth/profile", { profileImage: data.url });
-                                  queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-                                  toast({ title: "Profile picture updated!" });
-                                }
-                              } catch { /* silently ignore */ }
-                            }}
-                            data-testid="input-header-avatar-upload"
-                          />
-                          <label htmlFor="dash-avatar-upload" className="cursor-pointer block">
-                            <Avatar className="w-14 h-14 border-2 border-border">
-                              <AvatarImage src={user.profileImage || undefined} />
-                              <AvatarFallback className="bg-primary/10 text-primary text-lg">
-                                {(user.displayName || user.username).charAt(0).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Camera className="w-4 h-4 text-white" />
-                            </div>
-                          </label>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold truncate" data-testid="text-display-name">
-                            {user.displayName || user.username}
-                          </p>
-                          {user.bio && (
-                            <p className="text-xs text-muted-foreground truncate mt-0.5">{user.bio}</p>
-                          )}
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setEditingProfile(true)}
-                          data-testid="button-edit-profile"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
+                <Card>
+                  <CardContent className="py-3 px-4">
+                    <div className="flex items-center gap-3">
+                      <div className="relative group">
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/gif,image/webp"
+                          className="hidden"
+                          id="dash-avatar-upload"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const formData = new FormData();
+                            formData.append("file", file);
+                            try {
+                              const res = await fetch("/api/upload", { method: "POST", body: formData });
+                              const data = await res.json();
+                              if (res.ok) {
+                                await apiRequest("PATCH", "/api/auth/profile", { profileImage: data.url });
+                                queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+                                toast({ title: "Profile picture updated!" });
+                              }
+                            } catch {}
+                          }}
+                          data-testid="input-header-avatar-upload"
+                        />
+                        <label htmlFor="dash-avatar-upload" className="cursor-pointer block">
+                          <Avatar className="w-12 h-12 border-2 border-border">
+                            <AvatarImage src={user.profileImage || undefined} />
+                            <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                              {(user.displayName || user.username).charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Camera className="w-3.5 h-3.5 text-white" />
+                          </div>
+                        </label>
                       </div>
-                    </CardContent>
-                  </Card>
-                )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm truncate" data-testid="text-display-name">
+                          {user.displayName || user.username}
+                        </p>
+                        {user.bio && (
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">{user.bio}</p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-0.5">@{user.username}</p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setEditingProfile(true)}
+                        data-testid="button-edit-profile"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
 
                 <div className="flex items-center justify-between gap-4">
-                  <h2 className="text-sm font-semibold">Blocks</h2>
+                  <h2 className="text-sm font-semibold flex items-center gap-2">
+                    <Link2 className="w-4 h-4 text-primary" />
+                    Blocks
+                  </h2>
                   <Button size="sm" onClick={() => setAddingLink(true)} data-testid="button-add-link">
                     <Plus className="w-4 h-4" />
-                    New Block
+                    New Block +
                   </Button>
                 </div>
 
@@ -336,9 +297,9 @@ export default function Dashboard() {
                       <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                         <Link2 className="w-6 h-6 text-primary" />
                       </div>
-                      <h3 className="font-semibold mb-1">No links yet</h3>
+                      <h3 className="font-semibold mb-1">No blocks yet</h3>
                       <p className="text-sm text-muted-foreground mb-4 max-w-xs">
-                        Add your first link to start building your profile page.
+                        Add your first link block to start building your profile page.
                       </p>
                       <Button size="sm" onClick={() => setAddingLink(true)} data-testid="button-add-first-link">
                         <Plus className="w-4 h-4" />
@@ -351,53 +312,57 @@ export default function Dashboard() {
                     {sortedLinks.map((link, index) => (
                       <Card
                         key={link.id}
-                        className={`transition-opacity ${!link.active ? "opacity-50" : ""}`}
+                        className={`transition-opacity overflow-hidden ${
+                          !link.active ? "opacity-50" : ""
+                        }`}
                       >
-                        <CardContent className="flex items-center gap-2 py-2.5 px-3">
-                          <GripVertical className="w-4 h-4 text-muted-foreground/40 shrink-0 cursor-grab" />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate" data-testid={`text-link-title-${link.id}`}>
-                              {link.title}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate" data-testid={`text-link-url-${link.id}`}>
-                              {link.url}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <div className="flex flex-col">
-                              <button
-                                onClick={() => moveLink(index, "up")}
-                                disabled={index === 0}
-                                className="text-muted-foreground disabled:opacity-20 p-0.5"
-                                data-testid={`button-move-up-${link.id}`}
+                        <CardContent className="flex items-center gap-0 p-0">
+                          <div className={`w-1 self-stretch shrink-0 ${!link.active ? "bg-muted-foreground/20" : "bg-primary"}`} />
+                          <div className="flex items-center gap-2 py-2.5 px-3 flex-1 min-w-0">
+                            <GripVertical className="w-4 h-4 text-muted-foreground/40 shrink-0 cursor-grab" />
+                            <div className="flex-1 min-w-0">
+                              <a
+                                href={link.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-medium text-sm text-primary truncate block"
+                                data-testid={`text-link-title-${link.id}`}
                               >
-                                <ChevronUp className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => moveLink(index, "down")}
-                                disabled={index === sortedLinks.length - 1}
-                                className="text-muted-foreground disabled:opacity-20 p-0.5"
-                                data-testid={`button-move-down-${link.id}`}
-                              >
-                                <ChevronDown className="w-3.5 h-3.5" />
-                              </button>
+                                {link.title}
+                              </a>
+                              <p className="text-xs text-muted-foreground" data-testid={`text-link-type-${link.id}`}>
+                                URL Button
+                              </p>
                             </div>
-                            <Button variant="ghost" size="icon" onClick={() => setEditingLink(link)} data-testid={`button-edit-link-${link.id}`}>
-                              <Pencil className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => deleteLinkMutation.mutate(link.id)}
-                              data-testid={`button-delete-link-${link.id}`}
-                            >
-                              <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                            </Button>
-                            <Switch
-                              checked={link.active}
-                              onCheckedChange={(checked) => toggleLinkMutation.mutate({ id: link.id, active: checked })}
-                              data-testid={`switch-link-active-${link.id}`}
-                            />
+                            <div className="flex items-center gap-0.5 shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(link.url);
+                                  toast({ title: "URL copied!" });
+                                }}
+                                data-testid={`button-copy-link-${link.id}`}
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => deleteLinkMutation.mutate(link.id)}
+                                data-testid={`button-delete-link-${link.id}`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setEditingLink(link)}
+                                data-testid={`button-edit-link-${link.id}`}
+                              >
+                                <Settings className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
                           </div>
                         </CardContent>
                       </Card>
@@ -407,26 +372,47 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="hidden lg:flex w-[340px] border-l bg-muted/20 items-center justify-center p-6 shrink-0">
-              <PhonePreview
-                template={currentTemplate}
-                displayName={user.displayName || user.username}
-                bio={user.bio || ""}
-                profileImage={user.profileImage || ""}
-                username={user.username}
-                links={sortedLinks}
-              />
-            </div>
-
-            {activeTab === "design" && (
-              <div className="hidden xl:block w-[280px] border-l bg-background overflow-y-auto shrink-0">
-                <AppearancePanel
-                  currentTemplateId={user.template || "minimal"}
-                  onSelectTemplate={(id) => templateMutation.mutate(id)}
-                  saving={templateMutation.isPending}
+            <div className="hidden md:flex flex-1 bg-muted/30 items-center justify-center p-6">
+              <div className="flex flex-col items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setPreviewMode("mobile")}
+                    className={`toggle-elevate ${previewMode === "mobile" ? "toggle-elevated" : ""}`}
+                    data-testid="button-preview-mobile"
+                  >
+                    <Smartphone className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setPreviewMode("desktop")}
+                    className={`toggle-elevate ${previewMode === "desktop" ? "toggle-elevated" : ""}`}
+                    data-testid="button-preview-desktop"
+                  >
+                    <Monitor className="w-4 h-4" />
+                  </Button>
+                </div>
+                <PhonePreview
+                  template={currentTemplate}
+                  displayName={user.displayName || user.username}
+                  bio={user.bio || ""}
+                  profileImage={user.profileImage || ""}
+                  username={user.username}
+                  links={sortedLinks}
+                  mode={previewMode}
                 />
               </div>
-            )}
+            </div>
+
+            <div className="hidden lg:block w-[280px] border-l bg-background overflow-y-auto shrink-0">
+              <DesignPanel
+                currentTemplateId={user.template || "minimal"}
+                onSelectTemplate={(id) => templateMutation.mutate(id)}
+                saving={templateMutation.isPending}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -438,7 +424,7 @@ export default function Dashboard() {
   );
 }
 
-function AppearancePanel({
+function DesignPanel({
   currentTemplateId,
   onSelectTemplate,
   saving,
@@ -447,20 +433,48 @@ function AppearancePanel({
   onSelectTemplate: (id: string) => void;
   saving: boolean;
 }) {
+  const currentTemplate = getTemplate(currentTemplateId);
+
   return (
     <div className="p-4 space-y-6">
       <div>
-        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-          <Palette className="w-4 h-4 text-primary" />
-          Theme
-        </h3>
+        <h3 className="text-sm font-semibold mb-4">General Styles</h3>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm text-muted-foreground">Primary Text Color</span>
+            <div
+              className="w-6 h-6 rounded-full border border-border shrink-0"
+              style={{ backgroundColor: currentTemplate.accent }}
+              data-testid="display-primary-text-color"
+            />
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm text-muted-foreground">Primary Background</span>
+            <div
+              className={`w-6 h-6 rounded-full border border-border shrink-0 ${currentTemplate.bg.includes("gradient") ? currentTemplate.bg : ""}`}
+              style={!currentTemplate.bg.includes("gradient") ? { backgroundColor: currentTemplate.bg.match(/#[0-9a-fA-F]{6}/)?.[0] || "#f5f0eb" } : {}}
+              data-testid="display-primary-bg"
+            />
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm text-muted-foreground">Card Background</span>
+            <div
+              className={`w-6 h-6 rounded-full border border-border shrink-0 ${currentTemplate.cardBg}`}
+              data-testid="display-card-bg"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t pt-4">
+        <h3 className="text-sm font-semibold mb-3">Theme</h3>
         <div className="grid grid-cols-3 gap-2">
           {TEMPLATES.map((t) => (
             <button
               key={t.id}
               onClick={() => onSelectTemplate(t.id)}
               disabled={saving}
-              className={`relative rounded-lg overflow-hidden aspect-[3/4] p-2 flex flex-col items-center justify-center text-center transition-all border-2 ${
+              className={`relative rounded-md overflow-hidden aspect-[3/4] p-2 flex flex-col items-center justify-center text-center transition-all border-2 ${
                 currentTemplateId === t.id ? "border-primary ring-1 ring-primary/20" : "border-transparent"
               } ${t.bg}`}
               data-testid={`theme-${t.id}`}
@@ -480,6 +494,38 @@ function AppearancePanel({
           ))}
         </div>
       </div>
+
+      <div className="border-t pt-4">
+        <h3 className="text-sm font-semibold mb-4">Header Styles</h3>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm text-muted-foreground">Profile Picture Shadow</span>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              defaultValue="0"
+              className="w-20 h-1 accent-primary"
+              data-testid="slider-profile-shadow"
+            />
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm text-muted-foreground">Profile Picture Border</span>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              defaultValue="30"
+              className="w-20 h-1 accent-primary"
+              data-testid="slider-profile-border"
+            />
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm text-muted-foreground">Collapse Long Bio</span>
+            <Switch defaultChecked={false} data-testid="switch-collapse-bio" />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -491,6 +537,7 @@ function PhonePreview({
   profileImage,
   username,
   links,
+  mode,
 }: {
   template: (typeof TEMPLATES)[0];
   displayName: string;
@@ -498,11 +545,17 @@ function PhonePreview({
   profileImage: string;
   username: string;
   links: Link[];
+  mode: "mobile" | "desktop";
 }) {
   const activeLinks = links.filter((l) => l.active);
 
   return (
-    <div className="w-[280px] mx-auto" data-testid="phone-preview">
+    <div
+      className={`mx-auto transition-all duration-300 ${
+        mode === "desktop" ? "w-[380px]" : "w-[280px]"
+      }`}
+      data-testid="phone-preview"
+    >
       <div className="rounded-[2rem] border-4 border-foreground/10 overflow-hidden shadow-xl">
         <div className="bg-foreground/10 h-7 flex items-center justify-center">
           <span className="text-[10px] text-muted-foreground font-medium truncate px-4">
@@ -549,6 +602,12 @@ function PhonePreview({
                   </div>
                 </>
               )}
+            </div>
+
+            <div className="mt-6">
+              <p className={`text-[10px] ${template.textColor} opacity-50`}>
+                linkfolio
+              </p>
             </div>
           </div>
         </div>
@@ -633,6 +692,13 @@ function EditLinkDialog({ link, onClose }: { link: Link | null; onClose: () => v
   const [title, setTitle] = useState(link?.title || "");
   const [url, setUrl] = useState(link?.url || "");
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (link) {
+      setTitle(link.title);
+      setUrl(link.url);
+    }
+  }, [link]);
 
   const mutation = useMutation({
     mutationFn: async () => {
