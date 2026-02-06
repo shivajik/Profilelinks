@@ -4,6 +4,8 @@
 A link-in-bio web application that allows users to create personalized landing pages with multiple links to their social profiles, websites, and content - all accessible through a single custom URL.
 
 ## Recent Changes
+- 2026-02-06: Added profile picture file upload (multer) in onboarding wizard and dashboard
+- 2026-02-06: Added 4-step onboarding wizard with templates, profile, socials, URL claim
 - 2026-02-06: Initial MVP built with auth, dashboard, and public profiles
 
 ## Architecture
@@ -29,6 +31,7 @@ A link-in-bio web application that allows users to create personalized landing p
 - `PATCH /api/links/:id` - Update link
 - `DELETE /api/links/:id` - Delete link
 - `POST /api/links/reorder` - Reorder links
+- `POST /api/upload` - Upload profile image (multipart/form-data, max 5MB)
 - `GET /api/profile/:username` - Get public profile + links
 
 ## Database Schema

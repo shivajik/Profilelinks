@@ -24,6 +24,8 @@ import {
   Eye,
   Link2,
   User as UserIcon,
+  Camera,
+  X,
 } from "lucide-react";
 import {
   Dialog,
@@ -406,7 +408,35 @@ function EditProfileDialog({ open, onClose, user }: { open: boolean; onClose: ()
   const [displayName, setDisplayName] = useState(user?.displayName || "");
   const [bio, setBio] = useState(user?.bio || "");
   const [profileImage, setProfileImage] = useState(user?.profileImage || "");
+  const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
+
+  const handleFileUpload = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Invalid file", description: "Please upload an image file", variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Please upload an image smaller than 5MB", variant: "destructive" });
+      return;
+    }
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Upload failed");
+      }
+      const data = await res.json();
+      setProfileImage(data.url);
+    } catch (e: any) {
+      toast({ title: "Upload failed", description: e.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -439,6 +469,51 @@ function EditProfileDialog({ open, onClose, user }: { open: boolean; onClose: ()
           }}
           className="space-y-4"
         >
+          <div className="flex items-center gap-4">
+            <div className="relative group">
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                className="hidden"
+                id="profile-avatar-upload"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileUpload(file);
+                }}
+                data-testid="input-profile-image-file"
+              />
+              <label htmlFor="profile-avatar-upload" className="cursor-pointer block" data-testid="button-profile-upload-avatar">
+                <Avatar className="w-16 h-16 border-2 border-border">
+                  <AvatarImage src={profileImage || undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-lg">
+                    {(displayName || user?.username || "?").charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  {uploading ? (
+                    <Loader2 className="w-4 h-4 text-white animate-spin" />
+                  ) : (
+                    <Camera className="w-4 h-4 text-white" />
+                  )}
+                </div>
+              </label>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium">Profile Picture</p>
+              <p className="text-xs text-muted-foreground">Click avatar to upload</p>
+              {profileImage && (
+                <button
+                  type="button"
+                  onClick={() => setProfileImage("")}
+                  className="text-xs text-destructive mt-1 flex items-center gap-1"
+                  data-testid="button-profile-remove-avatar"
+                >
+                  <X className="w-3 h-3" />
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="prof-name">Display Name</Label>
             <Input
@@ -462,21 +537,11 @@ function EditProfileDialog({ open, onClose, user }: { open: boolean; onClose: ()
             />
             <p className="text-xs text-muted-foreground text-right">{bio.length}/500</p>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="prof-image">Profile Image URL</Label>
-            <Input
-              id="prof-image"
-              placeholder="https://example.com/photo.jpg"
-              value={profileImage}
-              onChange={(e) => setProfileImage(e.target.value)}
-              data-testid="input-profile-image"
-            />
-          </div>
           <div className="flex justify-end gap-3">
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={mutation.isPending} data-testid="button-save-profile">
+            <Button type="submit" disabled={mutation.isPending || uploading} data-testid="button-save-profile">
               {mutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
               Save
             </Button>

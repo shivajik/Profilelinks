@@ -1,4 +1,4 @@
-import type { Express, Request, Response, NextFunction } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
 import { storage } from "./storage";
@@ -7,6 +7,10 @@ import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, update
 import { fromZodError } from "zod-validation-error";
 import connectPgSimple from "connect-pg-simple";
 import pg from "pg";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import crypto from "crypto";
 
 declare module "express-session" {
   interface SessionData {
@@ -21,6 +25,32 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+const uploadsDir = path.resolve(process.cwd(), "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const uploadStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, uploadsDir),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname) || ".jpg";
+    cb(null, crypto.randomUUID() + ext);
+  },
+});
+
+const upload = multer({
+  storage: uploadStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files (JPEG, PNG, GIF, WEBP) are allowed"));
+    }
+  },
+});
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -29,6 +59,8 @@ export async function registerRoutes(
   const sessionPool = new pg.Pool({
     connectionString: process.env.DATABASE_URL,
   });
+
+  app.use("/uploads", express.static(uploadsDir));
 
   app.use(
     session({
@@ -150,6 +182,25 @@ export async function registerRoutes(
     } catch (error: any) {
       res.status(500).json({ message: "Profile update failed" });
     }
+  });
+
+  app.post("/api/upload", requireAuth, (req, res) => {
+    upload.single("file")(req, res, (err: any) => {
+      if (err) {
+        if (err instanceof multer.MulterError) {
+          if (err.code === "LIMIT_FILE_SIZE") {
+            return res.status(400).json({ message: "File too large. Maximum size is 5MB." });
+          }
+          return res.status(400).json({ message: err.message });
+        }
+        return res.status(400).json({ message: err.message || "Upload failed" });
+      }
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      const url = `/uploads/${req.file.filename}`;
+      res.json({ url });
+    });
   });
 
   app.get("/api/links", requireAuth, async (req, res) => {

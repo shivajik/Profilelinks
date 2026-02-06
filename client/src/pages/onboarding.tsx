@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Check, ArrowRight, Loader2, X, GripVertical } from "lucide-react";
+import { Check, ArrowRight, Loader2, X, GripVertical, Camera, Upload } from "lucide-react";
 import {
   SiInstagram,
   SiX,
@@ -356,28 +356,117 @@ function ProfileStep({
   profileImage: string;
   setProfileImage: (v: string) => void;
 }) {
+  const [uploading, setUploading] = useState(false);
+  const { toast } = useToast();
+
+  const handleFileUpload = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Invalid file", description: "Please upload an image file (JPEG, PNG, GIF, or WEBP)", variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Please upload an image smaller than 5MB", variant: "destructive" });
+      return;
+    }
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Upload failed");
+      }
+      const data = await res.json();
+      setProfileImage(data.url);
+    } catch (e: any) {
+      toast({ title: "Upload failed", description: e.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) handleFileUpload(file);
+  };
+
   return (
     <div>
       <h1 className="text-3xl font-bold mb-2" data-testid="text-step-title">Customize Profile</h1>
       <p className="text-muted-foreground mb-8">Add a profile picture, name, and bio.</p>
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Avatar className="w-16 h-16 border-2 border-border">
-            <AvatarImage src={profileImage || undefined} />
-            <AvatarFallback className="bg-primary/10 text-primary text-lg">
-              {displayName ? displayName.charAt(0).toUpperCase() : "?"}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1">
-            <Label htmlFor="onb-image" className="text-sm text-muted-foreground">Profile Picture URL</Label>
-            <Input
-              id="onb-image"
-              placeholder="https://example.com/avatar.jpg"
-              value={profileImage}
-              onChange={(e) => setProfileImage(e.target.value)}
-              data-testid="input-onboarding-image"
-            />
+        <div>
+          <Label className="text-sm text-muted-foreground mb-3 block">Profile Picture</Label>
+          <div className="flex items-start gap-5">
+            <div className="relative group">
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                className="hidden"
+                id="avatar-upload"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileUpload(file);
+                }}
+                data-testid="input-onboarding-image-file"
+              />
+              <label
+                htmlFor="avatar-upload"
+                className="cursor-pointer block"
+                data-testid="button-upload-avatar"
+              >
+                <Avatar className="w-20 h-20 border-2 border-border">
+                  <AvatarImage src={profileImage || undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-2xl">
+                    {displayName ? displayName.charAt(0).toUpperCase() : "?"}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  {uploading ? (
+                    <Loader2 className="w-5 h-5 text-white animate-spin" />
+                  ) : (
+                    <Camera className="w-5 h-5 text-white" />
+                  )}
+                </div>
+              </label>
+            </div>
+            <div
+              className="flex-1 border-2 border-dashed border-border rounded-lg p-4 flex flex-col items-center justify-center text-center min-h-[80px] transition-colors hover:border-primary/50"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleDrop}
+              data-testid="dropzone-avatar"
+            >
+              {uploading ? (
+                <Loader2 className="w-5 h-5 text-muted-foreground animate-spin mb-1" />
+              ) : (
+                <Upload className="w-5 h-5 text-muted-foreground mb-1" />
+              )}
+              <p className="text-xs text-muted-foreground">
+                Drag & drop an image here, or{" "}
+                <label htmlFor="avatar-upload" className="text-primary cursor-pointer font-medium">
+                  browse
+                </label>
+              </p>
+              <p className="text-xs text-muted-foreground/60 mt-1">JPEG, PNG, GIF, WEBP up to 5MB</p>
+            </div>
           </div>
+          {profileImage && (
+            <div className="mt-2 flex items-center gap-2">
+              <p className="text-xs text-muted-foreground truncate flex-1">{profileImage}</p>
+              <button
+                onClick={() => setProfileImage("")}
+                className="text-destructive shrink-0 p-1"
+                data-testid="button-remove-avatar"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="onb-name">Name</Label>
