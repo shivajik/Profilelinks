@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Loader2, ExternalLink, Mail, Play, Music, UserPlus, Share2, QrCode, Copy, Check } from "lucide-react";
+import { Loader2, ExternalLink, Mail, Play, Music, UserPlus, Share2, QrCode, Copy, Check, ChevronDown } from "lucide-react";
 import { SiFacebook, SiX, SiPinterest, SiReddit, SiLinkedin } from "react-icons/si";
 import { QRCodeSVG } from "qrcode.react";
 import { getTemplate } from "@/lib/templates";
@@ -32,6 +32,56 @@ function normalizeUrl(url: string, platform?: string): string {
 }
 
 type PageInfo = { id: string; title: string; slug: string; isHome: boolean };
+
+function MobilePageNav({
+  pages,
+  currentPage,
+  onSelectPage,
+  template,
+}: {
+  pages: PageInfo[];
+  currentPage: PageInfo | null;
+  onSelectPage: (slug: string | null) => void;
+  template: ReturnType<typeof getTemplate>;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative inline-block">
+      <button
+        onClick={() => setOpen(!open)}
+        className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium ${template.cardBg} ${template.cardTextColor}`}
+        data-testid="button-page-nav-toggle"
+      >
+        {currentPage?.title || "Home"}
+        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className={`absolute top-full mt-2 left-1/2 -translate-x-1/2 min-w-[140px] rounded-xl ${template.cardBg} backdrop-blur-md py-1 z-50 shadow-lg`}>
+          {pages.map((page) => {
+            const isActive = currentPage?.slug === page.slug;
+            return (
+              <button
+                key={page.id}
+                onClick={() => {
+                  onSelectPage(page.isHome ? null : page.slug);
+                  setOpen(false);
+                }}
+                className={`block w-full text-left px-4 py-2 text-sm ${
+                  isActive
+                    ? `${template.cardTextColor} font-medium`
+                    : `${template.cardTextColor} opacity-60`
+                }`}
+                data-testid={`mobile-page-tab-${page.slug}`}
+              >
+                {page.title}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 type PublicProfile = {
   user: Omit<User, "password" | "email">;
@@ -194,27 +244,37 @@ export default function PublicProfile() {
           )}
 
           {hasMultiplePages && (
-            <div className="flex items-center gap-2 mt-5 flex-wrap justify-center" data-testid="page-nav">
-              {pages.map((page) => {
-                const isActive = currentPage?.slug === page.slug;
-                return (
-                  <Button
-                    key={page.id}
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setActivePageSlug(page.isHome ? null : page.slug)}
-                    className={`rounded-full px-4 ${
-                      isActive
-                        ? `${template.cardBg} ${template.cardTextColor}`
-                        : `${template.textColor} opacity-60 hover:opacity-100`
-                    }`}
-                    data-testid={`page-tab-${page.slug}`}
-                  >
-                    {page.title}
-                  </Button>
-                );
-              })}
-            </div>
+            <>
+              <div className="hidden sm:flex items-center gap-2 mt-5 flex-wrap justify-center" data-testid="page-nav">
+                {pages.map((page) => {
+                  const isActive = currentPage?.slug === page.slug;
+                  return (
+                    <Button
+                      key={page.id}
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setActivePageSlug(page.isHome ? null : page.slug)}
+                      className={`rounded-full px-4 ${
+                        isActive
+                          ? `${template.cardBg} ${template.cardTextColor}`
+                          : `${template.textColor} opacity-60 hover:opacity-100`
+                      }`}
+                      data-testid={`page-tab-${page.slug}`}
+                    >
+                      {page.title}
+                    </Button>
+                  );
+                })}
+              </div>
+              <div className="sm:hidden mt-5" data-testid="page-nav-mobile">
+                <MobilePageNav
+                  pages={pages}
+                  currentPage={currentPage}
+                  onSelectPage={(slug) => setActivePageSlug(slug)}
+                  template={template}
+                />
+              </div>
+            </>
           )}
         </div>
 

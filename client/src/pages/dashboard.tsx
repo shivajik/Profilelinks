@@ -777,6 +777,49 @@ function DesignPanel({
   );
 }
 
+function PreviewPageNav({
+  pages,
+  currentPage,
+  template,
+}: {
+  pages: Page[];
+  currentPage: Page | null;
+  template: (typeof TEMPLATES)[0];
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative mt-3 inline-block">
+      <button
+        onClick={() => setOpen(!open)}
+        className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-medium ${template.cardBg} ${template.cardTextColor}`}
+        data-testid="preview-page-nav-toggle"
+      >
+        {currentPage?.title || "Home"}
+        <ChevronDown className={`w-2.5 h-2.5 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className={`absolute top-full mt-1 left-1/2 -translate-x-1/2 min-w-[100px] rounded-lg ${template.cardBg} backdrop-blur-md py-0.5 z-50 shadow-lg`}>
+          {pages.map((page) => {
+            const isActive = currentPage?.id === page.id;
+            return (
+              <div
+                key={page.id}
+                className={`px-3 py-1 text-[10px] cursor-default ${
+                  isActive
+                    ? `${template.cardTextColor} font-medium`
+                    : `${template.textColor} opacity-50`
+                }`}
+              >
+                {page.title}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PhonePreview({
   template,
   displayName,
@@ -842,20 +885,7 @@ function PhonePreview({
             )}
 
             {pages.length > 1 && (
-              <div className="flex items-center gap-1.5 mt-3 flex-wrap justify-center">
-                {pages.map((page) => (
-                  <div
-                    key={page.id}
-                    className={`text-[10px] px-2 py-0.5 rounded-full ${
-                      currentPage?.id === page.id
-                        ? `${template.cardBg} ${template.cardTextColor} font-medium`
-                        : `${template.textColor} opacity-50`
-                    }`}
-                  >
-                    {page.title}
-                  </div>
-                ))}
-              </div>
+              <PreviewPageNav pages={pages} currentPage={currentPage} template={template} />
             )}
 
             <div className="w-full mt-5 space-y-2">
