@@ -11,6 +11,8 @@ export const users = pgTable("users", {
   displayName: text("display_name"),
   bio: text("bio"),
   profileImage: text("profile_image"),
+  onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
+  template: text("template").default("minimal"),
 });
 
 export const links = pgTable("links", {
@@ -42,6 +44,8 @@ export const updateProfileSchema = z.object({
   bio: z.string().max(500).optional().nullable(),
   profileImage: z.string().optional().nullable(),
   username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_-]+$/).optional(),
+  onboardingCompleted: z.boolean().optional(),
+  template: z.string().optional(),
 });
 
 export const insertLinkSchema = createInsertSchema(links).omit({
