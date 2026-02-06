@@ -13,6 +13,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   Plus,
   GripVertical,
   Pencil,
@@ -30,7 +35,13 @@ import {
   QrCode,
   Monitor,
   Smartphone,
+  ChevronDown,
+  HelpCircle,
+  MessageSquare,
+  AtSign,
+  FileText,
 } from "lucide-react";
+import { SiX, SiInstagram } from "react-icons/si";
 import {
   Dialog,
   DialogContent,
@@ -55,12 +66,18 @@ export default function Dashboard() {
   const { user, logout, isLoading: authLoading } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const [editingLink, setEditingLink] = useState<Link | null>(null);
+  const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
   const [addingLink, setAddingLink] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [copied, setCopied] = useState(false);
   const [activeSection, setActiveSection] = useState<string>("design");
   const [previewMode, setPreviewMode] = useState<"mobile" | "desktop">("mobile");
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
+    page: true,
+    header: true,
+    socials: true,
+    blocks: true,
+  });
 
   const { data: links = [], isLoading: linksLoading } = useQuery<Link[]>({
     queryKey: ["/api/links"],
@@ -147,6 +164,10 @@ export default function Dashboard() {
 
   const sortedLinks = [...links].sort((a, b) => a.position - b.position);
 
+  const toggleCategory = (key: string) => {
+    setOpenCategories((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
   const sidebarItems = [
     { id: "design", label: "Design", icon: Palette, active: true },
     { id: "settings", label: "Settings", icon: Settings },
@@ -217,8 +238,35 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <Card>
-                  <CardContent className="py-3 px-4">
+                <CategorySection
+                  id="page"
+                  label="Page:"
+                  sublabel="Home"
+                  icon={<FileText className="w-4 h-4 text-muted-foreground" />}
+                  open={openCategories.page}
+                  onToggle={() => toggleCategory("page")}
+                >
+                  <div className="px-4 pb-3 pt-1">
+                    <p className="text-sm text-muted-foreground">Your main profile page configuration.</p>
+                  </div>
+                </CategorySection>
+
+                <CategorySection
+                  id="header"
+                  label="Header"
+                  icon={<HelpCircle className="w-4 h-4 text-muted-foreground" />}
+                  open={openCategories.header}
+                  onToggle={() => toggleCategory("header")}
+                  trailing={
+                    <Avatar className="w-6 h-6 border border-border">
+                      <AvatarImage src={user.profileImage || undefined} />
+                      <AvatarFallback className="bg-primary/10 text-primary text-[10px]">
+                        {(user.displayName || user.username).charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  }
+                >
+                  <div className="px-4 pb-3 pt-1 space-y-3">
                     <div className="flex items-center gap-3">
                       <div className="relative group">
                         <input
@@ -273,102 +321,79 @@ export default function Dashboard() {
                         <Pencil className="w-4 h-4" />
                       </Button>
                     </div>
-                  </CardContent>
-                </Card>
-
-                <div className="flex items-center justify-between gap-4">
-                  <h2 className="text-sm font-semibold flex items-center gap-2">
-                    <Link2 className="w-4 h-4 text-primary" />
-                    Blocks
-                  </h2>
-                  <Button size="sm" onClick={() => setAddingLink(true)} data-testid="button-add-link">
-                    <Plus className="w-4 h-4" />
-                    New Block +
-                  </Button>
-                </div>
-
-                {linksLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                   </div>
-                ) : sortedLinks.length === 0 ? (
-                  <Card>
-                    <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                      <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                        <Link2 className="w-6 h-6 text-primary" />
+                </CategorySection>
+
+                <CategorySection
+                  id="socials"
+                  label="Socials"
+                  icon={<HelpCircle className="w-4 h-4 text-muted-foreground" />}
+                  open={openCategories.socials}
+                  onToggle={() => toggleCategory("socials")}
+                  trailing={
+                    <div className="flex items-center gap-1.5">
+                      <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" />
+                      <SiInstagram className="w-3.5 h-3.5 text-muted-foreground" />
+                      <SiX className="w-3.5 h-3.5 text-muted-foreground" />
+                    </div>
+                  }
+                >
+                  <div className="px-4 pb-3 pt-1">
+                    <p className="text-sm text-muted-foreground">Add your social media icons to display on your profile.</p>
+                  </div>
+                </CategorySection>
+
+                <CategorySection
+                  id="blocks"
+                  label="Blocks"
+                  icon={<HelpCircle className="w-4 h-4 text-muted-foreground" />}
+                  open={openCategories.blocks}
+                  onToggle={() => toggleCategory("blocks")}
+                  action={
+                    <Button size="sm" onClick={() => setAddingLink(true)} data-testid="button-add-link">
+                      New Block +
+                    </Button>
+                  }
+                >
+                  <div className="px-4 pb-3 pt-1">
+                    {linksLoading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                       </div>
-                      <h3 className="font-semibold mb-1">No blocks yet</h3>
-                      <p className="text-sm text-muted-foreground mb-4 max-w-xs">
-                        Add your first link block to start building your profile page.
-                      </p>
-                      <Button size="sm" onClick={() => setAddingLink(true)} data-testid="button-add-first-link">
-                        <Plus className="w-4 h-4" />
-                        Add your first link
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="space-y-2">
-                    {sortedLinks.map((link, index) => (
-                      <Card
-                        key={link.id}
-                        className={`transition-opacity overflow-hidden ${
-                          !link.active ? "opacity-50" : ""
-                        }`}
-                      >
-                        <CardContent className="flex items-center gap-0 p-0">
-                          <div className={`w-1 self-stretch shrink-0 ${!link.active ? "bg-muted-foreground/20" : "bg-primary"}`} />
-                          <div className="flex items-center gap-2 py-2.5 px-3 flex-1 min-w-0">
-                            <GripVertical className="w-4 h-4 text-muted-foreground/40 shrink-0 cursor-grab" />
-                            <div className="flex-1 min-w-0">
-                              <a
-                                href={link.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="font-medium text-sm text-primary truncate block"
-                                data-testid={`text-link-title-${link.id}`}
-                              >
-                                {link.title}
-                              </a>
-                              <p className="text-xs text-muted-foreground" data-testid={`text-link-type-${link.id}`}>
-                                URL Button
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-0.5 shrink-0">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(link.url);
-                                  toast({ title: "URL copied!" });
-                                }}
-                                data-testid={`button-copy-link-${link.id}`}
-                              >
-                                <Copy className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => deleteLinkMutation.mutate(link.id)}
-                                data-testid={`button-delete-link-${link.id}`}
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setEditingLink(link)}
-                                data-testid={`button-edit-link-${link.id}`}
-                              >
-                                <Settings className="w-3.5 h-3.5" />
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                    ) : sortedLinks.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                          <Link2 className="w-6 h-6 text-primary" />
+                        </div>
+                        <h3 className="font-semibold mb-1">No blocks yet</h3>
+                        <p className="text-sm text-muted-foreground mb-4 max-w-xs">
+                          Add your first link block to start building your profile page.
+                        </p>
+                        <Button size="sm" onClick={() => setAddingLink(true)} data-testid="button-add-first-link">
+                          <Plus className="w-4 h-4" />
+                          Add your first link
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {sortedLinks.map((link) => (
+                          <InlineLinkBlock
+                            key={link.id}
+                            link={link}
+                            isEditing={editingLinkId === link.id}
+                            onStartEdit={() => setEditingLinkId(link.id)}
+                            onStopEdit={() => setEditingLinkId(null)}
+                            onDelete={() => deleteLinkMutation.mutate(link.id)}
+                            onCopy={() => {
+                              navigator.clipboard.writeText(link.url);
+                              toast({ title: "URL copied!" });
+                            }}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
+                </CategorySection>
               </div>
             </div>
 
@@ -418,7 +443,6 @@ export default function Dashboard() {
       </div>
 
       <AddLinkDialog open={addingLink} onClose={() => setAddingLink(false)} />
-      <EditLinkDialog link={editingLink} onClose={() => setEditingLink(null)} />
       <EditProfileDialog open={editingProfile} onClose={() => setEditingProfile(false)} user={user} />
     </SidebarProvider>
   );
@@ -688,26 +712,82 @@ function AddLinkDialog({ open, onClose }: { open: boolean; onClose: () => void }
   );
 }
 
-function EditLinkDialog({ link, onClose }: { link: Link | null; onClose: () => void }) {
-  const [title, setTitle] = useState(link?.title || "");
-  const [url, setUrl] = useState(link?.url || "");
+function CategorySection({
+  id,
+  label,
+  sublabel,
+  icon,
+  open,
+  onToggle,
+  trailing,
+  action,
+  children,
+}: {
+  id: string;
+  label: string;
+  sublabel?: string;
+  icon?: React.ReactNode;
+  open: boolean;
+  onToggle: () => void;
+  trailing?: React.ReactNode;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <Collapsible open={open} onOpenChange={onToggle}>
+      <div className="border rounded-md bg-card">
+        <div className="flex items-center gap-2 py-3 px-4">
+          {icon}
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="p-0 h-auto font-semibold text-sm gap-1" data-testid={`category-toggle-${id}`}>
+              {label}
+              {sublabel && <span className="text-muted-foreground font-normal">{sublabel}</span>}
+              <ChevronDown className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ml-0.5 ${open ? "" : "-rotate-90"}`} />
+            </Button>
+          </CollapsibleTrigger>
+          {trailing && <div className="ml-1">{trailing}</div>}
+          <div className="flex-1" />
+          {action && <div>{action}</div>}
+        </div>
+        <CollapsibleContent>
+          {children}
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
+  );
+}
+
+function InlineLinkBlock({
+  link,
+  isEditing,
+  onStartEdit,
+  onStopEdit,
+  onDelete,
+  onCopy,
+}: {
+  link: Link;
+  isEditing: boolean;
+  onStartEdit: () => void;
+  onStopEdit: () => void;
+  onDelete: () => void;
+  onCopy: () => void;
+}) {
+  const [title, setTitle] = useState(link.title);
+  const [url, setUrl] = useState(link.url);
   const { toast } = useToast();
 
   useEffect(() => {
-    if (link) {
-      setTitle(link.title);
-      setUrl(link.url);
-    }
-  }, [link]);
+    setTitle(link.title);
+    setUrl(link.url);
+  }, [link.title, link.url]);
 
   const mutation = useMutation({
     mutationFn: async () => {
-      if (!link) return;
       await apiRequest("PATCH", `/api/links/${link.id}`, { title, url });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/links"] });
-      onClose();
+      onStopEdit();
       toast({ title: "Link updated!" });
     },
     onError: (e: any) => {
@@ -715,54 +795,91 @@ function EditLinkDialog({ link, onClose }: { link: Link | null; onClose: () => v
     },
   });
 
-  if (!link) return null;
+  const handleSave = () => {
+    if (title !== link.title || url !== link.url) {
+      mutation.mutate();
+    } else {
+      onStopEdit();
+    }
+  };
+
+  const handleCancel = () => {
+    setTitle(link.title);
+    setUrl(link.url);
+    onStopEdit();
+  };
 
   return (
-    <Dialog open={!!link} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Edit Link</DialogTitle>
-        </DialogHeader>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            mutation.mutate();
-          }}
-          className="space-y-4"
-        >
-          <div className="space-y-2">
-            <Label htmlFor="edit-title">Title</Label>
-            <Input
-              id="edit-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-              data-testid="input-edit-link-title"
-            />
+    <Card className={`overflow-hidden transition-opacity ${!link.active ? "opacity-50" : ""}`}>
+      <CardContent className="p-0">
+        <div className="flex items-center gap-0">
+          <div className={`w-1 self-stretch shrink-0 ${!link.active ? "bg-muted-foreground/20" : "bg-primary"}`} />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 py-2.5 px-3">
+              <GripVertical className="w-4 h-4 text-muted-foreground/40 shrink-0 cursor-grab" />
+              <div className="flex-1 min-w-0">
+                <Button
+                  variant="ghost"
+                  className="p-0 h-auto font-medium text-sm text-primary truncate justify-start"
+                  onClick={onStartEdit}
+                  data-testid={`text-link-title-${link.id}`}
+                >
+                  {link.title}
+                </Button>
+                <p className="text-xs text-muted-foreground" data-testid={`text-link-type-${link.id}`}>
+                  URL Button
+                </p>
+              </div>
+              <div className="flex items-center gap-0.5 shrink-0">
+                <Button variant="ghost" size="icon" onClick={onCopy} data-testid={`button-copy-link-${link.id}`}>
+                  <Copy className="w-3.5 h-3.5" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={onDelete} data-testid={`button-delete-link-${link.id}`}>
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={isEditing ? onStopEdit : onStartEdit} data-testid={`button-edit-link-${link.id}`}>
+                  <Settings className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+            {isEditing && (
+              <div className="border-t px-3 py-3 space-y-3" data-testid={`inline-edit-${link.id}`}>
+                <div className="space-y-1.5">
+                  <Label htmlFor={`edit-title-${link.id}`} className="text-xs">Title</Label>
+                  <Input
+                    id={`edit-title-${link.id}`}
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Link title"
+                    data-testid={`input-edit-link-title-${link.id}`}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor={`edit-url-${link.id}`} className="text-xs">URL</Label>
+                  <Input
+                    id={`edit-url-${link.id}`}
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    placeholder="https://example.com"
+                    type="url"
+                    data-testid={`input-edit-link-url-${link.id}`}
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="ghost" size="sm" onClick={handleCancel} data-testid={`button-cancel-edit-${link.id}`}>
+                    Cancel
+                  </Button>
+                  <Button size="sm" onClick={handleSave} disabled={mutation.isPending} data-testid={`button-save-edit-${link.id}`}>
+                    {mutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    Save
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="edit-url">URL</Label>
-            <Input
-              id="edit-url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              required
-              type="url"
-              data-testid="input-edit-link-url"
-            />
-          </div>
-          <div className="flex justify-end gap-3">
-            <Button type="button" variant="ghost" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={mutation.isPending} data-testid="button-confirm-edit-link">
-              {mutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-              Save
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
