@@ -41,7 +41,6 @@ import {
   AtSign,
   FileText,
 } from "lucide-react";
-import { SiX, SiInstagram } from "react-icons/si";
 import {
   Dialog,
   DialogContent,
@@ -60,7 +59,9 @@ import {
   SidebarMenuButton,
   SidebarFooter,
 } from "@/components/ui/sidebar";
-import type { Link } from "@shared/schema";
+import { SOCIAL_PLATFORMS, getPlatform } from "@/lib/social-platforms";
+import { SocialIcon } from "@/components/social-icon";
+import type { Link, Social } from "@shared/schema";
 
 export default function Dashboard() {
   const { user, logout, isLoading: authLoading } = useAuth();
@@ -68,10 +69,13 @@ export default function Dashboard() {
   const { toast } = useToast();
   const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
   const [addingLink, setAddingLink] = useState(false);
-  const [editingProfile, setEditingProfile] = useState(false);
+  const [addingSocial, setAddingSocial] = useState(false);
   const [copied, setCopied] = useState(false);
   const [activeSection, setActiveSection] = useState<string>("design");
   const [previewMode, setPreviewMode] = useState<"mobile" | "desktop">("mobile");
+  const [headerName, setHeaderName] = useState("");
+  const [headerBio, setHeaderBio] = useState("");
+  const [headerDirty, setHeaderDirty] = useState(false);
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
     page: true,
     header: true,
@@ -82,6 +86,58 @@ export default function Dashboard() {
   const { data: links = [], isLoading: linksLoading } = useQuery<Link[]>({
     queryKey: ["/api/links"],
     enabled: !!user,
+  });
+
+  const { data: userSocials = [] } = useQuery<Social[]>({
+    queryKey: ["/api/socials"],
+    enabled: !!user,
+  });
+
+  useEffect(() => {
+    if (user) {
+      setHeaderName(user.displayName || "");
+      setHeaderBio(user.bio || "");
+    }
+  }, [user]);
+
+  const profileMutation = useMutation({
+    mutationFn: async (data: { displayName?: string | null; bio?: string | null; profileImage?: string | null }) => {
+      await apiRequest("PATCH", "/api/auth/profile", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      setHeaderDirty(false);
+      toast({ title: "Profile updated!" });
+    },
+  });
+
+  const addSocialMutation = useMutation({
+    mutationFn: async (data: { platform: string; url: string }) => {
+      await apiRequest("POST", "/api/socials", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/socials"] });
+    },
+  });
+
+  const updateSocialMutation = useMutation({
+    mutationFn: async ({ id, url }: { id: string; url: string }) => {
+      await apiRequest("PATCH", `/api/socials/${id}`, { url });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/socials"] });
+      toast({ title: "Social updated!" });
+    },
+  });
+
+  const deleteSocialMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/socials/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/socials"] });
+      toast({ title: "Social removed!" });
+    },
   });
 
   const deleteLinkMutation = useMutation({
@@ -266,8 +322,9 @@ export default function Dashboard() {
                     </Avatar>
                   }
                 >
-                  <div className="px-4 pb-3 pt-1 space-y-3">
-                    <div className="flex items-center gap-3">
+                  <div className="px-4 pb-4 pt-1 space-y-4">
+                    <div className="flex items-center justify-between gap-4 border rounded-md p-3">
+                      <span className="text-sm font-medium">Profile Picture</span>
                       <div className="relative group">
                         <input
                           type="file"
@@ -303,23 +360,38 @@ export default function Dashboard() {
                           </div>
                         </label>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm truncate" data-testid="text-display-name">
-                          {user.displayName || user.username}
-                        </p>
-                        {user.bio && (
-                          <p className="text-xs text-muted-foreground truncate mt-0.5">{user.bio}</p>
-                        )}
-                        <p className="text-xs text-muted-foreground mt-0.5">@{user.username}</p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setEditingProfile(true)}
-                        data-testid="button-edit-profile"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="header-name" className="text-xs text-muted-foreground">Name</Label>
+                      <Input
+                        id="header-name"
+                        value={headerName}
+                        onChange={(e) => { setHeaderName(e.target.value); setHeaderDirty(true); }}
+                        onBlur={() => {
+                          if (headerDirty && headerName !== (user.displayName || "")) {
+                            profileMutation.mutate({ displayName: headerName || null });
+                          }
+                        }}
+                        placeholder="Your name"
+                        data-testid="input-header-name"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="header-bio" className="text-xs text-muted-foreground">Bio</Label>
+                      <Textarea
+                        id="header-bio"
+                        value={headerBio}
+                        onChange={(e) => { setHeaderBio(e.target.value); setHeaderDirty(true); }}
+                        onBlur={() => {
+                          if (headerDirty && headerBio !== (user.bio || "")) {
+                            profileMutation.mutate({ bio: headerBio || null });
+                          }
+                        }}
+                        placeholder="Tell the world about yourself..."
+                        maxLength={500}
+                        rows={3}
+                        data-testid="input-header-bio"
+                      />
                     </div>
                   </div>
                 </CategorySection>
@@ -331,15 +403,35 @@ export default function Dashboard() {
                   open={openCategories.socials}
                   onToggle={() => toggleCategory("socials")}
                   trailing={
-                    <div className="flex items-center gap-1.5">
-                      <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" />
-                      <SiInstagram className="w-3.5 h-3.5 text-muted-foreground" />
-                      <SiX className="w-3.5 h-3.5 text-muted-foreground" />
-                    </div>
+                    userSocials.length > 0 ? (
+                      <div className="flex items-center gap-1.5">
+                        {userSocials.slice(0, 3).map((s) => (
+                          <SocialIcon key={s.id} platform={s.platform} className="w-3.5 h-3.5 text-muted-foreground" />
+                        ))}
+                      </div>
+                    ) : undefined
                   }
                 >
-                  <div className="px-4 pb-3 pt-1">
-                    <p className="text-sm text-muted-foreground">Add your social media icons to display on your profile.</p>
+                  <div className="px-4 pb-4 pt-1 space-y-2">
+                    {userSocials.map((social) => (
+                      <SocialLinkRow
+                        key={social.id}
+                        social={social}
+                        onUpdate={(url) => updateSocialMutation.mutate({ id: social.id, url })}
+                        onDelete={() => deleteSocialMutation.mutate(social.id)}
+                      />
+                    ))}
+                    <div className="border rounded-md">
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-center gap-2"
+                        onClick={() => setAddingSocial(true)}
+                        data-testid="button-add-social"
+                      >
+                        Add Social
+                        <Link2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 </CategorySection>
 
@@ -426,6 +518,7 @@ export default function Dashboard() {
                   profileImage={user.profileImage || ""}
                   username={user.username}
                   links={sortedLinks}
+                  socials={userSocials}
                   mode={previewMode}
                 />
               </div>
@@ -443,7 +536,16 @@ export default function Dashboard() {
       </div>
 
       <AddLinkDialog open={addingLink} onClose={() => setAddingLink(false)} />
-      <EditProfileDialog open={editingProfile} onClose={() => setEditingProfile(false)} user={user} />
+      <AddSocialDialog
+        open={addingSocial}
+        onClose={() => setAddingSocial(false)}
+        onSelect={(platform) => {
+          const p = getPlatform(platform);
+          addSocialMutation.mutate({ platform, url: "" });
+          setAddingSocial(false);
+        }}
+        existingPlatforms={userSocials.map((s) => s.platform)}
+      />
     </SidebarProvider>
   );
 }
@@ -561,6 +663,7 @@ function PhonePreview({
   profileImage,
   username,
   links,
+  socials,
   mode,
 }: {
   template: (typeof TEMPLATES)[0];
@@ -569,9 +672,11 @@ function PhonePreview({
   profileImage: string;
   username: string;
   links: Link[];
+  socials: Social[];
   mode: "mobile" | "desktop";
 }) {
   const activeLinks = links.filter((l) => l.active);
+  const activeSocials = socials.filter((s) => s.url);
 
   return (
     <div
@@ -599,6 +704,16 @@ function PhonePreview({
               <p className={`text-[11px] mt-1 ${template.textColor} opacity-80 leading-relaxed max-w-[200px]`}>
                 {bio.length > 100 ? bio.slice(0, 100) + "..." : bio}
               </p>
+            )}
+
+            {activeSocials.length > 0 && (
+              <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
+                {activeSocials.map((social) => (
+                  <div key={social.id} className={`${template.textColor} opacity-70`}>
+                    <SocialIcon platform={social.platform} className="w-3.5 h-3.5" />
+                  </div>
+                ))}
+              </div>
             )}
 
             <div className="w-full mt-5 space-y-2">
@@ -883,149 +998,89 @@ function InlineLinkBlock({
   );
 }
 
-function EditProfileDialog({ open, onClose, user }: { open: boolean; onClose: () => void; user: any }) {
-  const [displayName, setDisplayName] = useState(user?.displayName || "");
-  const [bio, setBio] = useState(user?.bio || "");
-  const [profileImage, setProfileImage] = useState(user?.profileImage || "");
-  const [uploading, setUploading] = useState(false);
-  const { toast } = useToast();
+function SocialLinkRow({
+  social,
+  onUpdate,
+  onDelete,
+}: {
+  social: Social;
+  onUpdate: (url: string) => void;
+  onDelete: () => void;
+}) {
+  const [url, setUrl] = useState(social.url);
+  const platform = getPlatform(social.platform);
 
-  const handleFileUpload = async (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      toast({ title: "Invalid file", description: "Please upload an image file", variant: "destructive" });
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Please upload an image smaller than 5MB", variant: "destructive" });
-      return;
-    }
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || "Upload failed");
-      }
-      const data = await res.json();
-      setProfileImage(data.url);
-    } catch (e: any) {
-      toast({ title: "Upload failed", description: e.message, variant: "destructive" });
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const mutation = useMutation({
-    mutationFn: async () => {
-      await apiRequest("PATCH", "/api/auth/profile", {
-        displayName: displayName || null,
-        bio: bio || null,
-        profileImage: profileImage || null,
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-      onClose();
-      toast({ title: "Profile updated!" });
-    },
-    onError: (e: any) => {
-      toast({ title: "Failed to update profile", description: e.message, variant: "destructive" });
-    },
-  });
+  useEffect(() => {
+    setUrl(social.url);
+  }, [social.url]);
 
   return (
+    <div className="flex items-center gap-2 border rounded-md px-3 py-2">
+      <GripVertical className="w-4 h-4 text-muted-foreground/40 shrink-0 cursor-grab" />
+      <Input
+        value={url}
+        onChange={(e) => setUrl(e.target.value)}
+        onBlur={() => {
+          if (url !== social.url) onUpdate(url);
+        }}
+        placeholder={platform?.placeholder || "Enter URL"}
+        className="flex-1 border-0 shadow-none focus-visible:ring-0 text-sm"
+        data-testid={`input-social-url-${social.id}`}
+      />
+      <SocialIcon platform={social.platform} className="w-5 h-5 text-muted-foreground shrink-0" />
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => {
+          setUrl(social.url);
+        }}
+        data-testid={`button-edit-social-${social.id}`}
+      >
+        <Pencil className="w-3.5 h-3.5" />
+      </Button>
+      <Button variant="ghost" size="icon" onClick={onDelete} data-testid={`button-delete-social-${social.id}`}>
+        <Trash2 className="w-3.5 h-3.5 text-destructive" />
+      </Button>
+    </div>
+  );
+}
+
+function AddSocialDialog({
+  open,
+  onClose,
+  onSelect,
+  existingPlatforms,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSelect: (platform: string) => void;
+  existingPlatforms: string[];
+}) {
+  return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent>
+      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Profile</DialogTitle>
+          <DialogTitle>Add Social</DialogTitle>
         </DialogHeader>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            mutation.mutate();
-          }}
-          className="space-y-4"
-        >
-          <div className="flex items-center gap-4">
-            <div className="relative group">
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/gif,image/webp"
-                className="hidden"
-                id="profile-avatar-upload"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleFileUpload(file);
-                }}
-                data-testid="input-profile-image-file"
-              />
-              <label htmlFor="profile-avatar-upload" className="cursor-pointer block" data-testid="button-profile-upload-avatar">
-                <Avatar className="w-16 h-16 border-2 border-border">
-                  <AvatarImage src={profileImage || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-lg">
-                    {(displayName || user?.username || "?").charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  {uploading ? (
-                    <Loader2 className="w-4 h-4 text-white animate-spin" />
-                  ) : (
-                    <Camera className="w-4 h-4 text-white" />
-                  )}
-                </div>
-              </label>
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium">Profile Picture</p>
-              <p className="text-xs text-muted-foreground">Click avatar to upload</p>
-              {profileImage && (
-                <button
-                  type="button"
-                  onClick={() => setProfileImage("")}
-                  className="text-xs text-destructive mt-1 flex items-center gap-1"
-                  data-testid="button-profile-remove-avatar"
-                >
-                  <X className="w-3 h-3" />
-                  Remove
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="prof-name">Display Name</Label>
-            <Input
-              id="prof-name"
-              placeholder="Your Name"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              data-testid="input-profile-display-name"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="prof-bio">Bio</Label>
-            <Textarea
-              id="prof-bio"
-              placeholder="Tell the world about yourself..."
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              maxLength={500}
-              rows={3}
-              data-testid="input-profile-bio"
-            />
-            <p className="text-xs text-muted-foreground text-right">{bio.length}/500</p>
-          </div>
-          <div className="flex justify-end gap-3">
-            <Button type="button" variant="ghost" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={mutation.isPending || uploading} data-testid="button-save-profile">
-              {mutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-              Save
-            </Button>
-          </div>
-        </form>
+        <div className="grid grid-cols-3 gap-2">
+          {SOCIAL_PLATFORMS.map((platform) => {
+            const isAdded = existingPlatforms.includes(platform.id);
+            return (
+              <Button
+                key={platform.id}
+                variant="outline"
+                size="sm"
+                className="justify-start gap-2 text-xs"
+                disabled={isAdded}
+                onClick={() => onSelect(platform.id)}
+                data-testid={`social-option-${platform.id}`}
+              >
+                <SocialIcon platform={platform.id} className="w-4 h-4 shrink-0" />
+                <span className="truncate">{platform.name}</span>
+              </Button>
+            );
+          })}
+        </div>
       </DialogContent>
     </Dialog>
   );

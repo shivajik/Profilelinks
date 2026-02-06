@@ -3,11 +3,14 @@ import { useParams } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, ExternalLink } from "lucide-react";
 import { getTemplate } from "@/lib/templates";
-import type { Link, User } from "@shared/schema";
+import { SocialIcon } from "@/components/social-icon";
+import { getPlatform } from "@/lib/social-platforms";
+import type { Link, User, Social } from "@shared/schema";
 
 type PublicProfile = {
   user: Omit<User, "password" | "email">;
   links: Link[];
+  socials: Social[];
 };
 
 export default function PublicProfile() {
@@ -41,8 +44,9 @@ export default function PublicProfile() {
     );
   }
 
-  const { user, links } = data;
+  const { user, links, socials = [] } = data;
   const activeLinks = links.filter((l) => l.active).sort((a, b) => a.position - b.position);
+  const activeSocials = socials.filter((s) => s.url).sort((a, b) => a.position - b.position);
   const template = getTemplate(user.template);
 
   return (
@@ -68,6 +72,23 @@ export default function PublicProfile() {
             <p className={`text-sm max-w-sm leading-relaxed ${template.textColor} opacity-80`} data-testid="text-profile-bio">
               {user.bio}
             </p>
+          )}
+          {activeSocials.length > 0 && (
+            <div className="flex items-center justify-center gap-3 mt-4 flex-wrap" data-testid="social-icons-row">
+              {activeSocials.map((social) => (
+                <a
+                  key={social.id}
+                  href={social.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`p-2 rounded-full transition-all hover:scale-110 ${template.textColor} opacity-70 hover:opacity-100`}
+                  title={getPlatform(social.platform)?.name || social.platform}
+                  data-testid={`social-icon-${social.platform}`}
+                >
+                  <SocialIcon platform={social.platform} className="w-5 h-5" />
+                </a>
+              ))}
+            </div>
           )}
         </div>
 

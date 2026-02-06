@@ -48,7 +48,20 @@ export const updateProfileSchema = z.object({
   template: z.string().optional(),
 });
 
+export const socials = pgTable("socials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  platform: text("platform").notNull(),
+  url: text("url").notNull(),
+  position: integer("position").notNull().default(0),
+});
+
 export const insertLinkSchema = createInsertSchema(links).omit({
+  id: true,
+  userId: true,
+});
+
+export const insertSocialSchema = createInsertSchema(socials).omit({
   id: true,
   userId: true,
 });
@@ -65,7 +78,19 @@ export const updateLinkSchema = z.object({
   position: z.number().int().min(0).optional(),
 });
 
+export const createSocialSchema = z.object({
+  platform: z.string().min(1, "Platform is required"),
+  url: z.string().min(1, "URL is required"),
+});
+
+export const updateSocialSchema = z.object({
+  url: z.string().min(1).optional(),
+  position: z.number().int().min(0).optional(),
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertLink = z.infer<typeof insertLinkSchema>;
 export type Link = typeof links.$inferSelect;
+export type InsertSocial = z.infer<typeof insertSocialSchema>;
+export type Social = typeof socials.$inferSelect;

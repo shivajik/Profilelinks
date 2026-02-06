@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import session from "express-session";
 import { storage } from "./storage";
 import bcrypt from "bcryptjs";
-import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema } from "@shared/schema";
+import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import connectPgSimple from "connect-pg-simple";
 import pg from "pg";
@@ -274,6 +274,51 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/socials", requireAuth, async (req, res) => {
+    const socialsList = await storage.getSocialsByUserId(req.session.userId!);
+    res.json(socialsList);
+  });
+
+  app.post("/api/socials", requireAuth, async (req, res) => {
+    try {
+      const result = createSocialSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+      const social = await storage.createSocial({
+        ...result.data,
+        userId: req.session.userId!,
+      });
+      res.status(201).json(social);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to create social" });
+    }
+  });
+
+  app.patch("/api/socials/:id", requireAuth, async (req, res) => {
+    try {
+      const result = updateSocialSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+      const updated = await storage.updateSocial(req.params.id as string, req.session.userId!, result.data);
+      if (!updated) {
+        return res.status(404).json({ message: "Social not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to update social" });
+    }
+  });
+
+  app.delete("/api/socials/:id", requireAuth, async (req, res) => {
+    const deleted = await storage.deleteSocial(req.params.id as string, req.session.userId!);
+    if (!deleted) {
+      return res.status(404).json({ message: "Social not found" });
+    }
+    res.json({ message: "Deleted" });
+  });
+
   app.get("/api/profile/:username", async (req, res) => {
     try {
       const user = await storage.getUserByUsername(req.params.username);
@@ -282,8 +327,9 @@ export async function registerRoutes(
       }
 
       const userLinks = await storage.getLinksByUserId(user.id);
+      const userSocials = await storage.getSocialsByUserId(user.id);
       const { password: _, email: __, ...publicUser } = user;
-      res.json({ user: publicUser, links: userLinks });
+      res.json({ user: publicUser, links: userLinks, socials: userSocials });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to load profile" });
     }

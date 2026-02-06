@@ -4,10 +4,13 @@ import pg from "pg";
 import {
   users,
   links,
+  socials,
   type User,
   type InsertUser,
   type Link,
   type InsertLink,
+  type Social,
+  type InsertSocial,
 } from "@shared/schema";
 
 const pool = new pg.Pool({
@@ -29,6 +32,10 @@ export interface IStorage {
   deleteLink(id: string, userId: string): Promise<boolean>;
   getMaxLinkPosition(userId: string): Promise<number>;
   reorderLinks(userId: string, linkIds: string[]): Promise<void>;
+  getSocialsByUserId(userId: string): Promise<Social[]>;
+  createSocial(social: InsertSocial & { userId: string }): Promise<Social>;
+  updateSocial(id: string, userId: string, data: Partial<Pick<Social, "url" | "position">>): Promise<Social | undefined>;
+  deleteSocial(id: string, userId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -102,6 +109,31 @@ export class DatabaseStorage implements IStorage {
         .set({ position: i })
         .where(eq(links.id, linkIds[i]));
     }
+  }
+
+  async getSocialsByUserId(userId: string): Promise<Social[]> {
+    return db.select().from(socials).where(eq(socials.userId, userId)).orderBy(asc(socials.position));
+  }
+
+  async createSocial(social: InsertSocial & { userId: string }): Promise<Social> {
+    const existing = await this.getSocialsByUserId(social.userId);
+    const maxPos = existing.length > 0 ? Math.max(...existing.map((s) => s.position)) : -1;
+    const [created] = await db.insert(socials).values({ ...social, position: maxPos + 1 }).returning();
+    return created;
+  }
+
+  async updateSocial(id: string, userId: string, data: Partial<Pick<Social, "url" | "position">>): Promise<Social | undefined> {
+    const existing = await db.select().from(socials).where(eq(socials.id, id));
+    if (!existing.length || existing[0].userId !== userId) return undefined;
+    const [updated] = await db.update(socials).set(data).where(eq(socials.id, id)).returning();
+    return updated;
+  }
+
+  async deleteSocial(id: string, userId: string): Promise<boolean> {
+    const existing = await db.select().from(socials).where(eq(socials.id, id));
+    if (!existing.length || existing[0].userId !== userId) return false;
+    await db.delete(socials).where(eq(socials.id, id));
+    return true;
   }
 }
 
