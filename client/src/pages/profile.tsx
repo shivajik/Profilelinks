@@ -458,19 +458,33 @@ function PublicBlock({ block, template }: { block: Block; template: ReturnType<t
           </div>
         );
       }
+      if (content.url) {
+        const normalizedUrl = normalizeUrl(content.url);
+        return (
+          <div className="rounded-xl overflow-hidden" data-testid={`block-video-${block.id}`}>
+            {content.title && (
+              <p className={`text-sm font-medium ${template.textColor} mb-2`}>{content.title}</p>
+            )}
+            <video
+              src={normalizedUrl}
+              className="w-full aspect-video rounded-xl bg-black"
+              controls
+              preload="metadata"
+              title={content.title || "Video"}
+            />
+          </div>
+        );
+      }
       return (
-        <a
-          href={content.url ? normalizeUrl(content.url) : "#"}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`block w-full rounded-xl ${template.cardBg} p-4 text-center font-medium transition-all hover:scale-[1.02] hover:shadow-md group backdrop-blur-sm`}
+        <div
+          className={`block w-full rounded-xl ${template.cardBg} p-4 text-center font-medium backdrop-blur-sm`}
           data-testid={`block-video-${block.id}`}
         >
           <div className="flex items-center justify-center gap-2">
             <Play className={`w-4 h-4 ${template.cardTextColor} shrink-0`} />
             <span className={`truncate ${template.cardTextColor}`}>{content.title || "Video"}</span>
           </div>
-        </a>
+        </div>
       );
     }
     case "audio": {

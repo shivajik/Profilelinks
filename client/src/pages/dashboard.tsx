@@ -76,6 +76,41 @@ import { SocialIcon } from "@/components/social-icon";
 import type { Link, Social, Page, Block, BlockContent, BlockType } from "@shared/schema";
 import { BLOCK_TYPES } from "@shared/schema";
 
+function normalizeUrl(url: string): string {
+  if (!url) return "#";
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
+function getYouTubeEmbedUrl(url: string): string | null {
+  try {
+    const u = new URL(url);
+    let videoId = "";
+    if (u.hostname.includes("youtube.com") || u.hostname.includes("youtube-nocookie.com")) {
+      videoId = u.searchParams.get("v") || "";
+      if (!videoId && u.pathname.startsWith("/embed/")) {
+        videoId = u.pathname.split("/embed/")[1];
+      }
+    } else if (u.hostname === "youtu.be") {
+      videoId = u.pathname.slice(1);
+    }
+    if (videoId) return `https://www.youtube-nocookie.com/embed/${videoId}`;
+  } catch {}
+  return null;
+}
+
+function getVimeoEmbedUrl(url: string): string | null {
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes("vimeo.com")) {
+      const id = u.pathname.split("/").filter(Boolean).pop();
+      if (id && /^\d+$/.test(id)) return `https://player.vimeo.com/video/${id}`;
+    }
+  } catch {}
+  return null;
+}
+
 export default function Dashboard() {
   const { user, logout, isLoading: authLoading } = useAuth();
   const [, navigate] = useLocation();
@@ -885,7 +920,43 @@ function PreviewBlock({ block, template }: { block: Block; template: (typeof TEM
           <hr className={`border-t ${template.textColor} opacity-20`} />
         </div>
       );
-    case "video":
+    case "video": {
+      const ytEmbed = content.url ? getYouTubeEmbedUrl(content.url) : null;
+      const vimeoEmbed = content.url ? getVimeoEmbedUrl(content.url) : null;
+      const embedUrl = ytEmbed || vimeoEmbed;
+      if (embedUrl) {
+        return (
+          <div className="rounded-lg overflow-hidden">
+            {content.title && (
+              <p className={`text-xs font-medium ${template.cardTextColor} mb-1`}>{content.title}</p>
+            )}
+            <iframe
+              src={embedUrl}
+              className="w-full aspect-video rounded-lg"
+              allowFullScreen
+              allow="autoplay; encrypted-media"
+              title={content.title || "Video"}
+            />
+          </div>
+        );
+      }
+      if (content.url) {
+        const normalizedUrl = normalizeUrl(content.url);
+        return (
+          <div className="rounded-lg overflow-hidden">
+            {content.title && (
+              <p className={`text-xs font-medium ${template.cardTextColor} mb-1`}>{content.title}</p>
+            )}
+            <video
+              src={normalizedUrl}
+              className="w-full aspect-video rounded-lg bg-black"
+              controls
+              preload="metadata"
+              title={content.title || "Video"}
+            />
+          </div>
+        );
+      }
       return (
         <div className={`${template.cardBg} rounded-lg py-2.5 px-4 text-center backdrop-blur-sm`}>
           <span className={`text-xs font-medium ${template.cardTextColor}`}>
@@ -893,6 +964,7 @@ function PreviewBlock({ block, template }: { block: Block; template: (typeof TEM
           </span>
         </div>
       );
+    }
     case "audio":
       return (
         <div className={`${template.cardBg} rounded-lg py-2.5 px-4 text-center backdrop-blur-sm`}>
