@@ -393,55 +393,6 @@ export default function Dashboard() {
                 </div>
 
                 <CategorySection
-                  id="page"
-                  label="Page:"
-                  icon={<FileText className="w-4 h-4 text-muted-foreground" />}
-                  open={openCategories.page}
-                  onToggle={() => toggleCategory("page")}
-                  trailing={
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm" className="gap-1" data-testid="button-page-selector">
-                            {currentPage?.title || "Home"}
-                            <ChevronDown className="w-3.5 h-3.5" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start">
-                          {userPages.map((page) => (
-                            <DropdownMenuItem
-                              key={page.id}
-                              onClick={() => setSelectedPageId(page.id)}
-                              data-testid={`page-option-${page.id}`}
-                            >
-                              <span className="flex items-center gap-2">
-                                {page.isHome && <Home className="w-3.5 h-3.5 text-muted-foreground" />}
-                                {page.title}
-                              </span>
-                            </DropdownMenuItem>
-                          ))}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => setAddingPage(true)} data-testid="button-add-new-page">
-                            <Plus className="w-3.5 h-3.5" />
-                            Add New Page +
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                      <Button variant="outline" size="sm" onClick={() => setManagingPages(true)} data-testid="button-manage-pages">
-                        Manage
-                      </Button>
-                    </div>
-                  }
-                >
-                  <div className="px-4 pb-3 pt-1">
-                    <p className="text-sm text-muted-foreground">
-                      Editing: <span className="font-medium">{currentPage?.title || "Home"}</span>
-                      {currentPage?.isHome && <span className="text-xs ml-1 text-muted-foreground">(Home page)</span>}
-                    </p>
-                  </div>
-                </CategorySection>
-
-                <CategorySection
                   id="header"
                   label="Header"
                   icon={<HelpCircle className="w-4 h-4 text-muted-foreground" />}
@@ -566,6 +517,55 @@ export default function Dashboard() {
                         <Link2 className="w-4 h-4" />
                       </Button>
                     </div>
+                  </div>
+                </CategorySection>
+
+                <CategorySection
+                  id="page"
+                  label="Page:"
+                  icon={<FileText className="w-4 h-4 text-muted-foreground" />}
+                  open={openCategories.page}
+                  onToggle={() => toggleCategory("page")}
+                  trailing={
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="gap-1" data-testid="button-page-selector">
+                            {currentPage?.title || "Home"}
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                          {userPages.map((page) => (
+                            <DropdownMenuItem
+                              key={page.id}
+                              onClick={() => setSelectedPageId(page.id)}
+                              data-testid={`page-option-${page.id}`}
+                            >
+                              <span className="flex items-center gap-2">
+                                {page.isHome && <Home className="w-3.5 h-3.5 text-muted-foreground" />}
+                                {page.title}
+                              </span>
+                            </DropdownMenuItem>
+                          ))}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => setAddingPage(true)} data-testid="button-add-new-page">
+                            <Plus className="w-3.5 h-3.5" />
+                            Add New Page +
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <Button variant="outline" size="sm" onClick={() => setManagingPages(true)} data-testid="button-manage-pages">
+                        Manage
+                      </Button>
+                    </div>
+                  }
+                >
+                  <div className="px-4 pb-3 pt-1">
+                    <p className="text-sm text-muted-foreground">
+                      Editing: <span className="font-medium">{currentPage?.title || "Home"}</span>
+                      {currentPage?.isHome && <span className="text-xs ml-1 text-muted-foreground">(Home page)</span>}
+                    </p>
                   </div>
                 </CategorySection>
 
