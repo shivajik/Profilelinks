@@ -112,6 +112,41 @@ export default function PublicProfile() {
     },
   });
 
+  const viewTracked = useRef<string | null>(null);
+  const currentPage = data?.currentPage ?? null;
+
+  useEffect(() => {
+    if (!data) return;
+    const slug = currentPage?.slug || "home";
+    if (username && viewTracked.current !== slug) {
+      viewTracked.current = slug;
+      fetch("/api/analytics/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username,
+          eventType: "page_view",
+          pageSlug: slug,
+          referrer: document.referrer || null,
+        }),
+      }).catch(() => {});
+    }
+  }, [username, currentPage?.slug, data]);
+
+  const trackClick = useCallback((blockId?: string) => {
+    if (!username) return;
+    fetch("/api/analytics/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username,
+        eventType: "click",
+        blockId: blockId || null,
+        pageSlug: currentPage?.slug || null,
+      }),
+    }).catch(() => {});
+  }, [username, currentPage?.slug]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -136,7 +171,7 @@ export default function PublicProfile() {
     );
   }
 
-  const { user, links, blocks = [], socials = [], pages = [], currentPage } = data;
+  const { user, links, blocks = [], socials = [], pages = [] } = data;
   const activeLinks = links.filter((l) => l.active).sort((a, b) => a.position - b.position);
   const activeBlocks = blocks.filter((b) => b.active).sort((a, b) => a.position - b.position);
   const activeSocials = socials.filter((s) => s.url).sort((a, b) => a.position - b.position);
@@ -146,38 +181,6 @@ export default function PublicProfile() {
 
   const profileUrl = typeof window !== "undefined" ? `${window.location.origin}/${username}` : `/${username}`;
   const displayName = user.displayName || user.username;
-
-  const viewTracked = useRef<string | null>(null);
-  useEffect(() => {
-    const slug = currentPage?.slug || "home";
-    if (username && viewTracked.current !== slug) {
-      viewTracked.current = slug;
-      fetch("/api/analytics/track", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username,
-          eventType: "page_view",
-          pageSlug: slug,
-          referrer: document.referrer || null,
-        }),
-      }).catch(() => {});
-    }
-  }, [username, currentPage?.slug]);
-
-  const trackClick = useCallback((blockId?: string) => {
-    if (!username) return;
-    fetch("/api/analytics/track", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username,
-        eventType: "click",
-        blockId: blockId || null,
-        pageSlug: currentPage?.slug || null,
-      }),
-    }).catch(() => {});
-  }, [username, currentPage?.slug]);
 
   function handleCopyUrl() {
     navigator.clipboard.writeText(profileUrl);
