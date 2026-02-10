@@ -107,6 +107,16 @@ async function buildAll() {
   await writeFile(`${vercelOut}/config.json`, JSON.stringify({
     version: 3,
     routes: [
+      {
+        src: "/assets/(.*)",
+        headers: { "Cache-Control": "public, max-age=31536000, immutable" },
+        continue: true,
+      },
+      {
+        src: "/(.*\\.(?:js|css|woff2?|ttf|eot|ico|svg|png|jpg|jpeg|gif|webp))",
+        headers: { "Cache-Control": "public, max-age=31536000, immutable" },
+        continue: true,
+      },
       { src: "/api/(.*)", dest: "/api" },
       { handle: "filesystem" },
       { src: "/(.*)", dest: "/index.html" },

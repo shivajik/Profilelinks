@@ -4,6 +4,9 @@
 A link-in-bio web application that allows users to create personalized landing pages with multiple links to their social profiles, websites, and content - all accessible through a single custom URL.
 
 ## Recent Changes
+- 2026-02-10: Reorganized dashboard layout - moved Pages section below Socials for better editing context
+- 2026-02-10: Added Vercel edge optimization: Cache-Control + CDN-Cache-Control + Vercel-CDN-Cache-Control headers on public profile API (s-maxage=60, stale-while-revalidate=300)
+- 2026-02-10: Added immutable cache headers for static assets (JS, CSS, images, fonts) in Vercel output config
 - 2026-02-06: Full Profile Management in Settings: editable avatar, display name, bio, username (with live availability check), theme selector, password change, account deletion with confirmation
 - 2026-02-06: Added backend routes: GET /api/auth/username-available, POST /api/auth/change-password, DELETE /api/auth/account
 - 2026-02-06: Completed dashboard sidebar sections: Settings (account info, logout), Analytics (coming soon placeholder), QR Codes (generate/download QR code); conditional panel rendering based on active sidebar section

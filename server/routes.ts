@@ -589,6 +589,11 @@ export async function registerRoutes(
         : await storage.getBlocksByUserId(user.id);
 
       const { password: _, email: __, ...publicUser } = user;
+
+      res.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+      res.set("CDN-Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+      res.set("Vercel-CDN-Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+
       res.json({
         user: publicUser,
         links: userLinks,
