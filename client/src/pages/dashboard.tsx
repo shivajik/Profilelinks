@@ -2935,6 +2935,43 @@ function TeamMembersPanel({ teamId }: { teamId: string }) {
   );
 }
 
+const THEME_COLORS = [
+  { name: "Purple", value: "#6C5CE7" },
+  { name: "Pink", value: "#E84393" },
+  { name: "Red", value: "#D63031" },
+  { name: "Orange", value: "#E17055" },
+  { name: "Yellow", value: "#FDCB6E" },
+  { name: "Green", value: "#00B894" },
+  { name: "Mint", value: "#55EFC4" },
+  { name: "Teal", value: "#00CEC9" },
+  { name: "Blue", value: "#0984E3" },
+  { name: "Indigo", value: "#6C5CE7" },
+  { name: "Violet", value: "#A29BFE" },
+  { name: "Magenta", value: "#FD79A8" },
+  { name: "Dark", value: "#2D3436" },
+  { name: "Gray", value: "#636E72" },
+];
+
+const TEMPLATE_FONTS = [
+  { name: "Inter", value: "inter" },
+  { name: "DM Sans", value: "dm-sans" },
+  { name: "Poppins", value: "poppins" },
+  { name: "Roboto", value: "roboto" },
+  { name: "Playfair", value: "playfair" },
+  { name: "Montserrat", value: "montserrat" },
+];
+
+interface TemplateData {
+  companyName?: string;
+  companyPhone?: string;
+  companyEmail?: string;
+  companyWebsite?: string;
+  companyLogo?: string;
+  coverPhoto?: string;
+  themeColor?: string;
+  font?: string;
+}
+
 function TeamTemplatesPanel({ teamId }: { teamId: string }) {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -2942,7 +2979,9 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
   const [templateName, setTemplateName] = useState("");
   const [templateDescription, setTemplateDescription] = useState("");
   const [templateIsDefault, setTemplateIsDefault] = useState(false);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [templateData, setTemplateData] = useState<TemplateData>({});
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
 
   const { data: templates = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/teams", teamId, "templates"],
@@ -2953,12 +2992,16 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
     },
   });
 
+  const selectedTemplate = templates.find((t: any) => t.id === selectedTemplateId) || templates[0] || null;
+
   const createMutation = useMutation({
-    mutationFn: async (data: { name: string; description?: string; isDefault?: boolean }) => {
-      await apiRequest("POST", `/api/teams/${teamId}/templates`, data);
+    mutationFn: async (data: { name: string; description?: string; isDefault?: boolean; templateData?: TemplateData }) => {
+      const res = await apiRequest("POST", `/api/teams/${teamId}/templates`, data);
+      return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (created: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "templates"] });
+      if (created?.id) setSelectedTemplateId(created.id);
       closeDialog();
       toast({ title: "Template created!" });
     },
@@ -2968,7 +3011,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: { name?: string; description?: string; isDefault?: boolean } }) => {
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
       await apiRequest("PATCH", `/api/teams/${teamId}/templates/${id}`, data);
     },
     onSuccess: () => {
@@ -2994,7 +3037,8 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "templates"] });
-      setDeleteConfirmId(null);
+      setDeleteConfirmOpen(false);
+      setSelectedTemplateId(null);
       toast({ title: "Template deleted!" });
     },
   });
@@ -3005,6 +3049,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
     setTemplateName("");
     setTemplateDescription("");
     setTemplateIsDefault(false);
+    setTemplateData({});
   };
 
   const openCreate = () => {
@@ -3012,6 +3057,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
     setTemplateName("");
     setTemplateDescription("");
     setTemplateIsDefault(false);
+    setTemplateData({});
     setDialogOpen(true);
   };
 
@@ -3020,26 +3066,31 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
     setTemplateName(template.name);
     setTemplateDescription(template.description || "");
     setTemplateIsDefault(template.isDefault || false);
+    setTemplateData(template.templateData || {});
     setDialogOpen(true);
   };
 
   const handleSubmit = () => {
+    const payload = { name: templateName, description: templateDescription, isDefault: templateIsDefault, templateData };
     if (editingTemplate) {
-      updateMutation.mutate({ id: editingTemplate.id, data: { name: templateName, description: templateDescription, isDefault: templateIsDefault } });
+      updateMutation.mutate({ id: editingTemplate.id, data: payload });
     } else {
-      createMutation.mutate({ name: templateName, description: templateDescription, isDefault: templateIsDefault });
+      createMutation.mutate(payload);
     }
   };
+
+  const tData: TemplateData = selectedTemplate?.templateData || {};
+  const themeColor = tData.themeColor || "#6C5CE7";
 
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <SidebarTrigger data-testid="button-sidebar-toggle" />
-          <h2 className="text-base font-semibold">Team Templates</h2>
+          <h2 className="text-base font-semibold" data-testid="text-team-templates-heading">Team Templates</h2>
         </div>
         <Button variant="default" size="sm" onClick={openCreate} data-testid="button-create-template">
-          <Plus className="w-4 h-4 mr-1" />
+          <Plus className="w-4 h-4" />
           Create template
         </Button>
       </div>
@@ -3049,66 +3100,140 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
         </div>
       ) : templates.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-8">No templates yet.</p>
+        <p className="text-sm text-muted-foreground text-center py-8" data-testid="text-no-templates">No templates yet. Create one to get started.</p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {templates.map((template: any) => (
-            <Card key={template.id} data-testid={`card-template-${template.id}`}>
-              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium" data-testid={`text-template-name-${template.id}`}>
-                  {template.name}
-                </CardTitle>
-                {template.isDefault && (
-                  <Badge variant="secondary" className="text-xs" data-testid={`badge-template-default-${template.id}`}>
-                    Default
-                  </Badge>
-                )}
-              </CardHeader>
-              <CardContent>
-                <p className="text-xs text-muted-foreground" data-testid={`text-template-description-${template.id}`}>
-                  {template.description || "No description"}
-                </p>
-              </CardContent>
-              <CardFooter className="flex items-center gap-1 flex-wrap">
-                <Button variant="ghost" size="icon" onClick={() => openEdit(template)} data-testid={`button-edit-template-${template.id}`}>
-                  <Pencil className="w-4 h-4" />
-                </Button>
-                <Button variant="ghost" size="icon" onClick={() => duplicateMutation.mutate(template.id)} data-testid={`button-duplicate-template-${template.id}`}>
-                  <Copy className="w-4 h-4" />
-                </Button>
-                {deleteConfirmId === template.id ? (
-                  <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(template.id)} data-testid={`button-confirm-delete-template-${template.id}`}>
-                      <Check className="w-4 h-4 text-destructive" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => setDeleteConfirmId(null)} data-testid={`button-cancel-delete-template-${template.id}`}>
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <Button variant="ghost" size="icon" onClick={() => setDeleteConfirmId(template.id)} data-testid={`button-delete-template-${template.id}`}>
-                    <Trash2 className="w-4 h-4 text-destructive" />
+        <div className="flex flex-col lg:flex-row gap-6">
+          <div className="lg:w-[320px] shrink-0">
+            <TemplateCardPreview data={tData} themeColor={themeColor} />
+          </div>
+
+          <div className="flex-1 min-w-0 space-y-4">
+            {templates.length > 1 && (
+              <div className="flex gap-2 flex-wrap">
+                {templates.map((t: any) => (
+                  <Button
+                    key={t.id}
+                    variant={selectedTemplate?.id === t.id ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedTemplateId(t.id)}
+                    data-testid={`button-select-template-${t.id}`}
+                  >
+                    {t.name}
+                    {t.isDefault && <Badge variant="secondary" className="ml-1.5 text-[10px]">Default</Badge>}
                   </Button>
-                )}
-              </CardFooter>
-            </Card>
-          ))}
+                ))}
+              </div>
+            )}
+
+            {selectedTemplate && (
+              <>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-medium flex-1 min-w-0 truncate" data-testid="text-selected-template-name">
+                    {selectedTemplate.isDefault && (
+                      <span className="inline-block w-1 h-4 rounded-full mr-2 align-middle" style={{ backgroundColor: themeColor }} />
+                    )}
+                    {selectedTemplate.name}
+                  </span>
+                  <Button variant="outline" size="sm" onClick={() => setDeleteConfirmOpen(true)} data-testid="button-delete-selected-template">
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Delete
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => duplicateMutation.mutate(selectedTemplate.id)} data-testid="button-duplicate-selected-template">
+                    <Copy className="w-3.5 h-3.5" />
+                    Duplicate
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => openEdit(selectedTemplate)} data-testid="button-edit-selected-template">
+                    <Pencil className="w-3.5 h-3.5" />
+                    Edit
+                  </Button>
+                </div>
+
+                <Card>
+                  <CardContent className="pt-4 space-y-3">
+                    <h3 className="text-sm font-medium text-muted-foreground">Company Details</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <span className="text-sm truncate" data-testid="text-template-company">{tData.companyName || <span className="text-muted-foreground italic">Company name</span>}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <span className="text-sm truncate" data-testid="text-template-phone">{tData.companyPhone || <span className="text-muted-foreground italic">Phone</span>}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <span className="text-sm truncate" data-testid="text-template-email">{tData.companyEmail || <span className="text-muted-foreground italic">Email</span>}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Globe className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <span className="text-sm truncate" data-testid="text-template-website">{tData.companyWebsite || <span className="text-muted-foreground italic">Company website</span>}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="pt-4 space-y-3">
+                    <h3 className="text-sm font-medium text-muted-foreground">Theme</h3>
+                    <div className="flex gap-2 flex-wrap">
+                      {THEME_COLORS.map((c) => (
+                        <Button
+                          key={c.value + c.name}
+                          variant="ghost"
+                          size="icon"
+                          className={`w-7 min-h-7 h-7 p-0 rounded-md ${themeColor === c.value ? "ring-2 ring-foreground ring-offset-2 ring-offset-background" : ""}`}
+                          style={{ backgroundColor: c.value }}
+                          onClick={() => {
+                            const newData = { ...selectedTemplate.templateData, themeColor: c.value };
+                            updateMutation.mutate({ id: selectedTemplate.id, data: { templateData: newData } });
+                          }}
+                          data-testid={`button-theme-color-${c.name.toLowerCase()}`}
+                        />
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="pt-4 space-y-3">
+                    <h3 className="text-sm font-medium text-muted-foreground">Font</h3>
+                    <div className="flex gap-2 flex-wrap">
+                      {TEMPLATE_FONTS.map((f) => (
+                        <Button
+                          key={f.value}
+                          variant={(tData.font || "inter") === f.value ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => {
+                            const newData = { ...selectedTemplate.templateData, font: f.value };
+                            updateMutation.mutate({ id: selectedTemplate.id, data: { templateData: newData } });
+                          }}
+                          data-testid={`button-font-${f.value}`}
+                        >
+                          {f.name}
+                        </Button>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
+          </div>
         </div>
       )}
 
       <Dialog open={dialogOpen} onOpenChange={(v) => !v && closeDialog()}>
-        <DialogContent>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingTemplate ? "Edit Template" : "Create Template"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="template-name">Name</Label>
+              <Label htmlFor="template-name">Template Name</Label>
               <Input
                 id="template-name"
                 value={templateName}
                 onChange={(e) => setTemplateName(e.target.value)}
-                placeholder="Template name"
+                placeholder="e.g. Default Card"
                 data-testid="input-template-name"
               />
             </div>
@@ -3118,12 +3243,94 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                 id="template-description"
                 value={templateDescription}
                 onChange={(e) => setTemplateDescription(e.target.value)}
-                placeholder="Describe this template..."
-                rows={3}
+                placeholder="What is this template for?"
+                rows={2}
                 data-testid="input-template-description"
               />
             </div>
-            <div className="flex items-center justify-between gap-2">
+
+            <div className="border-t pt-4">
+              <h3 className="text-sm font-medium mb-3">Company Details</h3>
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="tpl-company-name" className="text-xs text-muted-foreground">Company Name</Label>
+                  <Input
+                    id="tpl-company-name"
+                    value={templateData.companyName || ""}
+                    onChange={(e) => setTemplateData({ ...templateData, companyName: e.target.value })}
+                    placeholder="Acme Corp"
+                    data-testid="input-tpl-company-name"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="tpl-company-phone" className="text-xs text-muted-foreground">Phone</Label>
+                  <Input
+                    id="tpl-company-phone"
+                    value={templateData.companyPhone || ""}
+                    onChange={(e) => setTemplateData({ ...templateData, companyPhone: e.target.value })}
+                    placeholder="+1 555-0100"
+                    data-testid="input-tpl-company-phone"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="tpl-company-email" className="text-xs text-muted-foreground">Email</Label>
+                  <Input
+                    id="tpl-company-email"
+                    type="email"
+                    value={templateData.companyEmail || ""}
+                    onChange={(e) => setTemplateData({ ...templateData, companyEmail: e.target.value })}
+                    placeholder="info@company.com"
+                    data-testid="input-tpl-company-email"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="tpl-company-website" className="text-xs text-muted-foreground">Company Website</Label>
+                  <Input
+                    id="tpl-company-website"
+                    value={templateData.companyWebsite || ""}
+                    onChange={(e) => setTemplateData({ ...templateData, companyWebsite: e.target.value })}
+                    placeholder="https://company.com"
+                    data-testid="input-tpl-company-website"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <h3 className="text-sm font-medium mb-3">Theme Color</h3>
+              <div className="flex gap-2 flex-wrap">
+                {THEME_COLORS.map((c) => (
+                  <Button
+                    key={c.value + c.name}
+                    variant="ghost"
+                    size="icon"
+                    className={`w-7 min-h-7 h-7 p-0 rounded-md ${(templateData.themeColor || "#6C5CE7") === c.value ? "ring-2 ring-foreground ring-offset-2 ring-offset-background" : ""}`}
+                    style={{ backgroundColor: c.value }}
+                    onClick={() => setTemplateData({ ...templateData, themeColor: c.value })}
+                    data-testid={`button-dialog-theme-${c.name.toLowerCase()}`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <h3 className="text-sm font-medium mb-3">Font</h3>
+              <div className="flex gap-2 flex-wrap">
+                {TEMPLATE_FONTS.map((f) => (
+                  <Button
+                    key={f.value}
+                    variant={(templateData.font || "inter") === f.value ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setTemplateData({ ...templateData, font: f.value })}
+                    data-testid={`button-dialog-font-${f.value}`}
+                  >
+                    {f.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-2 border-t pt-4">
               <Label htmlFor="template-default">Set as default</Label>
               <Switch
                 id="template-default"
@@ -3138,20 +3345,87 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
               onClick={handleSubmit}
               data-testid="button-submit-template"
             >
-              {(createMutation.isPending || updateMutation.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {editingTemplate ? "Update Template" : "Create Template"}
+              {(createMutation.isPending || updateMutation.isPending) && <Loader2 className="w-4 h-4 animate-spin" />}
+              {editingTemplate ? "Save Changes" : "Create Template"}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={deleteConfirmId !== null && deleteMutation.isPending} onOpenChange={() => {}}>
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <DialogContent>
-          <div className="flex items-center justify-center py-4">
-            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          <DialogHeader>
+            <DialogTitle>Delete Template</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to delete "{selectedTemplate?.name}"? This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" size="sm" onClick={() => setDeleteConfirmOpen(false)} data-testid="button-cancel-delete-template">
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={deleteMutation.isPending}
+              onClick={() => selectedTemplate && deleteMutation.mutate(selectedTemplate.id)}
+              data-testid="button-confirm-delete-template"
+            >
+              {deleteMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              Delete
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function TemplateCardPreview({ data, themeColor }: { data: TemplateData; themeColor: string }) {
+  return (
+    <div className="rounded-md overflow-hidden border bg-card shadow-sm" data-testid="template-card-preview">
+      <div className="h-20 relative" style={{ backgroundColor: themeColor + "22" }}>
+        {data.coverPhoto ? (
+          <img src={data.coverPhoto} alt="Cover" className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <ImageIcon className="w-6 h-6 text-muted-foreground/40" />
+          </div>
+        )}
+      </div>
+      <div className="relative px-4 pb-4">
+        <div className="-mt-8 mb-3 flex items-end gap-3">
+          <div className="w-16 h-16 rounded-full bg-muted border-4 border-card flex items-center justify-center overflow-hidden shrink-0">
+            {data.companyLogo ? (
+              <img src={data.companyLogo} alt="Logo" className="w-full h-full object-cover" />
+            ) : (
+              <UserIcon className="w-6 h-6 text-muted-foreground/50" />
+            )}
+          </div>
+        </div>
+        <div className="space-y-2.5">
+          <div>
+            <p className="text-sm font-semibold" style={{ color: themeColor }} data-testid="preview-name">{data.companyName ? "Contact" : "Name"}</p>
+            <p className="text-sm font-bold" data-testid="preview-company">{data.companyName || "Company"}</p>
+          </div>
+          <div className="space-y-1.5">
+            {[
+              { icon: Phone, value: data.companyPhone, placeholder: "Phone" },
+              { icon: Mail, value: data.companyEmail, placeholder: "Email" },
+              { icon: Globe, value: data.companyWebsite, placeholder: "Website" },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: themeColor + "20" }}>
+                  <item.icon className="w-3.5 h-3.5" style={{ color: themeColor }} />
+                </div>
+                <span className={`text-xs ${item.value ? "text-foreground" : "text-muted-foreground"}`}>
+                  {item.value || item.placeholder}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

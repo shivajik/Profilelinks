@@ -199,6 +199,14 @@ export async function registerRoutes(
             name: "Standard Profile",
             description: "Default template for all team members",
             isDefault: true,
+            templateData: {
+              companyName: "Acme Corp",
+              companyPhone: "+1 555-0100",
+              companyEmail: "hello@acme.example.com",
+              companyWebsite: "https://acme.example.com",
+              themeColor: "#6C5CE7",
+              font: "inter",
+            },
           });
           await storage.createContact({
             teamId: team.id,
