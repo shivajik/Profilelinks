@@ -1185,6 +1185,40 @@ export async function registerRoutes(
 
       const { password: _, email: __, ...publicUser } = user;
 
+      let teamBranding: {
+        companyLogo?: string;
+        coverPhoto?: string;
+        companyName?: string;
+        companyPhone?: string;
+        companyEmail?: string;
+        companyWebsite?: string;
+        themeColor?: string;
+        font?: string;
+        jobTitle?: string;
+        teamName?: string;
+      } | null = null;
+
+      if (user.accountType === "team" && user.teamId) {
+        const team = await storage.getTeam(user.teamId);
+        const member = await storage.getTeamMemberByUserId(user.teamId, user.id);
+        const templates = await storage.getTeamTemplates(user.teamId);
+        const defaultTemplate = templates.find((t) => t.isDefault) || templates[0];
+        const tData: any = defaultTemplate?.templateData || {};
+
+        teamBranding = {
+          companyLogo: tData.companyLogo || team?.logoUrl || undefined,
+          coverPhoto: tData.coverPhoto || undefined,
+          companyName: tData.companyName || team?.name || undefined,
+          companyPhone: tData.companyPhone || undefined,
+          companyEmail: tData.companyEmail || undefined,
+          companyWebsite: tData.companyWebsite || team?.websiteUrl || undefined,
+          themeColor: tData.themeColor || undefined,
+          font: tData.font || undefined,
+          jobTitle: member?.jobTitle || undefined,
+          teamName: team?.name || undefined,
+        };
+      }
+
       res.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
       res.set("CDN-Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
       res.set("Vercel-CDN-Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
@@ -1196,6 +1230,7 @@ export async function registerRoutes(
         socials: userSocials,
         pages: userPages.map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome })),
         currentPage: currentPage ? { id: currentPage.id, title: currentPage.title, slug: currentPage.slug, isHome: currentPage.isHome } : null,
+        teamBranding,
       });
     } catch (error: any) {
       console.error("Profile load error:", error);

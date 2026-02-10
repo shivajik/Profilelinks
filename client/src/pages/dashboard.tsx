@@ -3117,11 +3117,18 @@ function MemberCardPreview({ member, templateData, themeColor }: { member: any; 
       </div>
       <div className="relative px-4 pb-4">
         <div className="-mt-8 mb-3 flex items-end gap-3">
-          <div className="w-16 h-16 rounded-full bg-muted border-4 border-card flex items-center justify-center overflow-hidden shrink-0">
-            {member.user?.profileImage ? (
-              <img src={member.user.profileImage} alt={memberName} className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-lg font-bold text-muted-foreground">{memberName.charAt(0).toUpperCase()}</span>
+          <div className="relative shrink-0">
+            <div className="w-16 h-16 rounded-full bg-muted border-4 border-card flex items-center justify-center overflow-hidden">
+              {member.user?.profileImage ? (
+                <img src={member.user.profileImage} alt={memberName} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-lg font-bold text-muted-foreground">{memberName.charAt(0).toUpperCase()}</span>
+              )}
+            </div>
+            {templateData.companyLogo && (
+              <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full border-2 border-card bg-white shadow-sm flex items-center justify-center overflow-hidden" data-testid="preview-member-logo-badge">
+                <img src={templateData.companyLogo} alt="Company" className="w-full h-full object-cover" />
+              </div>
             )}
           </div>
         </div>

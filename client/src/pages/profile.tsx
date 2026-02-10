@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Loader2, ExternalLink, Mail, Play, Music, UserPlus, Share2, QrCode, Copy, Check, ChevronDown } from "lucide-react";
+import { Loader2, ExternalLink, Mail, Play, Music, UserPlus, Share2, QrCode, Copy, Check, ChevronDown, Phone, Globe, Building2, ImageIcon } from "lucide-react";
 import { SiFacebook, SiX, SiPinterest, SiReddit, SiLinkedin } from "react-icons/si";
 import { QRCodeSVG } from "qrcode.react";
 import { getTemplate } from "@/lib/templates";
@@ -83,6 +83,19 @@ function MobilePageNav({
   );
 }
 
+type TeamBranding = {
+  companyLogo?: string;
+  coverPhoto?: string;
+  companyName?: string;
+  companyPhone?: string;
+  companyEmail?: string;
+  companyWebsite?: string;
+  themeColor?: string;
+  font?: string;
+  jobTitle?: string;
+  teamName?: string;
+};
+
 type PublicProfile = {
   user: Omit<User, "password" | "email">;
   links: Link[];
@@ -90,6 +103,7 @@ type PublicProfile = {
   socials: Social[];
   pages: PageInfo[];
   currentPage: PageInfo | null;
+  teamBranding?: TeamBranding | null;
 };
 
 export default function PublicProfile() {
@@ -172,13 +186,15 @@ export default function PublicProfile() {
     );
   }
 
-  const { user, links, blocks = [], socials = [], pages = [] } = data;
+  const { user, links, blocks = [], socials = [], pages = [], teamBranding } = data;
   const activeLinks = links.filter((l) => l.active).sort((a, b) => a.position - b.position);
   const activeBlocks = blocks.filter((b) => b.active).sort((a, b) => a.position - b.position);
   const activeSocials = socials.filter((s) => s.url).sort((a, b) => a.position - b.position);
   const template = getTemplate(user.template);
   const hasMultiplePages = pages.length > 1;
   const hasBlocks = activeBlocks.length > 0;
+  const isTeamProfile = !!(teamBranding && (teamBranding.companyLogo || teamBranding.companyName));
+  const brandColor = teamBranding?.themeColor || template.accent;
 
   const profileUrl = typeof window !== "undefined" ? `${window.location.origin}/${username}` : `/${username}`;
   const displayName = user.displayName || user.username;
@@ -194,7 +210,12 @@ export default function PublicProfile() {
       "BEGIN:VCARD",
       "VERSION:3.0",
       `FN:${displayName}`,
-      `URL:${profileUrl}`,
+      teamBranding?.jobTitle ? `TITLE:${teamBranding.jobTitle}` : "",
+      teamBranding?.companyName ? `ORG:${teamBranding.companyName}` : "",
+      teamBranding?.companyPhone ? `TEL:${teamBranding.companyPhone}` : "",
+      teamBranding?.companyEmail ? `EMAIL:${teamBranding.companyEmail}` : "",
+      teamBranding?.companyWebsite ? `URL:${teamBranding.companyWebsite}` : "",
+      !teamBranding?.companyWebsite ? `URL:${profileUrl}` : "",
       user.bio ? `NOTE:${user.bio}` : "",
       "END:VCARD",
     ].filter(Boolean).join("\n");
@@ -240,79 +261,214 @@ export default function PublicProfile() {
           </Button>
         </div>
 
-        <div className="flex flex-col items-center text-center mb-10">
-          <Avatar className="w-24 h-24 border-4 border-white/20 shadow-lg mb-5">
-            <AvatarImage src={user.profileImage || undefined} alt={user.displayName || user.username} />
-            <AvatarFallback
-              className="text-2xl"
-              style={{ backgroundColor: template.accent + "30", color: template.accent }}
-            >
-              {(user.displayName || user.username).charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <h1 className={`text-2xl font-bold mb-1 ${template.textColor}`} data-testid="text-profile-name">
-            {user.displayName || user.username}
-          </h1>
-          <p className={`text-sm mb-2 ${template.textColor} opacity-70`} data-testid="text-profile-username">
-            @{user.username}
-          </p>
-          {user.bio && (
-            <p className={`text-sm max-w-sm leading-relaxed ${template.textColor} opacity-80`} data-testid="text-profile-bio">
-              {user.bio}
-            </p>
-          )}
-          {activeSocials.length > 0 && (
-            <div className="flex items-center justify-center gap-3 mt-4 flex-wrap" data-testid="social-icons-row">
-              {activeSocials.map((social) => (
-                <a
-                  key={social.id}
-                  href={normalizeUrl(social.url, social.platform)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`p-2 rounded-full ${template.textColor} opacity-70 hover-elevate active-elevate-2`}
-                  title={getPlatform(social.platform)?.name || social.platform}
-                  data-testid={`social-icon-${social.platform}`}
-                >
-                  <SocialIcon platform={social.platform} className="w-5 h-5" />
-                </a>
-              ))}
-            </div>
-          )}
-
-          {hasMultiplePages && (
-            <>
-              <div className="hidden sm:flex items-center gap-2 mt-5 flex-wrap justify-center" data-testid="page-nav">
-                {pages.map((page) => {
-                  const isActive = currentPage?.slug === page.slug;
+        {isTeamProfile ? (
+          <div className="mb-10">
+            <div className="rounded-md overflow-hidden bg-card/80 backdrop-blur-sm shadow-lg" data-testid="corporate-profile-card">
+              <div className="h-28 relative" style={{ backgroundColor: brandColor + "22" }}>
+                {teamBranding?.coverPhoto ? (
+                  <img src={teamBranding.coverPhoto} alt="Cover" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <ImageIcon className="w-8 h-8 text-muted-foreground/30" />
+                  </div>
+                )}
+              </div>
+              <div className="relative px-5 pb-5">
+                <div className="-mt-10 mb-4 flex items-end gap-3">
+                  <div className="relative shrink-0">
+                    <Avatar className="w-20 h-20 border-4 border-card shadow-md">
+                      <AvatarImage src={user.profileImage || undefined} alt={displayName} />
+                      <AvatarFallback
+                        className="text-xl"
+                        style={{ backgroundColor: brandColor + "30", color: brandColor }}
+                      >
+                        {displayName.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    {teamBranding?.companyLogo && (
+                      <div
+                        className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full border-2 border-card bg-white shadow-sm flex items-center justify-center overflow-hidden"
+                        data-testid="img-company-logo-badge"
+                      >
+                        <img src={teamBranding.companyLogo} alt="Company" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                  </div>
+                  {teamBranding?.companyLogo && (
+                    <div className="mb-1 opacity-70" data-testid="text-team-brand">
+                      <span className="text-xs font-medium text-muted-foreground">{teamBranding.companyName}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-1 mb-4">
+                  <h1 className="text-xl font-bold text-foreground" data-testid="text-profile-name">
+                    {displayName}
+                  </h1>
+                  {teamBranding?.jobTitle && (
+                    <p className="text-sm text-muted-foreground" data-testid="text-profile-jobtitle">{teamBranding.jobTitle}</p>
+                  )}
+                  {teamBranding?.companyName && (
+                    <p className="text-sm font-medium" style={{ color: brandColor }} data-testid="text-profile-company">
+                      {teamBranding.companyName}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground" data-testid="text-profile-username">
+                    @{user.username}
+                  </p>
+                </div>
+                {user.bio && (
+                  <p className="text-sm text-muted-foreground leading-relaxed mb-4" data-testid="text-profile-bio">
+                    {user.bio}
+                  </p>
+                )}
+                {(() => {
+                  const contactItems = [
+                    { icon: Mail, value: teamBranding?.companyEmail },
+                    { icon: Phone, value: teamBranding?.companyPhone },
+                    { icon: Globe, value: teamBranding?.companyWebsite },
+                  ].filter(item => item.value);
+                  if (contactItems.length === 0) return null;
                   return (
-                    <Button
-                      key={page.id}
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setActivePageSlug(page.isHome ? null : page.slug)}
-                      className={`rounded-full px-4 ${
-                        isActive
-                          ? `${template.cardBg} ${template.cardTextColor}`
-                          : `${template.textColor} opacity-60 hover:opacity-100`
-                      }`}
-                      data-testid={`page-tab-${page.slug}`}
-                    >
-                      {page.title}
-                    </Button>
+                    <div className="space-y-2 mb-4" data-testid="corporate-contact-info">
+                      {contactItems.map((item, i) => (
+                        <div key={i} className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: brandColor + "20" }}>
+                            <item.icon className="w-3.5 h-3.5" style={{ color: brandColor }} />
+                          </div>
+                          <span className="text-xs text-foreground">{item.value}</span>
+                        </div>
+                      ))}
+                    </div>
                   );
-                })}
+                })()}
+                {activeSocials.length > 0 && (
+                  <div className="flex items-center gap-2 flex-wrap" data-testid="social-icons-row">
+                    {activeSocials.map((social) => (
+                      <a
+                        key={social.id}
+                        href={normalizeUrl(social.url, social.platform)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1.5 rounded-full text-muted-foreground hover-elevate active-elevate-2"
+                        title={getPlatform(social.platform)?.name || social.platform}
+                        data-testid={`social-icon-${social.platform}`}
+                      >
+                        <SocialIcon platform={social.platform} className="w-4 h-4" />
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div className="sm:hidden mt-5" data-testid="page-nav-mobile">
-                <MobilePageNav
-                  pages={pages}
-                  currentPage={currentPage}
-                  onSelectPage={(slug) => setActivePageSlug(slug)}
-                  template={template}
-                />
+            </div>
+            {hasMultiplePages && (
+              <div className="mt-4 flex flex-col items-center">
+                <div className="hidden sm:flex items-center gap-2 flex-wrap justify-center" data-testid="page-nav">
+                  {pages.map((page) => {
+                    const isActive = currentPage?.slug === page.slug;
+                    return (
+                      <Button
+                        key={page.id}
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setActivePageSlug(page.isHome ? null : page.slug)}
+                        className={`rounded-full px-4 ${
+                          isActive
+                            ? `${template.cardBg} ${template.cardTextColor}`
+                            : `${template.textColor} opacity-60 hover:opacity-100`
+                        }`}
+                        data-testid={`page-tab-${page.slug}`}
+                      >
+                        {page.title}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <div className="sm:hidden" data-testid="page-nav-mobile">
+                  <MobilePageNav
+                    pages={pages}
+                    currentPage={currentPage}
+                    onSelectPage={(slug) => setActivePageSlug(slug)}
+                    template={template}
+                  />
+                </div>
               </div>
-            </>
-          )}
-        </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center text-center mb-10">
+            <Avatar className="w-24 h-24 border-4 border-white/20 shadow-lg mb-5">
+              <AvatarImage src={user.profileImage || undefined} alt={user.displayName || user.username} />
+              <AvatarFallback
+                className="text-2xl"
+                style={{ backgroundColor: template.accent + "30", color: template.accent }}
+              >
+                {(user.displayName || user.username).charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <h1 className={`text-2xl font-bold mb-1 ${template.textColor}`} data-testid="text-profile-name">
+              {user.displayName || user.username}
+            </h1>
+            <p className={`text-sm mb-2 ${template.textColor} opacity-70`} data-testid="text-profile-username">
+              @{user.username}
+            </p>
+            {user.bio && (
+              <p className={`text-sm max-w-sm leading-relaxed ${template.textColor} opacity-80`} data-testid="text-profile-bio">
+                {user.bio}
+              </p>
+            )}
+            {activeSocials.length > 0 && (
+              <div className="flex items-center justify-center gap-3 mt-4 flex-wrap" data-testid="social-icons-row">
+                {activeSocials.map((social) => (
+                  <a
+                    key={social.id}
+                    href={normalizeUrl(social.url, social.platform)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`p-2 rounded-full ${template.textColor} opacity-70 hover-elevate active-elevate-2`}
+                    title={getPlatform(social.platform)?.name || social.platform}
+                    data-testid={`social-icon-${social.platform}`}
+                  >
+                    <SocialIcon platform={social.platform} className="w-5 h-5" />
+                  </a>
+                ))}
+              </div>
+            )}
+
+            {hasMultiplePages && (
+              <>
+                <div className="hidden sm:flex items-center gap-2 mt-5 flex-wrap justify-center" data-testid="page-nav">
+                  {pages.map((page) => {
+                    const isActive = currentPage?.slug === page.slug;
+                    return (
+                      <Button
+                        key={page.id}
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setActivePageSlug(page.isHome ? null : page.slug)}
+                        className={`rounded-full px-4 ${
+                          isActive
+                            ? `${template.cardBg} ${template.cardTextColor}`
+                            : `${template.textColor} opacity-60 hover:opacity-100`
+                        }`}
+                        data-testid={`page-tab-${page.slug}`}
+                      >
+                        {page.title}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <div className="sm:hidden mt-5" data-testid="page-nav-mobile">
+                  <MobilePageNav
+                    pages={pages}
+                    currentPage={currentPage}
+                    onSelectPage={(slug) => setActivePageSlug(slug)}
+                    template={template}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         <div
           className="transition-opacity duration-300 ease-in-out"
