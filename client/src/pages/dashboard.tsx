@@ -3186,8 +3186,8 @@ interface TemplateData {
   companyPhone?: string;
   companyEmail?: string;
   companyWebsite?: string;
-  companyLogo?: string;
-  coverPhoto?: string;
+  companyLogo?: string | null;
+  coverPhoto?: string | null;
   themeColor?: string;
   font?: string;
 }
@@ -3394,6 +3394,116 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
 
                 <Card>
                   <CardContent className="pt-4 space-y-3">
+                    <h3 className="text-sm font-medium text-muted-foreground">Branding</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Cover Image</Label>
+                        <div className="relative h-24 rounded-md border border-dashed bg-muted/30 overflow-hidden group">
+                          {tData.coverPhoto ? (
+                            <>
+                              <img src={tData.coverPhoto} alt="Cover" className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                <label className="cursor-pointer">
+                                  <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    const fd = new FormData();
+                                    fd.append("file", file);
+                                    const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+                                    if (res.ok) {
+                                      const { url } = await res.json();
+                                      const newData = { ...selectedTemplate.templateData, coverPhoto: url };
+                                      updateMutation.mutate({ id: selectedTemplate.id, data: { templateData: newData } });
+                                    }
+                                  }} data-testid="input-inline-cover-upload" />
+                                  <Upload className="w-4 h-4 text-white" />
+                                </label>
+                                <button onClick={() => {
+                                  const newData = { ...selectedTemplate.templateData, coverPhoto: null };
+                                  updateMutation.mutate({ id: selectedTemplate.id, data: { templateData: newData } });
+                                }} data-testid="button-inline-cover-remove">
+                                  <XCircle className="w-4 h-4 text-white" />
+                                </button>
+                              </div>
+                            </>
+                          ) : (
+                            <label className="flex flex-col items-center justify-center h-full cursor-pointer gap-1.5">
+                              <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const fd = new FormData();
+                                fd.append("file", file);
+                                const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+                                if (res.ok) {
+                                  const { url } = await res.json();
+                                  const newData = { ...selectedTemplate.templateData, coverPhoto: url };
+                                  updateMutation.mutate({ id: selectedTemplate.id, data: { templateData: newData } });
+                                }
+                              }} data-testid="input-inline-cover-upload-empty" />
+                              <Upload className="w-4 h-4 text-muted-foreground/50" />
+                              <span className="text-[11px] text-muted-foreground/50">Upload cover</span>
+                            </label>
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Company Logo</Label>
+                        <div className="flex items-center gap-3">
+                          <div className="relative w-16 h-16 rounded-full border bg-muted/30 overflow-hidden group shrink-0">
+                            {tData.companyLogo ? (
+                              <>
+                                <img src={tData.companyLogo} alt="Logo" className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                                  <label className="cursor-pointer">
+                                    <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                                      const file = e.target.files?.[0];
+                                      if (!file) return;
+                                      const fd = new FormData();
+                                      fd.append("file", file);
+                                      const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+                                      if (res.ok) {
+                                        const { url } = await res.json();
+                                        const newData = { ...selectedTemplate.templateData, companyLogo: url };
+                                        updateMutation.mutate({ id: selectedTemplate.id, data: { templateData: newData } });
+                                      }
+                                    }} data-testid="input-inline-logo-upload" />
+                                    <Upload className="w-3 h-3 text-white" />
+                                  </label>
+                                  <button onClick={() => {
+                                    const newData = { ...selectedTemplate.templateData, companyLogo: null };
+                                    updateMutation.mutate({ id: selectedTemplate.id, data: { templateData: newData } });
+                                  }} data-testid="button-inline-logo-remove">
+                                    <XCircle className="w-3 h-3 text-white" />
+                                  </button>
+                                </div>
+                              </>
+                            ) : (
+                              <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer">
+                                <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  const fd = new FormData();
+                                  fd.append("file", file);
+                                  const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+                                  if (res.ok) {
+                                    const { url } = await res.json();
+                                    const newData = { ...selectedTemplate.templateData, companyLogo: url };
+                                    updateMutation.mutate({ id: selectedTemplate.id, data: { templateData: newData } });
+                                  }
+                                }} data-testid="input-inline-logo-upload-empty" />
+                                <Upload className="w-4 h-4 text-muted-foreground/50" />
+                              </label>
+                            )}
+                          </div>
+                          <span className="text-[11px] text-muted-foreground/50">{tData.companyLogo ? "Hover to change" : "Upload logo"}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="pt-4 space-y-3">
                     <h3 className="text-sm font-medium text-muted-foreground">Theme</h3>
                     <div className="flex gap-2 flex-wrap">
                       {THEME_COLORS.map((c) => (
@@ -3512,6 +3622,104 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                     placeholder="https://company.com"
                     data-testid="input-tpl-company-website"
                   />
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <h3 className="text-sm font-medium mb-3">Branding</h3>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Cover Image</Label>
+                  <div className="relative h-28 rounded-md border border-dashed bg-muted/30 overflow-hidden group">
+                    {templateData.coverPhoto ? (
+                      <>
+                        <img src={templateData.coverPhoto} alt="Cover" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <label className="cursor-pointer">
+                            <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              const fd = new FormData();
+                              fd.append("file", file);
+                              const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+                              if (res.ok) {
+                                const { url } = await res.json();
+                                setTemplateData({ ...templateData, coverPhoto: url });
+                              }
+                            }} data-testid="input-dialog-cover-upload" />
+                            <Upload className="w-5 h-5 text-white" />
+                          </label>
+                          <button type="button" onClick={() => setTemplateData({ ...templateData, coverPhoto: null })} data-testid="button-dialog-cover-remove">
+                            <XCircle className="w-5 h-5 text-white" />
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center h-full cursor-pointer gap-1.5">
+                        <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const fd = new FormData();
+                          fd.append("file", file);
+                          const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+                          if (res.ok) {
+                            const { url } = await res.json();
+                            setTemplateData({ ...templateData, coverPhoto: url });
+                          }
+                        }} data-testid="input-dialog-cover-upload-empty" />
+                        <Upload className="w-5 h-5 text-muted-foreground/40" />
+                        <span className="text-xs text-muted-foreground/50">Click to upload cover image</span>
+                      </label>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Company Logo</Label>
+                  <div className="flex items-center gap-4">
+                    <div className="relative w-20 h-20 rounded-full border border-dashed bg-muted/30 overflow-hidden group shrink-0">
+                      {templateData.companyLogo ? (
+                        <>
+                          <img src={templateData.companyLogo} alt="Logo" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                            <label className="cursor-pointer">
+                              <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const fd = new FormData();
+                                fd.append("file", file);
+                                const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+                                if (res.ok) {
+                                  const { url } = await res.json();
+                                  setTemplateData({ ...templateData, companyLogo: url });
+                                }
+                              }} data-testid="input-dialog-logo-upload" />
+                              <Upload className="w-4 h-4 text-white" />
+                            </label>
+                            <button type="button" onClick={() => setTemplateData({ ...templateData, companyLogo: null })} data-testid="button-dialog-logo-remove">
+                              <XCircle className="w-4 h-4 text-white" />
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer gap-1">
+                          <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const fd = new FormData();
+                            fd.append("file", file);
+                            const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+                            if (res.ok) {
+                              const { url } = await res.json();
+                              setTemplateData({ ...templateData, companyLogo: url });
+                            }
+                          }} data-testid="input-dialog-logo-upload-empty" />
+                          <Upload className="w-4 h-4 text-muted-foreground/40" />
+                        </label>
+                      )}
+                    </div>
+                    <span className="text-xs text-muted-foreground/50">{templateData.companyLogo ? "Hover to change or remove" : "Click to upload logo"}</span>
+                  </div>
                 </div>
               </div>
             </div>
