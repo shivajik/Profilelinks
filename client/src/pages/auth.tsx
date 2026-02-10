@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
-import { Eye, EyeOff, ArrowLeft, Loader2, Sparkles, Link2, Palette, Globe } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Eye, EyeOff, ArrowLeft, Loader2, Sparkles, Link2, Palette, Globe, User, Users } from "lucide-react";
 import { Link as WouterLink } from "wouter";
 
 const FEATURES = [
@@ -24,6 +25,19 @@ export default function AuthPage() {
   const [, navigate] = useLocation();
   const { login, register, user } = useAuth();
   const { toast } = useToast();
+  const [demoLoading, setDemoLoading] = useState<"personal" | "team" | null>(null);
+
+  const handleDemoLogin = async (type: "personal" | "team") => {
+    setDemoLoading(type);
+    try {
+      await apiRequest("POST", "/api/auth/demo-login", { type });
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    } catch (e: any) {
+      toast({ title: "Demo login failed", description: e.message, variant: "destructive" });
+    } finally {
+      setDemoLoading(null);
+    }
+  };
 
   if (user) {
     return <Redirect to={user.onboardingCompleted ? "/dashboard" : "/onboarding"} />;
@@ -126,6 +140,41 @@ export default function AuthPage() {
                 }
               }} />
             )}
+
+            <div className="mt-6">
+              <div className="relative mb-4">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-background px-2 text-muted-foreground">Quick Demo</span>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  disabled={demoLoading !== null}
+                  onClick={() => handleDemoLogin("personal")}
+                  data-testid="button-demo-personal"
+                >
+                  {demoLoading === "personal" ? <Loader2 className="w-4 h-4 animate-spin" /> : <User className="w-4 h-4" />}
+                  Individual
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  disabled={demoLoading !== null}
+                  onClick={() => handleDemoLogin("team")}
+                  data-testid="button-demo-team"
+                >
+                  {demoLoading === "team" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
+                  Team
+                </Button>
+              </div>
+            </div>
 
             <p className="text-xs text-muted-foreground text-center mt-8">
               By continuing, you agree to our Terms of Service and Privacy Policy.

@@ -138,6 +138,99 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/auth/demo-login", async (req, res) => {
+    try {
+      const { type } = req.body;
+      if (!type || !["personal", "team"].includes(type)) {
+        return res.status(400).json({ message: "Invalid demo type" });
+      }
+
+      const demoEmail = type === "personal" ? "demo@linkfolio.com" : "team-demo@linkfolio.com";
+      const demoUsername = type === "personal" ? "demo-user" : "demo-team";
+      const demoPassword = "demo123456";
+
+      let user = await storage.getUserByEmail(demoEmail);
+
+      if (!user) {
+        const hashedPassword = await bcrypt.hash(demoPassword, 10);
+        user = await storage.createUser({
+          username: demoUsername,
+          email: demoEmail,
+          password: hashedPassword,
+        });
+
+        await storage.updateUser(user.id, {
+          displayName: type === "personal" ? "Alex Johnson" : "Sarah Chen",
+          bio: type === "personal"
+            ? "Designer & content creator. Sharing my work and inspiration."
+            : "CEO at Acme Corp. Building the future of work.",
+          template: type === "personal" ? "sunset" : "minimal",
+          onboardingCompleted: true,
+          accountType: type,
+        });
+
+        const homePage = await storage.ensureHomePage(user.id);
+
+        await storage.createSocial({ userId: user.id, platform: "twitter", url: "https://twitter.com/demo", position: 0 });
+        await storage.createSocial({ userId: user.id, platform: "instagram", url: "https://instagram.com/demo", position: 1 });
+        await storage.createSocial({ userId: user.id, platform: "linkedin", url: "https://linkedin.com/in/demo", position: 2 });
+        await storage.createSocial({ userId: user.id, platform: "github", url: "https://github.com/demo", position: 3 });
+
+        await storage.createBlock({ userId: user.id, pageId: homePage.id, type: "url_button", content: { title: "My Portfolio", url: "https://example.com/portfolio" }, position: 0, active: true });
+        await storage.createBlock({ userId: user.id, pageId: homePage.id, type: "url_button", content: { title: "Latest Blog Post", url: "https://example.com/blog" }, position: 1, active: true });
+        await storage.createBlock({ userId: user.id, pageId: homePage.id, type: "text", content: { text: "Welcome to my Linkfolio page! Explore my links below." }, position: 2, active: true });
+
+        if (type === "team") {
+          const team = await storage.createTeam({
+            name: "Acme Corp",
+            size: "6-20",
+            websiteUrl: "https://acme.example.com",
+            ownerId: user.id,
+          });
+          await storage.addTeamMember({
+            teamId: team.id,
+            userId: user.id,
+            role: "owner",
+            status: "activated",
+          });
+          await storage.updateUser(user.id, { teamId: team.id });
+          await storage.createTeamTemplate({
+            teamId: team.id,
+            name: "Standard Profile",
+            description: "Default template for all team members",
+            isDefault: true,
+          });
+          await storage.createContact({
+            teamId: team.id,
+            name: "John Partner",
+            email: "john@partner.com",
+            phone: "+1 555-0100",
+            company: "Partner Inc",
+            jobTitle: "VP Sales",
+            type: "company",
+          });
+          await storage.createContact({
+            ownerId: user.id,
+            name: "Emily Networking",
+            email: "emily@contact.com",
+            company: "Freelance",
+            jobTitle: "Designer",
+            type: "personal",
+          });
+        }
+
+        user = (await storage.getUser(user.id))!;
+      }
+
+      await storage.ensureHomePage(user.id);
+      req.session.userId = user.id;
+      const { password: _, ...safeUser } = user;
+      res.json(safeUser);
+    } catch (error: any) {
+      res.status(500).json({ message: "Demo login failed" });
+    }
+  });
+
   app.post("/api/auth/login", async (req, res) => {
     try {
       const result = loginSchema.safeParse(req.body);
