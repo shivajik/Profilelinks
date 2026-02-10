@@ -4,13 +4,15 @@ import { useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
 import { TEMPLATES } from "@/lib/templates";
+import { TEAM_SIZES } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Check, ArrowRight, Loader2, X, GripVertical, Camera, Upload } from "lucide-react";
+import { Check, ArrowRight, Loader2, X, GripVertical, Camera, Upload, User, Users, Building2 } from "lucide-react";
 import {
   SiInstagram,
   SiX,
@@ -43,7 +45,8 @@ export default function Onboarding() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0);
+  const [accountType, setAccountType] = useState<"personal" | "team">("personal");
   const [selectedTemplate, setSelectedTemplate] = useState("minimal");
   const [displayName, setDisplayName] = useState(user?.displayName || "");
   const [bio, setBio] = useState(user?.bio || "");
@@ -53,9 +56,18 @@ export default function Onboarding() {
   const [username, setUsername] = useState(user?.username || "");
   const [saving, setSaving] = useState(false);
 
+  const [companyName, setCompanyName] = useState("");
+  const [companySize, setCompanySize] = useState("");
+  const [companyUrl, setCompanyUrl] = useState("");
+  const [companyLogo, setCompanyLogo] = useState("");
+  const [inviteEmails, setInviteEmails] = useState<string[]>([]);
+
   if (!user) {
     return <Redirect to="/auth" />;
   }
+
+  const totalSteps = accountType === "team" ? 6 : 5;
+  const lastStep = totalSteps - 1;
 
   const toggleSocial = (platformId: string) => {
     if (selectedSocials.includes(platformId)) {
@@ -86,19 +98,36 @@ export default function Onboarding() {
         username,
         template: selectedTemplate,
         onboardingCompleted: true,
+        accountType,
       });
 
-      for (const entry of socialEntries) {
-        if (!entry.url.trim()) continue;
-        const platform = SOCIAL_PLATFORMS.find((p) => p.id === entry.platformId);
-        if (!platform) continue;
-        const fullUrl = entry.url.startsWith("http") || entry.url.startsWith("mailto:") || entry.url.startsWith("tel:")
-          ? entry.url
-          : platform.prefix + entry.url;
-        await apiRequest("POST", "/api/socials", {
-          platform: entry.platformId,
-          url: fullUrl,
+      if (accountType === "team") {
+        const teamRes = await apiRequest("POST", "/api/teams", {
+          name: companyName,
+          size: companySize || undefined,
+          websiteUrl: companyUrl || undefined,
+          logoUrl: companyLogo || undefined,
         });
+        const teamData = await teamRes.json();
+
+        if (inviteEmails.length > 0) {
+          await apiRequest("POST", `/api/teams/${teamData.id}/invites`, {
+            emails: inviteEmails,
+          });
+        }
+      } else {
+        for (const entry of socialEntries) {
+          if (!entry.url.trim()) continue;
+          const platform = SOCIAL_PLATFORMS.find((p) => p.id === entry.platformId);
+          if (!platform) continue;
+          const fullUrl = entry.url.startsWith("http") || entry.url.startsWith("mailto:") || entry.url.startsWith("tel:")
+            ? entry.url
+            : platform.prefix + entry.url;
+          await apiRequest("POST", "/api/socials", {
+            platform: entry.platformId,
+            url: fullUrl,
+          });
+        }
       }
 
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
@@ -116,8 +145,32 @@ export default function Onboarding() {
   const currentTemplate = TEMPLATES.find((t) => t.id === selectedTemplate) || TEMPLATES[0];
 
   const canProceed = () => {
-    if (step === 4 && username.length < 3) return false;
+    if (step === lastStep && username.length < 3) return false;
+    if (accountType === "team" && step === 2 && !companyName.trim()) return false;
     return true;
+  };
+
+  const isInviteStep = accountType === "team" && step === 4;
+
+  const renderStep = () => {
+    if (step === 0) {
+      return <AccountTypeStep accountType={accountType} setAccountType={setAccountType} />;
+    }
+    if (step === 1) {
+      return <TemplateStep selected={selectedTemplate} onSelect={setSelectedTemplate} />;
+    }
+
+    if (accountType === "personal") {
+      if (step === 2) return <ProfileStep displayName={displayName} setDisplayName={setDisplayName} bio={bio} setBio={setBio} profileImage={profileImage} setProfileImage={setProfileImage} />;
+      if (step === 3) return <SocialStep selectedSocials={selectedSocials} socialEntries={socialEntries} toggleSocial={toggleSocial} updateSocialUrl={updateSocialUrl} removeSocialEntry={removeSocialEntry} />;
+      if (step === 4) return <UrlStep username={username} setUsername={setUsername} />;
+    } else {
+      if (step === 2) return <WorkspaceStep companyName={companyName} setCompanyName={setCompanyName} companySize={companySize} setCompanySize={setCompanySize} companyUrl={companyUrl} setCompanyUrl={setCompanyUrl} companyLogo={companyLogo} setCompanyLogo={setCompanyLogo} />;
+      if (step === 3) return <ProfileStep displayName={displayName} setDisplayName={setDisplayName} bio={bio} setBio={setBio} profileImage={profileImage} setProfileImage={setProfileImage} />;
+      if (step === 4) return <InviteMembersStep inviteEmails={inviteEmails} setInviteEmails={setInviteEmails} />;
+      if (step === 5) return <UrlStep username={username} setUsername={setUsername} />;
+    }
+    return null;
   };
 
   return (
@@ -127,7 +180,7 @@ export default function Onboarding() {
           <span className="text-lg font-bold tracking-tight">
             <span className="text-primary">link</span>folio
           </span>
-          <StepIndicator currentStep={step} />
+          <StepIndicator currentStep={step} totalSteps={totalSteps} />
         </div>
       </header>
 
@@ -135,43 +188,22 @@ export default function Onboarding() {
         <div className="flex-1 flex flex-col">
           <div className="flex-1 overflow-y-auto">
             <div className="max-w-xl mx-auto px-6 py-10">
-              {step === 1 && (
-                <TemplateStep
-                  selected={selectedTemplate}
-                  onSelect={setSelectedTemplate}
-                />
-              )}
-              {step === 2 && (
-                <ProfileStep
-                  displayName={displayName}
-                  setDisplayName={setDisplayName}
-                  bio={bio}
-                  setBio={setBio}
-                  profileImage={profileImage}
-                  setProfileImage={setProfileImage}
-                />
-              )}
-              {step === 3 && (
-                <SocialStep
-                  selectedSocials={selectedSocials}
-                  socialEntries={socialEntries}
-                  toggleSocial={toggleSocial}
-                  updateSocialUrl={updateSocialUrl}
-                  removeSocialEntry={removeSocialEntry}
-                />
-              )}
-              {step === 4 && (
-                <UrlStep
-                  username={username}
-                  setUsername={setUsername}
-                />
-              )}
+              {renderStep()}
             </div>
           </div>
 
           <div className="border-t bg-background px-6 py-4">
             <div className="max-w-xl mx-auto flex items-center gap-3">
-              {step > 1 && (
+              {isInviteStep && (
+                <Button
+                  variant="ghost"
+                  onClick={() => setStep(step + 1)}
+                  data-testid="button-onboarding-skip"
+                >
+                  I'll do this later
+                </Button>
+              )}
+              {step > 0 && (
                 <Button
                   variant="outline"
                   onClick={() => setStep(step - 1)}
@@ -181,9 +213,10 @@ export default function Onboarding() {
                 </Button>
               )}
               <div className="flex-1" />
-              {step < 4 ? (
+              {step < lastStep ? (
                 <Button
                   onClick={() => setStep(step + 1)}
+                  disabled={!canProceed()}
                   className="min-w-[140px]"
                   data-testid="button-onboarding-next"
                 >
@@ -213,6 +246,9 @@ export default function Onboarding() {
             profileImage={profileImage}
             username={username || user.username}
             socialEntries={socialEntries}
+            accountType={accountType}
+            companyName={companyName}
+            companyLogo={companyLogo}
           />
         </div>
       </div>
@@ -220,8 +256,8 @@ export default function Onboarding() {
   );
 }
 
-function StepIndicator({ currentStep }: { currentStep: number }) {
-  const steps = [1, 2, 3, 4];
+function StepIndicator({ currentStep, totalSteps }: { currentStep: number; totalSteps: number }) {
+  const steps = Array.from({ length: totalSteps }, (_, i) => i);
   return (
     <div className="flex items-center gap-1" data-testid="step-indicator">
       {steps.map((s, i) => (
@@ -234,6 +270,7 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
                 ? "border-primary bg-primary/10 text-primary"
                 : "border-muted-foreground/30 text-muted-foreground/50"
             }`}
+            data-testid={`step-dot-${s}`}
           >
             {s < currentStep ? <Check className="w-4 h-4" /> : s}
           </div>
@@ -242,6 +279,304 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+function AccountTypeStep({
+  accountType,
+  setAccountType,
+}: {
+  accountType: "personal" | "team";
+  setAccountType: (v: "personal" | "team") => void;
+}) {
+  return (
+    <div>
+      <h1 className="text-3xl font-bold mb-2" data-testid="text-step-title">Choose your account type</h1>
+      <p className="text-muted-foreground mb-8">How will you be using Linkfolio?</p>
+      <div className="grid grid-cols-2 gap-4">
+        <button
+          onClick={() => setAccountType("personal")}
+          className={`flex flex-col items-center gap-3 p-6 rounded-xl border-2 transition-all text-center ${
+            accountType === "personal"
+              ? "border-primary ring-2 ring-primary/20"
+              : "border-border"
+          }`}
+          data-testid="card-account-personal"
+        >
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+            accountType === "personal" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+          }`}>
+            <User className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="font-semibold text-sm">Personal</p>
+            <p className="text-xs text-muted-foreground mt-1">For individuals who want a personal link page</p>
+          </div>
+        </button>
+        <button
+          onClick={() => setAccountType("team")}
+          className={`flex flex-col items-center gap-3 p-6 rounded-xl border-2 transition-all text-center ${
+            accountType === "team"
+              ? "border-primary ring-2 ring-primary/20"
+              : "border-border"
+          }`}
+          data-testid="card-account-team"
+        >
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+            accountType === "team" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+          }`}>
+            <Users className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="font-semibold text-sm">Team</p>
+            <p className="text-xs text-muted-foreground mt-1">For companies and teams who want branded link pages</p>
+          </div>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function WorkspaceStep({
+  companyName,
+  setCompanyName,
+  companySize,
+  setCompanySize,
+  companyUrl,
+  setCompanyUrl,
+  companyLogo,
+  setCompanyLogo,
+}: {
+  companyName: string;
+  setCompanyName: (v: string) => void;
+  companySize: string;
+  setCompanySize: (v: string) => void;
+  companyUrl: string;
+  setCompanyUrl: (v: string) => void;
+  companyLogo: string;
+  setCompanyLogo: (v: string) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const { toast } = useToast();
+
+  const handleFileUpload = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Invalid file", description: "Please upload an image file (JPEG, PNG, GIF, or WEBP)", variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Please upload an image smaller than 5MB", variant: "destructive" });
+      return;
+    }
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Upload failed");
+      }
+      const data = await res.json();
+      setCompanyLogo(data.url);
+    } catch (e: any) {
+      toast({ title: "Upload failed", description: e.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) handleFileUpload(file);
+  };
+
+  return (
+    <div>
+      <h1 className="text-3xl font-bold mb-2" data-testid="text-step-title">Let's set up your workspace</h1>
+      <p className="text-muted-foreground mb-8">Tell us about your company or team.</p>
+      <div className="space-y-6">
+        <div>
+          <Label className="text-sm text-muted-foreground mb-3 block">Company Logo</Label>
+          <div className="flex items-start gap-5">
+            <div className="relative group">
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                className="hidden"
+                id="logo-upload"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileUpload(file);
+                }}
+                data-testid="input-workspace-logo-file"
+              />
+              <label htmlFor="logo-upload" className="cursor-pointer block" data-testid="button-upload-logo">
+                <Avatar className="w-20 h-20 border-2 border-border">
+                  <AvatarImage src={companyLogo || undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-2xl">
+                    <Building2 className="w-8 h-8" />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  {uploading ? (
+                    <Loader2 className="w-5 h-5 text-white animate-spin" />
+                  ) : (
+                    <Camera className="w-5 h-5 text-white" />
+                  )}
+                </div>
+              </label>
+            </div>
+            <div
+              className="flex-1 border-2 border-dashed border-border rounded-lg p-4 flex flex-col items-center justify-center text-center min-h-[80px] transition-colors hover:border-primary/50"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleDrop}
+              data-testid="dropzone-logo"
+            >
+              {uploading ? (
+                <Loader2 className="w-5 h-5 text-muted-foreground animate-spin mb-1" />
+              ) : (
+                <Upload className="w-5 h-5 text-muted-foreground mb-1" />
+              )}
+              <p className="text-xs text-muted-foreground">
+                Drag & drop an image here, or{" "}
+                <label htmlFor="logo-upload" className="text-primary cursor-pointer font-medium">browse</label>
+              </p>
+              <p className="text-xs text-muted-foreground/60 mt-1">JPEG, PNG, GIF, WEBP up to 5MB</p>
+            </div>
+          </div>
+          {companyLogo && (
+            <div className="mt-2 flex items-center gap-2">
+              <p className="text-xs text-muted-foreground truncate flex-1">{companyLogo}</p>
+              <button onClick={() => setCompanyLogo("")} className="text-destructive shrink-0 p-1" data-testid="button-remove-logo">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="onb-company-name">Company Name</Label>
+          <Input
+            id="onb-company-name"
+            placeholder="Acme Inc."
+            value={companyName}
+            onChange={(e) => setCompanyName(e.target.value)}
+            data-testid="input-workspace-company-name"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="onb-company-size">Company Size</Label>
+          <Select value={companySize} onValueChange={setCompanySize}>
+            <SelectTrigger data-testid="select-workspace-company-size">
+              <SelectValue placeholder="Select company size" />
+            </SelectTrigger>
+            <SelectContent>
+              {TEAM_SIZES.map((size) => (
+                <SelectItem key={size} value={size} data-testid={`select-item-size-${size}`}>
+                  {size} employees
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="onb-company-url">Company URL</Label>
+          <Input
+            id="onb-company-url"
+            placeholder="https://example.com"
+            value={companyUrl}
+            onChange={(e) => setCompanyUrl(e.target.value)}
+            data-testid="input-workspace-company-url"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InviteMembersStep({
+  inviteEmails,
+  setInviteEmails,
+}: {
+  inviteEmails: string[];
+  setInviteEmails: (v: string[]) => void;
+}) {
+  const [emailInput, setEmailInput] = useState("");
+
+  const addEmail = (raw: string) => {
+    const email = raw.trim().toLowerCase();
+    if (!email) return;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return;
+    if (inviteEmails.includes(email)) return;
+    if (inviteEmails.length >= 10) return;
+    setInviteEmails([...inviteEmails, email]);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      addEmail(emailInput.replace(",", ""));
+      setEmailInput("");
+    }
+    if (e.key === "Backspace" && !emailInput && inviteEmails.length > 0) {
+      setInviteEmails(inviteEmails.slice(0, -1));
+    }
+  };
+
+  const removeEmail = (email: string) => {
+    setInviteEmails(inviteEmails.filter((e) => e !== email));
+  };
+
+  return (
+    <div>
+      <h1 className="text-3xl font-bold mb-2" data-testid="text-step-title">Invite team members</h1>
+      <p className="text-muted-foreground mb-8">Send invites to your team (up to 10)</p>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="onb-invite-email">Email addresses</Label>
+            <span className="text-xs text-muted-foreground" data-testid="text-invite-count">{inviteEmails.length}/10</span>
+          </div>
+          <Input
+            id="onb-invite-email"
+            placeholder="name@company.com"
+            value={emailInput}
+            onChange={(e) => setEmailInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onBlur={() => {
+              if (emailInput.trim()) {
+                addEmail(emailInput);
+                setEmailInput("");
+              }
+            }}
+            disabled={inviteEmails.length >= 10}
+            data-testid="input-invite-email"
+          />
+        </div>
+        {inviteEmails.length > 0 && (
+          <div className="flex flex-wrap gap-2" data-testid="invite-email-chips">
+            {inviteEmails.map((email) => (
+              <span
+                key={email}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-primary/10 text-primary text-sm"
+                data-testid={`chip-email-${email}`}
+              >
+                {email}
+                <button
+                  onClick={() => removeEmail(email)}
+                  className="shrink-0"
+                  data-testid={`button-remove-email-${email}`}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -536,7 +871,7 @@ function UrlStep({
           />
         </div>
         {username.length > 0 && username.length < 3 && (
-          <p className="text-sm text-destructive">Username must be at least 3 characters</p>
+          <p className="text-sm text-destructive" data-testid="text-username-error">Username must be at least 3 characters</p>
         )}
       </div>
     </div>
@@ -550,6 +885,9 @@ function PhonePreview({
   profileImage,
   username,
   socialEntries,
+  accountType,
+  companyName,
+  companyLogo,
 }: {
   template: (typeof TEMPLATES)[0];
   displayName: string;
@@ -557,8 +895,12 @@ function PhonePreview({
   profileImage: string;
   username: string;
   socialEntries: SocialEntry[];
+  accountType: "personal" | "team";
+  companyName: string;
+  companyLogo: string;
 }) {
   const activeSocials = socialEntries.filter((e) => e.url.trim());
+  const showTeamBranding = accountType === "team" && companyName;
 
   return (
     <div className="w-[280px] mx-auto">
@@ -570,13 +912,27 @@ function PhonePreview({
         </div>
         <div className={`min-h-[480px] ${template.bg} p-5`}>
           <div className="flex flex-col items-center text-center">
-            <Avatar className="w-16 h-16 border-2 border-white/30 mb-3">
-              <AvatarImage src={profileImage || undefined} />
-              <AvatarFallback className="bg-white/20 text-lg" style={{ color: template.accent }}>
-                {displayName ? displayName.charAt(0).toUpperCase() : "?"}
-              </AvatarFallback>
-            </Avatar>
-            <p className={`font-bold text-sm ${template.textColor}`}>{displayName || "Your Name"}</p>
+            {showTeamBranding ? (
+              <>
+                <Avatar className="w-16 h-16 border-2 border-white/30 mb-3">
+                  <AvatarImage src={companyLogo || undefined} />
+                  <AvatarFallback className="bg-white/20 text-lg" style={{ color: template.accent }}>
+                    <Building2 className="w-6 h-6" />
+                  </AvatarFallback>
+                </Avatar>
+                <p className={`font-bold text-sm ${template.textColor}`}>{companyName}</p>
+              </>
+            ) : (
+              <>
+                <Avatar className="w-16 h-16 border-2 border-white/30 mb-3">
+                  <AvatarImage src={profileImage || undefined} />
+                  <AvatarFallback className="bg-white/20 text-lg" style={{ color: template.accent }}>
+                    {displayName ? displayName.charAt(0).toUpperCase() : "?"}
+                  </AvatarFallback>
+                </Avatar>
+                <p className={`font-bold text-sm ${template.textColor}`}>{displayName || "Your Name"}</p>
+              </>
+            )}
             {bio && (
               <p className={`text-[11px] mt-1 ${template.textColor} opacity-80 leading-relaxed max-w-[200px]`}>
                 {bio.length > 100 ? bio.slice(0, 100) + "..." : bio}

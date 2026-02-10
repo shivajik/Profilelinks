@@ -1,4 +1,4 @@
-import { eq, asc, and, isNull, sql, gte, count } from "drizzle-orm";
+import { eq, asc, and, or, isNull, sql, gte, count } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import {
@@ -8,6 +8,11 @@ import {
   pages,
   blocks,
   analyticsEvents,
+  teams,
+  teamMembers,
+  teamInvites,
+  teamTemplates,
+  contacts,
   type User,
   type InsertUser,
   type Link,
@@ -19,6 +24,15 @@ import {
   type Block,
   type InsertBlock,
   type AnalyticsEvent,
+  type Team,
+  type InsertTeam,
+  type TeamMember,
+  type InsertTeamMember,
+  type TeamInvite,
+  type TeamTemplate,
+  type InsertTeamTemplate,
+  type Contact,
+  type InsertContact,
 } from "@shared/schema";
 
 const pool = new pg.Pool({
@@ -33,7 +47,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateUser(id: string, data: Partial<Pick<User, "displayName" | "bio" | "profileImage" | "username" | "onboardingCompleted" | "template">>): Promise<User | undefined>;
+  updateUser(id: string, data: Partial<Pick<User, "displayName" | "bio" | "profileImage" | "username" | "onboardingCompleted" | "template" | "accountType" | "teamId">>): Promise<User | undefined>;
 
   getPagesByUserId(userId: string): Promise<Page[]>;
   getPageById(id: string): Promise<Page | undefined>;
@@ -67,6 +81,35 @@ export interface IStorage {
 
   updateUserPassword(id: string, hashedPassword: string): Promise<boolean>;
   deleteUser(id: string): Promise<boolean>;
+
+  createTeam(team: InsertTeam): Promise<Team>;
+  getTeam(id: string): Promise<Team | undefined>;
+  getTeamByOwnerId(ownerId: string): Promise<Team | undefined>;
+  updateTeam(id: string, data: Partial<Pick<Team, "name" | "size" | "websiteUrl" | "logoUrl">>): Promise<Team | undefined>;
+  deleteTeam(id: string): Promise<boolean>;
+
+  getTeamMembers(teamId: string): Promise<(TeamMember & { user: Pick<User, "id" | "username" | "email" | "displayName" | "profileImage"> })[]>;
+  addTeamMember(member: InsertTeamMember): Promise<TeamMember>;
+  updateTeamMember(id: string, teamId: string, data: Partial<Pick<TeamMember, "role" | "jobTitle" | "status">>): Promise<TeamMember | undefined>;
+  removeTeamMember(id: string, teamId: string): Promise<boolean>;
+  getTeamMemberByUserId(teamId: string, userId: string): Promise<TeamMember | undefined>;
+
+  createTeamInvites(invites: { teamId: string; email: string; role: string; invitedById: string; token: string }[]): Promise<TeamInvite[]>;
+  getTeamInvites(teamId: string): Promise<TeamInvite[]>;
+  getTeamInviteByToken(token: string): Promise<TeamInvite | undefined>;
+  updateTeamInviteStatus(id: string, status: string): Promise<TeamInvite | undefined>;
+  deleteTeamInvite(id: string, teamId: string): Promise<boolean>;
+
+  getTeamTemplates(teamId: string): Promise<TeamTemplate[]>;
+  createTeamTemplate(template: InsertTeamTemplate): Promise<TeamTemplate>;
+  updateTeamTemplate(id: string, teamId: string, data: Partial<Pick<TeamTemplate, "name" | "description" | "templateData" | "isDefault">>): Promise<TeamTemplate | undefined>;
+  deleteTeamTemplate(id: string, teamId: string): Promise<boolean>;
+  duplicateTeamTemplate(id: string, teamId: string): Promise<TeamTemplate | undefined>;
+
+  getContacts(params: { teamId?: string; ownerId?: string; type?: string }): Promise<Contact[]>;
+  createContact(contact: InsertContact): Promise<Contact>;
+  updateContact(id: string, ownerId: string, data: Partial<Pick<Contact, "name" | "email" | "phone" | "company" | "jobTitle" | "notes" | "type">>): Promise<Contact | undefined>;
+  deleteContact(id: string, ownerId: string): Promise<boolean>;
 
   recordAnalyticsEvent(data: { userId: string; eventType: string; blockId?: string; pageSlug?: string; referrer?: string }): Promise<void>;
   getAnalyticsSummary(userId: string): Promise<{
@@ -109,7 +152,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async updateUser(id: string, data: Partial<Pick<User, "displayName" | "bio" | "profileImage" | "username" | "onboardingCompleted" | "template">>): Promise<User | undefined> {
+  async updateUser(id: string, data: Partial<Pick<User, "displayName" | "bio" | "profileImage" | "username" | "onboardingCompleted" | "template" | "accountType" | "teamId">>): Promise<User | undefined> {
     const [user] = await db.update(users).set(data).where(eq(users.id, id)).returning();
     return user;
   }
@@ -320,6 +363,201 @@ export class DatabaseStorage implements IStorage {
     for (let i = 0; i < blockIds.length; i++) {
       await db.update(blocks).set({ position: i }).where(eq(blocks.id, blockIds[i]));
     }
+  }
+
+  async createTeam(team: InsertTeam): Promise<Team> {
+    const [created] = await db.insert(teams).values(team).returning();
+    return created;
+  }
+
+  async getTeam(id: string): Promise<Team | undefined> {
+    const [team] = await db.select().from(teams).where(eq(teams.id, id));
+    return team;
+  }
+
+  async getTeamByOwnerId(ownerId: string): Promise<Team | undefined> {
+    const [team] = await db.select().from(teams).where(eq(teams.ownerId, ownerId));
+    return team;
+  }
+
+  async updateTeam(id: string, data: Partial<Pick<Team, "name" | "size" | "websiteUrl" | "logoUrl">>): Promise<Team | undefined> {
+    const [updated] = await db.update(teams).set(data).where(eq(teams.id, id)).returning();
+    return updated;
+  }
+
+  async deleteTeam(id: string): Promise<boolean> {
+    const result = await db.delete(teams).where(eq(teams.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getTeamMembers(teamId: string): Promise<(TeamMember & { user: Pick<User, "id" | "username" | "email" | "displayName" | "profileImage"> })[]> {
+    const rows = await db
+      .select({
+        id: teamMembers.id,
+        teamId: teamMembers.teamId,
+        userId: teamMembers.userId,
+        role: teamMembers.role,
+        jobTitle: teamMembers.jobTitle,
+        status: teamMembers.status,
+        user: {
+          id: users.id,
+          username: users.username,
+          email: users.email,
+          displayName: users.displayName,
+          profileImage: users.profileImage,
+        },
+      })
+      .from(teamMembers)
+      .leftJoin(users, eq(teamMembers.userId, users.id))
+      .where(eq(teamMembers.teamId, teamId));
+    return rows as (TeamMember & { user: Pick<User, "id" | "username" | "email" | "displayName" | "profileImage"> })[];
+  }
+
+  async addTeamMember(member: InsertTeamMember): Promise<TeamMember> {
+    const [created] = await db.insert(teamMembers).values(member).returning();
+    return created;
+  }
+
+  async updateTeamMember(id: string, teamId: string, data: Partial<Pick<TeamMember, "role" | "jobTitle" | "status">>): Promise<TeamMember | undefined> {
+    const [updated] = await db
+      .update(teamMembers)
+      .set(data)
+      .where(and(eq(teamMembers.id, id), eq(teamMembers.teamId, teamId)))
+      .returning();
+    return updated;
+  }
+
+  async removeTeamMember(id: string, teamId: string): Promise<boolean> {
+    const result = await db
+      .delete(teamMembers)
+      .where(and(eq(teamMembers.id, id), eq(teamMembers.teamId, teamId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  async getTeamMemberByUserId(teamId: string, userId: string): Promise<TeamMember | undefined> {
+    const [member] = await db
+      .select()
+      .from(teamMembers)
+      .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId)));
+    return member;
+  }
+
+  async createTeamInvites(invites: { teamId: string; email: string; role: string; invitedById: string; token: string }[]): Promise<TeamInvite[]> {
+    const created = await db.insert(teamInvites).values(invites).returning();
+    return created;
+  }
+
+  async getTeamInvites(teamId: string): Promise<TeamInvite[]> {
+    return db.select().from(teamInvites).where(eq(teamInvites.teamId, teamId)).orderBy(asc(teamInvites.createdAt));
+  }
+
+  async getTeamInviteByToken(token: string): Promise<TeamInvite | undefined> {
+    const [invite] = await db.select().from(teamInvites).where(eq(teamInvites.token, token));
+    return invite;
+  }
+
+  async updateTeamInviteStatus(id: string, status: string): Promise<TeamInvite | undefined> {
+    const [updated] = await db.update(teamInvites).set({ status }).where(eq(teamInvites.id, id)).returning();
+    return updated;
+  }
+
+  async deleteTeamInvite(id: string, teamId: string): Promise<boolean> {
+    const result = await db
+      .delete(teamInvites)
+      .where(and(eq(teamInvites.id, id), eq(teamInvites.teamId, teamId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  async getTeamTemplates(teamId: string): Promise<TeamTemplate[]> {
+    return db.select().from(teamTemplates).where(eq(teamTemplates.teamId, teamId));
+  }
+
+  async createTeamTemplate(template: InsertTeamTemplate): Promise<TeamTemplate> {
+    const [created] = await db.insert(teamTemplates).values(template).returning();
+    return created;
+  }
+
+  async updateTeamTemplate(id: string, teamId: string, data: Partial<Pick<TeamTemplate, "name" | "description" | "templateData" | "isDefault">>): Promise<TeamTemplate | undefined> {
+    const [updated] = await db
+      .update(teamTemplates)
+      .set(data)
+      .where(and(eq(teamTemplates.id, id), eq(teamTemplates.teamId, teamId)))
+      .returning();
+    return updated;
+  }
+
+  async deleteTeamTemplate(id: string, teamId: string): Promise<boolean> {
+    const result = await db
+      .delete(teamTemplates)
+      .where(and(eq(teamTemplates.id, id), eq(teamTemplates.teamId, teamId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  async duplicateTeamTemplate(id: string, teamId: string): Promise<TeamTemplate | undefined> {
+    const [existing] = await db
+      .select()
+      .from(teamTemplates)
+      .where(and(eq(teamTemplates.id, id), eq(teamTemplates.teamId, teamId)));
+    if (!existing) return undefined;
+    const [created] = await db
+      .insert(teamTemplates)
+      .values({
+        teamId: existing.teamId,
+        name: `${existing.name} (Copy)`,
+        description: existing.description,
+        templateData: existing.templateData,
+        isDefault: false,
+      })
+      .returning();
+    return created;
+  }
+
+  async getContacts(params: { teamId?: string; ownerId?: string; type?: string }): Promise<Contact[]> {
+    const conditions = [];
+    if (params.teamId) conditions.push(eq(contacts.teamId, params.teamId));
+    if (params.ownerId) conditions.push(eq(contacts.ownerId, params.ownerId));
+    if (params.type) conditions.push(eq(contacts.type, params.type));
+
+    if (conditions.length === 0) return [];
+
+    const filterConditions = [];
+    if (params.teamId && params.ownerId) {
+      filterConditions.push(or(eq(contacts.teamId, params.teamId), eq(contacts.ownerId, params.ownerId)));
+    } else if (params.teamId) {
+      filterConditions.push(eq(contacts.teamId, params.teamId));
+    } else if (params.ownerId) {
+      filterConditions.push(eq(contacts.ownerId, params.ownerId));
+    }
+    if (params.type) {
+      filterConditions.push(eq(contacts.type, params.type));
+    }
+
+    return db.select().from(contacts).where(and(...filterConditions)).orderBy(asc(contacts.createdAt));
+  }
+
+  async createContact(contact: InsertContact): Promise<Contact> {
+    const [created] = await db.insert(contacts).values(contact).returning();
+    return created;
+  }
+
+  async updateContact(id: string, ownerId: string, data: Partial<Pick<Contact, "name" | "email" | "phone" | "company" | "jobTitle" | "notes" | "type">>): Promise<Contact | undefined> {
+    const [updated] = await db
+      .update(contacts)
+      .set(data)
+      .where(and(eq(contacts.id, id), eq(contacts.ownerId, ownerId)))
+      .returning();
+    return updated;
+  }
+
+  async deleteContact(id: string, ownerId: string): Promise<boolean> {
+    const result = await db
+      .delete(contacts)
+      .where(and(eq(contacts.id, id), eq(contacts.ownerId, ownerId)))
+      .returning();
+    return result.length > 0;
   }
 
   async recordAnalyticsEvent(data: { userId: string; eventType: string; blockId?: string; pageSlug?: string; referrer?: string }): Promise<void> {

@@ -4,6 +4,7 @@
 A link-in-bio web application that allows users to create personalized landing pages with multiple links to their social profiles, websites, and content - all accessible through a single custom URL.
 
 ## Recent Changes
+- 2026-02-10: Added Teams feature: database schema (teams, team_members, team_invites, team_templates, contacts), 19 team API routes with role-based access control, Personal/Team onboarding flow branching, dashboard team panels (Members table, Templates grid, Contacts with company/personal tabs)
 - 2026-02-10: Reorganized dashboard layout - moved Pages section below Socials for better editing context
 - 2026-02-10: Added Vercel edge optimization: Cache-Control + CDN-Cache-Control + Vercel-CDN-Cache-Control headers on public profile API (s-maxage=60, stale-while-revalidate=300)
 - 2026-02-10: Added immutable cache headers for static assets (JS, CSS, images, fonts) in Vercel output config
@@ -65,11 +66,17 @@ A link-in-bio web application that allows users to create personalized landing p
 - `GET /api/profile/:username?page=slug` - Get public profile + page-scoped links
 
 ## Database Schema
-- `users` - id, username, email, password, displayName, bio, profileImage, onboardingCompleted, template
+- `users` - id, username, email, password, displayName, bio, profileImage, onboardingCompleted, template, accountType (personal/team), teamId
 - `pages` - id, userId, title, slug, position, isHome (each user has one home page)
 - `blocks` - id, userId, pageId, type (url_button/email_button/text/divider/video/audio/image), content (JSONB), position, active
 - `links` - id, userId, pageId (FK to pages), title, url, position, active (legacy, migrated to blocks)
 - `socials` - id, userId, platform, url, position
+- `teams` - id, name, size, websiteUrl, logoUrl, ownerId
+- `team_members` - id, teamId, userId, role (owner/admin/member), jobTitle, status (invited/activated)
+- `team_invites` - id, teamId, email, role, invitedById, status, token, createdAt
+- `team_templates` - id, teamId, name, description, templateData (JSONB), isDefault
+- `contacts` - id, teamId, ownerId, name, email, phone, company, jobTitle, notes, type (personal/company), createdAt
+- `analytics_events` - id, userId, eventType, blockId, pageSlug, referrer, createdAt
 - `session` - managed by connect-pg-simple
 
 ## User Preferences

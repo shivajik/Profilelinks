@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import session from "express-session";
 import { storage } from "./storage";
 import bcrypt from "bcryptjs";
-import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema, createPageSchema, updatePageSchema, createBlockSchema, updateBlockSchema, changePasswordSchema, deleteAccountSchema } from "@shared/schema";
+import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema, createPageSchema, updatePageSchema, createBlockSchema, updateBlockSchema, changePasswordSchema, deleteAccountSchema, createTeamSchema, updateTeamSchema, updateTeamMemberSchema, createTeamInviteSchema, createTeamTemplateSchema, updateTeamTemplateSchema, createContactSchema, updateContactSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import connectPgSimple from "connect-pg-simple";
 import pg from "pg";
@@ -560,6 +560,441 @@ export async function registerRoutes(
       res.json({ message: "Reordered" });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to reorder blocks" });
+    }
+  });
+
+  async function getTeamMemberRole(teamId: string, userId: string): Promise<string | null> {
+    const member = await storage.getTeamMemberByUserId(teamId, userId);
+    return member?.role || null;
+  }
+
+  // Teams CRUD
+  app.post("/api/teams", requireAuth, async (req, res) => {
+    try {
+      const result = createTeamSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+      const team = await storage.createTeam({ ...result.data, ownerId: req.session.userId! });
+      await storage.addTeamMember({ teamId: team.id, userId: req.session.userId!, role: "owner", status: "activated" });
+      await storage.updateUser(req.session.userId!, { accountType: "team", teamId: team.id });
+      res.status(201).json(team);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to create team" });
+    }
+  });
+
+  app.get("/api/teams/me", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user || !user.teamId) {
+        return res.json(null);
+      }
+      const team = await storage.getTeam(user.teamId);
+      if (!team) {
+        return res.json(null);
+      }
+      const membership = await storage.getTeamMemberByUserId(team.id, user.id);
+      res.json({ team, membership });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to get team" });
+    }
+  });
+
+  app.patch("/api/teams/:id", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.id as string, req.session.userId!);
+      if (!role || !["owner", "admin"].includes(role)) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      const result = updateTeamSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+      const updated = await storage.updateTeam(req.params.id as string, result.data);
+      if (!updated) {
+        return res.status(404).json({ message: "Team not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to update team" });
+    }
+  });
+
+  app.delete("/api/teams/:id", requireAuth, async (req, res) => {
+    try {
+      const team = await storage.getTeam(req.params.id as string);
+      if (!team || team.ownerId !== req.session.userId!) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      await storage.deleteTeam(req.params.id as string);
+      await storage.updateUser(req.session.userId!, { accountType: "personal", teamId: null });
+      res.json({ message: "Team deleted" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to delete team" });
+    }
+  });
+
+  // Team Members
+  app.get("/api/teams/:teamId/members", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      const members = await storage.getTeamMembers(req.params.teamId as string);
+      res.json(members);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to get team members" });
+    }
+  });
+
+  app.post("/api/teams/:teamId/members", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role || !["owner", "admin"].includes(role)) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      const { userId, role: memberRole, jobTitle } = req.body;
+      if (!userId) {
+        return res.status(400).json({ message: "userId is required" });
+      }
+      const member = await storage.addTeamMember({
+        teamId: req.params.teamId as string,
+        userId,
+        role: memberRole || "member",
+        jobTitle: jobTitle || null,
+        status: "activated",
+      });
+      await storage.updateUser(userId, { teamId: req.params.teamId as string });
+      res.status(201).json(member);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to add team member" });
+    }
+  });
+
+  app.patch("/api/teams/:teamId/members/:id", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role || !["owner", "admin"].includes(role)) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      const result = updateTeamMemberSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+      const updated = await storage.updateTeamMember(req.params.id as string, req.params.teamId as string, result.data);
+      if (!updated) {
+        return res.status(404).json({ message: "Team member not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to update team member" });
+    }
+  });
+
+  app.delete("/api/teams/:teamId/members/:id", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role || !["owner", "admin"].includes(role)) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      const members = await storage.getTeamMembers(req.params.teamId as string);
+      const targetMember = members.find(m => m.id === req.params.id);
+      if (!targetMember) {
+        return res.status(404).json({ message: "Team member not found" });
+      }
+      if (targetMember.role === "owner") {
+        return res.status(400).json({ message: "Cannot remove the team owner" });
+      }
+      await storage.removeTeamMember(req.params.id as string, req.params.teamId as string);
+      await storage.updateUser(targetMember.userId, { teamId: null });
+      res.json({ message: "Member removed" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to remove team member" });
+    }
+  });
+
+  // Team Invites
+  app.post("/api/teams/:teamId/invites", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role || !["owner", "admin"].includes(role)) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      const result = createTeamInviteSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+      const invites = result.data.emails.map(email => ({
+        teamId: req.params.teamId as string,
+        email,
+        role: result.data.role || "member",
+        invitedById: req.session.userId!,
+        token: crypto.randomUUID(),
+      }));
+      const created = await storage.createTeamInvites(invites);
+      res.status(201).json(created);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to send invites" });
+    }
+  });
+
+  app.get("/api/teams/:teamId/invites", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      const invites = await storage.getTeamInvites(req.params.teamId as string);
+      res.json(invites);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to get invites" });
+    }
+  });
+
+  app.delete("/api/teams/:teamId/invites/:id", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role || !["owner", "admin"].includes(role)) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      const deleted = await storage.deleteTeamInvite(req.params.id as string, req.params.teamId as string);
+      if (!deleted) {
+        return res.status(404).json({ message: "Invite not found" });
+      }
+      res.json({ message: "Invite cancelled" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to cancel invite" });
+    }
+  });
+
+  app.post("/api/teams/join/:token", requireAuth, async (req, res) => {
+    try {
+      const invite = await storage.getTeamInviteByToken(req.params.token as string);
+      if (!invite || invite.status !== "pending") {
+        return res.status(404).json({ message: "Invalid or expired invite" });
+      }
+      await storage.addTeamMember({
+        teamId: invite.teamId,
+        userId: req.session.userId!,
+        role: invite.role,
+        status: "activated",
+      });
+      await storage.updateTeamInviteStatus(invite.id, "accepted");
+      await storage.updateUser(req.session.userId!, { teamId: invite.teamId, accountType: "team" });
+      const team = await storage.getTeam(invite.teamId);
+      res.json({ team });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to join team" });
+    }
+  });
+
+  // Team Templates
+  app.get("/api/teams/:teamId/templates", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      const templates = await storage.getTeamTemplates(req.params.teamId as string);
+      res.json(templates);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to get templates" });
+    }
+  });
+
+  app.post("/api/teams/:teamId/templates", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role || !["owner", "admin"].includes(role)) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      const result = createTeamTemplateSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+      if (result.data.isDefault) {
+        const existing = await storage.getTeamTemplates(req.params.teamId as string);
+        for (const t of existing) {
+          if (t.isDefault) {
+            await storage.updateTeamTemplate(t.id, req.params.teamId as string, { isDefault: false });
+          }
+        }
+      }
+      const template = await storage.createTeamTemplate({ ...result.data, teamId: req.params.teamId as string });
+      res.status(201).json(template);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to create template" });
+    }
+  });
+
+  app.patch("/api/teams/:teamId/templates/:id", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role || !["owner", "admin"].includes(role)) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      const result = updateTeamTemplateSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+      if (result.data.isDefault) {
+        const existing = await storage.getTeamTemplates(req.params.teamId as string);
+        for (const t of existing) {
+          if (t.isDefault && t.id !== req.params.id) {
+            await storage.updateTeamTemplate(t.id, req.params.teamId as string, { isDefault: false });
+          }
+        }
+      }
+      const updated = await storage.updateTeamTemplate(req.params.id as string, req.params.teamId as string, result.data);
+      if (!updated) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to update template" });
+    }
+  });
+
+  app.delete("/api/teams/:teamId/templates/:id", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role || !["owner", "admin"].includes(role)) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      const deleted = await storage.deleteTeamTemplate(req.params.id as string, req.params.teamId as string);
+      if (!deleted) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+      res.json({ message: "Template deleted" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to delete template" });
+    }
+  });
+
+  app.post("/api/teams/:teamId/templates/:id/duplicate", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      const duplicated = await storage.duplicateTeamTemplate(req.params.id as string, req.params.teamId as string);
+      if (!duplicated) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+      res.status(201).json(duplicated);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to duplicate template" });
+    }
+  });
+
+  // Contacts
+  app.get("/api/contacts", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const type = req.query.type as string | undefined;
+      let contactsList;
+      if (type === "company") {
+        if (!user.teamId) {
+          return res.status(400).json({ message: "No team associated" });
+        }
+        contactsList = await storage.getContacts({ teamId: user.teamId, type: "company" });
+      } else {
+        contactsList = await storage.getContacts({ ownerId: user.id, type: type || "personal" });
+      }
+      const search = req.query.search as string | undefined;
+      if (search) {
+        const lower = search.toLowerCase();
+        contactsList = contactsList.filter(c =>
+          c.name.toLowerCase().includes(lower) ||
+          (c.email && c.email.toLowerCase().includes(lower))
+        );
+      }
+      res.json(contactsList);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to get contacts" });
+    }
+  });
+
+  app.post("/api/contacts", requireAuth, async (req, res) => {
+    try {
+      const result = createContactSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      let contactData: any = { ...result.data };
+      if (result.data.type === "company") {
+        if (!user.teamId) {
+          return res.status(400).json({ message: "No team associated" });
+        }
+        contactData.teamId = user.teamId;
+      } else {
+        contactData.ownerId = user.id;
+      }
+      const contact = await storage.createContact(contactData);
+      res.status(201).json(contact);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to create contact" });
+    }
+  });
+
+  app.patch("/api/contacts/:id", requireAuth, async (req, res) => {
+    try {
+      const result = updateContactSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const contactId = req.params.id as string;
+      let updated = await storage.updateContact(contactId, user.id, result.data);
+      if (!updated && user.teamId) {
+        const allContacts = await storage.getContacts({ teamId: user.teamId });
+        const contact = allContacts.find(c => c.id === contactId);
+        if (contact && contact.teamId === user.teamId) {
+          updated = await storage.updateContact(contactId, contact.ownerId || user.id, result.data);
+        }
+      }
+      if (!updated) {
+        return res.status(404).json({ message: "Contact not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to update contact" });
+    }
+  });
+
+  app.delete("/api/contacts/:id", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const delContactId = req.params.id as string;
+      let deleted = await storage.deleteContact(delContactId, user.id);
+      if (!deleted && user.teamId) {
+        const allContacts = await storage.getContacts({ teamId: user.teamId });
+        const contact = allContacts.find(c => c.id === delContactId);
+        if (contact && contact.teamId === user.teamId) {
+          deleted = await storage.deleteContact(delContactId, contact.ownerId || user.id);
+        }
+      }
+      if (!deleted) {
+        return res.status(404).json({ message: "Contact not found" });
+      }
+      res.json({ message: "Contact deleted" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to delete contact" });
     }
   });
 

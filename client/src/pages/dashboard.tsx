@@ -8,7 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
@@ -60,6 +63,12 @@ import {
   AlertTriangle,
   CheckCircle2,
   XCircle,
+  Users,
+  LayoutTemplate,
+  BookUser,
+  Search,
+  Phone,
+  Building2,
 } from "lucide-react";
 import {
   Dialog,
@@ -85,6 +94,8 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
+  SidebarGroupLabel,
+  SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { QRCodeSVG } from "qrcode.react";
 import { Slider } from "@/components/ui/slider";
@@ -328,6 +339,14 @@ export default function Dashboard() {
     { id: "qrcodes", label: "QR Codes", icon: QrCode },
   ];
 
+  const teamSidebarItems = [
+    { id: "team-members", label: "Team Members", icon: Users },
+    { id: "team-templates", label: "Team Templates", icon: LayoutTemplate },
+    { id: "contacts", label: "Contacts", icon: BookUser },
+  ];
+
+  const isTeamAccount = user.accountType === "team" && user.teamId;
+
   const sidebarStyle = {
     "--sidebar-width": "11rem",
     "--sidebar-width-icon": "3rem",
@@ -361,6 +380,30 @@ export default function Dashboard() {
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+            {isTeamAccount && (
+              <>
+                <SidebarSeparator />
+                <SidebarGroup>
+                  <SidebarGroupLabel>Team</SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {teamSidebarItems.map((item) => (
+                        <SidebarMenuItem key={item.id}>
+                          <SidebarMenuButton
+                            onClick={() => setActiveSection(item.id)}
+                            isActive={activeSection === item.id}
+                            data-testid={`sidebar-${item.id}`}
+                          >
+                            <item.icon className="w-4 h-4" />
+                            <span>{item.label}</span>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              </>
+            )}
           </SidebarContent>
           <SidebarFooter>
             <SidebarMenu>
@@ -376,7 +419,7 @@ export default function Dashboard() {
 
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 flex overflow-hidden">
-            <div className={`flex-1 overflow-y-auto border-r bg-background w-full ${activeSection === "design" ? "md:min-w-[300px] md:max-w-[420px]" : ""}`}>
+            <div className={`flex-1 overflow-y-auto border-r bg-background w-full ${activeSection === "design" ? "md:min-w-[300px] md:max-w-[420px]" : ""} ${["team-members", "team-templates", "contacts"].includes(activeSection) ? "md:max-w-none" : ""}`}>
               {activeSection === "design" && (
               <div className="p-4 space-y-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -627,6 +670,15 @@ export default function Dashboard() {
               )}
               {activeSection === "qrcodes" && (
                 <QRCodePanel profileUrl={profileUrl} username={user.username} />
+              )}
+              {activeSection === "team-members" && isTeamAccount && (
+                <TeamMembersPanel teamId={user.teamId!} />
+              )}
+              {activeSection === "team-templates" && isTeamAccount && (
+                <TeamTemplatesPanel teamId={user.teamId!} />
+              )}
+              {activeSection === "contacts" && isTeamAccount && (
+                <ContactsPanel teamId={user.teamId!} userId={user.id} />
               )}
             </div>
 
@@ -2681,5 +2733,717 @@ function AddSocialDialog({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function TeamMembersPanel({ teamId }: { teamId: string }) {
+  const { toast } = useToast();
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("member");
+
+  const { data: members = [], isLoading } = useQuery<any[]>({
+    queryKey: ["/api/teams", teamId, "members"],
+    queryFn: async () => {
+      const res = await fetch(`/api/teams/${teamId}/members`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch members");
+      return res.json();
+    },
+  });
+
+  const inviteMutation = useMutation({
+    mutationFn: async (data: { emails: string[]; role: string }) => {
+      await apiRequest("POST", `/api/teams/${teamId}/invites`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "members"] });
+      setInviteOpen(false);
+      setInviteEmail("");
+      setInviteRole("member");
+      toast({ title: "Invitation sent!" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to send invite", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: async (memberId: string) => {
+      await apiRequest("DELETE", `/api/teams/${teamId}/members/${memberId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "members"] });
+      toast({ title: "Member removed" });
+    },
+  });
+
+  const updateRoleMutation = useMutation({
+    mutationFn: async ({ memberId, role }: { memberId: string; role: string }) => {
+      await apiRequest("PATCH", `/api/teams/${teamId}/members/${memberId}`, { role });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "members"] });
+      toast({ title: "Role updated" });
+    },
+  });
+
+  return (
+    <div className="p-4 space-y-4">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <SidebarTrigger data-testid="button-sidebar-toggle" />
+          <h2 className="text-base font-semibold">Team Members</h2>
+        </div>
+        <Button variant="default" size="sm" onClick={() => setInviteOpen(true)} data-testid="button-add-member">
+          <Plus className="w-4 h-4 mr-1" />
+          Add member
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
+      ) : members.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-8">No team members yet.</p>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Job Title</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {members.map((member: any) => (
+              <TableRow key={member.id} data-testid={`row-member-${member.id}`}>
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <Avatar className="w-8 h-8 border border-border">
+                      <AvatarImage src={member.user?.profileImage || undefined} />
+                      <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                        {(member.user?.displayName || member.user?.username || "?").charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="text-sm font-medium" data-testid={`text-member-name-${member.id}`}>
+                        {member.user?.displayName || member.user?.username || "Unknown"}
+                      </div>
+                      <div className="text-xs text-muted-foreground" data-testid={`text-member-email-${member.id}`}>
+                        {member.user?.email || ""}
+                      </div>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <span className="text-sm" data-testid={`text-member-jobtitle-${member.id}`}>
+                    {member.jobTitle || "—"}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline" data-testid={`badge-member-role-${member.id}`}>
+                    {member.role ? member.role.charAt(0).toUpperCase() + member.role.slice(1) : "Member"}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    variant={member.status === "activated" ? "secondary" : "default"}
+                    className={member.status === "activated" ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 no-default-hover-elevate" : ""}
+                    data-testid={`badge-member-status-${member.id}`}
+                  >
+                    {member.status === "activated" ? "Activated" : "Invited"}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {member.role !== "owner" && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" data-testid={`button-member-actions-${member.id}`}>
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => updateRoleMutation.mutate({ memberId: member.id, role: member.role === "admin" ? "member" : "admin" })}
+                          data-testid={`button-edit-role-${member.id}`}
+                        >
+                          Edit Role
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => removeMutation.mutate(member.id)}
+                          data-testid={`button-remove-member-${member.id}`}
+                        >
+                          Remove
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+
+      <Dialog open={inviteOpen} onOpenChange={(v) => !v && setInviteOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Invite Team Member</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="invite-email">Email</Label>
+              <Input
+                id="invite-email"
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="colleague@company.com"
+                data-testid="input-invite-email"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="invite-role">Role</Label>
+              <Select value={inviteRole} onValueChange={setInviteRole}>
+                <SelectTrigger data-testid="select-invite-role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="member">Member</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              className="w-full"
+              disabled={!inviteEmail || inviteMutation.isPending}
+              onClick={() => inviteMutation.mutate({ emails: [inviteEmail], role: inviteRole })}
+              data-testid="button-send-invite"
+            >
+              {inviteMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Send Invite
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function TeamTemplatesPanel({ teamId }: { teamId: string }) {
+  const { toast } = useToast();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<any>(null);
+  const [templateName, setTemplateName] = useState("");
+  const [templateDescription, setTemplateDescription] = useState("");
+  const [templateIsDefault, setTemplateIsDefault] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  const { data: templates = [], isLoading } = useQuery<any[]>({
+    queryKey: ["/api/teams", teamId, "templates"],
+    queryFn: async () => {
+      const res = await fetch(`/api/teams/${teamId}/templates`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch templates");
+      return res.json();
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: { name: string; description?: string; isDefault?: boolean }) => {
+      await apiRequest("POST", `/api/teams/${teamId}/templates`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "templates"] });
+      closeDialog();
+      toast({ title: "Template created!" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to create template", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: { name?: string; description?: string; isDefault?: boolean } }) => {
+      await apiRequest("PATCH", `/api/teams/${teamId}/templates/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "templates"] });
+      closeDialog();
+      toast({ title: "Template updated!" });
+    },
+  });
+
+  const duplicateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("POST", `/api/teams/${teamId}/templates/${id}/duplicate`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "templates"] });
+      toast({ title: "Template duplicated!" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/teams/${teamId}/templates/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "templates"] });
+      setDeleteConfirmId(null);
+      toast({ title: "Template deleted!" });
+    },
+  });
+
+  const closeDialog = () => {
+    setDialogOpen(false);
+    setEditingTemplate(null);
+    setTemplateName("");
+    setTemplateDescription("");
+    setTemplateIsDefault(false);
+  };
+
+  const openCreate = () => {
+    setEditingTemplate(null);
+    setTemplateName("");
+    setTemplateDescription("");
+    setTemplateIsDefault(false);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (template: any) => {
+    setEditingTemplate(template);
+    setTemplateName(template.name);
+    setTemplateDescription(template.description || "");
+    setTemplateIsDefault(template.isDefault || false);
+    setDialogOpen(true);
+  };
+
+  const handleSubmit = () => {
+    if (editingTemplate) {
+      updateMutation.mutate({ id: editingTemplate.id, data: { name: templateName, description: templateDescription, isDefault: templateIsDefault } });
+    } else {
+      createMutation.mutate({ name: templateName, description: templateDescription, isDefault: templateIsDefault });
+    }
+  };
+
+  return (
+    <div className="p-4 space-y-4">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <SidebarTrigger data-testid="button-sidebar-toggle" />
+          <h2 className="text-base font-semibold">Team Templates</h2>
+        </div>
+        <Button variant="default" size="sm" onClick={openCreate} data-testid="button-create-template">
+          <Plus className="w-4 h-4 mr-1" />
+          Create template
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
+      ) : templates.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-8">No templates yet.</p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {templates.map((template: any) => (
+            <Card key={template.id} data-testid={`card-template-${template.id}`}>
+              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium" data-testid={`text-template-name-${template.id}`}>
+                  {template.name}
+                </CardTitle>
+                {template.isDefault && (
+                  <Badge variant="secondary" className="text-xs" data-testid={`badge-template-default-${template.id}`}>
+                    Default
+                  </Badge>
+                )}
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground" data-testid={`text-template-description-${template.id}`}>
+                  {template.description || "No description"}
+                </p>
+              </CardContent>
+              <CardFooter className="flex items-center gap-1 flex-wrap">
+                <Button variant="ghost" size="icon" onClick={() => openEdit(template)} data-testid={`button-edit-template-${template.id}`}>
+                  <Pencil className="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => duplicateMutation.mutate(template.id)} data-testid={`button-duplicate-template-${template.id}`}>
+                  <Copy className="w-4 h-4" />
+                </Button>
+                {deleteConfirmId === template.id ? (
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(template.id)} data-testid={`button-confirm-delete-template-${template.id}`}>
+                      <Check className="w-4 h-4 text-destructive" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => setDeleteConfirmId(null)} data-testid={`button-cancel-delete-template-${template.id}`}>
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Button variant="ghost" size="icon" onClick={() => setDeleteConfirmId(template.id)} data-testid={`button-delete-template-${template.id}`}>
+                    <Trash2 className="w-4 h-4 text-destructive" />
+                  </Button>
+                )}
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={dialogOpen} onOpenChange={(v) => !v && closeDialog()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingTemplate ? "Edit Template" : "Create Template"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="template-name">Name</Label>
+              <Input
+                id="template-name"
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                placeholder="Template name"
+                data-testid="input-template-name"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="template-description">Description</Label>
+              <Textarea
+                id="template-description"
+                value={templateDescription}
+                onChange={(e) => setTemplateDescription(e.target.value)}
+                placeholder="Describe this template..."
+                rows={3}
+                data-testid="input-template-description"
+              />
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="template-default">Set as default</Label>
+              <Switch
+                id="template-default"
+                checked={templateIsDefault}
+                onCheckedChange={setTemplateIsDefault}
+                data-testid="switch-template-default"
+              />
+            </div>
+            <Button
+              className="w-full"
+              disabled={!templateName || createMutation.isPending || updateMutation.isPending}
+              onClick={handleSubmit}
+              data-testid="button-submit-template"
+            >
+              {(createMutation.isPending || updateMutation.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {editingTemplate ? "Update Template" : "Create Template"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteConfirmId !== null && deleteMutation.isPending} onOpenChange={() => {}}>
+        <DialogContent>
+          <div className="flex items-center justify-center py-4">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function ContactsPanel({ teamId, userId }: { teamId: string; userId: string }) {
+  const { toast } = useToast();
+  const [contactType, setContactType] = useState<"company" | "personal">("company");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newCompany, setNewCompany] = useState("");
+  const [newJobTitle, setNewJobTitle] = useState("");
+  const [newNotes, setNewNotes] = useState("");
+  const [newType, setNewType] = useState<"personal" | "company">("personal");
+
+  const { data: contacts = [], isLoading } = useQuery<any[]>({
+    queryKey: ["/api/contacts", { type: contactType }],
+    queryFn: async () => {
+      const res = await fetch(`/api/contacts?type=${contactType}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch contacts");
+      return res.json();
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: { name: string; email?: string; phone?: string; company?: string; jobTitle?: string; notes?: string; type?: string }) => {
+      await apiRequest("POST", "/api/contacts", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      closeCreateDialog();
+      toast({ title: "Contact created!" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to create contact", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/contacts/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      setDeleteConfirmId(null);
+      toast({ title: "Contact deleted!" });
+    },
+  });
+
+  const closeCreateDialog = () => {
+    setCreateOpen(false);
+    setNewName("");
+    setNewEmail("");
+    setNewPhone("");
+    setNewCompany("");
+    setNewJobTitle("");
+    setNewNotes("");
+    setNewType("personal");
+  };
+
+  const filteredContacts = contacts.filter((c: any) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      (c.name && c.name.toLowerCase().includes(q)) ||
+      (c.email && c.email.toLowerCase().includes(q))
+    );
+  });
+
+  return (
+    <div className="p-4 space-y-4">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <SidebarTrigger data-testid="button-sidebar-toggle" />
+          <h2 className="text-base font-semibold">Contacts</h2>
+        </div>
+        <Button variant="default" size="sm" onClick={() => setCreateOpen(true)} data-testid="button-create-contact">
+          <Plus className="w-4 h-4 mr-1" />
+          Create new contact
+        </Button>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <Button
+          variant={contactType === "company" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setContactType("company")}
+          data-testid="button-tab-company"
+        >
+          All company contacts
+        </Button>
+        <Button
+          variant={contactType === "personal" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setContactType("personal")}
+          data-testid="button-tab-personal"
+        >
+          My contacts
+        </Button>
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          className="pl-9"
+          placeholder="Search contacts..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          data-testid="input-search-contacts"
+        />
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
+      ) : filteredContacts.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-8">No contacts yet.</p>
+      ) : (
+        <div className="space-y-2">
+          {filteredContacts.map((contact: any) => (
+            <Card key={contact.id} data-testid={`card-contact-${contact.id}`}>
+              <CardContent className="flex items-center justify-between gap-4 py-3">
+                <div className="min-w-0 flex-1 space-y-0.5">
+                  <div className="text-sm font-medium truncate" data-testid={`text-contact-name-${contact.id}`}>
+                    {contact.name}
+                  </div>
+                  {contact.email && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Mail className="w-3 h-3 shrink-0" />
+                      <span className="truncate" data-testid={`text-contact-email-${contact.id}`}>{contact.email}</span>
+                    </div>
+                  )}
+                  {contact.phone && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Phone className="w-3 h-3 shrink-0" />
+                      <span className="truncate" data-testid={`text-contact-phone-${contact.id}`}>{contact.phone}</span>
+                    </div>
+                  )}
+                  {contact.company && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Building2 className="w-3 h-3 shrink-0" />
+                      <span className="truncate" data-testid={`text-contact-company-${contact.id}`}>{contact.company}</span>
+                    </div>
+                  )}
+                  {contact.jobTitle && (
+                    <div className="text-xs text-muted-foreground" data-testid={`text-contact-jobtitle-${contact.id}`}>
+                      {contact.jobTitle}
+                    </div>
+                  )}
+                </div>
+                <div className="shrink-0">
+                  {deleteConfirmId === contact.id ? (
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(contact.id)} data-testid={`button-confirm-delete-contact-${contact.id}`}>
+                        <Check className="w-4 h-4 text-destructive" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => setDeleteConfirmId(null)} data-testid={`button-cancel-delete-contact-${contact.id}`}>
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button variant="ghost" size="icon" onClick={() => setDeleteConfirmId(contact.id)} data-testid={`button-delete-contact-${contact.id}`}>
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={createOpen} onOpenChange={(v) => !v && closeCreateDialog()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Contact</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="contact-name">Name</Label>
+              <Input
+                id="contact-name"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Contact name"
+                data-testid="input-contact-name"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="contact-email">Email</Label>
+              <Input
+                id="contact-email"
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="email@example.com"
+                data-testid="input-contact-email"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="contact-phone">Phone</Label>
+              <Input
+                id="contact-phone"
+                value={newPhone}
+                onChange={(e) => setNewPhone(e.target.value)}
+                placeholder="+1 (555) 123-4567"
+                data-testid="input-contact-phone"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="contact-company">Company</Label>
+              <Input
+                id="contact-company"
+                value={newCompany}
+                onChange={(e) => setNewCompany(e.target.value)}
+                placeholder="Company name"
+                data-testid="input-contact-company"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="contact-jobtitle">Job Title</Label>
+              <Input
+                id="contact-jobtitle"
+                value={newJobTitle}
+                onChange={(e) => setNewJobTitle(e.target.value)}
+                placeholder="Job title"
+                data-testid="input-contact-jobtitle"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="contact-notes">Notes</Label>
+              <Textarea
+                id="contact-notes"
+                value={newNotes}
+                onChange={(e) => setNewNotes(e.target.value)}
+                placeholder="Additional notes..."
+                rows={3}
+                data-testid="input-contact-notes"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Type</Label>
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="contact-type"
+                    value="personal"
+                    checked={newType === "personal"}
+                    onChange={() => setNewType("personal")}
+                    data-testid="radio-contact-personal"
+                  />
+                  <span className="text-sm">Personal</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="contact-type"
+                    value="company"
+                    checked={newType === "company"}
+                    onChange={() => setNewType("company")}
+                    data-testid="radio-contact-company"
+                  />
+                  <span className="text-sm">Company</span>
+                </label>
+              </div>
+            </div>
+            <Button
+              className="w-full"
+              disabled={!newName || createMutation.isPending}
+              onClick={() => createMutation.mutate({
+                name: newName,
+                email: newEmail || undefined,
+                phone: newPhone || undefined,
+                company: newCompany || undefined,
+                jobTitle: newJobTitle || undefined,
+                notes: newNotes || undefined,
+                type: newType,
+              })}
+              data-testid="button-submit-contact"
+            >
+              {createMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Create Contact
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

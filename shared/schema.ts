@@ -13,6 +13,8 @@ export const users = pgTable("users", {
   profileImage: text("profile_image"),
   onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
   template: text("template").default("minimal"),
+  accountType: text("account_type").notNull().default("personal"),
+  teamId: varchar("team_id"),
 });
 
 export const pages = pgTable("pages", {
@@ -64,6 +66,75 @@ export const blocks = pgTable("blocks", {
   active: boolean("active").notNull().default(true),
 });
 
+export const TEAM_SIZES = [
+  "1-5",
+  "6-20",
+  "21-50",
+  "51-200",
+  "201-500",
+  "500+",
+] as const;
+
+export type TeamSize = typeof TEAM_SIZES[number];
+
+export const TEAM_ROLES = ["owner", "admin", "member"] as const;
+export type TeamRole = typeof TEAM_ROLES[number];
+
+export const MEMBER_STATUSES = ["invited", "activated"] as const;
+export type MemberStatus = typeof MEMBER_STATUSES[number];
+
+export const teams = pgTable("teams", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  size: text("size"),
+  websiteUrl: text("website_url"),
+  logoUrl: text("logo_url"),
+  ownerId: varchar("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+});
+
+export const teamMembers = pgTable("team_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  teamId: varchar("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: text("role").notNull().default("member"),
+  jobTitle: text("job_title"),
+  status: text("status").notNull().default("activated"),
+});
+
+export const teamInvites = pgTable("team_invites", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  teamId: varchar("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  role: text("role").notNull().default("member"),
+  invitedById: varchar("invited_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("pending"),
+  token: text("token").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const teamTemplates = pgTable("team_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  teamId: varchar("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  templateData: jsonb("template_data").notNull().default({}),
+  isDefault: boolean("is_default").notNull().default(false),
+});
+
+export const contacts = pgTable("contacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  teamId: varchar("team_id").references(() => teams.id, { onDelete: "cascade" }),
+  ownerId: varchar("owner_id").references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  email: text("email"),
+  phone: text("phone"),
+  company: text("company"),
+  jobTitle: text("job_title"),
+  notes: text("notes"),
+  type: text("type").notNull().default("personal"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const analyticsEvents = pgTable("analytics_events", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -96,6 +167,8 @@ export const updateProfileSchema = z.object({
   username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_-]+$/).optional(),
   onboardingCompleted: z.boolean().optional(),
   template: z.string().optional(),
+  accountType: z.enum(["personal", "team"]).optional(),
+  teamId: z.string().optional().nullable(),
 });
 
 export const insertPageSchema = createInsertSchema(pages).omit({
@@ -197,3 +270,73 @@ export const changePasswordSchema = z.object({
 export const deleteAccountSchema = z.object({
   password: z.string().min(1, "Password is required to delete account"),
 });
+
+export const insertTeamSchema = createInsertSchema(teams).omit({ id: true });
+export const createTeamSchema = z.object({
+  name: z.string().min(1, "Company name is required").max(100),
+  size: z.enum(TEAM_SIZES).optional(),
+  websiteUrl: z.string().url().optional().or(z.literal("")),
+  logoUrl: z.string().optional(),
+});
+export const updateTeamSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  size: z.enum(TEAM_SIZES).optional(),
+  websiteUrl: z.string().url().optional().or(z.literal("")),
+  logoUrl: z.string().optional().nullable(),
+});
+
+export const insertTeamMemberSchema = createInsertSchema(teamMembers).omit({ id: true });
+export const updateTeamMemberSchema = z.object({
+  role: z.enum(TEAM_ROLES).optional(),
+  jobTitle: z.string().max(100).optional().nullable(),
+  status: z.enum(MEMBER_STATUSES).optional(),
+});
+
+export const createTeamInviteSchema = z.object({
+  emails: z.array(z.string().email()).min(1).max(10),
+  role: z.enum(TEAM_ROLES).optional().default("member"),
+});
+
+export const insertTeamTemplateSchema = createInsertSchema(teamTemplates).omit({ id: true });
+export const createTeamTemplateSchema = z.object({
+  name: z.string().min(1, "Template name is required").max(100),
+  description: z.string().max(500).optional(),
+  templateData: z.record(z.any()).optional().default({}),
+  isDefault: z.boolean().optional(),
+});
+export const updateTeamTemplateSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().max(500).optional().nullable(),
+  templateData: z.record(z.any()).optional(),
+  isDefault: z.boolean().optional(),
+});
+
+export const insertContactSchema = createInsertSchema(contacts).omit({ id: true, createdAt: true });
+export const createContactSchema = z.object({
+  name: z.string().min(1, "Name is required").max(100),
+  email: z.string().email().optional().or(z.literal("")),
+  phone: z.string().max(50).optional().or(z.literal("")),
+  company: z.string().max(100).optional().or(z.literal("")),
+  jobTitle: z.string().max(100).optional().or(z.literal("")),
+  notes: z.string().max(1000).optional().or(z.literal("")),
+  type: z.enum(["personal", "company"]).optional().default("personal"),
+});
+export const updateContactSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  email: z.string().email().optional().or(z.literal("")).nullable(),
+  phone: z.string().max(50).optional().or(z.literal("")).nullable(),
+  company: z.string().max(100).optional().or(z.literal("")).nullable(),
+  jobTitle: z.string().max(100).optional().or(z.literal("")).nullable(),
+  notes: z.string().max(1000).optional().or(z.literal("")).nullable(),
+  type: z.enum(["personal", "company"]).optional(),
+});
+
+export type Team = typeof teams.$inferSelect;
+export type InsertTeam = z.infer<typeof insertTeamSchema>;
+export type TeamMember = typeof teamMembers.$inferSelect;
+export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
+export type TeamInvite = typeof teamInvites.$inferSelect;
+export type TeamTemplate = typeof teamTemplates.$inferSelect;
+export type InsertTeamTemplate = z.infer<typeof insertTeamTemplateSchema>;
+export type Contact = typeof contacts.$inferSelect;
+export type InsertContact = z.infer<typeof insertContactSchema>;
