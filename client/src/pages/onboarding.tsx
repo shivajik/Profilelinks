@@ -95,14 +95,15 @@ export default function Onboarding() {
         const fullUrl = entry.url.startsWith("http") || entry.url.startsWith("mailto:") || entry.url.startsWith("tel:")
           ? entry.url
           : platform.prefix + entry.url;
-        await apiRequest("POST", "/api/links", {
-          title: platform.label,
+        await apiRequest("POST", "/api/socials", {
+          platform: entry.platformId,
           url: fullUrl,
         });
       }
 
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-      await queryClient.invalidateQueries({ queryKey: ["/api/links"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/socials"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/pages"] });
       await queryClient.refetchQueries({ queryKey: ["/api/auth/me"] });
       navigate("/dashboard");
     } catch (e: any) {
