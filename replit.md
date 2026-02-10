@@ -4,6 +4,7 @@
 A link-in-bio web application that allows users to create personalized landing pages with multiple links to their social profiles, websites, and content - all accessible through a single custom URL.
 
 ## Recent Changes
+- 2026-02-10: Replaced team template edit popup with fully inline editing (name, description, company details, branding uploads, theme, font all editable in-place with onBlur saving); unified TemplateCardPreview layout to match MemberCardPreview structure (name, job title, company, contact items)
 - 2026-02-10: Added cover image and company logo upload to team templates (inline branding card + create/edit dialog), with hover overlay for replace/remove actions
 - 2026-02-10: Enhanced Team Members panel: dual "Invite" and "Create" buttons, "View Card" per member showing business card preview using default template, create-member backend route with Zod validation, remove confirmation dialog
 - 2026-02-10: Added Teams feature: database schema (teams, team_members, team_invites, team_templates, contacts), 19 team API routes with role-based access control, Personal/Team onboarding flow branching, dashboard team panels (Members table, Templates grid, Contacts with company/personal tabs)

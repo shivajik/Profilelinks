@@ -3194,12 +3194,10 @@ interface TemplateData {
 
 function TeamTemplatesPanel({ teamId }: { teamId: string }) {
   const { toast } = useToast();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<any>(null);
-  const [templateName, setTemplateName] = useState("");
-  const [templateDescription, setTemplateDescription] = useState("");
-  const [templateIsDefault, setTemplateIsDefault] = useState(false);
-  const [templateData, setTemplateData] = useState<TemplateData>({});
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createName, setCreateName] = useState("");
+  const [createDescription, setCreateDescription] = useState("");
+  const [createIsDefault, setCreateIsDefault] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
 
@@ -3222,7 +3220,10 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
     onSuccess: (created: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "templates"] });
       if (created?.id) setSelectedTemplateId(created.id);
-      closeDialog();
+      setCreateDialogOpen(false);
+      setCreateName("");
+      setCreateDescription("");
+      setCreateIsDefault(false);
       toast({ title: "Template created!" });
     },
     onError: (err: any) => {
@@ -3236,8 +3237,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "templates"] });
-      closeDialog();
-      toast({ title: "Template updated!" });
+      toast({ title: "Saved" });
     },
   });
 
@@ -3263,44 +3263,54 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
     },
   });
 
-  const closeDialog = () => {
-    setDialogOpen(false);
-    setEditingTemplate(null);
-    setTemplateName("");
-    setTemplateDescription("");
-    setTemplateIsDefault(false);
-    setTemplateData({});
+  const updateField = (field: string, value: any) => {
+    if (!selectedTemplate) return;
+    const newData = { ...selectedTemplate.templateData, [field]: value };
+    updateMutation.mutate({ id: selectedTemplate.id, data: { templateData: newData } });
   };
 
-  const openCreate = () => {
-    setEditingTemplate(null);
-    setTemplateName("");
-    setTemplateDescription("");
-    setTemplateIsDefault(false);
-    setTemplateData({});
-    setDialogOpen(true);
+  const updateTemplateMeta = (field: string, value: any) => {
+    if (!selectedTemplate) return;
+    updateMutation.mutate({ id: selectedTemplate.id, data: { [field]: value } });
   };
 
-  const openEdit = (template: any) => {
-    setEditingTemplate(template);
-    setTemplateName(template.name);
-    setTemplateDescription(template.description || "");
-    setTemplateIsDefault(template.isDefault || false);
-    setTemplateData(template.templateData || {});
-    setDialogOpen(true);
-  };
-
-  const handleSubmit = () => {
-    const payload = { name: templateName, description: templateDescription, isDefault: templateIsDefault, templateData };
-    if (editingTemplate) {
-      updateMutation.mutate({ id: editingTemplate.id, data: payload });
-    } else {
-      createMutation.mutate(payload);
+  const handleUpload = async (file: File, field: "coverPhoto" | "companyLogo") => {
+    if (!selectedTemplate) return;
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+      if (res.ok) {
+        const { url } = await res.json();
+        updateField(field, url);
+      } else {
+        toast({ title: "Upload failed", description: "Please try again", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Upload failed", description: "Please try again", variant: "destructive" });
     }
   };
 
   const tData: TemplateData = selectedTemplate?.templateData || {};
   const themeColor = tData.themeColor || "#6C5CE7";
+
+  const [localName, setLocalName] = useState("");
+  const [localDesc, setLocalDesc] = useState("");
+  const [localCompanyName, setLocalCompanyName] = useState("");
+  const [localPhone, setLocalPhone] = useState("");
+  const [localEmail, setLocalEmail] = useState("");
+  const [localWebsite, setLocalWebsite] = useState("");
+
+  useEffect(() => {
+    if (selectedTemplate) {
+      setLocalName(selectedTemplate.name || "");
+      setLocalDesc(selectedTemplate.description || "");
+      setLocalCompanyName(tData.companyName || "");
+      setLocalPhone(tData.companyPhone || "");
+      setLocalEmail(tData.companyEmail || "");
+      setLocalWebsite(tData.companyWebsite || "");
+    }
+  }, [selectedTemplate?.id, selectedTemplate?.name, selectedTemplate?.description, tData.companyName, tData.companyPhone, tData.companyEmail, tData.companyWebsite]);
 
   return (
     <div className="p-4 space-y-4">
@@ -3309,7 +3319,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
           <SidebarTrigger data-testid="button-sidebar-toggle" />
           <h2 className="text-base font-semibold" data-testid="text-team-templates-heading">Team Templates</h2>
         </div>
-        <Button variant="default" size="sm" onClick={openCreate} data-testid="button-create-template">
+        <Button variant="default" size="sm" onClick={() => setCreateDialogOpen(true)} data-testid="button-create-template">
           <Plus className="w-4 h-4" />
           Create template
         </Button>
@@ -3323,11 +3333,8 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
         <p className="text-sm text-muted-foreground text-center py-8" data-testid="text-no-templates">No templates yet. Create one to get started.</p>
       ) : (
         <div className="flex flex-col lg:flex-row gap-6">
-          <div className="lg:w-[320px] shrink-0">
+          <div className="lg:w-[320px] shrink-0 space-y-4">
             <TemplateCardPreview data={tData} themeColor={themeColor} />
-          </div>
-
-          <div className="flex-1 min-w-0 space-y-4">
             {templates.length > 1 && (
               <div className="flex gap-2 flex-wrap">
                 {templates.map((t: any) => (
@@ -3344,437 +3351,270 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                 ))}
               </div>
             )}
+          </div>
 
-            {selectedTemplate && (
-              <>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-medium flex-1 min-w-0 truncate" data-testid="text-selected-template-name">
-                    {selectedTemplate.isDefault && (
-                      <span className="inline-block w-1 h-4 rounded-full mr-2 align-middle" style={{ backgroundColor: themeColor }} />
-                    )}
-                    {selectedTemplate.name}
-                  </span>
-                  <Button variant="outline" size="sm" onClick={() => setDeleteConfirmOpen(true)} data-testid="button-delete-selected-template">
-                    <Trash2 className="w-3.5 h-3.5" />
-                    Delete
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => duplicateMutation.mutate(selectedTemplate.id)} data-testid="button-duplicate-selected-template">
-                    <Copy className="w-3.5 h-3.5" />
-                    Duplicate
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => openEdit(selectedTemplate)} data-testid="button-edit-selected-template">
-                    <Pencil className="w-3.5 h-3.5" />
-                    Edit
-                  </Button>
+          {selectedTemplate && (
+            <div className="flex-1 min-w-0 space-y-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-medium flex-1 min-w-0 truncate" data-testid="text-selected-template-name">
+                  {selectedTemplate.isDefault && (
+                    <span className="inline-block w-1 h-4 rounded-full mr-2 align-middle" style={{ backgroundColor: themeColor }} />
+                  )}
+                  {selectedTemplate.name}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <Label htmlFor="tpl-default-toggle" className="text-xs text-muted-foreground">Default</Label>
+                  <Switch
+                    id="tpl-default-toggle"
+                    checked={selectedTemplate.isDefault || false}
+                    onCheckedChange={(v) => updateTemplateMeta("isDefault", v)}
+                    data-testid="switch-template-default"
+                  />
                 </div>
+                <Button variant="outline" size="sm" onClick={() => duplicateMutation.mutate(selectedTemplate.id)} data-testid="button-duplicate-selected-template">
+                  <Copy className="w-3.5 h-3.5" />
+                  Duplicate
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setDeleteConfirmOpen(true)} data-testid="button-delete-selected-template">
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Delete
+                </Button>
+              </div>
 
-                <Card>
-                  <CardContent className="pt-4 space-y-3">
-                    <h3 className="text-sm font-medium text-muted-foreground">Company Details</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="w-4 h-4 text-muted-foreground shrink-0" />
-                        <span className="text-sm truncate" data-testid="text-template-company">{tData.companyName || <span className="text-muted-foreground italic">Company name</span>}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
-                        <span className="text-sm truncate" data-testid="text-template-phone">{tData.companyPhone || <span className="text-muted-foreground italic">Phone</span>}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
-                        <span className="text-sm truncate" data-testid="text-template-email">{tData.companyEmail || <span className="text-muted-foreground italic">Email</span>}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Globe className="w-4 h-4 text-muted-foreground shrink-0" />
-                        <span className="text-sm truncate" data-testid="text-template-website">{tData.companyWebsite || <span className="text-muted-foreground italic">Company website</span>}</span>
+              <Card>
+                <CardContent className="pt-4 space-y-3">
+                  <h3 className="text-sm font-medium text-muted-foreground">Template Info</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Name</Label>
+                      <Input
+                        value={localName}
+                        onChange={(e) => setLocalName(e.target.value)}
+                        onBlur={() => { if (localName.trim() && localName !== selectedTemplate.name) updateTemplateMeta("name", localName); }}
+                        placeholder="Template name"
+                        data-testid="input-template-name"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Description</Label>
+                      <Input
+                        value={localDesc}
+                        onChange={(e) => setLocalDesc(e.target.value)}
+                        onBlur={() => { if (localDesc !== (selectedTemplate.description || "")) updateTemplateMeta("description", localDesc); }}
+                        placeholder="Optional description"
+                        data-testid="input-template-description"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-4 space-y-3">
+                  <h3 className="text-sm font-medium text-muted-foreground">Company Details</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Company Name</Label>
+                      <Input
+                        value={localCompanyName}
+                        onChange={(e) => setLocalCompanyName(e.target.value)}
+                        onBlur={() => { if (localCompanyName !== (tData.companyName || "")) updateField("companyName", localCompanyName); }}
+                        placeholder="Acme Corp"
+                        data-testid="input-tpl-company-name"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Phone</Label>
+                      <Input
+                        value={localPhone}
+                        onChange={(e) => setLocalPhone(e.target.value)}
+                        onBlur={() => { if (localPhone !== (tData.companyPhone || "")) updateField("companyPhone", localPhone); }}
+                        placeholder="+1 555-0100"
+                        data-testid="input-tpl-company-phone"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Email</Label>
+                      <Input
+                        type="email"
+                        value={localEmail}
+                        onChange={(e) => setLocalEmail(e.target.value)}
+                        onBlur={() => { if (localEmail !== (tData.companyEmail || "")) updateField("companyEmail", localEmail); }}
+                        placeholder="info@company.com"
+                        data-testid="input-tpl-company-email"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Website</Label>
+                      <Input
+                        value={localWebsite}
+                        onChange={(e) => setLocalWebsite(e.target.value)}
+                        onBlur={() => { if (localWebsite !== (tData.companyWebsite || "")) updateField("companyWebsite", localWebsite); }}
+                        placeholder="https://company.com"
+                        data-testid="input-tpl-company-website"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-4 space-y-3">
+                  <h3 className="text-sm font-medium text-muted-foreground">Branding</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Cover Image</Label>
+                      <div className="relative h-24 rounded-md border border-dashed bg-muted/30 overflow-hidden group">
+                        {tData.coverPhoto ? (
+                          <>
+                            <img src={tData.coverPhoto} alt="Cover" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                              <label className="cursor-pointer">
+                                <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleUpload(file, "coverPhoto");
+                                }} data-testid="input-inline-cover-upload" />
+                                <Upload className="w-4 h-4 text-white" />
+                              </label>
+                              <button onClick={() => updateField("coverPhoto", null)} data-testid="button-inline-cover-remove">
+                                <XCircle className="w-4 h-4 text-white" />
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <label className="flex flex-col items-center justify-center h-full cursor-pointer gap-1.5">
+                            <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleUpload(file, "coverPhoto");
+                            }} data-testid="input-inline-cover-upload-empty" />
+                            <Upload className="w-4 h-4 text-muted-foreground/50" />
+                            <span className="text-[11px] text-muted-foreground/50">Upload cover</span>
+                          </label>
+                        )}
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="pt-4 space-y-3">
-                    <h3 className="text-sm font-medium text-muted-foreground">Branding</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">Cover Image</Label>
-                        <div className="relative h-24 rounded-md border border-dashed bg-muted/30 overflow-hidden group">
-                          {tData.coverPhoto ? (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Company Logo</Label>
+                      <div className="flex items-center gap-3">
+                        <div className="relative w-16 h-16 rounded-full border bg-muted/30 overflow-hidden group shrink-0">
+                          {tData.companyLogo ? (
                             <>
-                              <img src={tData.coverPhoto} alt="Cover" className="w-full h-full object-cover" />
-                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                              <img src={tData.companyLogo} alt="Logo" className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
                                 <label className="cursor-pointer">
-                                  <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                                  <input type="file" accept="image/*" className="hidden" onChange={(e) => {
                                     const file = e.target.files?.[0];
-                                    if (!file) return;
-                                    const fd = new FormData();
-                                    fd.append("file", file);
-                                    const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
-                                    if (res.ok) {
-                                      const { url } = await res.json();
-                                      const newData = { ...selectedTemplate.templateData, coverPhoto: url };
-                                      updateMutation.mutate({ id: selectedTemplate.id, data: { templateData: newData } });
-                                    }
-                                  }} data-testid="input-inline-cover-upload" />
-                                  <Upload className="w-4 h-4 text-white" />
+                                    if (file) handleUpload(file, "companyLogo");
+                                  }} data-testid="input-inline-logo-upload" />
+                                  <Upload className="w-3 h-3 text-white" />
                                 </label>
-                                <button onClick={() => {
-                                  const newData = { ...selectedTemplate.templateData, coverPhoto: null };
-                                  updateMutation.mutate({ id: selectedTemplate.id, data: { templateData: newData } });
-                                }} data-testid="button-inline-cover-remove">
-                                  <XCircle className="w-4 h-4 text-white" />
+                                <button onClick={() => updateField("companyLogo", null)} data-testid="button-inline-logo-remove">
+                                  <XCircle className="w-3 h-3 text-white" />
                                 </button>
                               </div>
                             </>
                           ) : (
-                            <label className="flex flex-col items-center justify-center h-full cursor-pointer gap-1.5">
-                              <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                            <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer">
+                              <input type="file" accept="image/*" className="hidden" onChange={(e) => {
                                 const file = e.target.files?.[0];
-                                if (!file) return;
-                                const fd = new FormData();
-                                fd.append("file", file);
-                                const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
-                                if (res.ok) {
-                                  const { url } = await res.json();
-                                  const newData = { ...selectedTemplate.templateData, coverPhoto: url };
-                                  updateMutation.mutate({ id: selectedTemplate.id, data: { templateData: newData } });
-                                }
-                              }} data-testid="input-inline-cover-upload-empty" />
+                                if (file) handleUpload(file, "companyLogo");
+                              }} data-testid="input-inline-logo-upload-empty" />
                               <Upload className="w-4 h-4 text-muted-foreground/50" />
-                              <span className="text-[11px] text-muted-foreground/50">Upload cover</span>
                             </label>
                           )}
                         </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">Company Logo</Label>
-                        <div className="flex items-center gap-3">
-                          <div className="relative w-16 h-16 rounded-full border bg-muted/30 overflow-hidden group shrink-0">
-                            {tData.companyLogo ? (
-                              <>
-                                <img src={tData.companyLogo} alt="Logo" className="w-full h-full object-cover" />
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                                  <label className="cursor-pointer">
-                                    <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                                      const file = e.target.files?.[0];
-                                      if (!file) return;
-                                      const fd = new FormData();
-                                      fd.append("file", file);
-                                      const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
-                                      if (res.ok) {
-                                        const { url } = await res.json();
-                                        const newData = { ...selectedTemplate.templateData, companyLogo: url };
-                                        updateMutation.mutate({ id: selectedTemplate.id, data: { templateData: newData } });
-                                      }
-                                    }} data-testid="input-inline-logo-upload" />
-                                    <Upload className="w-3 h-3 text-white" />
-                                  </label>
-                                  <button onClick={() => {
-                                    const newData = { ...selectedTemplate.templateData, companyLogo: null };
-                                    updateMutation.mutate({ id: selectedTemplate.id, data: { templateData: newData } });
-                                  }} data-testid="button-inline-logo-remove">
-                                    <XCircle className="w-3 h-3 text-white" />
-                                  </button>
-                                </div>
-                              </>
-                            ) : (
-                              <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer">
-                                <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                                  const file = e.target.files?.[0];
-                                  if (!file) return;
-                                  const fd = new FormData();
-                                  fd.append("file", file);
-                                  const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
-                                  if (res.ok) {
-                                    const { url } = await res.json();
-                                    const newData = { ...selectedTemplate.templateData, companyLogo: url };
-                                    updateMutation.mutate({ id: selectedTemplate.id, data: { templateData: newData } });
-                                  }
-                                }} data-testid="input-inline-logo-upload-empty" />
-                                <Upload className="w-4 h-4 text-muted-foreground/50" />
-                              </label>
-                            )}
-                          </div>
-                          <span className="text-[11px] text-muted-foreground/50">{tData.companyLogo ? "Hover to change" : "Upload logo"}</span>
-                        </div>
+                        <span className="text-[11px] text-muted-foreground/50">{tData.companyLogo ? "Hover to change" : "Upload logo"}</span>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </CardContent>
+              </Card>
 
-                <Card>
-                  <CardContent className="pt-4 space-y-3">
-                    <h3 className="text-sm font-medium text-muted-foreground">Theme</h3>
-                    <div className="flex gap-2 flex-wrap">
-                      {THEME_COLORS.map((c) => (
-                        <Button
-                          key={c.value + c.name}
-                          variant="ghost"
-                          size="icon"
-                          className={`w-7 min-h-7 h-7 p-0 rounded-md ${themeColor === c.value ? "ring-2 ring-foreground ring-offset-2 ring-offset-background" : ""}`}
-                          style={{ backgroundColor: c.value }}
-                          onClick={() => {
-                            const newData = { ...selectedTemplate.templateData, themeColor: c.value };
-                            updateMutation.mutate({ id: selectedTemplate.id, data: { templateData: newData } });
-                          }}
-                          data-testid={`button-theme-color-${c.name.toLowerCase()}`}
-                        />
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+              <Card>
+                <CardContent className="pt-4 space-y-3">
+                  <h3 className="text-sm font-medium text-muted-foreground">Theme</h3>
+                  <div className="flex gap-2 flex-wrap">
+                    {THEME_COLORS.map((c) => (
+                      <Button
+                        key={c.value + c.name}
+                        variant="ghost"
+                        size="icon"
+                        className={`w-7 min-h-7 h-7 p-0 rounded-md ${themeColor === c.value ? "ring-2 ring-foreground ring-offset-2 ring-offset-background" : ""}`}
+                        style={{ backgroundColor: c.value }}
+                        onClick={() => updateField("themeColor", c.value)}
+                        data-testid={`button-theme-color-${c.name.toLowerCase()}`}
+                      />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
 
-                <Card>
-                  <CardContent className="pt-4 space-y-3">
-                    <h3 className="text-sm font-medium text-muted-foreground">Font</h3>
-                    <div className="flex gap-2 flex-wrap">
-                      {TEMPLATE_FONTS.map((f) => (
-                        <Button
-                          key={f.value}
-                          variant={(tData.font || "inter") === f.value ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => {
-                            const newData = { ...selectedTemplate.templateData, font: f.value };
-                            updateMutation.mutate({ id: selectedTemplate.id, data: { templateData: newData } });
-                          }}
-                          data-testid={`button-font-${f.value}`}
-                        >
-                          {f.name}
-                        </Button>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </>
-            )}
-          </div>
+              <Card>
+                <CardContent className="pt-4 space-y-3">
+                  <h3 className="text-sm font-medium text-muted-foreground">Font</h3>
+                  <div className="flex gap-2 flex-wrap">
+                    {TEMPLATE_FONTS.map((f) => (
+                      <Button
+                        key={f.value}
+                        variant={(tData.font || "inter") === f.value ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => updateField("font", f.value)}
+                        data-testid={`button-font-${f.value}`}
+                      >
+                        {f.name}
+                      </Button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
       )}
 
-      <Dialog open={dialogOpen} onOpenChange={(v) => !v && closeDialog()}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{editingTemplate ? "Edit Template" : "Create Template"}</DialogTitle>
+            <DialogTitle>Create Template</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="template-name">Template Name</Label>
+              <Label htmlFor="create-template-name">Template Name</Label>
               <Input
-                id="template-name"
-                value={templateName}
-                onChange={(e) => setTemplateName(e.target.value)}
+                id="create-template-name"
+                value={createName}
+                onChange={(e) => setCreateName(e.target.value)}
                 placeholder="e.g. Default Card"
-                data-testid="input-template-name"
+                data-testid="input-create-template-name"
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="template-description">Description</Label>
-              <Textarea
-                id="template-description"
-                value={templateDescription}
-                onChange={(e) => setTemplateDescription(e.target.value)}
-                placeholder="What is this template for?"
-                rows={2}
-                data-testid="input-template-description"
+              <Label htmlFor="create-template-desc">Description</Label>
+              <Input
+                id="create-template-desc"
+                value={createDescription}
+                onChange={(e) => setCreateDescription(e.target.value)}
+                placeholder="Optional description"
+                data-testid="input-create-template-desc"
               />
             </div>
-
-            <div className="border-t pt-4">
-              <h3 className="text-sm font-medium mb-3">Company Details</h3>
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="tpl-company-name" className="text-xs text-muted-foreground">Company Name</Label>
-                  <Input
-                    id="tpl-company-name"
-                    value={templateData.companyName || ""}
-                    onChange={(e) => setTemplateData({ ...templateData, companyName: e.target.value })}
-                    placeholder="Acme Corp"
-                    data-testid="input-tpl-company-name"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="tpl-company-phone" className="text-xs text-muted-foreground">Phone</Label>
-                  <Input
-                    id="tpl-company-phone"
-                    value={templateData.companyPhone || ""}
-                    onChange={(e) => setTemplateData({ ...templateData, companyPhone: e.target.value })}
-                    placeholder="+1 555-0100"
-                    data-testid="input-tpl-company-phone"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="tpl-company-email" className="text-xs text-muted-foreground">Email</Label>
-                  <Input
-                    id="tpl-company-email"
-                    type="email"
-                    value={templateData.companyEmail || ""}
-                    onChange={(e) => setTemplateData({ ...templateData, companyEmail: e.target.value })}
-                    placeholder="info@company.com"
-                    data-testid="input-tpl-company-email"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="tpl-company-website" className="text-xs text-muted-foreground">Company Website</Label>
-                  <Input
-                    id="tpl-company-website"
-                    value={templateData.companyWebsite || ""}
-                    onChange={(e) => setTemplateData({ ...templateData, companyWebsite: e.target.value })}
-                    placeholder="https://company.com"
-                    data-testid="input-tpl-company-website"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t pt-4">
-              <h3 className="text-sm font-medium mb-3">Branding</h3>
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Cover Image</Label>
-                  <div className="relative h-28 rounded-md border border-dashed bg-muted/30 overflow-hidden group">
-                    {templateData.coverPhoto ? (
-                      <>
-                        <img src={templateData.coverPhoto} alt="Cover" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                          <label className="cursor-pointer">
-                            <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              const fd = new FormData();
-                              fd.append("file", file);
-                              const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
-                              if (res.ok) {
-                                const { url } = await res.json();
-                                setTemplateData({ ...templateData, coverPhoto: url });
-                              }
-                            }} data-testid="input-dialog-cover-upload" />
-                            <Upload className="w-5 h-5 text-white" />
-                          </label>
-                          <button type="button" onClick={() => setTemplateData({ ...templateData, coverPhoto: null })} data-testid="button-dialog-cover-remove">
-                            <XCircle className="w-5 h-5 text-white" />
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <label className="flex flex-col items-center justify-center h-full cursor-pointer gap-1.5">
-                        <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          const fd = new FormData();
-                          fd.append("file", file);
-                          const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
-                          if (res.ok) {
-                            const { url } = await res.json();
-                            setTemplateData({ ...templateData, coverPhoto: url });
-                          }
-                        }} data-testid="input-dialog-cover-upload-empty" />
-                        <Upload className="w-5 h-5 text-muted-foreground/40" />
-                        <span className="text-xs text-muted-foreground/50">Click to upload cover image</span>
-                      </label>
-                    )}
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Company Logo</Label>
-                  <div className="flex items-center gap-4">
-                    <div className="relative w-20 h-20 rounded-full border border-dashed bg-muted/30 overflow-hidden group shrink-0">
-                      {templateData.companyLogo ? (
-                        <>
-                          <img src={templateData.companyLogo} alt="Logo" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                            <label className="cursor-pointer">
-                              <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                const fd = new FormData();
-                                fd.append("file", file);
-                                const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
-                                if (res.ok) {
-                                  const { url } = await res.json();
-                                  setTemplateData({ ...templateData, companyLogo: url });
-                                }
-                              }} data-testid="input-dialog-logo-upload" />
-                              <Upload className="w-4 h-4 text-white" />
-                            </label>
-                            <button type="button" onClick={() => setTemplateData({ ...templateData, companyLogo: null })} data-testid="button-dialog-logo-remove">
-                              <XCircle className="w-4 h-4 text-white" />
-                            </button>
-                          </div>
-                        </>
-                      ) : (
-                        <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer gap-1">
-                          <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-                            const fd = new FormData();
-                            fd.append("file", file);
-                            const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
-                            if (res.ok) {
-                              const { url } = await res.json();
-                              setTemplateData({ ...templateData, companyLogo: url });
-                            }
-                          }} data-testid="input-dialog-logo-upload-empty" />
-                          <Upload className="w-4 h-4 text-muted-foreground/40" />
-                        </label>
-                      )}
-                    </div>
-                    <span className="text-xs text-muted-foreground/50">{templateData.companyLogo ? "Hover to change or remove" : "Click to upload logo"}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t pt-4">
-              <h3 className="text-sm font-medium mb-3">Theme Color</h3>
-              <div className="flex gap-2 flex-wrap">
-                {THEME_COLORS.map((c) => (
-                  <Button
-                    key={c.value + c.name}
-                    variant="ghost"
-                    size="icon"
-                    className={`w-7 min-h-7 h-7 p-0 rounded-md ${(templateData.themeColor || "#6C5CE7") === c.value ? "ring-2 ring-foreground ring-offset-2 ring-offset-background" : ""}`}
-                    style={{ backgroundColor: c.value }}
-                    onClick={() => setTemplateData({ ...templateData, themeColor: c.value })}
-                    data-testid={`button-dialog-theme-${c.name.toLowerCase()}`}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="border-t pt-4">
-              <h3 className="text-sm font-medium mb-3">Font</h3>
-              <div className="flex gap-2 flex-wrap">
-                {TEMPLATE_FONTS.map((f) => (
-                  <Button
-                    key={f.value}
-                    variant={(templateData.font || "inter") === f.value ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setTemplateData({ ...templateData, font: f.value })}
-                    data-testid={`button-dialog-font-${f.value}`}
-                  >
-                    {f.name}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between gap-2 border-t pt-4">
-              <Label htmlFor="template-default">Set as default</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="create-template-default">Set as default</Label>
               <Switch
-                id="template-default"
-                checked={templateIsDefault}
-                onCheckedChange={setTemplateIsDefault}
-                data-testid="switch-template-default"
+                id="create-template-default"
+                checked={createIsDefault}
+                onCheckedChange={setCreateIsDefault}
+                data-testid="switch-create-template-default"
               />
             </div>
             <Button
               className="w-full"
-              disabled={!templateName || createMutation.isPending || updateMutation.isPending}
-              onClick={handleSubmit}
-              data-testid="button-submit-template"
+              disabled={!createName.trim() || createMutation.isPending}
+              onClick={() => createMutation.mutate({ name: createName, description: createDescription, isDefault: createIsDefault })}
+              data-testid="button-submit-create-template"
             >
-              {(createMutation.isPending || updateMutation.isPending) && <Loader2 className="w-4 h-4 animate-spin" />}
-              {editingTemplate ? "Save Changes" : "Create Template"}
+              {createMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              Create Template
             </Button>
           </div>
         </DialogContent>
@@ -3833,13 +3673,18 @@ function TemplateCardPreview({ data, themeColor }: { data: TemplateData; themeCo
         </div>
         <div className="space-y-2.5">
           <div>
-            <p className="text-sm font-semibold" style={{ color: themeColor }} data-testid="preview-name">{data.companyName ? "Contact" : "Name"}</p>
-            <p className="text-sm font-bold" data-testid="preview-company">{data.companyName || "Company"}</p>
+            <p className="text-sm font-bold" data-testid="preview-name"><span className="text-muted-foreground">Full Name</span></p>
+            <p className="text-xs text-muted-foreground" data-testid="preview-jobtitle"><span className="text-muted-foreground">Job Title</span></p>
+            {data.companyName ? (
+              <p className="text-xs font-medium" style={{ color: themeColor }} data-testid="preview-company">{data.companyName}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground" data-testid="preview-company"><span className="text-muted-foreground">Company</span></p>
+            )}
           </div>
           <div className="space-y-1.5">
             {[
-              { icon: Phone, value: data.companyPhone, placeholder: "Phone" },
               { icon: Mail, value: data.companyEmail, placeholder: "Email" },
+              { icon: Phone, value: data.companyPhone, placeholder: "Phone" },
               { icon: Globe, value: data.companyWebsite, placeholder: "Website" },
             ].map((item, i) => (
               <div key={i} className="flex items-center gap-2.5">
