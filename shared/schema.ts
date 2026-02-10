@@ -297,6 +297,13 @@ export const createTeamInviteSchema = z.object({
   role: z.enum(TEAM_ROLES).optional().default("member"),
 });
 
+export const createTeamMemberSchema = z.object({
+  displayName: z.string().min(1, "Name is required").max(100),
+  email: z.string().email("Valid email is required"),
+  jobTitle: z.string().max(100).optional().or(z.literal("")),
+  memberRole: z.enum(["admin", "member"]).optional().default("member"),
+});
+
 export const insertTeamTemplateSchema = createInsertSchema(teamTemplates).omit({ id: true });
 export const createTeamTemplateSchema = z.object({
   name: z.string().min(1, "Template name is required").max(100),

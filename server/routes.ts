@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import session from "express-session";
 import { storage } from "./storage";
 import bcrypt from "bcryptjs";
-import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema, createPageSchema, updatePageSchema, createBlockSchema, updateBlockSchema, changePasswordSchema, deleteAccountSchema, createTeamSchema, updateTeamSchema, updateTeamMemberSchema, createTeamInviteSchema, createTeamTemplateSchema, updateTeamTemplateSchema, createContactSchema, updateContactSchema } from "@shared/schema";
+import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema, createPageSchema, updatePageSchema, createBlockSchema, updateBlockSchema, changePasswordSchema, deleteAccountSchema, createTeamSchema, updateTeamSchema, updateTeamMemberSchema, createTeamInviteSchema, createTeamMemberSchema, createTeamTemplateSchema, updateTeamTemplateSchema, createContactSchema, updateContactSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import connectPgSimple from "connect-pg-simple";
 import pg from "pg";
@@ -813,6 +813,65 @@ export async function registerRoutes(
       res.json({ message: "Member removed" });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to remove team member" });
+    }
+  });
+
+  app.post("/api/teams/:teamId/members/create", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role || !["owner", "admin"].includes(role)) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      const result = createTeamMemberSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+      const { displayName, email, jobTitle, memberRole } = result.data;
+      const normalizedEmail = email.toLowerCase().trim();
+      const existingUser = await storage.getUserByEmail(normalizedEmail);
+      if (existingUser) {
+        const existingMember = await storage.getTeamMemberByUserId(req.params.teamId as string, existingUser.id);
+        if (existingMember) {
+          return res.status(400).json({ message: "This user is already a team member" });
+        }
+        const member = await storage.addTeamMember({
+          teamId: req.params.teamId as string,
+          userId: existingUser.id,
+          role: memberRole || "member",
+          jobTitle: jobTitle || null,
+          status: "activated",
+        });
+        await storage.updateUser(existingUser.id, { teamId: req.params.teamId as string, accountType: "team" });
+        return res.status(201).json(member);
+      }
+      const username = normalizedEmail.split("@")[0] + "_" + Date.now().toString(36);
+      const tempPassword = crypto.randomUUID().slice(0, 12);
+      const hashedPassword = await bcrypt.hash(tempPassword, 10);
+      const newUser = await storage.createUser({
+        username,
+        email: normalizedEmail,
+        password: hashedPassword,
+        displayName,
+        accountType: "team",
+        teamId: req.params.teamId as string,
+      });
+      const member = await storage.addTeamMember({
+        teamId: req.params.teamId as string,
+        userId: newUser.id,
+        role: memberRole || "member",
+        jobTitle: jobTitle || null,
+        status: "activated",
+      });
+      const homePage = await storage.createPage({
+        userId: newUser.id,
+        title: "Home",
+        slug: "home",
+        position: 0,
+        isHome: true,
+      });
+      res.status(201).json(member);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to create member" });
     }
   });
 

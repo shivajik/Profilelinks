@@ -69,6 +69,9 @@ import {
   Search,
   Phone,
   Building2,
+  UserPlus,
+  Send,
+  CreditCard,
 } from "lucide-react";
 import {
   Dialog,
@@ -2739,8 +2742,15 @@ function AddSocialDialog({
 function TeamMembersPanel({ teamId }: { teamId: string }) {
   const { toast } = useToast();
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [cardPreviewMember, setCardPreviewMember] = useState<any>(null);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("member");
+  const [createName, setCreateName] = useState("");
+  const [createEmail, setCreateEmail] = useState("");
+  const [createJobTitle, setCreateJobTitle] = useState("");
+  const [createRole, setCreateRole] = useState("member");
+  const [removeConfirmMember, setRemoveConfirmMember] = useState<any>(null);
 
   const { data: members = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/teams", teamId, "members"],
@@ -2750,6 +2760,17 @@ function TeamMembersPanel({ teamId }: { teamId: string }) {
       return res.json();
     },
   });
+
+  const { data: templates = [] } = useQuery<any[]>({
+    queryKey: ["/api/teams", teamId, "templates"],
+    queryFn: async () => {
+      const res = await fetch(`/api/teams/${teamId}/templates`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  const defaultTemplate = templates.find((t: any) => t.isDefault) || templates[0] || null;
 
   const inviteMutation = useMutation({
     mutationFn: async (data: { emails: string[]; role: string }) => {
@@ -2767,12 +2788,31 @@ function TeamMembersPanel({ teamId }: { teamId: string }) {
     },
   });
 
+  const createMemberMutation = useMutation({
+    mutationFn: async (data: { displayName: string; email: string; jobTitle?: string; memberRole: string }) => {
+      await apiRequest("POST", `/api/teams/${teamId}/members/create`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "members"] });
+      setCreateOpen(false);
+      setCreateName("");
+      setCreateEmail("");
+      setCreateJobTitle("");
+      setCreateRole("member");
+      toast({ title: "Member created!" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to create member", description: err.message, variant: "destructive" });
+    },
+  });
+
   const removeMutation = useMutation({
     mutationFn: async (memberId: string) => {
       await apiRequest("DELETE", `/api/teams/${teamId}/members/${memberId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "members"] });
+      setRemoveConfirmMember(null);
       toast({ title: "Member removed" });
     },
   });
@@ -2794,10 +2834,16 @@ function TeamMembersPanel({ teamId }: { teamId: string }) {
           <SidebarTrigger data-testid="button-sidebar-toggle" />
           <h2 className="text-base font-semibold">Team Members</h2>
         </div>
-        <Button variant="default" size="sm" onClick={() => setInviteOpen(true)} data-testid="button-add-member">
-          <Plus className="w-4 h-4 mr-1" />
-          Add member
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setInviteOpen(true)} data-testid="button-invite-member">
+            <Send className="w-4 h-4" />
+            Invite
+          </Button>
+          <Button variant="default" size="sm" onClick={() => setCreateOpen(true)} data-testid="button-create-member">
+            <UserPlus className="w-4 h-4" />
+            Create
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -2805,7 +2851,7 @@ function TeamMembersPanel({ teamId }: { teamId: string }) {
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
         </div>
       ) : members.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-8">No team members yet.</p>
+        <p className="text-sm text-muted-foreground text-center py-8" data-testid="text-no-members">No team members yet. Invite or create members to get started.</p>
       ) : (
         <Table>
           <TableHeader>
@@ -2854,35 +2900,45 @@ function TeamMembersPanel({ teamId }: { teamId: string }) {
                     className={member.status === "activated" ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 no-default-hover-elevate" : ""}
                     data-testid={`badge-member-status-${member.id}`}
                   >
-                    {member.status === "activated" ? "Activated" : "Invited"}
+                    {member.status === "activated" ? "Active" : "Invited"}
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  {member.role !== "owner" && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" data-testid={`button-member-actions-${member.id}`}>
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => updateRoleMutation.mutate({ memberId: member.id, role: member.role === "admin" ? "member" : "admin" })}
-                          data-testid={`button-edit-role-${member.id}`}
-                        >
-                          Edit Role
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={() => removeMutation.mutate(member.id)}
-                          data-testid={`button-remove-member-${member.id}`}
-                        >
-                          Remove
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setCardPreviewMember(member)}
+                      data-testid={`button-view-card-${member.id}`}
+                    >
+                      <CreditCard className="w-4 h-4" />
+                    </Button>
+                    {member.role !== "owner" && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" data-testid={`button-member-actions-${member.id}`}>
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => updateRoleMutation.mutate({ memberId: member.id, role: member.role === "admin" ? "member" : "admin" })}
+                            data-testid={`button-edit-role-${member.id}`}
+                          >
+                            {member.role === "admin" ? "Demote to Member" : "Promote to Admin"}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => setRemoveConfirmMember(member)}
+                            data-testid={`button-remove-member-${member.id}`}
+                          >
+                            Remove
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -2890,11 +2946,12 @@ function TeamMembersPanel({ teamId }: { teamId: string }) {
         </Table>
       )}
 
-      <Dialog open={inviteOpen} onOpenChange={(v) => !v && setInviteOpen(false)}>
+      <Dialog open={inviteOpen} onOpenChange={(v) => { if (!v) setInviteOpen(false); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Invite Team Member</DialogTitle>
           </DialogHeader>
+          <p className="text-sm text-muted-foreground">Send an invitation email. The recipient can accept and join the team.</p>
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="invite-email">Email</Label>
@@ -2925,12 +2982,175 @@ function TeamMembersPanel({ teamId }: { teamId: string }) {
               onClick={() => inviteMutation.mutate({ emails: [inviteEmail], role: inviteRole })}
               data-testid="button-send-invite"
             >
-              {inviteMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {inviteMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
               Send Invite
             </Button>
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={createOpen} onOpenChange={(v) => { if (!v) setCreateOpen(false); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Team Member</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">Create an account and add them to the team directly.</p>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="create-name">Full Name</Label>
+              <Input
+                id="create-name"
+                value={createName}
+                onChange={(e) => setCreateName(e.target.value)}
+                placeholder="John Doe"
+                data-testid="input-create-name"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="create-email">Email</Label>
+              <Input
+                id="create-email"
+                type="email"
+                value={createEmail}
+                onChange={(e) => setCreateEmail(e.target.value)}
+                placeholder="john@company.com"
+                data-testid="input-create-email"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="create-jobtitle">Job Title</Label>
+              <Input
+                id="create-jobtitle"
+                value={createJobTitle}
+                onChange={(e) => setCreateJobTitle(e.target.value)}
+                placeholder="Software Engineer"
+                data-testid="input-create-jobtitle"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="create-role">Role</Label>
+              <Select value={createRole} onValueChange={setCreateRole}>
+                <SelectTrigger data-testid="select-create-role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="member">Member</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              className="w-full"
+              disabled={!createName || !createEmail || createMemberMutation.isPending}
+              onClick={() => createMemberMutation.mutate({ displayName: createName, email: createEmail, jobTitle: createJobTitle || undefined, memberRole: createRole })}
+              data-testid="button-submit-create-member"
+            >
+              {createMemberMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              Create Member
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!removeConfirmMember} onOpenChange={(v) => { if (!v) setRemoveConfirmMember(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove Member</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to remove {removeConfirmMember?.user?.displayName || removeConfirmMember?.user?.username || "this member"} from the team? They will lose access to the team workspace.
+          </p>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" size="sm" onClick={() => setRemoveConfirmMember(null)} data-testid="button-cancel-remove-member">
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={removeMutation.isPending}
+              onClick={() => removeConfirmMember && removeMutation.mutate(removeConfirmMember.id)}
+              data-testid="button-confirm-remove-member"
+            >
+              {removeMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              Remove
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!cardPreviewMember} onOpenChange={(v) => { if (!v) setCardPreviewMember(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Member Card</DialogTitle>
+          </DialogHeader>
+          {cardPreviewMember && (
+            <MemberCardPreview
+              member={cardPreviewMember}
+              templateData={defaultTemplate?.templateData || {}}
+              themeColor={defaultTemplate?.templateData?.themeColor || "#6C5CE7"}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function MemberCardPreview({ member, templateData, themeColor }: { member: any; templateData: any; themeColor: string }) {
+  const memberName = member.user?.displayName || member.user?.username || "Team Member";
+  const memberEmail = member.user?.email || "";
+  const memberJobTitle = member.jobTitle || "";
+  const companyName = templateData.companyName || "";
+  const companyPhone = templateData.companyPhone || "";
+  const companyWebsite = templateData.companyWebsite || "";
+
+  return (
+    <div className="rounded-md overflow-hidden border bg-card shadow-sm" data-testid="member-card-preview">
+      <div className="h-20 relative" style={{ backgroundColor: themeColor + "22" }}>
+        {templateData.coverPhoto ? (
+          <img src={templateData.coverPhoto} alt="Cover" className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <ImageIcon className="w-6 h-6 text-muted-foreground/40" />
+          </div>
+        )}
+      </div>
+      <div className="relative px-4 pb-4">
+        <div className="-mt-8 mb-3 flex items-end gap-3">
+          <div className="w-16 h-16 rounded-full bg-muted border-4 border-card flex items-center justify-center overflow-hidden shrink-0">
+            {member.user?.profileImage ? (
+              <img src={member.user.profileImage} alt={memberName} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-lg font-bold text-muted-foreground">{memberName.charAt(0).toUpperCase()}</span>
+            )}
+          </div>
+        </div>
+        <div className="space-y-2.5">
+          <div>
+            <p className="text-sm font-bold" data-testid="preview-member-name">{memberName}</p>
+            {memberJobTitle && (
+              <p className="text-xs text-muted-foreground" data-testid="preview-member-jobtitle">{memberJobTitle}</p>
+            )}
+            {companyName && (
+              <p className="text-xs font-medium" style={{ color: themeColor }} data-testid="preview-member-company">{companyName}</p>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            {[
+              { icon: Mail, value: memberEmail, placeholder: "" },
+              { icon: Phone, value: companyPhone, placeholder: "" },
+              { icon: Globe, value: companyWebsite, placeholder: "" },
+            ].filter(item => item.value).map((item, i) => (
+              <div key={i} className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: themeColor + "20" }}>
+                  <item.icon className="w-3.5 h-3.5" style={{ color: themeColor }} />
+                </div>
+                <span className="text-xs text-foreground">{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -4,6 +4,7 @@
 A link-in-bio web application that allows users to create personalized landing pages with multiple links to their social profiles, websites, and content - all accessible through a single custom URL.
 
 ## Recent Changes
+- 2026-02-10: Enhanced Team Members panel: dual "Invite" and "Create" buttons, "View Card" per member showing business card preview using default template, create-member backend route with Zod validation, remove confirmation dialog
 - 2026-02-10: Added Teams feature: database schema (teams, team_members, team_invites, team_templates, contacts), 19 team API routes with role-based access control, Personal/Team onboarding flow branching, dashboard team panels (Members table, Templates grid, Contacts with company/personal tabs)
 - 2026-02-10: Reorganized dashboard layout - moved Pages section below Socials for better editing context
 - 2026-02-10: Added Vercel edge optimization: Cache-Control + CDN-Cache-Control + Vercel-CDN-Cache-Control headers on public profile API (s-maxage=60, stale-while-revalidate=300)
