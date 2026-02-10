@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useParams } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -100,7 +100,7 @@ export default function PublicProfile() {
   const [showQr, setShowQr] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const { data, isLoading, error } = useQuery<PublicProfile>({
+  const { data, isLoading, isFetching, error } = useQuery<PublicProfile>({
     queryKey: ["/api/profile", username, activePageSlug],
     queryFn: async () => {
       const url = activePageSlug
@@ -110,6 +110,7 @@ export default function PublicProfile() {
       if (!res.ok) throw new Error("Not found");
       return res.json();
     },
+    placeholderData: keepPreviousData,
   });
 
   const viewTracked = useRef<string | null>(null);
@@ -313,34 +314,39 @@ export default function PublicProfile() {
           )}
         </div>
 
-        {hasBlocks ? (
-          <div className="space-y-3">
-            {activeBlocks.map((block) => (
-              <PublicBlock key={block.id} block={block} template={template} onClickTrack={trackClick} />
-            ))}
-          </div>
-        ) : activeLinks.length > 0 ? (
-          <div className="space-y-3">
-            {activeLinks.map((link) => (
-              <a
-                key={link.id}
-                href={normalizeUrl(link.url)}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => trackClick(link.id)}
-                className={`block w-full rounded-xl ${template.cardBg} p-4 text-center font-medium transition-all hover:scale-[1.02] hover:shadow-md group backdrop-blur-sm`}
-                data-testid={`link-card-${link.id}`}
-              >
-                <div className="flex items-center justify-center gap-2">
-                  <span className={`truncate ${template.cardTextColor}`}>{link.title}</span>
-                  <ExternalLink className={`w-3.5 h-3.5 ${template.cardTextColor} opacity-0 group-hover:opacity-100 transition-opacity shrink-0`} />
-                </div>
-              </a>
-            ))}
-          </div>
-        ) : (
-          <p className={`text-center text-sm ${template.textColor} opacity-60`}>No content yet.</p>
-        )}
+        <div
+          className="transition-opacity duration-300 ease-in-out"
+          style={{ opacity: isFetching && !isLoading ? 0.5 : 1 }}
+        >
+          {hasBlocks ? (
+            <div className="space-y-3">
+              {activeBlocks.map((block) => (
+                <PublicBlock key={block.id} block={block} template={template} onClickTrack={trackClick} />
+              ))}
+            </div>
+          ) : activeLinks.length > 0 ? (
+            <div className="space-y-3">
+              {activeLinks.map((link) => (
+                <a
+                  key={link.id}
+                  href={normalizeUrl(link.url)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => trackClick(link.id)}
+                  className={`block w-full rounded-xl ${template.cardBg} p-4 text-center font-medium transition-all hover:scale-[1.02] hover:shadow-md group backdrop-blur-sm`}
+                  data-testid={`link-card-${link.id}`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <span className={`truncate ${template.cardTextColor}`}>{link.title}</span>
+                    <ExternalLink className={`w-3.5 h-3.5 ${template.cardTextColor} opacity-0 group-hover:opacity-100 transition-opacity shrink-0`} />
+                  </div>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <p className={`text-center text-sm ${template.textColor} opacity-60`}>No content yet.</p>
+          )}
+        </div>
 
         <div className="mt-12 text-center">
           <a href="/" className="text-xs transition-opacity hover:opacity-80">
