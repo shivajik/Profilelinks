@@ -885,7 +885,7 @@ export async function registerRoutes(
         position: 0,
         isHome: true,
       });
-      res.status(201).json(member);
+      res.status(201).json({ ...member, tempPassword, tempEmail: normalizedEmail, tempUsername: username });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to create member" });
     }

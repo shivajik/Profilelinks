@@ -2815,6 +2815,7 @@ function TeamMembersPanel({ teamId }: { teamId: string }) {
   const [removeConfirmMember, setRemoveConfirmMember] = useState<any>(null);
   const [editMember, setEditMember] = useState<any>(null);
   const [editJobTitle, setEditJobTitle] = useState("");
+  const [createdCredentials, setCreatedCredentials] = useState<{ email: string; password: string; username: string } | null>(null);
 
   const { data: members = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/teams", teamId, "members"],
@@ -2854,16 +2855,21 @@ function TeamMembersPanel({ teamId }: { teamId: string }) {
 
   const createMemberMutation = useMutation({
     mutationFn: async (data: { displayName: string; email: string; jobTitle?: string; memberRole: string }) => {
-      await apiRequest("POST", `/api/teams/${teamId}/members/create`, data);
+      const res = await apiRequest("POST", `/api/teams/${teamId}/members/create`, data);
+      return await res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "members"] });
       setCreateOpen(false);
       setCreateName("");
       setCreateEmail("");
       setCreateJobTitle("");
       setCreateRole("member");
-      toast({ title: "Member created!" });
+      if (data.tempPassword) {
+        setCreatedCredentials({ email: data.tempEmail, password: data.tempPassword, username: data.tempUsername });
+      } else {
+        toast({ title: "Member created!" });
+      }
     },
     onError: (err: any) => {
       toast({ title: "Failed to create member", description: err.message, variant: "destructive" });
@@ -3142,6 +3148,57 @@ function TeamMembersPanel({ teamId }: { teamId: string }) {
             >
               {createMemberMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
               Create Member
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!createdCredentials} onOpenChange={(v) => { if (!v) setCreatedCredentials(null); }}>
+        <DialogContent aria-describedby="credentials-desc">
+          <DialogHeader>
+            <DialogTitle>Member Created Successfully</DialogTitle>
+            <DialogDescription id="credentials-desc">Share these login credentials with the new team member so they can sign in.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-md border p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">Email</p>
+                  <p className="text-sm font-mono" data-testid="text-cred-email">{createdCredentials?.email}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    navigator.clipboard.writeText(createdCredentials?.email || "");
+                    toast({ title: "Email copied!" });
+                  }}
+                  data-testid="button-copy-cred-email"
+                >
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">Temporary Password</p>
+                  <p className="text-sm font-mono" data-testid="text-cred-password">{createdCredentials?.password}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    navigator.clipboard.writeText(createdCredentials?.password || "");
+                    toast({ title: "Password copied!" });
+                  }}
+                  data-testid="button-copy-cred-password"
+                >
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">The member can change their password after logging in via Settings.</p>
+            <Button className="w-full" onClick={() => setCreatedCredentials(null)} data-testid="button-close-credentials">
+              Done
             </Button>
           </div>
         </DialogContent>
