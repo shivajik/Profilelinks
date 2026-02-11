@@ -1228,6 +1228,8 @@ export async function registerRoutes(
         companyPhone?: string;
         companyEmail?: string;
         companyWebsite?: string;
+        companyAddress?: string;
+        companyContact?: string;
         themeColor?: string;
         font?: string;
         jobTitle?: string;
@@ -1248,6 +1250,8 @@ export async function registerRoutes(
           companyPhone: tData.companyPhone || undefined,
           companyEmail: tData.companyEmail || undefined,
           companyWebsite: tData.companyWebsite || team?.websiteUrl || undefined,
+          companyAddress: tData.companyAddress || undefined,
+          companyContact: tData.companyContact || undefined,
           themeColor: tData.themeColor || undefined,
           font: tData.font || undefined,
           jobTitle: member?.jobTitle || undefined,

@@ -73,6 +73,7 @@ import {
   Send,
   CreditCard,
   MoreVertical,
+  MapPin,
 } from "lucide-react";
 import {
   Dialog,
@@ -3209,6 +3210,8 @@ function MemberCardPreview({ member, templateData, themeColor }: { member: any; 
   const companyName = templateData.companyName || "";
   const companyPhone = templateData.companyPhone || "";
   const companyWebsite = templateData.companyWebsite || "";
+  const companyContact = templateData.companyContact || "";
+  const companyAddress = templateData.companyAddress || "";
 
   return (
     <div className="rounded-md overflow-hidden border bg-card shadow-sm" data-testid="member-card-preview">
@@ -3252,7 +3255,9 @@ function MemberCardPreview({ member, templateData, themeColor }: { member: any; 
             {[
               { icon: Mail, value: memberEmail, placeholder: "" },
               { icon: Phone, value: companyPhone, placeholder: "" },
+              { icon: Phone, value: companyContact, placeholder: "" },
               { icon: Globe, value: companyWebsite, placeholder: "" },
+              { icon: MapPin, value: companyAddress, placeholder: "" },
             ].filter(item => item.value).map((item, i) => (
               <div key={i} className="flex items-center gap-2.5">
                 <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: themeColor + "20" }}>
@@ -3299,6 +3304,8 @@ interface TemplateData {
   companyPhone?: string;
   companyEmail?: string;
   companyWebsite?: string;
+  companyAddress?: string;
+  companyContact?: string;
   companyLogo?: string | null;
   coverPhoto?: string | null;
   themeColor?: string;
@@ -3413,6 +3420,8 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
   const [localPhone, setLocalPhone] = useState("");
   const [localEmail, setLocalEmail] = useState("");
   const [localWebsite, setLocalWebsite] = useState("");
+  const [localAddress, setLocalAddress] = useState("");
+  const [localContact, setLocalContact] = useState("");
 
   useEffect(() => {
     if (selectedTemplate) {
@@ -3422,8 +3431,10 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
       setLocalPhone(tData.companyPhone || "");
       setLocalEmail(tData.companyEmail || "");
       setLocalWebsite(tData.companyWebsite || "");
+      setLocalAddress(tData.companyAddress || "");
+      setLocalContact(tData.companyContact || "");
     }
-  }, [selectedTemplate?.id, selectedTemplate?.name, selectedTemplate?.description, tData.companyName, tData.companyPhone, tData.companyEmail, tData.companyWebsite]);
+  }, [selectedTemplate?.id, selectedTemplate?.name, selectedTemplate?.description, tData.companyName, tData.companyPhone, tData.companyEmail, tData.companyWebsite, tData.companyAddress, tData.companyContact]);
 
   return (
     <div className="p-4 space-y-4">
@@ -3577,6 +3588,26 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                         onBlur={() => { if (localWebsite !== (tData.companyWebsite || "")) updateField("companyWebsite", localWebsite); }}
                         placeholder="https://company.com"
                         data-testid="input-tpl-company-website"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Contact Number</Label>
+                      <Input
+                        value={localContact}
+                        onChange={(e) => setLocalContact(e.target.value)}
+                        onBlur={() => { if (localContact !== (tData.companyContact || "")) updateField("companyContact", localContact); }}
+                        placeholder="+1 555-0200"
+                        data-testid="input-tpl-company-contact"
+                      />
+                    </div>
+                    <div className="space-y-1 sm:col-span-2">
+                      <Label className="text-xs text-muted-foreground">Address</Label>
+                      <Input
+                        value={localAddress}
+                        onChange={(e) => setLocalAddress(e.target.value)}
+                        onBlur={() => { if (localAddress !== (tData.companyAddress || "")) updateField("companyAddress", localAddress); }}
+                        placeholder="123 Main St, City, Country"
+                        data-testid="input-tpl-company-address"
                       />
                     </div>
                   </div>
@@ -3812,7 +3843,9 @@ function TemplateCardPreview({ data, themeColor }: { data: TemplateData; themeCo
             {[
               { icon: Mail, value: data.companyEmail, placeholder: "Email" },
               { icon: Phone, value: data.companyPhone, placeholder: "Phone" },
+              { icon: Phone, value: data.companyContact, placeholder: "Contact" },
               { icon: Globe, value: data.companyWebsite, placeholder: "Website" },
+              { icon: MapPin, value: data.companyAddress, placeholder: "Address" },
             ].map((item, i) => (
               <div key={i} className="flex items-center gap-2.5">
                 <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: themeColor + "20" }}>

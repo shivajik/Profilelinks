@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Loader2, ExternalLink, Mail, Play, Music, UserPlus, Share2, QrCode, Copy, Check, ChevronDown, Phone, Globe, Building2, ImageIcon } from "lucide-react";
+import { Loader2, ExternalLink, Mail, Play, Music, UserPlus, Share2, QrCode, Copy, Check, ChevronDown, Phone, Globe, Building2, ImageIcon, MapPin } from "lucide-react";
 import { SiFacebook, SiX, SiPinterest, SiReddit, SiLinkedin } from "react-icons/si";
 import { QRCodeSVG } from "qrcode.react";
 import { getTemplate } from "@/lib/templates";
@@ -90,6 +90,8 @@ type TeamBranding = {
   companyPhone?: string;
   companyEmail?: string;
   companyWebsite?: string;
+  companyAddress?: string;
+  companyContact?: string;
   themeColor?: string;
   font?: string;
   jobTitle?: string;
@@ -213,9 +215,11 @@ export default function PublicProfile() {
       teamBranding?.jobTitle ? `TITLE:${teamBranding.jobTitle}` : "",
       teamBranding?.companyName ? `ORG:${teamBranding.companyName}` : "",
       teamBranding?.companyPhone ? `TEL:${teamBranding.companyPhone}` : "",
+      teamBranding?.companyContact ? `TEL;TYPE=CELL:${teamBranding.companyContact}` : "",
       teamBranding?.companyEmail ? `EMAIL:${teamBranding.companyEmail}` : "",
       teamBranding?.companyWebsite ? `URL:${teamBranding.companyWebsite}` : "",
       !teamBranding?.companyWebsite ? `URL:${profileUrl}` : "",
+      teamBranding?.companyAddress ? `ADR:;;${teamBranding.companyAddress};;;;` : "",
       user.bio ? `NOTE:${user.bio}` : "",
       "END:VCARD",
     ].filter(Boolean).join("\n");
@@ -325,7 +329,9 @@ export default function PublicProfile() {
                   const contactItems = [
                     { icon: Mail, value: teamBranding?.companyEmail },
                     { icon: Phone, value: teamBranding?.companyPhone },
+                    { icon: Phone, value: teamBranding?.companyContact },
                     { icon: Globe, value: teamBranding?.companyWebsite },
+                    { icon: MapPin, value: teamBranding?.companyAddress },
                   ].filter(item => item.value);
                   if (contactItems.length === 0) return null;
                   return (
