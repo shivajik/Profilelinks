@@ -402,7 +402,12 @@ export default function PublicProfile() {
           </div>
         ) : (
           <div className="flex flex-col items-center text-center mb-10">
-            <Avatar className="w-24 h-24 border-4 border-white/20 shadow-lg mb-5">
+            {user.coverImage && (
+              <div className="w-full h-32 rounded-md overflow-hidden mb-[-2.5rem] shadow-md" data-testid="personal-cover-image">
+                <img src={user.coverImage} alt="Cover" className="w-full h-full object-cover" />
+              </div>
+            )}
+            <Avatar className={`w-24 h-24 border-4 border-white/20 shadow-lg ${user.coverImage ? "mb-5 relative z-10" : "mb-5"}`}>
               <AvatarImage src={user.profileImage || undefined} alt={user.displayName || user.username} />
               <AvatarFallback
                 className="text-2xl"

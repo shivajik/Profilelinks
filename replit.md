@@ -4,6 +4,7 @@
 A link-in-bio web application that allows users to create personalized landing pages with multiple links to their social profiles, websites, and content - all accessible through a single custom URL.
 
 ## Recent Changes
+- 2026-02-11: Added cover image upload for individual/personal profiles: coverImage field in users table, upload UI in dashboard Header section, display on personal public profile and phone preview
 - 2026-02-10: Corporate team member public profiles: cover photo banner, profile avatar with company logo badge overlay, job title, company name with brand color, contact details row (email/phone/website with themed icon circles), enhanced vCard download with company info
 - 2026-02-10: Backend: public profile API now returns teamBranding object (companyLogo, coverPhoto, companyName, jobTitle, contact info, themeColor, font) for team account users
 - 2026-02-10: MemberCardPreview updated with company logo badge on profile avatar for dashboard consistency
@@ -72,7 +73,7 @@ A link-in-bio web application that allows users to create personalized landing p
 - `GET /api/profile/:username?page=slug` - Get public profile + page-scoped links
 
 ## Database Schema
-- `users` - id, username, email, password, displayName, bio, profileImage, onboardingCompleted, template, accountType (personal/team), teamId
+- `users` - id, username, email, password, displayName, bio, profileImage, coverImage, onboardingCompleted, template, accountType (personal/team), teamId
 - `pages` - id, userId, title, slug, position, isHome (each user has one home page)
 - `blocks` - id, userId, pageId, type (url_button/email_button/text/divider/video/audio/image), content (JSONB), position, active
 - `links` - id, userId, pageId (FK to pages), title, url, position, active (legacy, migrated to blocks)

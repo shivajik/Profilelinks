@@ -208,7 +208,7 @@ export default function Dashboard() {
   }, [user]);
 
   const profileMutation = useMutation({
-    mutationFn: async (data: { displayName?: string | null; bio?: string | null; profileImage?: string | null }) => {
+    mutationFn: async (data: { displayName?: string | null; bio?: string | null; profileImage?: string | null; coverImage?: string | null }) => {
       await apiRequest("PATCH", "/api/auth/profile", data);
     },
     onSuccess: () => {
@@ -495,6 +495,57 @@ export default function Dashboard() {
                         </label>
                       </div>
                     </div>
+                    <div className="border rounded-md p-3 space-y-2">
+                      <span className="text-sm font-medium">Cover Image</span>
+                      <div className="relative group w-full h-20 rounded-md overflow-hidden bg-muted">
+                        {user.coverImage ? (
+                          <>
+                            <img src={user.coverImage} alt="Cover" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <label htmlFor="dash-cover-upload" className="cursor-pointer p-1.5 rounded-full bg-white/20 hover-elevate">
+                                <Camera className="w-3.5 h-3.5 text-white" />
+                              </label>
+                              <button
+                                onClick={() => {
+                                  profileMutation.mutate({ coverImage: null });
+                                }}
+                                className="p-1.5 rounded-full bg-white/20 hover-elevate"
+                                data-testid="button-cover-remove"
+                              >
+                                <X className="w-3.5 h-3.5 text-white" />
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <label htmlFor="dash-cover-upload" className="cursor-pointer w-full h-full flex flex-col items-center justify-center gap-1 text-muted-foreground hover-elevate">
+                            <ImageIcon className="w-5 h-5" />
+                            <span className="text-xs">Add cover image</span>
+                          </label>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/gif,image/webp"
+                          className="hidden"
+                          id="dash-cover-upload"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const formData = new FormData();
+                            formData.append("file", file);
+                            try {
+                              const res = await fetch("/api/upload", { method: "POST", body: formData });
+                              const data = await res.json();
+                              if (res.ok) {
+                                await apiRequest("PATCH", "/api/auth/profile", { coverImage: data.url });
+                                queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+                                toast({ title: "Cover image updated!" });
+                              }
+                            } catch {}
+                          }}
+                          data-testid="input-header-cover-upload"
+                        />
+                      </div>
+                    </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="header-name" className="text-xs text-muted-foreground">Name</Label>
                       <Input
@@ -715,6 +766,7 @@ export default function Dashboard() {
                   displayName={headerName || user.username}
                   bio={headerBio}
                   profileImage={user.profileImage || ""}
+                  coverImage={user.coverImage || ""}
                   username={user.username}
                   blocks={sortedBlocks}
                   socials={userSocials}
@@ -1876,6 +1928,7 @@ function PhonePreview({
   displayName,
   bio,
   profileImage,
+  coverImage,
   username,
   blocks,
   socials,
@@ -1887,6 +1940,7 @@ function PhonePreview({
   displayName: string;
   bio: string;
   profileImage: string;
+  coverImage: string;
   username: string;
   blocks: Block[];
   socials: Social[];
@@ -1912,7 +1966,12 @@ function PhonePreview({
         </div>
         <div className={`min-h-[480px] ${template.bg} p-5`}>
           <div className="flex flex-col items-center text-center">
-            <Avatar className="w-16 h-16 border-2 border-white/30 mb-3">
+            {coverImage && (
+              <div className="w-full h-16 rounded-md overflow-hidden mb-[-1.5rem] shadow-sm">
+                <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
+              </div>
+            )}
+            <Avatar className={`w-16 h-16 border-2 border-white/30 mb-3 ${coverImage ? "relative z-10" : ""}`}>
               <AvatarImage src={profileImage || undefined} />
               <AvatarFallback className="bg-white/20 text-lg" style={{ color: template.accent }}>
                 {displayName ? displayName.charAt(0).toUpperCase() : "?"}
