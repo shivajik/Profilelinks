@@ -72,6 +72,7 @@ import {
   UserPlus,
   Send,
   CreditCard,
+  MoreVertical,
 } from "lucide-react";
 import {
   Dialog,
@@ -2752,6 +2753,8 @@ function TeamMembersPanel({ teamId }: { teamId: string }) {
   const [createJobTitle, setCreateJobTitle] = useState("");
   const [createRole, setCreateRole] = useState("member");
   const [removeConfirmMember, setRemoveConfirmMember] = useState<any>(null);
+  const [editMember, setEditMember] = useState<any>(null);
+  const [editJobTitle, setEditJobTitle] = useState("");
 
   const { data: members = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/teams", teamId, "members"],
@@ -2825,6 +2828,17 @@ function TeamMembersPanel({ teamId }: { teamId: string }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "members"] });
       toast({ title: "Role updated" });
+    },
+  });
+
+  const updateMemberMutation = useMutation({
+    mutationFn: async ({ memberId, jobTitle }: { memberId: string; jobTitle: string }) => {
+      await apiRequest("PATCH", `/api/teams/${teamId}/members/${memberId}`, { jobTitle: jobTitle || null });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "members"] });
+      setEditMember(null);
+      toast({ title: "Member updated" });
     },
   });
 
@@ -2925,11 +2939,20 @@ function TeamMembersPanel({ teamId }: { teamId: string }) {
                     >
                       <CreditCard className="w-4 h-4" />
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => { setEditMember(member); setEditJobTitle(member.jobTitle || ""); }}
+                      data-testid={`button-edit-member-${member.id}`}
+                      title="Edit member"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
                     {member.role !== "owner" && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" data-testid={`button-member-actions-${member.id}`}>
-                            <Pencil className="w-4 h-4" />
+                            <MoreVertical className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
@@ -3102,6 +3125,76 @@ function TeamMembersPanel({ teamId }: { teamId: string }) {
               templateData={defaultTemplate?.templateData || {}}
               themeColor={defaultTemplate?.templateData?.themeColor || "#6C5CE7"}
             />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editMember} onOpenChange={(v) => { if (!v) setEditMember(null); }}>
+        <DialogContent className="sm:max-w-sm" aria-describedby="edit-member-desc">
+          <DialogHeader>
+            <DialogTitle>Edit Member</DialogTitle>
+            <DialogDescription id="edit-member-desc">Update team member details.</DialogDescription>
+          </DialogHeader>
+          {editMember && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <Avatar className="w-10 h-10 border border-border">
+                  <AvatarImage src={editMember.user?.profileImage || undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                    {(editMember.user?.displayName || editMember.user?.username || "?").charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className="text-sm font-medium">{editMember.user?.displayName || editMember.user?.username || "Unknown"}</div>
+                  <div className="text-xs text-muted-foreground">{editMember.user?.email || ""}</div>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-job-title">Job Title</Label>
+                <Input
+                  id="edit-job-title"
+                  value={editJobTitle}
+                  onChange={(e) => setEditJobTitle(e.target.value)}
+                  placeholder="e.g. Software Engineer"
+                  data-testid="input-edit-job-title"
+                />
+              </div>
+              {editMember.user?.username && (
+                <div className="space-y-1.5">
+                  <Label>Profile URL</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      readOnly
+                      value={`${window.location.origin}/${editMember.user.username}`}
+                      className="text-xs"
+                      data-testid="input-profile-url"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/${editMember.user.username}`);
+                        toast({ title: "Profile URL copied" });
+                      }}
+                      data-testid="button-copy-profile-url"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" size="sm" onClick={() => setEditMember(null)} data-testid="button-cancel-edit-member">Cancel</Button>
+                <Button
+                  size="sm"
+                  onClick={() => updateMemberMutation.mutate({ memberId: editMember.id, jobTitle: editJobTitle })}
+                  disabled={updateMemberMutation.isPending}
+                  data-testid="button-save-edit-member"
+                >
+                  {updateMemberMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
+                </Button>
+              </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>
