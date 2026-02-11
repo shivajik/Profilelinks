@@ -76,6 +76,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -2947,11 +2948,11 @@ function TeamMembersPanel({ teamId }: { teamId: string }) {
       )}
 
       <Dialog open={inviteOpen} onOpenChange={(v) => { if (!v) setInviteOpen(false); }}>
-        <DialogContent>
+        <DialogContent aria-describedby="invite-member-desc">
           <DialogHeader>
             <DialogTitle>Invite Team Member</DialogTitle>
+            <DialogDescription id="invite-member-desc">Send an invitation email. The recipient can accept and join the team.</DialogDescription>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">Send an invitation email. The recipient can accept and join the team.</p>
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="invite-email">Email</Label>
@@ -2990,11 +2991,11 @@ function TeamMembersPanel({ teamId }: { teamId: string }) {
       </Dialog>
 
       <Dialog open={createOpen} onOpenChange={(v) => { if (!v) setCreateOpen(false); }}>
-        <DialogContent>
+        <DialogContent aria-describedby="create-member-desc">
           <DialogHeader>
             <DialogTitle>Create Team Member</DialogTitle>
+            <DialogDescription id="create-member-desc">Create an account and add them to the team directly.</DialogDescription>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">Create an account and add them to the team directly.</p>
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="create-name">Full Name</Label>
@@ -3053,9 +3054,10 @@ function TeamMembersPanel({ teamId }: { teamId: string }) {
       </Dialog>
 
       <Dialog open={!!removeConfirmMember} onOpenChange={(v) => { if (!v) setRemoveConfirmMember(null); }}>
-        <DialogContent>
+        <DialogContent aria-describedby="remove-member-desc">
           <DialogHeader>
             <DialogTitle>Remove Member</DialogTitle>
+            <DialogDescription id="remove-member-desc">This will remove the member from your team.</DialogDescription>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             Are you sure you want to remove {removeConfirmMember?.user?.displayName || removeConfirmMember?.user?.username || "this member"} from the team? They will lose access to the team workspace.
@@ -3337,7 +3339,19 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
         </div>
       ) : templates.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-8" data-testid="text-no-templates">No templates yet. Create one to get started.</p>
+        <div className="flex flex-col items-center justify-center py-16 gap-4" data-testid="text-no-templates">
+          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+            <LayoutTemplate className="w-7 h-7 text-muted-foreground/50" />
+          </div>
+          <div className="text-center space-y-1.5">
+            <p className="text-sm font-medium">No templates yet</p>
+            <p className="text-xs text-muted-foreground max-w-[260px]">Create a business card template with your company branding, logo, and contact details.</p>
+          </div>
+          <Button variant="default" size="sm" onClick={() => setCreateDialogOpen(true)} data-testid="button-create-first-template">
+            <Plus className="w-4 h-4" />
+            Create your first template
+          </Button>
+        </div>
       ) : (
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="lg:w-[320px] shrink-0 space-y-4">
@@ -3580,9 +3594,10 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
       )}
 
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm" aria-describedby="create-template-desc-text">
           <DialogHeader>
             <DialogTitle>Create Template</DialogTitle>
+            <DialogDescription id="create-template-desc-text">Set up a new business card template for your team.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
@@ -3628,12 +3643,13 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
       </Dialog>
 
       <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-        <DialogContent>
+        <DialogContent aria-describedby="delete-template-desc-text">
           <DialogHeader>
             <DialogTitle>Delete Template</DialogTitle>
+            <DialogDescription id="delete-template-desc-text">This action cannot be undone.</DialogDescription>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Are you sure you want to delete "{selectedTemplate?.name}"? This action cannot be undone.
+            Are you sure you want to delete "{selectedTemplate?.name}"?
           </p>
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" size="sm" onClick={() => setDeleteConfirmOpen(false)} data-testid="button-cancel-delete-template">

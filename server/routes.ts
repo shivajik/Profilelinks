@@ -679,6 +679,22 @@ export async function registerRoutes(
       const team = await storage.createTeam({ ...result.data, ownerId: req.session.userId! });
       await storage.addTeamMember({ teamId: team.id, userId: req.session.userId!, role: "owner", status: "activated" });
       await storage.updateUser(req.session.userId!, { accountType: "team", teamId: team.id });
+      try {
+        await storage.createTeamTemplate({
+          teamId: team.id,
+          name: "Default Business Card",
+          description: "Standard company business card template",
+          templateData: {
+            companyName: result.data.name || "",
+            companyWebsite: result.data.websiteUrl || "",
+            themeColor: "#6C5CE7",
+            font: "inter",
+          },
+          isDefault: true,
+        });
+      } catch (templateErr) {
+        console.error("Failed to create default template for new team:", templateErr);
+      }
       res.status(201).json(team);
     } catch (error: any) {
       res.status(500).json({ message: "Failed to create team" });
@@ -957,7 +973,27 @@ export async function registerRoutes(
       if (!role) {
         return res.status(403).json({ message: "Not authorized" });
       }
-      const templates = await storage.getTeamTemplates(req.params.teamId as string);
+      let templates = await storage.getTeamTemplates(req.params.teamId as string);
+      if (templates.length === 0) {
+        try {
+          const team = await storage.getTeam(req.params.teamId as string);
+          const created = await storage.createTeamTemplate({
+            teamId: req.params.teamId as string,
+            name: "Default Business Card",
+            description: "Standard company business card template",
+            templateData: {
+              companyName: team?.name || "",
+              companyWebsite: team?.websiteUrl || "",
+              themeColor: "#6C5CE7",
+              font: "inter",
+            },
+            isDefault: true,
+          });
+          templates = [created];
+        } catch (autoCreateErr) {
+          console.error("Failed to auto-create default template:", autoCreateErr);
+        }
+      }
       res.json(templates);
     } catch (error: any) {
       res.status(500).json({ message: "Failed to get templates" });
