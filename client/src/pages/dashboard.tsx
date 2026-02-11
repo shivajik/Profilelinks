@@ -2906,6 +2906,17 @@ function TeamMembersPanel({ teamId }: { teamId: string }) {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
+                    {member.user?.username && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => window.open(`/${member.user.username}`, "_blank")}
+                        data-testid={`button-view-profile-${member.id}`}
+                        title="View public profile"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"
