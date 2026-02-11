@@ -793,12 +793,28 @@ export async function registerRoutes(
   app.patch("/api/teams/:teamId/members/:id", requireAuth, async (req, res) => {
     try {
       const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
-      if (!role || !["owner", "admin"].includes(role)) {
+      if (!role) {
         return res.status(403).json({ message: "Not authorized" });
       }
       const result = updateTeamMemberSchema.safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+      const isAdminOrOwner = ["owner", "admin"].includes(role);
+      if (!isAdminOrOwner) {
+        const targetMember = (await storage.getTeamMembers(req.params.teamId as string)).find(m => m.id === req.params.id);
+        if (!targetMember || targetMember.userId !== req.session.userId) {
+          return res.status(403).json({ message: "You can only edit your own profile" });
+        }
+        const allowedFields = { jobTitle: result.data.jobTitle };
+        if (result.data.role) {
+          return res.status(403).json({ message: "Only admins can change roles" });
+        }
+        const updated = await storage.updateTeamMember(req.params.id as string, req.params.teamId as string, allowedFields);
+        if (!updated) {
+          return res.status(404).json({ message: "Team member not found" });
+        }
+        return res.json(updated);
       }
       const updated = await storage.updateTeamMember(req.params.id as string, req.params.teamId as string, result.data);
       if (!updated) {
@@ -910,7 +926,7 @@ export async function registerRoutes(
         token: crypto.randomUUID(),
       }));
       const created = await storage.createTeamInvites(invites);
-      res.status(201).json(created);
+      res.status(201).json({ invites: created });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to send invites" });
     }
@@ -963,6 +979,81 @@ export async function registerRoutes(
       res.json({ team });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to join team" });
+    }
+  });
+
+  // Public invite acceptance (no auth required)
+  app.get("/api/invites/:token", async (req, res) => {
+    try {
+      const invite = await storage.getTeamInviteByToken(req.params.token as string);
+      if (!invite || invite.status !== "pending") {
+        return res.status(404).json({ message: "Invalid or expired invite" });
+      }
+      const team = await storage.getTeam(invite.teamId);
+      res.json({
+        email: invite.email,
+        role: invite.role,
+        teamName: team?.name || "Team",
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to get invite info" });
+    }
+  });
+
+  app.post("/api/invites/:token/accept", async (req, res) => {
+    try {
+      const invite = await storage.getTeamInviteByToken(req.params.token as string);
+      if (!invite || invite.status !== "pending") {
+        return res.status(404).json({ message: "Invalid or expired invite" });
+      }
+      const { username, password } = req.body;
+      if (!username || !password || typeof username !== "string" || typeof password !== "string") {
+        return res.status(400).json({ message: "Username and password are required" });
+      }
+      if (username.length < 3 || username.length > 30) {
+        return res.status(400).json({ message: "Username must be 3-30 characters" });
+      }
+      if (password.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters" });
+      }
+      if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+        return res.status(400).json({ message: "Username can only contain letters, numbers, hyphens and underscores" });
+      }
+      const existingUsername = await storage.getUserByUsername(username.toLowerCase());
+      if (existingUsername) {
+        return res.status(400).json({ message: "Username is already taken" });
+      }
+      const existingEmail = await storage.getUserByEmail(invite.email.toLowerCase());
+      if (existingEmail) {
+        return res.status(400).json({ message: "An account with this email already exists. Please log in and use the invite link." });
+      }
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const newUser = await storage.createUser({
+        username: username.toLowerCase(),
+        email: invite.email.toLowerCase(),
+        password: hashedPassword,
+        displayName: username,
+        accountType: "team",
+        teamId: invite.teamId,
+      });
+      await storage.addTeamMember({
+        teamId: invite.teamId,
+        userId: newUser.id,
+        role: invite.role,
+        status: "activated",
+      });
+      await storage.createPage({
+        userId: newUser.id,
+        title: "Home",
+        slug: "home",
+        position: 0,
+        isHome: true,
+      });
+      await storage.updateTeamInviteStatus(invite.id, "accepted");
+      req.session.userId = newUser.id;
+      res.json({ message: "Account created and joined team successfully" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to accept invite" });
     }
   });
 

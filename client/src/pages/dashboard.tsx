@@ -729,7 +729,7 @@ export default function Dashboard() {
                 <QRCodePanel profileUrl={profileUrl} username={user.username} />
               )}
               {activeSection === "team-members" && isTeamAccount && (
-                <TeamMembersPanel teamId={user.teamId!} />
+                <TeamMembersPanel teamId={user.teamId!} currentUserId={user.id} />
               )}
               {activeSection === "team-templates" && isTeamAccount && (
                 <TeamTemplatesPanel teamId={user.teamId!} />
@@ -2801,7 +2801,7 @@ function AddSocialDialog({
   );
 }
 
-function TeamMembersPanel({ teamId }: { teamId: string }) {
+function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUserId: string }) {
   const { toast } = useToast();
   const [inviteOpen, setInviteOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -2836,17 +2836,27 @@ function TeamMembersPanel({ teamId }: { teamId: string }) {
   });
 
   const defaultTemplate = templates.find((t: any) => t.isDefault) || templates[0] || null;
+  const currentMember = members.find((m: any) => m.userId === currentUserId);
+  const isAdmin = currentMember?.role === "owner" || currentMember?.role === "admin";
+
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
 
   const inviteMutation = useMutation({
     mutationFn: async (data: { emails: string[]; role: string }) => {
-      await apiRequest("POST", `/api/teams/${teamId}/invites`, data);
+      const res = await apiRequest("POST", `/api/teams/${teamId}/invites`, data);
+      return await res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "members"] });
-      setInviteOpen(false);
       setInviteEmail("");
       setInviteRole("member");
-      toast({ title: "Invitation sent!" });
+      if (data.invites && data.invites[0]?.token) {
+        const link = `${window.location.origin}/invite/${data.invites[0].token}`;
+        setInviteLink(link);
+      } else {
+        setInviteOpen(false);
+        toast({ title: "Invitation created!" });
+      }
     },
     onError: (err: any) => {
       toast({ title: "Failed to send invite", description: err.message, variant: "destructive" });
@@ -2915,16 +2925,18 @@ function TeamMembersPanel({ teamId }: { teamId: string }) {
           <SidebarTrigger data-testid="button-sidebar-toggle" />
           <h2 className="text-base font-semibold">Team Members</h2>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setInviteOpen(true)} data-testid="button-invite-member">
-            <Send className="w-4 h-4" />
-            Invite
-          </Button>
-          <Button variant="default" size="sm" onClick={() => setCreateOpen(true)} data-testid="button-create-member">
-            <UserPlus className="w-4 h-4" />
-            Create
-          </Button>
-        </div>
+        {isAdmin && (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setInviteOpen(true)} data-testid="button-invite-member">
+              <Send className="w-4 h-4" />
+              Invite
+            </Button>
+            <Button variant="default" size="sm" onClick={() => setCreateOpen(true)} data-testid="button-create-member">
+              <UserPlus className="w-4 h-4" />
+              Create
+            </Button>
+          </div>
+        )}
       </div>
 
       {isLoading ? (
@@ -3005,16 +3017,18 @@ function TeamMembersPanel({ teamId }: { teamId: string }) {
                     >
                       <CreditCard className="w-4 h-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => { setEditMember(member); setEditJobTitle(member.jobTitle || ""); }}
-                      data-testid={`button-edit-member-${member.id}`}
-                      title="Edit member"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    {member.role !== "owner" && (
+                    {(isAdmin || member.userId === currentUserId) && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => { setEditMember(member); setEditJobTitle(member.jobTitle || ""); }}
+                        data-testid={`button-edit-member-${member.id}`}
+                        title="Edit member"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                    )}
+                    {isAdmin && member.role !== "owner" && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" data-testid={`button-member-actions-${member.id}`}>
@@ -3047,46 +3061,76 @@ function TeamMembersPanel({ teamId }: { teamId: string }) {
         </Table>
       )}
 
-      <Dialog open={inviteOpen} onOpenChange={(v) => { if (!v) setInviteOpen(false); }}>
+      <Dialog open={inviteOpen} onOpenChange={(v) => { if (!v) { setInviteOpen(false); setInviteLink(null); } }}>
         <DialogContent aria-describedby="invite-member-desc">
           <DialogHeader>
-            <DialogTitle>Invite Team Member</DialogTitle>
-            <DialogDescription id="invite-member-desc">Send an invitation email. The recipient can accept and join the team.</DialogDescription>
+            <DialogTitle>{inviteLink ? "Invite Link Created" : "Invite Team Member"}</DialogTitle>
+            <DialogDescription id="invite-member-desc">
+              {inviteLink ? "Share this link with your team member so they can create their account and join." : "Create an invite link for a team member to self-register."}
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="invite-email">Email</Label>
-              <Input
-                id="invite-email"
-                type="email"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                placeholder="colleague@company.com"
-                data-testid="input-invite-email"
-              />
+          {inviteLink ? (
+            <div className="space-y-3">
+              <div className="rounded-md border p-3">
+                <p className="text-xs text-muted-foreground mb-1">Invite Link</p>
+                <p className="text-sm font-mono break-all" data-testid="text-invite-link">{inviteLink}</p>
+              </div>
+              <Button
+                className="w-full"
+                onClick={() => {
+                  navigator.clipboard.writeText(inviteLink);
+                  toast({ title: "Link copied!" });
+                }}
+                data-testid="button-copy-invite-link"
+              >
+                <Copy className="w-4 h-4 mr-2" />
+                Copy Invite Link
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => { setInviteOpen(false); setInviteLink(null); }}
+                data-testid="button-close-invite-link"
+              >
+                Done
+              </Button>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="invite-role">Role</Label>
-              <Select value={inviteRole} onValueChange={setInviteRole}>
-                <SelectTrigger data-testid="select-invite-role">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="member">Member</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="invite-email">Email</Label>
+                <Input
+                  id="invite-email"
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="colleague@company.com"
+                  data-testid="input-invite-email"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="invite-role">Role</Label>
+                <Select value={inviteRole} onValueChange={setInviteRole}>
+                  <SelectTrigger data-testid="select-invite-role">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="member">Member</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                className="w-full"
+                disabled={!inviteEmail || inviteMutation.isPending}
+                onClick={() => inviteMutation.mutate({ emails: [inviteEmail], role: inviteRole })}
+                data-testid="button-send-invite"
+              >
+                {inviteMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                Create Invite Link
+              </Button>
             </div>
-            <Button
-              className="w-full"
-              disabled={!inviteEmail || inviteMutation.isPending}
-              onClick={() => inviteMutation.mutate({ emails: [inviteEmail], role: inviteRole })}
-              data-testid="button-send-invite"
-            >
-              {inviteMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-              Send Invite
-            </Button>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
 

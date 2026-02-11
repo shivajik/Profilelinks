@@ -4,6 +4,11 @@
 A link-in-bio web application that allows users to create personalized landing pages with multiple links to their social profiles, websites, and content - all accessible through a single custom URL.
 
 ## Recent Changes
+- 2026-02-11: Team member role-based dashboard: non-admin members see read-only team panels (no invite/create/remove buttons), can only edit their own job title
+- 2026-02-11: Public invite acceptance flow: /invite/:token page for self-registration (choose username + password), auto-joins team on submit; GET /api/invites/:token + POST /api/invites/:token/accept routes
+- 2026-02-11: Invite link generation: invite dialog now shows copyable invite link after creating invite; invite API response wraps invites array
+- 2026-02-11: Credentials dialog: after creating a team member, shows temp email + password with copy buttons; member can login immediately
+- 2026-02-11: Note: SendGrid email integration was dismissed by user - email credential delivery is not implemented; credentials shown in UI for manual sharing
 - 2026-02-11: Added cover image upload for individual/personal profiles: coverImage field in users table, upload UI in dashboard Header section, display on personal public profile and phone preview
 - 2026-02-10: Corporate team member public profiles: cover photo banner, profile avatar with company logo badge overlay, job title, company name with brand color, contact details row (email/phone/website with themed icon circles), enhanced vCard download with company info
 - 2026-02-10: Backend: public profile API now returns teamBranding object (companyLogo, coverPhoto, companyName, jobTitle, contact info, themeColor, font) for team account users
@@ -47,6 +52,7 @@ A link-in-bio web application that allows users to create personalized landing p
 - `/` - Landing page
 - `/auth` - Login/Register (email/password)
 - `/dashboard` - Authenticated user's link management
+- `/invite/:token` - Public invite acceptance (self-registration for invited team members)
 - `/:username` - Public profile view
 
 ## API Routes
@@ -71,6 +77,8 @@ A link-in-bio web application that allows users to create personalized landing p
 - `POST /api/links/reorder` - Reorder links
 - `POST /api/upload` - Upload profile image (multipart/form-data, max 5MB)
 - `GET /api/profile/:username?page=slug` - Get public profile + page-scoped links
+- `GET /api/invites/:token` - Get public invite info (no auth)
+- `POST /api/invites/:token/accept` - Accept invite and create account (no auth)
 
 ## Database Schema
 - `users` - id, username, email, password, displayName, bio, profileImage, coverImage, onboardingCompleted, template, accountType (personal/team), teamId
