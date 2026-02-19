@@ -96,7 +96,7 @@ router.post("/api/payments/create-order", requireAuth as any, async (req: Reques
 
     const keyId = process.env.RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
-
+ 
     if (!keyId || !keySecret) {
       return res.status(500).json({ message: "Payment gateway not configured. Please add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET." });
     }
