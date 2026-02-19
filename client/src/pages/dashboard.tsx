@@ -111,7 +111,7 @@ import type { Link, Social, Page, Block, BlockContent, BlockType } from "@shared
 import { BLOCK_TYPES } from "@shared/schema";
 import { BillingSection } from "@/components/billing-section";
 import { PlanUsageBanner, canPerformAction } from "@/components/plan-usage-banner";
-import { usePlanLimits } from "@/hooks/use-plan-limits";
+import { usePlanLimits, type PlanLimits } from "@/hooks/use-plan-limits";
 
 function normalizeUrl(url: string): string {
   if (!url) return "#";
@@ -244,7 +244,7 @@ export default function Dashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/socials"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/plan-limits"] });
+      adjustPlanLimit('currentSocials', 1);
     },
   });
 
@@ -264,13 +264,16 @@ export default function Dashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/socials"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/plan-limits"] });
+      adjustPlanLimit('currentSocials', -1);
       toast({ title: "Social removed!" });
     },
   });
 
-  const invalidatePlanLimits = () => {
-    queryClient.invalidateQueries({ queryKey: ["/api/auth/plan-limits"] });
+  const adjustPlanLimit = (field: keyof Pick<PlanLimits, 'currentLinks' | 'currentPages' | 'currentBlocks' | 'currentSocials' | 'currentTeamMembers'>, delta: number) => {
+    queryClient.setQueryData<PlanLimits>(["/api/auth/plan-limits"], (old) => {
+      if (!old) return old;
+      return { ...old, [field]: Math.max(0, old[field] + delta) };
+    });
   };
 
   const invalidateBlocks = () => {
@@ -278,7 +281,7 @@ export default function Dashboard() {
       const key = query.queryKey;
       return Array.isArray(key) && key[0] === "/api/blocks";
     }});
-    invalidatePlanLimits();
+    adjustPlanLimit('currentBlocks', -1);
   };
 
   const deleteBlockMutation = useMutation({
@@ -2214,6 +2217,7 @@ function AddBlockDialog({ open, onClose, pageId }: { open: boolean; onClose: () 
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ predicate: (query) => Array.isArray(query.queryKey) && query.queryKey[0] === "/api/blocks" });
+      queryClient.setQueryData<PlanLimits>(["/api/auth/plan-limits"], (old) => old ? { ...old, currentBlocks: old.currentBlocks + 1 } : old);
       onClose();
       toast({ title: "Block added!" });
     },
@@ -2261,6 +2265,7 @@ function AddPageDialog({ open, onClose }: { open: boolean; onClose: () => void }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/pages"] });
+      queryClient.setQueryData<PlanLimits>(["/api/auth/plan-limits"], (old) => old ? { ...old, currentPages: old.currentPages + 1 } : old);
       setTitle("");
       onClose();
       toast({ title: "Page created!" });
@@ -2344,6 +2349,7 @@ function ManagePagesDialog({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/pages"] });
+      queryClient.setQueryData<PlanLimits>(["/api/auth/plan-limits"], (old) => old ? { ...old, currentPages: Math.max(0, old.currentPages - 1) } : old);
       toast({ title: "Page deleted!" });
     },
     onError: (e: any) => {
