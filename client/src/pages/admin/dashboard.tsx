@@ -28,7 +28,9 @@ interface PricingPlan {
   id: string; name: string; description?: string;
   monthlyPrice: string; yearlyPrice: string;
   features: string[]; maxLinks: number; maxPages: number;
-  maxTeamMembers: number; isActive: boolean; isFeatured: boolean; sortOrder: number;
+  maxTeamMembers: number; maxBlocks: number; maxSocials: number;
+  qrCodeEnabled: boolean; analyticsEnabled: boolean; customTemplatesEnabled: boolean;
+  isActive: boolean; isFeatured: boolean; sortOrder: number;
 }
 interface AdminStats {
   totalUsers: number; totalRevenue: number; activeSubscriptions: number;
@@ -55,6 +57,11 @@ const planSchema = z.object({
   maxLinks: z.coerce.number().int().min(1).default(10),
   maxPages: z.coerce.number().int().min(1).default(1),
   maxTeamMembers: z.coerce.number().int().min(1).default(1),
+  maxBlocks: z.coerce.number().int().min(1).default(20),
+  maxSocials: z.coerce.number().int().min(1).default(5),
+  qrCodeEnabled: z.boolean().default(false),
+  analyticsEnabled: z.boolean().default(false),
+  customTemplatesEnabled: z.boolean().default(false),
   isActive: z.boolean().default(true),
   isFeatured: z.boolean().default(false),
   sortOrder: z.coerce.number().int().min(0).default(0),
@@ -176,11 +183,11 @@ export default function AdminDashboard() {
 
   // ── Plan CRUD ──────────────────────────────────────────────────────────────
   const openNewPlan = () => {
-    planForm.reset({ name: "", description: "", monthlyPrice: 0, yearlyPrice: 0, featuresText: "", maxLinks: 10, maxPages: 1, maxTeamMembers: 1, isActive: true, isFeatured: false, sortOrder: 0 });
+    planForm.reset({ name: "", description: "", monthlyPrice: 0, yearlyPrice: 0, featuresText: "", maxLinks: 10, maxPages: 1, maxTeamMembers: 1, maxBlocks: 20, maxSocials: 5, qrCodeEnabled: false, analyticsEnabled: false, customTemplatesEnabled: false, isActive: true, isFeatured: false, sortOrder: 0 });
     setPlanDialog({ open: true });
   };
   const openEditPlan = (plan: PricingPlan) => {
-    planForm.reset({ name: plan.name, description: plan.description ?? "", monthlyPrice: parseFloat(plan.monthlyPrice), yearlyPrice: parseFloat(plan.yearlyPrice), featuresText: (plan.features ?? []).join("\n"), maxLinks: plan.maxLinks, maxPages: plan.maxPages, maxTeamMembers: plan.maxTeamMembers, isActive: plan.isActive, isFeatured: plan.isFeatured, sortOrder: plan.sortOrder });
+    planForm.reset({ name: plan.name, description: plan.description ?? "", monthlyPrice: parseFloat(plan.monthlyPrice), yearlyPrice: parseFloat(plan.yearlyPrice), featuresText: (plan.features ?? []).join("\n"), maxLinks: plan.maxLinks, maxPages: plan.maxPages, maxTeamMembers: plan.maxTeamMembers, maxBlocks: plan.maxBlocks ?? 20, maxSocials: plan.maxSocials ?? 5, qrCodeEnabled: plan.qrCodeEnabled ?? false, analyticsEnabled: plan.analyticsEnabled ?? false, customTemplatesEnabled: plan.customTemplatesEnabled ?? false, isActive: plan.isActive, isFeatured: plan.isFeatured, sortOrder: plan.sortOrder });
     setPlanDialog({ open: true, plan });
   };
   const onSavePlan = async (data: PlanForm) => {
@@ -889,9 +896,16 @@ export default function AdminDashboard() {
               <div className="space-y-1.5"><Label>Yearly Price (₹)</Label><Input type="number" min="0" step="0.01" {...planForm.register("yearlyPrice")} /></div>
               <div className="space-y-1.5"><Label>Max Links</Label><Input type="number" min="1" {...planForm.register("maxLinks")} /></div>
               <div className="space-y-1.5"><Label>Max Pages</Label><Input type="number" min="1" {...planForm.register("maxPages")} /></div>
+              <div className="space-y-1.5"><Label>Max Blocks</Label><Input type="number" min="1" {...planForm.register("maxBlocks")} /></div>
+              <div className="space-y-1.5"><Label>Max Socials</Label><Input type="number" min="1" {...planForm.register("maxSocials")} /></div>
               <div className="space-y-1.5"><Label>Max Team Members</Label><Input type="number" min="1" {...planForm.register("maxTeamMembers")} /></div>
               <div className="space-y-1.5"><Label>Sort Order</Label><Input type="number" min="0" {...planForm.register("sortOrder")} /></div>
               <div className="col-span-2 space-y-1.5"><Label>Features (one per line)</Label><Textarea placeholder={"Unlimited links\nCustom domain\nAnalytics"} rows={4} {...planForm.register("featuresText")} /></div>
+              <div className="col-span-2"><Separator className="my-2" /><p className="text-sm font-medium text-foreground mb-3">Feature Access</p></div>
+              <div className="flex items-center gap-3"><Switch checked={planForm.watch("qrCodeEnabled")} onCheckedChange={(v) => planForm.setValue("qrCodeEnabled", v)} /><Label>QR Code</Label></div>
+              <div className="flex items-center gap-3"><Switch checked={planForm.watch("analyticsEnabled")} onCheckedChange={(v) => planForm.setValue("analyticsEnabled", v)} /><Label>Analytics</Label></div>
+              <div className="flex items-center gap-3"><Switch checked={planForm.watch("customTemplatesEnabled")} onCheckedChange={(v) => planForm.setValue("customTemplatesEnabled", v)} /><Label>Custom Templates</Label></div>
+              <div className="col-span-2"><Separator className="my-2" /></div>
               <div className="flex items-center gap-3"><Switch checked={planForm.watch("isActive")} onCheckedChange={(v) => planForm.setValue("isActive", v)} /><Label>Active</Label></div>
               <div className="flex items-center gap-3"><Switch checked={planForm.watch("isFeatured")} onCheckedChange={(v) => planForm.setValue("isFeatured", v)} /><Label>Featured</Label></div>
             </div>

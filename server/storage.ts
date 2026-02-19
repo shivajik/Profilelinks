@@ -34,6 +34,7 @@ import {
   type Contact,
   type InsertContact,
 } from "@shared/schema";
+import "dotenv/config";
 
 const dbUrl =
   process.env.SUPABASE_DB_URL ||
@@ -53,11 +54,15 @@ const pool = new pg.Pool({
 
 export const db = drizzle(pool);
 
-// ── Auto-migrate: add is_disabled column if it doesn't exist ─────────────────
+// ── Auto-migrate: add missing columns ─────────────────────────────────────
 pool.query(`
-  ALTER TABLE IF EXISTS users
-  ADD COLUMN IF NOT EXISTS is_disabled boolean NOT NULL DEFAULT false;
-`).catch(() => {/* Column may already exist or table not yet created */});
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS is_disabled boolean NOT NULL DEFAULT false;
+  ALTER TABLE IF EXISTS pricing_plans ADD COLUMN IF NOT EXISTS max_blocks integer NOT NULL DEFAULT 20;
+  ALTER TABLE IF EXISTS pricing_plans ADD COLUMN IF NOT EXISTS max_socials integer NOT NULL DEFAULT 5;
+  ALTER TABLE IF EXISTS pricing_plans ADD COLUMN IF NOT EXISTS qr_code_enabled boolean NOT NULL DEFAULT false;
+  ALTER TABLE IF EXISTS pricing_plans ADD COLUMN IF NOT EXISTS analytics_enabled boolean NOT NULL DEFAULT false;
+  ALTER TABLE IF EXISTS pricing_plans ADD COLUMN IF NOT EXISTS custom_templates_enabled boolean NOT NULL DEFAULT false;
+`).catch(() => {/* Columns may already exist or table not yet created */});
 
 
 export interface IStorage {

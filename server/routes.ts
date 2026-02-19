@@ -13,6 +13,7 @@ import fs from "fs";
 import crypto from "crypto";
 import adminRouter from "./admin-routes";
 import paymentRouter from "./payment-routes";
+import { getUserPlanLimits } from "./plan-limits";
 
 declare module "express-session" {
   interface SessionData {
@@ -409,6 +410,17 @@ export async function registerRoutes(
     });
   });
 
+  // Plan limits API
+  app.get("/api/auth/plan-limits", requireAuth, async (req, res) => {
+    try {
+      const limits = await getUserPlanLimits(req.session.userId!);
+      res.json(limits);
+    } catch (error: any) {
+      console.error("Plan limits error:", error);
+      res.status(500).json({ message: "Failed to fetch plan limits" });
+    }
+  });
+
   // Pages routes
   app.get("/api/pages", requireAuth, async (req, res) => {
     const userPages = await storage.getPagesByUserId(req.session.userId!);
@@ -420,6 +432,11 @@ export async function registerRoutes(
       const result = createPageSchema.safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+      // Enforce page limit
+      const limits = await getUserPlanLimits(req.session.userId!);
+      if (limits.currentPages >= limits.maxPages) {
+        return res.status(403).json({ message: `Page limit reached (${limits.maxPages}). Upgrade your plan to create more pages.` });
       }
       const page = await storage.createPage({
         ...result.data,
@@ -479,6 +496,12 @@ export async function registerRoutes(
       const result = createLinkSchema.safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+
+      // Enforce link limit
+      const limits = await getUserPlanLimits(req.session.userId!);
+      if (limits.currentLinks >= limits.maxLinks) {
+        return res.status(403).json({ message: `Link limit reached (${limits.maxLinks}). Upgrade your plan to add more links.` });
       }
 
       let pageId = result.data.pageId;
@@ -551,6 +574,11 @@ export async function registerRoutes(
       if (!result.success) {
         return res.status(400).json({ message: fromZodError(result.error).message });
       }
+      // Enforce social limit
+      const limits = await getUserPlanLimits(req.session.userId!);
+      if (limits.currentSocials >= limits.maxSocials) {
+        return res.status(403).json({ message: `Social link limit reached (${limits.maxSocials}). Upgrade your plan to add more.` });
+      }
       const social = await storage.createSocial({
         ...result.data,
         userId: req.session.userId!,
@@ -606,6 +634,12 @@ export async function registerRoutes(
       const result = createBlockSchema.safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+
+      // Enforce block limit
+      const limits = await getUserPlanLimits(req.session.userId!);
+      if (limits.currentBlocks >= limits.maxBlocks) {
+        return res.status(403).json({ message: `Block limit reached (${limits.maxBlocks}). Upgrade your plan to add more blocks.` });
       }
 
       let pageId = result.data.pageId;
@@ -856,6 +890,11 @@ export async function registerRoutes(
       const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
       if (!role || !["owner", "admin"].includes(role)) {
         return res.status(403).json({ message: "Not authorized" });
+      }
+      // Enforce team member limit
+      const limits = await getUserPlanLimits(req.session.userId!);
+      if (limits.currentTeamMembers >= limits.maxTeamMembers) {
+        return res.status(403).json({ message: `Team member limit reached (${limits.maxTeamMembers}). Upgrade your plan to add more members.` });
       }
       const result = createTeamMemberSchema.safeParse(req.body);
       if (!result.success) {

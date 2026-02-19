@@ -110,6 +110,8 @@ import { SocialIcon } from "@/components/social-icon";
 import type { Link, Social, Page, Block, BlockContent, BlockType } from "@shared/schema";
 import { BLOCK_TYPES } from "@shared/schema";
 import { BillingSection } from "@/components/billing-section";
+import { PlanUsageBanner, canPerformAction } from "@/components/plan-usage-banner";
+import { usePlanLimits } from "@/hooks/use-plan-limits";
 
 function normalizeUrl(url: string): string {
   if (!url) return "#";
@@ -144,6 +146,21 @@ function getVimeoEmbedUrl(url: string): string | null {
     }
   } catch {}
   return null;
+}
+
+function FeatureLockedPanel({ feature, description }: { feature: string; description: string }) {
+  const [, navigate] = useLocation();
+  return (
+    <div className="flex flex-col items-center justify-center p-8 text-center">
+      <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+        <Shield className="w-8 h-8 text-muted-foreground" />
+      </div>
+      <h3 className="text-lg font-semibold mb-2">{feature} — Locked</h3>
+      <p className="text-sm text-muted-foreground mb-4 max-w-sm">{description}</p>
+      <p className="text-sm text-muted-foreground mb-4">Upgrade your plan to unlock this feature.</p>
+      <Button onClick={() => navigate("/pricing")}>View Plans</Button>
+    </div>
+  );
 }
 
 export default function Dashboard() {
@@ -201,6 +218,8 @@ export default function Dashboard() {
     enabled: !!user,
   });
 
+  const { data: planLimits } = usePlanLimits();
+
   useEffect(() => {
     if (user) {
       setHeaderName(user.displayName || "");
@@ -225,6 +244,7 @@ export default function Dashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/socials"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/plan-limits"] });
     },
   });
 
@@ -244,15 +264,21 @@ export default function Dashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/socials"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/plan-limits"] });
       toast({ title: "Social removed!" });
     },
   });
+
+  const invalidatePlanLimits = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/auth/plan-limits"] });
+  };
 
   const invalidateBlocks = () => {
     queryClient.invalidateQueries({ predicate: (query) => {
       const key = query.queryKey;
       return Array.isArray(key) && key[0] === "/api/blocks";
     }});
+    invalidatePlanLimits();
   };
 
   const deleteBlockMutation = useMutation({
@@ -444,6 +470,8 @@ export default function Dashboard() {
                   </div>
                 </div>
 
+                <PlanUsageBanner />
+
                 <CategorySection
                   id="header"
                   label="Header"
@@ -613,7 +641,11 @@ export default function Dashboard() {
                       <Button
                         variant="ghost"
                         className="w-full justify-center gap-2"
-                        onClick={() => setAddingSocial(true)}
+                        onClick={() => {
+                          const check = canPerformAction(planLimits, "addSocial");
+                          if (!check.allowed) { toast({ title: "Limit reached", description: check.message, variant: "destructive" }); return; }
+                          setAddingSocial(true);
+                        }}
                         data-testid="button-add-social"
                       >
                         Add Social
@@ -652,7 +684,11 @@ export default function Dashboard() {
                             </DropdownMenuItem>
                           ))}
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => setAddingPage(true)} data-testid="button-add-new-page">
+                          <DropdownMenuItem onClick={() => {
+                            const check = canPerformAction(planLimits, "addPage");
+                            if (!check.allowed) { toast({ title: "Limit reached", description: check.message, variant: "destructive" }); return; }
+                            setAddingPage(true);
+                          }} data-testid="button-add-new-page">
                             <Plus className="w-3.5 h-3.5" />
                             Add New Page +
                           </DropdownMenuItem>
@@ -679,7 +715,11 @@ export default function Dashboard() {
                   open={openCategories.blocks}
                   onToggle={() => toggleCategory("blocks")}
                   action={
-                    <Button size="sm" onClick={() => setAddingBlock(true)} data-testid="button-add-block">
+                    <Button size="sm" onClick={() => {
+                      const check = canPerformAction(planLimits, "addBlock");
+                      if (!check.allowed) { toast({ title: "Limit reached", description: check.message, variant: "destructive" }); return; }
+                      setAddingBlock(true);
+                    }} data-testid="button-add-block">
                       New Block +
                     </Button>
                   }
@@ -698,7 +738,11 @@ export default function Dashboard() {
                         <p className="text-sm text-muted-foreground mb-4 max-w-xs">
                           Add your first content block to start building this page.
                         </p>
-                        <Button size="sm" onClick={() => setAddingBlock(true)} data-testid="button-add-first-block">
+                        <Button size="sm" onClick={() => {
+                          const check = canPerformAction(planLimits, "addBlock");
+                          if (!check.allowed) { toast({ title: "Limit reached", description: check.message, variant: "destructive" }); return; }
+                          setAddingBlock(true);
+                        }} data-testid="button-add-first-block">
                           <Plus className="w-4 h-4" />
                           Add your first block
                         </Button>
@@ -726,10 +770,18 @@ export default function Dashboard() {
                 <SettingsPanel user={user} profileUrl={profileUrl} onLogout={handleLogout} />
               )}
               {activeSection === "analytics" && (
-                <AnalyticsPanel username={user.username} />
+                planLimits?.analyticsEnabled === false ? (
+                  <FeatureLockedPanel feature="Analytics" description="Track profile views, link clicks, and visitor insights." />
+                ) : (
+                  <AnalyticsPanel username={user.username} />
+                )
               )}
               {activeSection === "qrcodes" && (
-                <QRCodePanel profileUrl={profileUrl} username={user.username} />
+                planLimits?.qrCodeEnabled === false ? (
+                  <FeatureLockedPanel feature="QR Codes" description="Generate QR codes for your profile and share them anywhere." />
+                ) : (
+                  <QRCodePanel profileUrl={profileUrl} username={user.username} />
+                )
               )}
               {activeSection === "team-members" && isTeamAccount && (
                 <TeamMembersPanel teamId={user.teamId!} currentUserId={user.id} />
