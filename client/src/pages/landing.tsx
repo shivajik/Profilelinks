@@ -125,6 +125,11 @@ export default function Landing() {
             <a href="#testimonials" className="text-sm font-medium text-muted-foreground" data-testid="link-testimonials">
               Testimonials
             </a>
+            <WouterLink href="/pricing">
+              <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-testid="link-pricing">
+                Pricing
+              </span>
+            </WouterLink>
           </nav>
           <div className="hidden md:flex items-center gap-3 flex-wrap">
             {user ? (
@@ -179,6 +184,15 @@ export default function Landing() {
               >
                 Testimonials
               </a>
+              <WouterLink href="/pricing">
+                <span
+                  className="text-sm font-medium text-muted-foreground py-2 cursor-pointer"
+                  onClick={() => setMobileMenuOpen(false)}
+                  data-testid="mobile-link-pricing"
+                >
+                  Pricing
+                </span>
+              </WouterLink>
               <div className="flex items-center gap-3 pt-2 border-t border-border flex-wrap">
                 {user ? (
                   <WouterLink href="/dashboard">
@@ -399,6 +413,29 @@ export default function Landing() {
           </div>
         </section>
 
+        {/* Pricing CTA section */}
+        <section className="py-20 px-6 bg-muted/30 border-t border-border">
+          <div className="max-w-2xl mx-auto text-center">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-foreground mb-4">
+              Plans for every creator
+            </h2>
+            <p className="text-muted-foreground text-lg mb-8">
+              Start free, upgrade when you're ready. No hidden fees.
+            </p>
+            <WouterLink href="/pricing">
+              <Button size="lg" className="mr-4">
+                View Pricing
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </WouterLink>
+            <WouterLink href="/auth?tab=register">
+              <Button size="lg" variant="outline">
+                Start for free
+              </Button>
+            </WouterLink>
+          </div>
+        </section>
+
         <section className="py-28 px-6 relative overflow-hidden">
           <div className="landing-orb landing-orb-cta-1" />
           <div className="landing-orb landing-orb-cta-2" />
@@ -438,6 +475,7 @@ export default function Landing() {
                 <li><a href="#features" className="text-sm text-muted-foreground" data-testid="link-footer-features">Features</a></li>
                 <li><a href="#testimonials" className="text-sm text-muted-foreground" data-testid="link-footer-testimonials">Testimonials</a></li>
                 <li><a href="#how-it-works" className="text-sm text-muted-foreground" data-testid="link-footer-how">How it works</a></li>
+                <li><WouterLink href="/pricing"><a className="text-sm text-muted-foreground hover:text-foreground">Pricing</a></WouterLink></li>
               </ul>
             </div>
             <div>

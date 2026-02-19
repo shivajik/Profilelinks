@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, jsonb, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -349,3 +349,126 @@ export type TeamTemplate = typeof teamTemplates.$inferSelect;
 export type InsertTeamTemplate = z.infer<typeof insertTeamTemplateSchema>;
 export type Contact = typeof contacts.$inferSelect;
 export type InsertContact = z.infer<typeof insertContactSchema>;
+
+// =============================================
+// ADMIN + PRICING + PAYMENTS SCHEMA
+// =============================================
+
+export const adminUsers = pgTable("admin_users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: text("email").notNull().unique(),
+  password: text("password").notNull(),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const pricingPlans = pgTable("pricing_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  monthlyPrice: numeric("monthly_price", { precision: 10, scale: 2 }).notNull().default("0"),
+  yearlyPrice: numeric("yearly_price", { precision: 10, scale: 2 }).notNull().default("0"),
+  features: jsonb("features").notNull().default([]),
+  maxLinks: integer("max_links").notNull().default(10),
+  maxPages: integer("max_pages").notNull().default(1),
+  maxTeamMembers: integer("max_team_members").notNull().default(1),
+  isActive: boolean("is_active").notNull().default(true),
+  isFeatured: boolean("is_featured").notNull().default(false),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const userSubscriptions = pgTable("user_subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  planId: varchar("plan_id").notNull().references(() => pricingPlans.id),
+  status: text("status").notNull().default("active"),
+  billingCycle: text("billing_cycle").notNull().default("monthly"),
+  currentPeriodStart: timestamp("current_period_start").notNull().defaultNow(),
+  currentPeriodEnd: timestamp("current_period_end"),
+  razorpaySubscriptionId: text("razorpay_subscription_id"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const payments = pgTable("payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  planId: varchar("plan_id").references(() => pricingPlans.id),
+  amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").notNull().default("INR"),
+  status: text("status").notNull().default("pending"),
+  razorpayOrderId: text("razorpay_order_id"),
+  razorpayPaymentId: text("razorpay_payment_id"),
+  razorpaySignature: text("razorpay_signature"),
+  billingCycle: text("billing_cycle").default("monthly"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const adminLoginSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
+});
+
+export const createAdminSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  name: z.string().min(1, "Name is required").max(100),
+});
+
+export const createPricingPlanSchema = z.object({
+  name: z.string().min(1, "Name is required").max(100),
+  description: z.string().max(500).optional(),
+  monthlyPrice: z.number().min(0, "Price must be non-negative"),
+  yearlyPrice: z.number().min(0, "Price must be non-negative"),
+  features: z.array(z.string()).default([]),
+  maxLinks: z.number().int().min(1).default(10),
+  maxPages: z.number().int().min(1).default(1),
+  maxTeamMembers: z.number().int().min(1).default(1),
+  isActive: z.boolean().default(true),
+  isFeatured: z.boolean().default(false),
+  sortOrder: z.number().int().min(0).default(0),
+});
+
+export const updatePricingPlanSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().max(500).optional().nullable(),
+  monthlyPrice: z.number().min(0).optional(),
+  yearlyPrice: z.number().min(0).optional(),
+  features: z.array(z.string()).optional(),
+  maxLinks: z.number().int().min(1).optional(),
+  maxPages: z.number().int().min(1).optional(),
+  maxTeamMembers: z.number().int().min(1).optional(),
+  isActive: z.boolean().optional(),
+  isFeatured: z.boolean().optional(),
+  sortOrder: z.number().int().min(0).optional(),
+});
+
+export const createPaymentOrderSchema = z.object({
+  planId: z.string().min(1, "Plan ID is required"),
+  billingCycle: z.enum(["monthly", "yearly"]).default("monthly"),
+});
+
+export const verifyPaymentSchema = z.object({
+  razorpayOrderId: z.string(),
+  razorpayPaymentId: z.string(),
+  razorpaySignature: z.string(),
+  planId: z.string(),
+  billingCycle: z.enum(["monthly", "yearly"]).default("monthly"),
+});
+
+export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({ id: true, createdAt: true });
+export const insertPricingPlanSchema = createInsertSchema(pricingPlans).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertUserSubscriptionSchema = createInsertSchema(userSubscriptions).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, createdAt: true, updatedAt: true });
+
+export type AdminUser = typeof adminUsers.$inferSelect;
+export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;
+export type PricingPlan = typeof pricingPlans.$inferSelect;
+export type InsertPricingPlan = z.infer<typeof insertPricingPlanSchema>;
+export type UserSubscription = typeof userSubscriptions.$inferSelect;
+export type InsertUserSubscription = z.infer<typeof insertUserSubscriptionSchema>;
+export type Payment = typeof payments.$inferSelect;
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;

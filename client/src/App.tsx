@@ -11,6 +11,9 @@ import Onboarding from "@/pages/onboarding";
 import PublicProfile from "@/pages/profile";
 import InviteAccept from "@/pages/invite";
 import NotFound from "@/pages/not-found";
+import AdminLogin from "@/pages/admin/login";
+import AdminDashboard from "@/pages/admin/dashboard";
+import PricingPage from "@/pages/pricing";
 
 function Router() {
   return (
@@ -19,6 +22,10 @@ function Router() {
       <Route path="/auth" component={AuthPage} />
       <Route path="/onboarding" component={Onboarding} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/pricing" component={PricingPage} />
+      <Route path="/admin" component={AdminLogin} />
+      <Route path="/admin/login" component={AdminLogin} />
+      <Route path="/admin/dashboard" component={AdminDashboard} />
       <Route path="/invite/:token" component={InviteAccept} />
       <Route path="/:username" component={PublicProfile} />
       <Route component={NotFound} />

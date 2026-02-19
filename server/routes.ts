@@ -11,10 +11,13 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
+import adminRouter from "./admin-routes";
+import paymentRouter from "./payment-routes";
 
 declare module "express-session" {
   interface SessionData {
     userId: string;
+    adminUserId: string;
   }
 }
 
@@ -1405,6 +1408,10 @@ export async function registerRoutes(
       res.status(500).json({ message: "Failed to load analytics" });
     }
   });
+
+  // Register admin and payment routes
+  app.use(adminRouter);
+  app.use(paymentRouter);
 
   return httpServer;
 }
