@@ -16,6 +16,7 @@ export const users = pgTable("users", {
   template: text("template").default("minimal"),
   accountType: text("account_type").notNull().default("personal"),
   teamId: varchar("team_id"),
+  isDisabled: boolean("is_disabled").notNull().default(false),
 });
 
 export const pages = pgTable("pages", {

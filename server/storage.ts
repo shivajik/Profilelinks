@@ -35,12 +35,30 @@ import {
   type InsertContact,
 } from "@shared/schema";
 
+const dbUrl =
+  process.env.SUPABASE_DB_URL ||
+  process.env.SUPABASE_POOLER_URL ||
+  process.env.DATABASE_URL;
+
+if (!dbUrl) {
+  throw new Error(
+    "No database URL found. Set SUPABASE_DB_URL, SUPABASE_POOLER_URL, or DATABASE_URL environment variable."
+  );
+}
+
 const pool = new pg.Pool({
-  connectionString: process.env.SUPABASE_POOLER_URL || process.env.DATABASE_URL,
-  ssl: process.env.SUPABASE_POOLER_URL ? { rejectUnauthorized: false } : undefined,
+  connectionString: dbUrl,
+  ssl: { rejectUnauthorized: false },
 });
 
 export const db = drizzle(pool);
+
+// ── Auto-migrate: add is_disabled column if it doesn't exist ─────────────────
+pool.query(`
+  ALTER TABLE IF EXISTS users
+  ADD COLUMN IF NOT EXISTS is_disabled boolean NOT NULL DEFAULT false;
+`).catch(() => {/* Column may already exist or table not yet created */});
+
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;

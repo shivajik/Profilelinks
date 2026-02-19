@@ -211,8 +211,9 @@ router.get("/api/admin/users", requireAdminAuth, async (req: Request, res: Respo
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const offset = (page - 1) * limit;
+    const accountType = req.query.accountType as string | undefined;
 
-    const allUsers = await db
+    let query = db
       .select({
         id: users.id,
         username: users.username,
@@ -221,11 +222,18 @@ router.get("/api/admin/users", requireAdminAuth, async (req: Request, res: Respo
         accountType: users.accountType,
         onboardingCompleted: users.onboardingCompleted,
         template: users.template,
+        isDisabled: users.isDisabled,
       })
       .from(users)
       .orderBy(desc(users.id))
       .limit(limit)
       .offset(offset);
+
+    if (accountType && accountType !== "all") {
+      (query as any).where(sql`${users.accountType} = ${accountType}`);
+    }
+
+    const allUsers = await query;
 
     // Get subscription for each user in batch
     const usersWithSubs = await Promise.all(
@@ -252,6 +260,35 @@ router.get("/api/admin/users", requireAdminAuth, async (req: Request, res: Respo
     res.status(500).json({ message: "Failed to fetch users" });
   }
 });
+
+// ─── Toggle User Enabled/Disabled ───────────────────────────────────────────
+router.patch("/api/admin/users/:id/toggle-status", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = req.params.id;
+    const existing = await db.select({ isDisabled: users.isDisabled }).from(users).where(sql`${users.id} = ${userId}`);
+    if (!existing.length) return res.status(404).json({ message: "User not found" });
+    const newStatus = !existing[0].isDisabled;
+    await db.update(users).set({ isDisabled: newStatus }).where(sql`${users.id} = ${userId}`);
+    res.json({ message: newStatus ? "User disabled" : "User enabled", isDisabled: newStatus });
+  } catch (error: any) {
+    console.error("Toggle user error:", error);
+    res.status(500).json({ message: "Failed to update user status" });
+  }
+});
+
+// ─── Delete User ─────────────────────────────────────────────────────────────
+router.delete("/api/admin/users/:id", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = req.params.id;
+    const result = await db.delete(users).where(sql`${users.id} = ${userId}`).returning();
+    if (!result.length) return res.status(404).json({ message: "User not found" });
+    res.json({ message: "User deleted" });
+  } catch (error: any) {
+    console.error("Delete user error:", error);
+    res.status(500).json({ message: "Failed to delete user" });
+  }
+});
+
 
 // ─── Payments List ──────────────────────────────────────────────────────────
 router.get("/api/admin/payments", requireAdminAuth, async (req: Request, res: Response) => {

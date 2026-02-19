@@ -490,8 +490,8 @@ export default function Landing() {
               <h4 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wider">Support</h4>
               <ul className="space-y-2.5">
                 <li><span className="text-sm text-muted-foreground">Help Center</span></li>
-                <li><span className="text-sm text-muted-foreground">Privacy Policy</span></li>
-                <li><span className="text-sm text-muted-foreground">Terms of Service</span></li>
+                <li><WouterLink href="/privacy"><a className="text-sm text-muted-foreground hover:text-foreground">Privacy Policy</a></WouterLink></li>
+                <li><WouterLink href="/terms"><a className="text-sm text-muted-foreground hover:text-foreground">Terms of Service</a></WouterLink></li>
               </ul>
             </div>
           </div>
@@ -499,9 +499,10 @@ export default function Landing() {
             <span className="text-sm text-muted-foreground">
               Linkfolio. All rights reserved.
             </span>
-            <span className="text-sm text-muted-foreground">
-              Built with care
-            </span>
+            <div className="flex items-center gap-4">
+              <WouterLink href="/terms"><a className="text-sm text-muted-foreground hover:text-foreground">Terms</a></WouterLink>
+              <WouterLink href="/privacy"><a className="text-sm text-muted-foreground hover:text-foreground">Privacy</a></WouterLink>
+            </div>
           </div>
         </div>
       </footer>
