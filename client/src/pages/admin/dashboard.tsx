@@ -12,11 +12,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import {
   Shield, Users, CreditCard, LayoutDashboard, Settings,
   Plus, Pencil, Trash2, LogOut, Loader2, Star, Check,
   TrendingUp, Package, IndianRupee, RefreshCw, BarChart3,
   UserCheck, UserX, ChevronRight, Menu, X as XIcon,
+  FileText, Eye, User, Mail, AtSign, Calendar, Hash,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -101,6 +103,12 @@ export default function AdminDashboard() {
   const [userTypeFilter, setUserTypeFilter] = useState("all");
   const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+
+  // Invoice dialog
+  const [invoiceDialog, setInvoiceDialog] = useState<{ open: boolean; payment?: PaymentRow }>({ open: false });
+
+  // User profile dialog
+  const [userProfileDialog, setUserProfileDialog] = useState<{ open: boolean; user?: UserRow }>({ open: false });
 
   // Plan dialog
   const [planDialog, setPlanDialog] = useState<{ open: boolean; plan?: PricingPlan }>({ open: false });
@@ -392,8 +400,13 @@ export default function AdminDashboard() {
                       ) : filteredUsers.map((u) => (
                         <tr key={u.id} className={`border-b last:border-0 hover:bg-muted/30 transition-colors ${u.isDisabled ? "opacity-60" : ""}`}>
                           <td className="p-3">
-                            <div className="font-medium text-foreground">{u.displayName || u.username}</div>
-                            <div className="text-muted-foreground text-xs">{u.email}</div>
+                            <button
+                              className="text-left hover:underline"
+                              onClick={() => setUserProfileDialog({ open: true, user: u })}
+                            >
+                              <div className="font-medium text-primary">{u.displayName || u.username}</div>
+                              <div className="text-muted-foreground text-xs">{u.email}</div>
+                            </button>
                           </td>
                           <td className="p-3">
                             <Badge variant="outline" className="text-xs capitalize">{u.accountType}</Badge>
@@ -401,13 +414,20 @@ export default function AdminDashboard() {
                           <td className="p-3 text-muted-foreground">{u.subscription?.planName ?? "Free"}</td>
                           <td className="p-3">
                             {u.isDisabled
-                              ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Disabled</span>
+                              ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive">Disabled</span>
                               : u.subscription
                                 ? <StatusBadge status={u.subscription.status} />
                                 : <span className="text-xs text-muted-foreground">—</span>}
                           </td>
                           <td className="p-3">
                             <div className="flex items-center gap-1.5">
+                              <Button
+                                variant="outline" size="sm"
+                                onClick={() => setUserProfileDialog({ open: true, user: u })}
+                                title="View profile"
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                              </Button>
                               <Button
                                 variant="outline" size="sm"
                                 onClick={() => toggleUserStatus(u)}
@@ -504,11 +524,12 @@ export default function AdminDashboard() {
                         <th className="text-left p-3 font-medium text-muted-foreground">Cycle</th>
                         <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
                         <th className="text-left p-3 font-medium text-muted-foreground">Date</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Invoice</th>
                       </tr>
                     </thead>
                     <tbody>
                       {adminPayments.length === 0 ? (
-                        <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No payments yet</td></tr>
+                        <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">No payments yet</td></tr>
                       ) : adminPayments.map((p) => (
                         <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
                           <td className="p-3"><div className="font-medium text-foreground">{p.username}</div><div className="text-xs text-muted-foreground">{p.userEmail}</div></td>
@@ -517,6 +538,15 @@ export default function AdminDashboard() {
                           <td className="p-3 text-muted-foreground capitalize">{p.billingCycle ?? "—"}</td>
                           <td className="p-3"><StatusBadge status={p.status} /></td>
                           <td className="p-3 text-muted-foreground text-xs">{new Date(p.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                          <td className="p-3">
+                            <Button
+                              variant="outline" size="sm"
+                              onClick={() => setInvoiceDialog({ open: true, payment: p })}
+                              title="View Invoice"
+                            >
+                              <FileText className="h-3.5 w-3.5 mr-1" /> Invoice
+                            </Button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -676,6 +706,176 @@ export default function AdminDashboard() {
           )}
         </main>
       </div>
+
+      {/* ── Invoice Dialog ───────────────────────────────────────────────────── */}
+      <Dialog open={invoiceDialog.open} onOpenChange={(open) => setInvoiceDialog({ open })}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" /> Invoice
+            </DialogTitle>
+          </DialogHeader>
+          {invoiceDialog.payment && (() => {
+            const p = invoiceDialog.payment!;
+            const invoiceNo = `INV-${p.id.slice(0, 8).toUpperCase()}`;
+            const date = new Date(p.createdAt);
+            return (
+              <div className="space-y-5" id="invoice-print-area">
+                {/* Invoice header */}
+                <div className="flex items-start justify-between border-b pb-4">
+                  <div>
+                    <p className="font-bold text-lg text-foreground">Linkfolio</p>
+                    <p className="text-xs text-muted-foreground">linkfolio.app</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-foreground">{invoiceNo}</p>
+                    <p className="text-xs text-muted-foreground">{date.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })}</p>
+                  </div>
+                </div>
+
+                {/* Billed to */}
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Billed To</p>
+                    <p className="font-medium text-foreground">{p.username ?? "—"}</p>
+                    <p className="text-muted-foreground">{p.userEmail ?? "—"}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Payment Info</p>
+                    <p className="text-muted-foreground capitalize">{p.billingCycle ?? "—"} billing</p>
+                    <StatusBadge status={p.status} />
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Line items */}
+                <div>
+                  <div className="flex justify-between text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                    <span>Description</span><span>Amount</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b">
+                    <div>
+                      <p className="font-medium text-foreground">{p.planName ?? "Subscription"} Plan</p>
+                      <p className="text-xs text-muted-foreground capitalize">{p.billingCycle} subscription</p>
+                    </div>
+                    <p className="font-semibold text-foreground">₹{parseFloat(p.amount).toLocaleString()}</p>
+                  </div>
+                  <div className="flex justify-between items-center pt-3">
+                    <p className="font-bold text-foreground">Total</p>
+                    <p className="text-xl font-bold text-primary">₹{parseFloat(p.amount).toLocaleString()} {p.currency}</p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Transaction IDs */}
+                <div className="space-y-1.5 text-xs text-muted-foreground">
+                  {p.razorpayOrderId && <div className="flex gap-2"><Hash className="h-3.5 w-3.5 shrink-0 mt-0.5" /><span>Order ID: <span className="font-mono">{p.razorpayOrderId}</span></span></div>}
+                  {p.razorpayPaymentId && <div className="flex gap-2"><Hash className="h-3.5 w-3.5 shrink-0 mt-0.5" /><span>Payment ID: <span className="font-mono">{p.razorpayPaymentId}</span></span></div>}
+                </div>
+              </div>
+            );
+          })()}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInvoiceDialog({ open: false })}>Close</Button>
+            <Button onClick={() => window.print()}>
+              <FileText className="h-4 w-4 mr-2" /> Print / Save PDF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── User Profile Dialog ──────────────────────────────────────────────── */}
+      <Dialog open={userProfileDialog.open} onOpenChange={(open) => setUserProfileDialog({ open })}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <User className="h-5 w-5 text-primary" /> User Profile
+            </DialogTitle>
+          </DialogHeader>
+          {userProfileDialog.user && (() => {
+            const u = userProfileDialog.user!;
+            const fields = [
+              { icon: User, label: "Display Name", value: u.displayName || "—" },
+              { icon: AtSign, label: "Username", value: `@${u.username}` },
+              { icon: Mail, label: "Email", value: u.email },
+              { icon: Package, label: "Account Type", value: u.accountType },
+              { icon: Check, label: "Onboarding", value: u.onboardingCompleted ? "Completed" : "Pending" },
+            ];
+            return (
+              <div className="space-y-4">
+                {/* Avatar */}
+                <div className="flex items-center gap-4">
+                  <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <span className="text-2xl font-bold text-primary">
+                      {(u.displayName || u.username).charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground text-lg">{u.displayName || u.username}</p>
+                    <p className="text-muted-foreground text-sm">{u.email}</p>
+                    {u.isDisabled && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive mt-1">
+                        Account Disabled
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Fields */}
+                <div className="space-y-3">
+                  {fields.map(({ icon: Icon, label, value }) => (
+                    <div key={label} className="flex items-center gap-3 text-sm">
+                      <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="text-muted-foreground w-28 shrink-0">{label}</span>
+                      <span className="font-medium text-foreground capitalize">{value}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Subscription */}
+                {u.subscription && (
+                  <>
+                    <Separator />
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Subscription</p>
+                      <div className="rounded-lg border bg-muted/30 p-3 space-y-2 text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Plan</span>
+                          <span className="font-semibold text-foreground">{u.subscription.planName ?? "—"}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Billing</span>
+                          <span className="capitalize text-foreground">{u.subscription.billingCycle}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Status</span>
+                          <StatusBadge status={u.subscription.status} />
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="flex justify-between gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => { toggleUserStatus(u); setUserProfileDialog({ open: false }); }}
+                    className={u.isDisabled ? "text-green-600" : "text-yellow-600"}
+                  >
+                    {u.isDisabled ? <><UserCheck className="h-4 w-4 mr-1" /> Enable</> : <><UserX className="h-4 w-4 mr-1" /> Disable</>}
+                  </Button>
+                  <Button variant="outline" onClick={() => setUserProfileDialog({ open: false })}>Close</Button>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* ── Plan Dialog ─────────────────────────────────────────────────────── */}
       <Dialog open={planDialog.open} onOpenChange={(open) => setPlanDialog({ open })}>

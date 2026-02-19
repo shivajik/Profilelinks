@@ -158,6 +158,46 @@ router.post("/api/payments/create-order", requireAuth as any, async (req: Reques
 });
 
 // ─── Verify Payment ────────────────────────────────────────────────────────
+// ─── Get user's payment / transaction history ──────────────────────────────
+router.get("/api/payments/history", requireAuth as any, async (req: Request, res: Response) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const offset = (page - 1) * limit;
+
+    const history = await db
+      .select({
+        id: payments.id,
+        amount: payments.amount,
+        currency: payments.currency,
+        status: payments.status,
+        billingCycle: payments.billingCycle,
+        razorpayOrderId: payments.razorpayOrderId,
+        razorpayPaymentId: payments.razorpayPaymentId,
+        createdAt: payments.createdAt,
+        planName: pricingPlans.name,
+        planDescription: pricingPlans.description,
+      })
+      .from(payments)
+      .leftJoin(pricingPlans, sql`${payments.planId} = ${pricingPlans.id}`)
+      .where(sql`${payments.userId} = ${req.session.userId}`)
+      .orderBy(desc(payments.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const [totalResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(payments)
+      .where(sql`${payments.userId} = ${req.session.userId}`);
+
+    res.json({ payments: history, total: Number(totalResult?.count ?? 0), page, limit });
+  } catch (error: any) {
+    console.error("Payment history error:", error);
+    res.status(500).json({ message: "Failed to fetch payment history" });
+  }
+});
+
+// ─── Verify Payment ────────────────────────────────────────────────────────
 router.post("/api/payments/verify", requireAuth as any, async (req: Request, res: Response) => {
   try {
     const result = verifyPaymentSchema.safeParse(req.body);
