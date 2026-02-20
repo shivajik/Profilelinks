@@ -69,6 +69,10 @@ pool.query(`
   ALTER TABLE IF EXISTS pricing_plans ADD COLUMN IF NOT EXISTS analytics_enabled boolean NOT NULL DEFAULT false;
   ALTER TABLE IF EXISTS pricing_plans ADD COLUMN IF NOT EXISTS custom_templates_enabled boolean NOT NULL DEFAULT false;
   ALTER TABLE IF EXISTS pricing_plans ADD COLUMN IF NOT EXISTS menu_builder_enabled boolean NOT NULL DEFAULT false;
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS menu_template text;
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS menu_display_name text;
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS menu_profile_image text;
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS menu_accent_color text;
   
   CREATE TABLE IF NOT EXISTS menu_sections (
     id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -100,7 +104,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateUser(id: string, data: Partial<Pick<User, "displayName" | "bio" | "profileImage" | "coverImage" | "username" | "onboardingCompleted" | "template" | "accountType" | "teamId">>): Promise<User | undefined>;
+  updateUser(id: string, data: Partial<Pick<User, "displayName" | "bio" | "profileImage" | "coverImage" | "username" | "onboardingCompleted" | "template" | "accountType" | "teamId" | "menuTemplate" | "menuDisplayName" | "menuProfileImage" | "menuAccentColor">>): Promise<User | undefined>;
 
   getPagesByUserId(userId: string): Promise<Page[]>;
   getPageById(id: string): Promise<Page | undefined>;
@@ -216,7 +220,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async updateUser(id: string, data: Partial<Pick<User, "displayName" | "bio" | "profileImage" | "coverImage" | "username" | "onboardingCompleted" | "template" | "accountType" | "teamId">>): Promise<User | undefined> {
+  async updateUser(id: string, data: Partial<Pick<User, "displayName" | "bio" | "profileImage" | "coverImage" | "username" | "onboardingCompleted" | "template" | "accountType" | "teamId" | "menuTemplate" | "menuDisplayName" | "menuProfileImage" | "menuAccentColor">>): Promise<User | undefined> {
     const [user] = await db.update(users).set(data).where(eq(users.id, id)).returning();
     return user;
   }

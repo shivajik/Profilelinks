@@ -40,10 +40,12 @@ import {
   QrCode,
   ExternalLink,
   Eye,
+  Palette,
+  User as UserIcon,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { QRCodeSVG } from "qrcode.react";
-import { getTemplate } from "@/lib/templates";
+import { getTemplate, TEMPLATES } from "@/lib/templates";
 
 interface MenuSection {
   id: string;
@@ -255,6 +257,9 @@ export function MenuBuilder() {
       {/* Menu Link + QR Code Panel */}
       <MenuLinkPanel username={user!.username} template={user!.template} />
 
+      {/* Menu Appearance Panel */}
+      <MenuAppearancePanel />
+
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold">Menu Builder</h2>
@@ -459,6 +464,191 @@ export function MenuBuilder() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function MenuAppearancePanel() {
+  const { toast } = useToast();
+  const [isOpen, setIsOpen] = useState(false);
+
+  const { data: settings, isLoading } = useQuery<{
+    menuTemplate: string | null;
+    menuDisplayName: string | null;
+    menuProfileImage: string | null;
+    menuAccentColor: string | null;
+  }>({
+    queryKey: ["/api/menu/settings"],
+  });
+
+  const [menuTemplate, setMenuTemplate] = useState<string | null>(null);
+  const [menuDisplayName, setMenuDisplayName] = useState("");
+  const [menuProfileImage, setMenuProfileImage] = useState("");
+  const [menuAccentColor, setMenuAccentColor] = useState("");
+  const [initialized, setInitialized] = useState(false);
+
+  if (settings && !initialized) {
+    setMenuTemplate(settings.menuTemplate);
+    setMenuDisplayName(settings.menuDisplayName || "");
+    setMenuProfileImage(settings.menuProfileImage || "");
+    setMenuAccentColor(settings.menuAccentColor || "");
+    setInitialized(true);
+  }
+
+  const saveMutation = useMutation({
+    mutationFn: async (data: any) => {
+      await apiRequest("PATCH", "/api/menu/settings", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/menu/settings"] });
+      toast({ title: "Menu appearance saved!" });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const handleSave = () => {
+    saveMutation.mutate({
+      menuTemplate: menuTemplate || null,
+      menuDisplayName: menuDisplayName || null,
+      menuProfileImage: menuProfileImage || null,
+      menuAccentColor: menuAccentColor || null,
+    });
+  };
+
+  const handleLogoUpload = async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch("/api/upload", { method: "POST", body: formData, credentials: "include" });
+    if (!res.ok) throw new Error("Upload failed");
+    const { url } = await res.json();
+    setMenuProfileImage(url);
+  };
+
+  return (
+    <Card>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="cursor-pointer py-3 px-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {isOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                <Palette className="w-4 h-4 text-primary" />
+                <CardTitle className="text-sm font-medium">Menu Appearance</CardTitle>
+              </div>
+              <Badge variant="secondary" className="text-xs">Independent styling</Badge>
+            </div>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="pt-0 px-4 pb-4 space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Customize how your menu looks independently from your portfolio profile.
+            </p>
+
+            {/* Menu Display Name */}
+            <div>
+              <Label className="text-xs">Menu Display Name</Label>
+              <Input
+                value={menuDisplayName}
+                onChange={(e) => setMenuDisplayName(e.target.value)}
+                placeholder="e.g. Restaurant Name"
+                className="mt-1"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Leave empty to use your portfolio name</p>
+            </div>
+
+            {/* Menu Logo */}
+            <div>
+              <Label className="text-xs">Menu Logo / Image</Label>
+              <div className="flex items-center gap-3 mt-1">
+                {menuProfileImage ? (
+                  <img src={menuProfileImage} alt="Menu logo" className="w-14 h-14 rounded-full object-cover border" />
+                ) : (
+                  <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+                    <UserIcon className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                )}
+                <div>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    className="hidden"
+                    id="menu-logo-upload"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleLogoUpload(file);
+                    }}
+                  />
+                  <Button variant="outline" size="sm" onClick={() => document.getElementById("menu-logo-upload")?.click()}>
+                    <Upload className="w-3.5 h-3.5 mr-1" /> Upload
+                  </Button>
+                  {menuProfileImage && (
+                    <Button variant="ghost" size="sm" className="text-destructive ml-1" onClick={() => setMenuProfileImage("")}>
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Accent Color */}
+            <div>
+              <Label className="text-xs">Accent Color</Label>
+              <div className="flex items-center gap-2 mt-1">
+                <input
+                  type="color"
+                  value={menuAccentColor || "#6C5CE7"}
+                  onChange={(e) => setMenuAccentColor(e.target.value)}
+                  className="w-9 h-9 rounded-md border cursor-pointer"
+                />
+                <Input
+                  value={menuAccentColor}
+                  onChange={(e) => setMenuAccentColor(e.target.value)}
+                  placeholder="e.g. #6C5CE7"
+                  className="flex-1"
+                />
+                {menuAccentColor && (
+                  <Button variant="ghost" size="sm" onClick={() => setMenuAccentColor("")}>
+                    Reset
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Leave empty to use template default</p>
+            </div>
+
+            {/* Template Picker */}
+            <div>
+              <Label className="text-xs">Menu Template</Label>
+              <p className="text-xs text-muted-foreground mb-2">Pick a different theme for your menu page</p>
+              <div className="grid grid-cols-3 gap-2">
+                {TEMPLATES.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setMenuTemplate(t.id)}
+                    className={`relative rounded-lg overflow-hidden border-2 transition-all ${
+                      (menuTemplate || "minimal") === t.id
+                        ? "border-primary ring-2 ring-primary/20"
+                        : "border-transparent hover:border-muted-foreground/30"
+                    }`}
+                  >
+                    <div className={`h-16 ${t.bg} flex items-center justify-center`}>
+                      <div className={`w-6 h-6 rounded-full ${t.cardBg}`} />
+                    </div>
+                    <div className="px-1.5 py-1 bg-card text-center">
+                      <span className="text-[10px] font-medium">{t.name}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <Button onClick={handleSave} className="w-full" disabled={saveMutation.isPending}>
+              {saveMutation.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+              Save Menu Appearance
+            </Button>
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
+    </Card>
   );
 }
 

@@ -17,6 +17,10 @@ export const users = pgTable("users", {
   accountType: text("account_type").notNull().default("personal"),
   teamId: varchar("team_id"),
   isDisabled: boolean("is_disabled").notNull().default(false),
+  menuTemplate: text("menu_template"),
+  menuDisplayName: text("menu_display_name"),
+  menuProfileImage: text("menu_profile_image"),
+  menuAccentColor: text("menu_accent_color"),
 });
 
 export const pages = pgTable("pages", {
@@ -196,6 +200,17 @@ export const updateProfileSchema = z.object({
   template: z.string().optional(),
   accountType: z.enum(["personal", "team"]).optional(),
   teamId: z.string().optional().nullable(),
+  menuTemplate: z.string().optional().nullable(),
+  menuDisplayName: z.string().max(100).optional().nullable(),
+  menuProfileImage: z.string().optional().nullable(),
+  menuAccentColor: z.string().optional().nullable(),
+});
+
+export const updateMenuSettingsSchema = z.object({
+  menuTemplate: z.string().optional().nullable(),
+  menuDisplayName: z.string().max(100).optional().nullable(),
+  menuProfileImage: z.string().optional().nullable(),
+  menuAccentColor: z.string().optional().nullable(),
 });
 
 export const insertPageSchema = createInsertSchema(pages).omit({

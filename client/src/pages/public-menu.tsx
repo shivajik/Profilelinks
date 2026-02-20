@@ -32,6 +32,10 @@ interface MenuUser {
   bio: string | null;
   profileImage: string | null;
   template: string | null;
+  menuTemplate: string | null;
+  menuDisplayName: string | null;
+  menuProfileImage: string | null;
+  menuAccentColor: string | null;
 }
 
 interface TeamBranding {
@@ -87,9 +91,10 @@ export default function PublicMenu() {
   }
 
   const { user, sections, products, teamBranding } = data;
-  const template = getTemplate(user.template);
-  const displayName = user.displayName || user.username;
-  const brandColor = teamBranding?.themeColor || template.accent;
+  const template = getTemplate(user.menuTemplate || user.template);
+  const displayName = user.menuDisplayName || user.displayName || user.username;
+  const profileImage = user.menuProfileImage || user.profileImage;
+  const brandColor = user.menuAccentColor || teamBranding?.themeColor || template.accent;
   const menuUrl = typeof window !== "undefined" ? `${window.location.origin}/${username}/menu` : `/${username}/menu`;
 
   const toggleSection = (id: string) => {
@@ -136,7 +141,7 @@ export default function PublicMenu() {
             </div>
           ) : (
             <Avatar className="w-20 h-20 mx-auto mb-3 border-2 border-white/20 shadow-lg">
-              <AvatarImage src={user.profileImage || undefined} alt={displayName} />
+              <AvatarImage src={profileImage || undefined} alt={displayName} />
               <AvatarFallback
                 className="text-2xl"
                 style={{ backgroundColor: brandColor + "30", color: brandColor }}

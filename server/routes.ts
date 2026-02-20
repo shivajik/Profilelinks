@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import session from "express-session";
 import { storage } from "./storage";
 import bcrypt from "bcryptjs";
-import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema, createPageSchema, updatePageSchema, createBlockSchema, updateBlockSchema, changePasswordSchema, deleteAccountSchema, createTeamSchema, updateTeamSchema, updateTeamMemberSchema, createTeamInviteSchema, createTeamMemberSchema, createTeamTemplateSchema, updateTeamTemplateSchema, createContactSchema, updateContactSchema, createMenuSectionSchema, updateMenuSectionSchema, createMenuProductSchema, updateMenuProductSchema } from "@shared/schema";
+import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema, createPageSchema, updatePageSchema, createBlockSchema, updateBlockSchema, changePasswordSchema, deleteAccountSchema, createTeamSchema, updateTeamSchema, updateTeamMemberSchema, createTeamInviteSchema, createTeamMemberSchema, createTeamTemplateSchema, updateTeamTemplateSchema, createContactSchema, updateContactSchema, createMenuSectionSchema, updateMenuSectionSchema, createMenuProductSchema, updateMenuProductSchema, updateMenuSettingsSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import connectPgSimple from "connect-pg-simple";
 import pg from "pg";
@@ -1448,6 +1448,39 @@ export async function registerRoutes(
     }
   });
 
+  // ── Menu Settings (Appearance) ────────────────────────────────────────────
+  app.get("/api/menu/settings", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      res.json({
+        menuTemplate: user.menuTemplate,
+        menuDisplayName: user.menuDisplayName,
+        menuProfileImage: user.menuProfileImage,
+        menuAccentColor: user.menuAccentColor,
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to fetch menu settings" });
+    }
+  });
+
+  app.patch("/api/menu/settings", requireAuth, async (req, res) => {
+    try {
+      const result = updateMenuSettingsSchema.safeParse(req.body);
+      if (!result.success) return res.status(400).json({ message: fromZodError(result.error).message });
+      const updated = await storage.updateUser(req.session.userId!, result.data);
+      if (!updated) return res.status(404).json({ message: "User not found" });
+      res.json({
+        menuTemplate: updated.menuTemplate,
+        menuDisplayName: updated.menuDisplayName,
+        menuProfileImage: updated.menuProfileImage,
+        menuAccentColor: updated.menuAccentColor,
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to update menu settings" });
+    }
+  });
+
   // ── Menu Builder Routes ─────────────────────────────────────────────────────
   app.get("/api/menu/sections", requireAuth, async (req, res) => {
     const sections = await storage.getMenuSectionsByUserId(req.session.userId!);
@@ -1562,7 +1595,13 @@ export async function registerRoutes(
       }
 
       res.json({
-        user: publicUser,
+        user: {
+          ...publicUser,
+          menuTemplate: user.menuTemplate,
+          menuDisplayName: user.menuDisplayName,
+          menuProfileImage: user.menuProfileImage,
+          menuAccentColor: user.menuAccentColor,
+        },
         sections: activeSections,
         products: activeProducts,
         teamBranding,
