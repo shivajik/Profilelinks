@@ -19,6 +19,7 @@ import {
   TrendingUp, Package, IndianRupee, RefreshCw, BarChart3,
   UserCheck, UserX, ChevronRight, Menu, X as XIcon,
   FileText, Eye, User, Mail, AtSign, Calendar, Hash,
+  Download, ArrowLeft, Link2, FileStack, Globe, MessageSquare,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -45,6 +46,16 @@ interface PaymentRow {
   id: string; amount: string; currency: string; status: string;
   billingCycle?: string; razorpayOrderId?: string; razorpayPaymentId?: string;
   createdAt: string; userEmail?: string; username?: string; planName?: string;
+}
+interface UserDetail {
+  user: UserRow;
+  subscription: { status: string; billingCycle: string; planName?: string; currentPeriodStart?: string; currentPeriodEnd?: string } | null;
+  payments: PaymentRow[];
+  usage: {
+    planName: string | null; maxLinks: number; maxPages: number; maxTeamMembers: number;
+    maxBlocks: number; maxSocials: number; currentLinks: number; currentPages: number;
+    currentBlocks: number; currentSocials: number; currentTeamMembers: number; hasActivePlan: boolean;
+  };
 }
 
 // ─── Plan Form Schema ────────────────────────────────────────────────────────
@@ -114,8 +125,19 @@ export default function AdminDashboard() {
   // Invoice dialog
   const [invoiceDialog, setInvoiceDialog] = useState<{ open: boolean; payment?: PaymentRow }>({ open: false });
 
-  // User profile dialog
+   // User profile dialog
   const [userProfileDialog, setUserProfileDialog] = useState<{ open: boolean; user?: UserRow }>({ open: false });
+
+  // User detail page
+  const [userDetailData, setUserDetailData] = useState<UserDetail | null>(null);
+  const [loadingUserDetail, setLoadingUserDetail] = useState(false);
+
+  // Report filters
+  const [reportStartDate, setReportStartDate] = useState("");
+  const [reportEndDate, setReportEndDate] = useState("");
+  const [reportStatus, setReportStatus] = useState("all");
+  const [reportPlanId, setReportPlanId] = useState("all");
+  const [downloadingReport, setDownloadingReport] = useState(false);
 
   // Plan dialog
   const [planDialog, setPlanDialog] = useState<{ open: boolean; plan?: PricingPlan }>({ open: false });
@@ -219,6 +241,40 @@ export default function AdminDashboard() {
     } catch (err: any) {
       toast({ title: "Delete failed", description: err.message, variant: "destructive" });
     } finally { setDeletingPlanId(null); }
+  };
+
+  const openUserDetail = async (userId: string) => {
+    setLoadingUserDetail(true);
+    setActiveSection("user-detail");
+    try {
+      const r = await fetch(`/api/admin/users/${userId}`);
+      if (r.ok) setUserDetailData(await r.json());
+    } catch { /* ignore */ }
+    setLoadingUserDetail(false);
+  };
+
+  const downloadReport = async () => {
+    setDownloadingReport(true);
+    try {
+      const params = new URLSearchParams();
+      if (reportStartDate) params.set("startDate", reportStartDate);
+      if (reportEndDate) params.set("endDate", reportEndDate);
+      if (reportStatus !== "all") params.set("status", reportStatus);
+      if (reportPlanId !== "all") params.set("planId", reportPlanId);
+      const r = await fetch(`/api/admin/reports/download?${params}`);
+      if (!r.ok) throw new Error("Download failed");
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `payments-report-${new Date().toISOString().split("T")[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "Report downloaded!" });
+    } catch (err: any) {
+      toast({ title: "Download failed", description: err.message, variant: "destructive" });
+    }
+    setDownloadingReport(false);
   };
 
   const filteredUsers = adminUsers.filter((u) => {
@@ -409,7 +465,7 @@ export default function AdminDashboard() {
                           <td className="p-3">
                             <button
                               className="text-left hover:underline"
-                              onClick={() => setUserProfileDialog({ open: true, user: u })}
+                              onClick={() => openUserDetail(u.id)}
                             >
                               <div className="font-medium text-primary">{u.displayName || u.username}</div>
                               <div className="text-muted-foreground text-xs">{u.email}</div>
@@ -430,7 +486,7 @@ export default function AdminDashboard() {
                             <div className="flex items-center gap-1.5">
                               <Button
                                 variant="outline" size="sm"
-                                onClick={() => setUserProfileDialog({ open: true, user: u })}
+                                onClick={() => openUserDetail(u.id)}
                                 title="View profile"
                               >
                                 <Eye className="h-3.5 w-3.5" />
@@ -563,13 +619,167 @@ export default function AdminDashboard() {
             </div>
           )}
 
+          {/* ── USER DETAIL ────────────────────────────────────────────────────── */}
+          {activeSection === "user-detail" && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <Button variant="ghost" size="sm" onClick={() => setActiveSection("users")}>
+                  <ArrowLeft className="h-4 w-4 mr-1" /> Back to Users
+                </Button>
+              </div>
+              {loadingUserDetail ? (
+                <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+              ) : userDetailData ? (() => {
+                const d = userDetailData;
+                return (
+                  <div className="space-y-6">
+                    {/* User header */}
+                    <div className="flex items-center gap-4">
+                      <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <span className="text-2xl font-bold text-primary">{(d.user.displayName || d.user.username).charAt(0).toUpperCase()}</span>
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold text-foreground">{d.user.displayName || d.user.username}</h2>
+                        <p className="text-sm text-muted-foreground">{d.user.email}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className="text-xs capitalize">{d.user.accountType}</Badge>
+                          {d.user.isDisabled && <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive">Disabled</span>}
+                          {d.subscription && <StatusBadge status={d.subscription.status} />}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Subscription & Usage */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Card>
+                        <CardHeader><CardTitle className="text-base">Subscription</CardTitle></CardHeader>
+                        <CardContent className="space-y-2 text-sm">
+                          <div className="flex justify-between"><span className="text-muted-foreground">Plan</span><span className="font-semibold">{d.subscription?.planName ?? "Free"}</span></div>
+                          <div className="flex justify-between"><span className="text-muted-foreground">Billing</span><span className="capitalize">{d.subscription?.billingCycle ?? "—"}</span></div>
+                          <div className="flex justify-between"><span className="text-muted-foreground">Status</span>{d.subscription ? <StatusBadge status={d.subscription.status} /> : <span>—</span>}</div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardHeader><CardTitle className="text-base">Usage</CardTitle></CardHeader>
+                        <CardContent className="space-y-2 text-sm">
+                          {[
+                            { label: "Links", current: d.usage.currentLinks, max: d.usage.maxLinks },
+                            { label: "Pages", current: d.usage.currentPages, max: d.usage.maxPages },
+                            { label: "Blocks", current: d.usage.currentBlocks, max: d.usage.maxBlocks },
+                            { label: "Socials", current: d.usage.currentSocials, max: d.usage.maxSocials },
+                            { label: "Team Members", current: d.usage.currentTeamMembers, max: d.usage.maxTeamMembers },
+                          ].map((u) => (
+                            <div key={u.label} className="flex justify-between items-center">
+                              <span className="text-muted-foreground">{u.label}</span>
+                              <span className={`font-semibold ${u.current >= u.max ? "text-destructive" : ""}`}>{u.current} / {u.max}</span>
+                            </div>
+                          ))}
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Payment History */}
+                    <Card>
+                      <CardHeader><CardTitle className="text-base">Payment History</CardTitle></CardHeader>
+                      <CardContent className="p-0">
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b bg-muted/50">
+                                <th className="text-left p-3 font-medium text-muted-foreground">Plan</th>
+                                <th className="text-left p-3 font-medium text-muted-foreground">Amount</th>
+                                <th className="text-left p-3 font-medium text-muted-foreground">Cycle</th>
+                                <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
+                                <th className="text-left p-3 font-medium text-muted-foreground">Date</th>
+                                <th className="text-left p-3 font-medium text-muted-foreground">Invoice</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {d.payments.length === 0 ? (
+                                <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No payments found</td></tr>
+                              ) : d.payments.map((p: any) => (
+                                <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
+                                  <td className="p-3 text-muted-foreground">{p.planName ?? "—"}</td>
+                                  <td className="p-3 font-medium text-foreground">₹{parseFloat(p.amount).toLocaleString()}</td>
+                                  <td className="p-3 text-muted-foreground capitalize">{p.billingCycle ?? "—"}</td>
+                                  <td className="p-3"><StatusBadge status={p.status} /></td>
+                                  <td className="p-3 text-muted-foreground text-xs">{new Date(p.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                                  <td className="p-3">
+                                    <Button variant="outline" size="sm" onClick={() => setInvoiceDialog({ open: true, payment: { ...p, userEmail: d.user.email, username: d.user.username } })}>
+                                      <FileText className="h-3.5 w-3.5 mr-1" /> Invoice
+                                    </Button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                );
+              })() : (
+                <p className="text-center text-muted-foreground py-8">User not found</p>
+              )}
+            </div>
+          )}
+
           {/* ── REPORTS ───────────────────────────────────────────────────────── */}
           {activeSection === "reports" && (
             <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-bold text-foreground">Reports</h2>
-                <p className="text-muted-foreground text-sm">Platform health and revenue overview.</p>
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div>
+                  <h2 className="text-2xl font-bold text-foreground">Reports</h2>
+                  <p className="text-muted-foreground text-sm">Platform health and revenue overview.</p>
+                </div>
+                <Button onClick={downloadReport} disabled={downloadingReport} variant="outline" size="sm">
+                  {downloadingReport ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Download className="h-4 w-4 mr-1" />}
+                  Download CSV
+                </Button>
               </div>
+
+              {/* Filters */}
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="flex flex-wrap gap-3 items-end">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Start Date</Label>
+                      <Input type="date" value={reportStartDate} onChange={(e) => setReportStartDate(e.target.value)} className="w-40" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">End Date</Label>
+                      <Input type="date" value={reportEndDate} onChange={(e) => setReportEndDate(e.target.value)} className="w-40" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Status</Label>
+                      <Select value={reportStatus} onValueChange={setReportStatus}>
+                        <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All</SelectItem>
+                          <SelectItem value="success">Success</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="failed">Failed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Plan</Label>
+                      <Select value={reportPlanId} onValueChange={setReportPlanId}>
+                        <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Plans</SelectItem>
+                          {plans.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => { setReportStartDate(""); setReportEndDate(""); setReportStatus("all"); setReportPlanId("all"); }}>
+                      Clear
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Summary cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -639,6 +849,30 @@ export default function AdminDashboard() {
                 </Card>
               </div>
 
+              {/* Plan-wise breakdown */}
+              <Card>
+                <CardHeader><CardTitle className="text-base">Plan-wise Revenue</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  {plans.filter(p => p.isActive).map((plan) => {
+                    const planPayments = adminPayments.filter(p => p.planName === plan.name && p.status === "success");
+                    const planRevenue = planPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+                    return (
+                      <div key={plan.id} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Package className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm text-foreground">{plan.name}</span>
+                          <Badge variant="outline" className="text-xs">{planPayments.length} payments</Badge>
+                        </div>
+                        <span className="font-semibold text-foreground">₹{planRevenue.toLocaleString()}</span>
+                      </div>
+                    );
+                  })}
+                  {plans.filter(p => p.isActive).length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center">No active plans</p>
+                  )}
+                </CardContent>
+              </Card>
+
               {/* Recent payments table */}
               <Card>
                 <CardHeader><CardTitle className="text-base">Recent Transactions</CardTitle></CardHeader>
@@ -655,7 +889,7 @@ export default function AdminDashboard() {
                         </tr>
                       </thead>
                       <tbody>
-                        {adminPayments.slice(0, 5).map((p) => (
+                        {adminPayments.slice(0, 10).map((p) => (
                           <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
                             <td className="p-3"><div className="font-medium text-foreground">{p.username ?? "—"}</div></td>
                             <td className="p-3 text-muted-foreground">{p.planName ?? "—"}</td>

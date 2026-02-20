@@ -296,8 +296,18 @@ router.get("/api/admin/payments", requireAdminAuth, async (req: Request, res: Re
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const offset = (page - 1) * limit;
+    const status = req.query.status as string | undefined;
+    const planId = req.query.planId as string | undefined;
+    const startDate = req.query.startDate as string | undefined;
+    const endDate = req.query.endDate as string | undefined;
 
-    const allPayments = await db
+    const conditions: any[] = [];
+    if (status && status !== "all") conditions.push(eq(payments.status, status));
+    if (planId && planId !== "all") conditions.push(sql`${payments.planId} = ${planId}`);
+    if (startDate) conditions.push(sql`${payments.createdAt} >= ${new Date(startDate)}`);
+    if (endDate) conditions.push(sql`${payments.createdAt} <= ${new Date(endDate + "T23:59:59")}`);
+
+    let query = db
       .select({
         id: payments.id,
         amount: payments.amount,
@@ -318,11 +328,155 @@ router.get("/api/admin/payments", requireAdminAuth, async (req: Request, res: Re
       .limit(limit)
       .offset(offset);
 
+    if (conditions.length > 0) {
+      query = query.where(sql.join(conditions, sql` AND `)) as any;
+    }
+
+    const allPayments = await query;
+
     const [totalResult] = await db.select({ count: count() }).from(payments);
     res.json({ payments: allPayments, total: Number(totalResult?.count ?? 0), page, limit });
   } catch (error: any) {
     console.error("Payments error:", error);
     res.status(500).json({ message: "Failed to fetch payments" });
+  }
+});
+
+// ─── User Detail with Payment History ───────────────────────────────────────
+router.get("/api/admin/users/:id", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = req.params.id;
+    const userResult = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        email: users.email,
+        displayName: users.displayName,
+        accountType: users.accountType,
+        onboardingCompleted: users.onboardingCompleted,
+        isDisabled: users.isDisabled,
+        template: users.template,
+        bio: users.bio,
+        profileImage: users.profileImage,
+      })
+      .from(users)
+      .where(sql`${users.id} = ${userId}`)
+      .limit(1);
+
+    if (!userResult.length) return res.status(404).json({ message: "User not found" });
+    const user = userResult[0];
+
+    // Get subscription
+    const subs = await db
+      .select({
+        status: userSubscriptions.status,
+        billingCycle: userSubscriptions.billingCycle,
+        planName: pricingPlans.name,
+        currentPeriodStart: userSubscriptions.currentPeriodStart,
+        currentPeriodEnd: userSubscriptions.currentPeriodEnd,
+      })
+      .from(userSubscriptions)
+      .leftJoin(pricingPlans, sql`${userSubscriptions.planId} = ${pricingPlans.id}`)
+      .where(sql`${userSubscriptions.userId} = ${userId}`)
+      .orderBy(desc(userSubscriptions.createdAt))
+      .limit(1);
+
+    // Get payment history
+    const userPayments = await db
+      .select({
+        id: payments.id,
+        amount: payments.amount,
+        currency: payments.currency,
+        status: payments.status,
+        billingCycle: payments.billingCycle,
+        razorpayOrderId: payments.razorpayOrderId,
+        razorpayPaymentId: payments.razorpayPaymentId,
+        createdAt: payments.createdAt,
+        planName: pricingPlans.name,
+      })
+      .from(payments)
+      .leftJoin(pricingPlans, sql`${payments.planId} = ${pricingPlans.id}`)
+      .where(sql`${payments.userId} = ${userId}`)
+      .orderBy(desc(payments.createdAt));
+
+    // Get usage counts
+    const { getUserPlanLimits } = await import("./plan-limits");
+    const limits = await getUserPlanLimits(userId as string);
+
+    res.json({
+      user,
+      subscription: subs[0] ?? null,
+      payments: userPayments,
+      usage: limits,
+    });
+  } catch (error: any) {
+    console.error("User detail error:", error);
+    res.status(500).json({ message: "Failed to fetch user details" });
+  }
+});
+
+// ─── Reports CSV Download ───────────────────────────────────────────────────
+router.get("/api/admin/reports/download", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const startDate = req.query.startDate as string | undefined;
+    const endDate = req.query.endDate as string | undefined;
+    const status = req.query.status as string | undefined;
+    const planId = req.query.planId as string | undefined;
+
+    const conditions: any[] = [];
+    if (status && status !== "all") conditions.push(eq(payments.status, status));
+    if (planId && planId !== "all") conditions.push(sql`${payments.planId} = ${planId}`);
+    if (startDate) conditions.push(sql`${payments.createdAt} >= ${new Date(startDate)}`);
+    if (endDate) conditions.push(sql`${payments.createdAt} <= ${new Date(endDate + "T23:59:59")}`);
+
+    let query = db
+      .select({
+        id: payments.id,
+        amount: payments.amount,
+        currency: payments.currency,
+        status: payments.status,
+        billingCycle: payments.billingCycle,
+        razorpayOrderId: payments.razorpayOrderId,
+        razorpayPaymentId: payments.razorpayPaymentId,
+        createdAt: payments.createdAt,
+        userEmail: users.email,
+        username: users.username,
+        planName: pricingPlans.name,
+      })
+      .from(payments)
+      .leftJoin(users, sql`${payments.userId} = ${users.id}`)
+      .leftJoin(pricingPlans, sql`${payments.planId} = ${pricingPlans.id}`)
+      .orderBy(desc(payments.createdAt));
+
+    if (conditions.length > 0) {
+      query = query.where(sql.join(conditions, sql` AND `)) as any;
+    }
+
+    const allPayments = await query;
+
+    // Generate CSV
+    const headers = ["Date", "User", "Email", "Plan", "Amount", "Currency", "Billing Cycle", "Status", "Razorpay Order ID", "Razorpay Payment ID"];
+    const rows = allPayments.map((p: any) => [
+      new Date(p.createdAt).toISOString().split("T")[0],
+      p.username || "",
+      p.userEmail || "",
+      p.planName || "",
+      p.amount,
+      p.currency,
+      p.billingCycle || "",
+      p.status,
+      p.razorpayOrderId || "",
+      p.razorpayPaymentId || "",
+    ]);
+
+    const csv = [headers.join(","), ...rows.map((r: string[]) => r.map((v: string) => `"${String(v).replace(/"/g, '""')}"`).join(","))].join("\n");
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", `attachment; filename=payments-report-${new Date().toISOString().split("T")[0]}.csv`);
+    res.send(csv);
+  } catch (error: any) {
+    console.error("Report download error:", error);
+    res.status(500).json({ message: "Failed to generate report" });
   }
 });
 

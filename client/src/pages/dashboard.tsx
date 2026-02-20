@@ -2873,6 +2873,7 @@ function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUs
   const [createEmail, setCreateEmail] = useState("");
   const [createJobTitle, setCreateJobTitle] = useState("");
   const [createRole, setCreateRole] = useState("member");
+  const [createTemplateId, setCreateTemplateId] = useState<string>("");
   const [removeConfirmMember, setRemoveConfirmMember] = useState<any>(null);
   const [editMember, setEditMember] = useState<any>(null);
   const [editJobTitle, setEditJobTitle] = useState("");
@@ -3245,6 +3246,24 @@ function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUs
                 </SelectContent>
               </Select>
             </div>
+            {templates.length > 1 && (
+              <div className="space-y-1.5">
+                <Label htmlFor="create-template">Assign Template</Label>
+                <Select value={createTemplateId || (defaultTemplate?.id ?? "")} onValueChange={setCreateTemplateId}>
+                  <SelectTrigger data-testid="select-create-template">
+                    <SelectValue placeholder="Select a template" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {templates.map((t: any) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name} {t.isDefault ? "(Default)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Choose which business card template to assign to this member.</p>
+              </div>
+            )}
             <Button
               className="w-full"
               disabled={!createName || !createEmail || createMemberMutation.isPending}

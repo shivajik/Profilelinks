@@ -32,7 +32,17 @@ const FREE_LIMITS = {
   customTemplatesEnabled: false,
 };
 
+// Simple in-memory cache to avoid redundant DB queries within same request cycle
+const planLimitsCache = new Map<string, { data: PlanLimits; timestamp: number }>();
+const CACHE_TTL = 5000; // 5 seconds
+
 export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
+  // Check cache first
+  const cached = planLimitsCache.get(userId);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+
   // Get active subscription with plan details
   const subs = await db
     .select({
@@ -56,11 +66,13 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
 
   const limits = plan || FREE_LIMITS;
 
-  // Get current usage counts
-  const [linksCount] = await db.select({ count: count() }).from(links).where(eq(links.userId, userId));
-  const [pagesCount] = await db.select({ count: count() }).from(pages).where(eq(pages.userId, userId));
-  const [blocksCount] = await db.select({ count: count() }).from(blocks).where(eq(blocks.userId, userId));
-  const [socialsCount] = await db.select({ count: count() }).from(socials).where(eq(socials.userId, userId));
+  // Get all current usage counts in parallel
+  const [linksResult, pagesResult, blocksResult, socialsResult] = await Promise.all([
+    db.select({ count: count() }).from(links).where(eq(links.userId, userId)),
+    db.select({ count: count() }).from(pages).where(eq(pages.userId, userId)),
+    db.select({ count: count() }).from(blocks).where(eq(blocks.userId, userId)),
+    db.select({ count: count() }).from(socials).where(eq(socials.userId, userId)),
+  ]);
 
   // Team members count (if user has a team)
   let teamMembersCount = 0;
@@ -72,7 +84,7 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
     teamMembersCount = Number(teamResult[0]?.count ?? 0);
   } catch { /* no team */ }
 
-  return {
+  const result: PlanLimits = {
     planName: plan?.planName ?? null,
     maxLinks: limits.maxLinks,
     maxPages: limits.maxPages,
@@ -82,11 +94,16 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
     qrCodeEnabled: limits.qrCodeEnabled ?? FREE_LIMITS.qrCodeEnabled,
     analyticsEnabled: limits.analyticsEnabled ?? FREE_LIMITS.analyticsEnabled,
     customTemplatesEnabled: limits.customTemplatesEnabled ?? FREE_LIMITS.customTemplatesEnabled,
-    currentLinks: Number(linksCount?.count ?? 0),
-    currentPages: Number(pagesCount?.count ?? 0),
-    currentBlocks: Number(blocksCount?.count ?? 0),
-    currentSocials: Number(socialsCount?.count ?? 0),
+    currentLinks: Number(linksResult[0]?.count ?? 0),
+    currentPages: Number(pagesResult[0]?.count ?? 0),
+    currentBlocks: Number(blocksResult[0]?.count ?? 0),
+    currentSocials: Number(socialsResult[0]?.count ?? 0),
     currentTeamMembers: teamMembersCount,
     hasActivePlan,
   };
+
+  // Cache the result
+  planLimitsCache.set(userId, { data: result, timestamp: Date.now() });
+
+  return result;
 }
