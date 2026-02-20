@@ -130,6 +130,11 @@ export default function Landing() {
                 Pricing
               </span>
             </WouterLink>
+            <WouterLink href="/docs">
+              <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-testid="link-docs">
+                Docs
+              </span>
+            </WouterLink>
           </nav>
           <div className="hidden md:flex items-center gap-3 flex-wrap">
             {user ? (
@@ -191,6 +196,15 @@ export default function Landing() {
                   data-testid="mobile-link-pricing"
                 >
                   Pricing
+                </span>
+              </WouterLink>
+              <WouterLink href="/docs">
+                <span
+                  className="text-sm font-medium text-muted-foreground py-2 cursor-pointer"
+                  onClick={() => setMobileMenuOpen(false)}
+                  data-testid="mobile-link-docs"
+                >
+                  Docs
                 </span>
               </WouterLink>
               <div className="flex items-center gap-3 pt-2 border-t border-border flex-wrap">
@@ -489,7 +503,7 @@ export default function Landing() {
             <div>
               <h4 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wider">Support</h4>
               <ul className="space-y-2.5">
-                <li><span className="text-sm text-muted-foreground">Help Center</span></li>
+                <li><WouterLink href="/docs"><a className="text-sm text-muted-foreground hover:text-foreground">Documentation</a></WouterLink></li>
                 <li><WouterLink href="/privacy"><a className="text-sm text-muted-foreground hover:text-foreground">Privacy Policy</a></WouterLink></li>
                 <li><WouterLink href="/terms"><a className="text-sm text-muted-foreground hover:text-foreground">Terms of Service</a></WouterLink></li>
               </ul>

@@ -17,6 +17,7 @@ import AdminDashboard from "@/pages/admin/dashboard";
 import PricingPage from "@/pages/pricing";
 import TermsPage from "@/pages/terms";
 import PrivacyPage from "@/pages/privacy";
+import DocsPage from "@/pages/docs";
 
 
 function Router() {
@@ -29,6 +30,7 @@ function Router() {
       <Route path="/pricing" component={PricingPage} />
       <Route path="/terms" component={TermsPage} />
       <Route path="/privacy" component={PrivacyPage} />
+      <Route path="/docs" component={DocsPage} />
       <Route path="/admin" component={AdminLogin} />
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin/dashboard" component={AdminDashboard} />

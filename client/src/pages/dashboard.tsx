@@ -839,7 +839,8 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Menu Preview Panel */}
+            {/* Menu Preview Panel - only show if menu builder is enabled */}
+            {planLimits?.menuBuilderEnabled && (
             <div className={`${activeSection === "menu-setup" ? "hidden md:flex" : "hidden"} flex-1 bg-muted/30 items-center justify-center p-6`}>
               <div className="flex flex-col items-center gap-3">
                 <div className="flex items-center gap-2">
@@ -877,6 +878,7 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
+            )}
 
             <div className={`${activeSection === "design" ? "hidden lg:block" : "hidden"} w-[280px] border-l bg-background overflow-y-auto shrink-0`}>
               <DesignPanel
