@@ -272,7 +272,6 @@ export function MenuBuilder() {
       <MenuLinkPanel username={user!.username} template={user!.template} />
 
       {/* Documentation / How to Use */}
-      <MenuDocumentation />
 
       {/* Menu Appearance Panel */}
       <MenuAppearancePanel />
@@ -891,99 +890,6 @@ function MenuAppearancePanel() {
   );
 }
 
-function MenuDocumentation() {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <Card>
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer py-3 px-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {isOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-                <BookOpen className="w-4 h-4 text-primary" />
-                <CardTitle className="text-sm font-medium">How to Use the Menu Builder</CardTitle>
-              </div>
-              <Badge variant="outline" className="text-xs">Guide</Badge>
-            </div>
-          </CardHeader>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <CardContent className="pt-0 px-4 pb-4 space-y-4">
-            <div className="space-y-4 text-sm">
-              <div className="rounded-lg border p-3 space-y-1">
-                <h4 className="font-semibold flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-bold">1</span>
-                  Set Up Your Menu Identity
-                </h4>
-                <p className="text-muted-foreground text-xs leading-relaxed">
-                  Open <strong>"Menu Appearance & Info"</strong> to customize your menu's branding independently from your portfolio. Set a display name (e.g., your restaurant name), upload a logo, choose an accent color, and pick a template theme.
-                </p>
-              </div>
-
-              <div className="rounded-lg border p-3 space-y-1">
-                <h4 className="font-semibold flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-bold">2</span>
-                  Add Contact & Hours
-                </h4>
-                <p className="text-muted-foreground text-xs leading-relaxed">
-                  Fill in your phone, email, WhatsApp, address, and Google Maps link in the contact section. Set your opening hours for each day of the week — toggle days on/off and set open/close times.
-                </p>
-              </div>
-
-              <div className="rounded-lg border p-3 space-y-1">
-                <h4 className="font-semibold flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-bold">3</span>
-                  Add Menu Social Links
-                </h4>
-                <p className="text-muted-foreground text-xs leading-relaxed">
-                  Add social links specific to your menu (e.g., restaurant Instagram, Facebook page, Google Maps listing). These are <strong>separate</strong> from your portfolio social links and only appear on the menu page.
-                </p>
-              </div>
-
-              <div className="rounded-lg border p-3 space-y-1">
-                <h4 className="font-semibold flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-bold">4</span>
-                  Create Sections & Products
-                </h4>
-                <p className="text-muted-foreground text-xs leading-relaxed">
-                  Use the <strong>"Add Section"</strong> button to create categories like "Appetizers", "Main Course", or "Beverages". Then add products to each section with names, descriptions, prices, and images.
-                </p>
-              </div>
-
-              <div className="rounded-lg border p-3 space-y-1">
-                <h4 className="font-semibold flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-bold">5</span>
-                  Share Your Menu
-                </h4>
-                <p className="text-muted-foreground text-xs leading-relaxed">
-                  Use the <strong>"Menu Link & QR Code"</strong> panel at the top to copy your menu URL or download a QR code. Print the QR code on table tents, posters, or receipts for easy customer access.
-                </p>
-              </div>
-
-              <div className="rounded-lg border p-3 space-y-1">
-                <h4 className="font-semibold flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-bold">6</span>
-                  Preview Your Menu
-                </h4>
-                <p className="text-muted-foreground text-xs leading-relaxed">
-                  Use the <strong>live preview</strong> on the right side of this page to see exactly how your menu looks to customers. Toggle between mobile and desktop views. You can also click the external link icon to open the menu in a new tab.
-                </p>
-              </div>
-
-              <div className="rounded-md bg-muted/50 p-3">
-                <p className="text-xs text-muted-foreground">
-                  <strong>💡 Tip:</strong> Social links, pages, and other resources from your menu and portfolio count together against your plan limits. You can hide sections or products using the toggle switch without deleting them.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </CollapsibleContent>
-      </Collapsible>
-    </Card>
-  );
-}
 
 function MenuLinkPanel({ username, template: templateId }: { username: string; template: string | null }) {
   const [copied, setCopied] = useState(false);
