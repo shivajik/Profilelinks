@@ -6,7 +6,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { QRCodeSVG } from "qrcode.react";
-import { Loader2, Share2, QrCode, Copy, Check, ChevronDown, ChevronRight, Package } from "lucide-react";
+import { Loader2, Copy, Check, ChevronDown, ChevronRight, Package, QrCode, Phone, Mail, MapPin, Globe, Clock, MessageCircle } from "lucide-react";
+
 
 interface MenuSection {
   id: string;
@@ -25,6 +26,20 @@ interface MenuProduct {
   position: number;
 }
 
+interface OpeningHour {
+  dayOfWeek: number;
+  openTime: string | null;
+  closeTime: string | null;
+  isClosed: boolean;
+}
+
+interface SocialLink {
+  id: string;
+  platform: string;
+  url: string;
+  position: number;
+}
+
 interface MenuUser {
   id: string;
   username: string;
@@ -36,6 +51,13 @@ interface MenuUser {
   menuDisplayName: string | null;
   menuProfileImage: string | null;
   menuAccentColor: string | null;
+  menuDescription: string | null;
+  menuPhone: string | null;
+  menuEmail: string | null;
+  menuAddress: string | null;
+  menuGoogleMapsUrl: string | null;
+  menuWhatsapp: string | null;
+  menuWebsite: string | null;
 }
 
 interface TeamBranding {
@@ -48,8 +70,12 @@ interface PublicMenuData {
   user: MenuUser;
   sections: MenuSection[];
   products: MenuProduct[];
+  openingHours: OpeningHour[];
+  socials: SocialLink[];
   teamBranding: TeamBranding | null;
 }
+
+const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export default function PublicMenu() {
   const { username } = useParams<{ username: string }>();
@@ -90,18 +116,21 @@ export default function PublicMenu() {
     );
   }
 
-  const { user, sections, products, teamBranding } = data;
+  const { user, sections, products, openingHours, socials, teamBranding } = data;
   const template = getTemplate(user.menuTemplate || user.template);
   const displayName = user.menuDisplayName || user.displayName || user.username;
   const profileImage = user.menuProfileImage || user.profileImage;
   const brandColor = user.menuAccentColor || teamBranding?.themeColor || template.accent;
+  const menuDescription = user.menuDescription || user.bio;
   const menuUrl = typeof window !== "undefined" ? `${window.location.origin}/${username}/menu` : `/${username}/menu`;
+
+  const hasContact = user.menuPhone || user.menuEmail || user.menuAddress || user.menuWhatsapp || user.menuWebsite || user.menuGoogleMapsUrl;
 
   const toggleSection = (id: string) => {
     setExpandedSections(prev => ({ ...prev, [id]: prev[id] === false ? true : prev[id] === undefined ? false : !prev[id] }));
   };
 
-  const isSectionExpanded = (id: string) => expandedSections[id] !== false; // default open
+  const isSectionExpanded = (id: string) => expandedSections[id] !== false;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(menuUrl);
@@ -112,29 +141,17 @@ export default function PublicMenu() {
   return (
     <div className={`min-h-screen ${template.bg}`}>
       <div className="max-w-lg mx-auto px-4 py-8">
-        {/* Header / Branding */}
-        <div className="text-center mb-8">
-          {/* Share + QR buttons */}
+        {/* Header */}
+        <div className="text-center mb-6">
           <div className="flex justify-end gap-2 mb-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleCopy}
-              className={template.textColor}
-            >
+            <Button variant="ghost" size="icon" onClick={handleCopy} className={template.textColor}>
               {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowQr(true)}
-              className={template.textColor}
-            >
+            <Button variant="ghost" size="icon" onClick={() => setShowQr(true)} className={template.textColor}>
               <QrCode className="w-4 h-4" />
             </Button>
           </div>
 
-          {/* Restaurant branding */}
           {teamBranding?.companyLogo ? (
             <div className="w-20 h-20 rounded-full mx-auto mb-3 overflow-hidden border-2 border-white/20 shadow-lg">
               <img src={teamBranding.companyLogo} alt={teamBranding.companyName || ""} className="w-full h-full object-cover" />
@@ -142,10 +159,7 @@ export default function PublicMenu() {
           ) : (
             <Avatar className="w-20 h-20 mx-auto mb-3 border-2 border-white/20 shadow-lg">
               <AvatarImage src={profileImage || undefined} alt={displayName} />
-              <AvatarFallback
-                className="text-2xl"
-                style={{ backgroundColor: brandColor + "30", color: brandColor }}
-              >
+              <AvatarFallback className="text-2xl" style={{ backgroundColor: brandColor + "30", color: brandColor }}>
                 {displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -154,16 +168,93 @@ export default function PublicMenu() {
           <h1 className={`text-2xl font-bold ${template.textColor}`}>
             {teamBranding?.companyName || displayName}
           </h1>
-          {user.bio && (
-            <p className={`text-sm mt-1 ${template.textColor} opacity-70`}>{user.bio}</p>
+          {menuDescription && (
+            <p className={`text-sm mt-1 ${template.textColor} opacity-70`}>{menuDescription}</p>
           )}
 
-          {/* Color theme indicator line */}
-          <div
-            className="w-16 h-1 rounded-full mx-auto mt-4"
-            style={{ backgroundColor: brandColor }}
-          />
+          <div className="w-16 h-1 rounded-full mx-auto mt-4" style={{ backgroundColor: brandColor }} />
         </div>
+
+        {/* Social Links (from portfolio) */}
+        {socials.length > 0 && (
+          <div className="flex justify-center gap-3 mb-6">
+            {socials.map((social) => (
+              <a key={social.id} href={social.url} target="_blank" rel="noopener noreferrer"
+                className={`w-9 h-9 rounded-full flex items-center justify-center transition-opacity hover:opacity-80 ${template.cardBg}`}
+                style={{ color: brandColor }}>
+                <SocialIconSmall platform={social.platform} />
+              </a>
+            ))}
+          </div>
+        )}
+
+        {/* Contact Info */}
+        {hasContact && (
+          <div className={`rounded-xl overflow-hidden ${template.cardBg} backdrop-blur-sm mb-4 p-4`}>
+            <h3 className={`text-sm font-semibold mb-3 ${template.cardTextColor}`}>Contact</h3>
+            <div className="space-y-2">
+              {user.menuPhone && (
+                <a href={`tel:${user.menuPhone}`} className={`flex items-center gap-2 text-sm ${template.cardTextColor} opacity-80 hover:opacity-100`}>
+                  <Phone className="w-4 h-4 shrink-0" style={{ color: brandColor }} />
+                  {user.menuPhone}
+                </a>
+              )}
+              {user.menuEmail && (
+                <a href={`mailto:${user.menuEmail}`} className={`flex items-center gap-2 text-sm ${template.cardTextColor} opacity-80 hover:opacity-100`}>
+                  <Mail className="w-4 h-4 shrink-0" style={{ color: brandColor }} />
+                  {user.menuEmail}
+                </a>
+              )}
+              {user.menuWhatsapp && (
+                <a href={`https://wa.me/${user.menuWhatsapp.replace(/[^0-9+]/g, '')}`} target="_blank" rel="noopener noreferrer"
+                  className={`flex items-center gap-2 text-sm ${template.cardTextColor} opacity-80 hover:opacity-100`}>
+                  <MessageCircle className="w-4 h-4 shrink-0" style={{ color: brandColor }} />
+                  WhatsApp
+                </a>
+              )}
+              {user.menuWebsite && (
+                <a href={user.menuWebsite} target="_blank" rel="noopener noreferrer"
+                  className={`flex items-center gap-2 text-sm ${template.cardTextColor} opacity-80 hover:opacity-100`}>
+                  <Globe className="w-4 h-4 shrink-0" style={{ color: brandColor }} />
+                  {user.menuWebsite.replace(/^https?:\/\//, '')}
+                </a>
+              )}
+              {user.menuAddress && (
+                <div className={`flex items-start gap-2 text-sm ${template.cardTextColor} opacity-80`}>
+                  <MapPin className="w-4 h-4 shrink-0 mt-0.5" style={{ color: brandColor }} />
+                  <span>{user.menuAddress}</span>
+                </div>
+              )}
+              {user.menuGoogleMapsUrl && (
+                <a href={user.menuGoogleMapsUrl} target="_blank" rel="noopener noreferrer"
+                  className="text-xs underline opacity-60 hover:opacity-100 ml-6" style={{ color: brandColor }}>
+                  View on Google Maps →
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Opening Hours */}
+        {openingHours.length > 0 && (
+          <div className={`rounded-xl overflow-hidden ${template.cardBg} backdrop-blur-sm mb-4 p-4`}>
+            <h3 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${template.cardTextColor}`}>
+              <Clock className="w-4 h-4" style={{ color: brandColor }} /> Opening Hours
+            </h3>
+            <div className="space-y-1">
+              {openingHours.sort((a, b) => a.dayOfWeek - b.dayOfWeek).map((h) => (
+                <div key={h.dayOfWeek} className={`flex items-center justify-between text-sm ${template.cardTextColor}`}>
+                  <span className="font-medium text-xs w-12">{DAY_NAMES[h.dayOfWeek]}</span>
+                  {h.isClosed ? (
+                    <span className="text-xs opacity-50">Closed</span>
+                  ) : (
+                    <span className="text-xs opacity-70">{h.openTime} – {h.closeTime}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Menu Sections */}
         {sections.length === 0 ? (
@@ -172,89 +263,47 @@ export default function PublicMenu() {
           </div>
         ) : (
           <div className="space-y-4">
-            {sections
-              .sort((a, b) => a.position - b.position)
-              .map((section) => {
-                const sectionProducts = products
-                  .filter(p => p.sectionId === section.id)
-                  .sort((a, b) => a.position - b.position);
-                const expanded = isSectionExpanded(section.id);
-
-                return (
-                  <div
-                    key={section.id}
-                    className={`rounded-xl overflow-hidden ${template.cardBg} backdrop-blur-sm`}
-                  >
-                    {/* Section header */}
-                    <button
-                      onClick={() => toggleSection(section.id)}
-                      className={`w-full flex items-center justify-between px-5 py-4 ${template.cardTextColor}`}
-                    >
-                      <div className="text-left">
-                        <h2 className="text-base font-semibold">{section.name}</h2>
-                        {section.description && (
-                          <p className="text-xs opacity-60 mt-0.5">{section.description}</p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs opacity-50">{sectionProducts.length} items</span>
-                        {expanded ? (
-                          <ChevronDown className="w-4 h-4 opacity-50" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4 opacity-50" />
-                        )}
-                      </div>
-                    </button>
-
-                    {/* Products */}
-                    {expanded && sectionProducts.length > 0 && (
-                      <div className="px-5 pb-4 space-y-3">
-                        {sectionProducts.map((product) => (
-                          <div
-                            key={product.id}
-                            className="flex items-start gap-3"
-                          >
-                            {product.imageUrl ? (
-                              <img
-                                src={product.imageUrl}
-                                alt={product.name}
-                                className="w-16 h-16 rounded-lg object-cover shrink-0 shadow-sm"
-                              />
-                            ) : (
-                              <div
-                                className="w-16 h-16 rounded-lg flex items-center justify-center shrink-0"
-                                style={{ backgroundColor: brandColor + "15" }}
-                              >
-                                <Package className="w-6 h-6" style={{ color: brandColor + "60" }} />
-                              </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between gap-2">
-                                <h3 className={`text-sm font-medium ${template.cardTextColor}`}>
-                                  {product.name}
-                                </h3>
-                                {product.price && (
-                                  <span
-                                    className="text-sm font-bold shrink-0"
-                                    style={{ color: brandColor }}
-                                  >
-                                    {product.price}
-                                  </span>
-                                )}
-                              </div>
-                              {product.description && (
-                                <p className={`text-xs mt-0.5 ${template.cardTextColor} opacity-60 line-clamp-2`}>
-                                  {product.description}
-                                </p>
-                              )}
+            {sections.sort((a, b) => a.position - b.position).map((section) => {
+              const sectionProducts = products.filter(p => p.sectionId === section.id).sort((a, b) => a.position - b.position);
+              const expanded = isSectionExpanded(section.id);
+              return (
+                <div key={section.id} className={`rounded-xl overflow-hidden ${template.cardBg} backdrop-blur-sm`}>
+                  <button onClick={() => toggleSection(section.id)}
+                    className={`w-full flex items-center justify-between px-5 py-4 ${template.cardTextColor}`}>
+                    <div className="text-left">
+                      <h2 className="text-base font-semibold">{section.name}</h2>
+                      {section.description && <p className="text-xs opacity-60 mt-0.5">{section.description}</p>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs opacity-50">{sectionProducts.length} items</span>
+                      {expanded ? <ChevronDown className="w-4 h-4 opacity-50" /> : <ChevronRight className="w-4 h-4 opacity-50" />}
+                    </div>
+                  </button>
+                  {expanded && sectionProducts.length > 0 && (
+                    <div className="px-5 pb-4 space-y-3">
+                      {sectionProducts.map((product) => (
+                        <div key={product.id} className="flex items-start gap-3">
+                          {product.imageUrl ? (
+                            <img src={product.imageUrl} alt={product.name} className="w-16 h-16 rounded-lg object-cover shrink-0 shadow-sm" />
+                          ) : (
+                            <div className="w-16 h-16 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: brandColor + "15" }}>
+                              <Package className="w-6 h-6" style={{ color: brandColor + "60" }} />
                             </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <h3 className={`text-sm font-medium ${template.cardTextColor}`}>{product.name}</h3>
+                              {product.price && <span className="text-sm font-bold shrink-0" style={{ color: brandColor }}>{product.price}</span>}
+                            </div>
+                            {product.description && <p className={`text-xs mt-0.5 ${template.cardTextColor} opacity-60 line-clamp-2`}>{product.description}</p>}
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -274,17 +323,9 @@ export default function PublicMenu() {
           </DialogHeader>
           <div className="flex flex-col items-center gap-4 py-4">
             <div className="bg-white p-4 rounded-xl">
-              <QRCodeSVG
-                value={menuUrl}
-                size={200}
-                fgColor={brandColor}
-                level="M"
-                includeMargin={false}
-              />
+              <QRCodeSVG value={menuUrl} size={200} fgColor={brandColor} level="M" includeMargin={false} />
             </div>
-            <p className="text-xs text-muted-foreground text-center">
-              Scan to view the digital menu
-            </p>
+            <p className="text-xs text-muted-foreground text-center">Scan to view the digital menu</p>
             <Button variant="outline" size="sm" onClick={handleCopy}>
               {copied ? <Check className="w-3.5 h-3.5 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
               Copy Menu Link
@@ -294,4 +335,13 @@ export default function PublicMenu() {
       </Dialog>
     </div>
   );
+}
+
+function SocialIconSmall({ platform }: { platform: string }) {
+  // Simple inline icon based on platform name
+  const icons: Record<string, string> = {
+    twitter: "𝕏", instagram: "📷", linkedin: "in", github: "⌨", facebook: "f",
+    youtube: "▶", tiktok: "♪", pinterest: "📌", snapchat: "👻", telegram: "✈",
+  };
+  return <span className="text-xs font-bold">{icons[platform] || platform.charAt(0).toUpperCase()}</span>;
 }

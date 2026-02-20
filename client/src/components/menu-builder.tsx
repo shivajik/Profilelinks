@@ -42,6 +42,8 @@ import {
   Eye,
   Palette,
   User as UserIcon,
+  Phone,
+  Clock,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { QRCodeSVG } from "qrcode.react";
@@ -476,6 +478,14 @@ function MenuAppearancePanel() {
     menuDisplayName: string | null;
     menuProfileImage: string | null;
     menuAccentColor: string | null;
+    menuDescription: string | null;
+    menuPhone: string | null;
+    menuEmail: string | null;
+    menuAddress: string | null;
+    menuGoogleMapsUrl: string | null;
+    menuWhatsapp: string | null;
+    menuWebsite: string | null;
+    openingHours: { id: string; dayOfWeek: number; openTime: string | null; closeTime: string | null; isClosed: boolean }[];
   }>({
     queryKey: ["/api/menu/settings"],
   });
@@ -484,13 +494,38 @@ function MenuAppearancePanel() {
   const [menuDisplayName, setMenuDisplayName] = useState("");
   const [menuProfileImage, setMenuProfileImage] = useState("");
   const [menuAccentColor, setMenuAccentColor] = useState("");
+  const [menuDescription, setMenuDescription] = useState("");
+  const [menuPhone, setMenuPhone] = useState("");
+  const [menuEmail, setMenuEmail] = useState("");
+  const [menuAddress, setMenuAddress] = useState("");
+  const [menuGoogleMapsUrl, setMenuGoogleMapsUrl] = useState("");
+  const [menuWhatsapp, setMenuWhatsapp] = useState("");
+  const [menuWebsite, setMenuWebsite] = useState("");
   const [initialized, setInitialized] = useState(false);
+
+  const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const defaultHours = DAY_NAMES.map((_, i) => ({ dayOfWeek: i, openTime: "09:00", closeTime: "22:00", isClosed: false }));
+  const [openingHours, setOpeningHours] = useState(defaultHours);
 
   if (settings && !initialized) {
     setMenuTemplate(settings.menuTemplate);
     setMenuDisplayName(settings.menuDisplayName || "");
     setMenuProfileImage(settings.menuProfileImage || "");
     setMenuAccentColor(settings.menuAccentColor || "");
+    setMenuDescription(settings.menuDescription || "");
+    setMenuPhone(settings.menuPhone || "");
+    setMenuEmail(settings.menuEmail || "");
+    setMenuAddress(settings.menuAddress || "");
+    setMenuGoogleMapsUrl(settings.menuGoogleMapsUrl || "");
+    setMenuWhatsapp(settings.menuWhatsapp || "");
+    setMenuWebsite(settings.menuWebsite || "");
+    if (settings.openingHours && settings.openingHours.length > 0) {
+      const merged = defaultHours.map(d => {
+        const saved = settings.openingHours.find(h => h.dayOfWeek === d.dayOfWeek);
+        return saved ? { dayOfWeek: saved.dayOfWeek, openTime: saved.openTime || "09:00", closeTime: saved.closeTime || "22:00", isClosed: saved.isClosed } : d;
+      });
+      setOpeningHours(merged);
+    }
     setInitialized(true);
   }
 
@@ -505,13 +540,32 @@ function MenuAppearancePanel() {
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
+  const saveHoursMutation = useMutation({
+    mutationFn: async (hours: typeof openingHours) => {
+      await apiRequest("PUT", "/api/menu/opening-hours", { hours });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/menu/settings"] });
+      toast({ title: "Opening hours saved!" });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
   const handleSave = () => {
     saveMutation.mutate({
       menuTemplate: menuTemplate || null,
       menuDisplayName: menuDisplayName || null,
       menuProfileImage: menuProfileImage || null,
       menuAccentColor: menuAccentColor || null,
+      menuDescription: menuDescription || null,
+      menuPhone: menuPhone || null,
+      menuEmail: menuEmail || null,
+      menuAddress: menuAddress || null,
+      menuGoogleMapsUrl: menuGoogleMapsUrl || null,
+      menuWhatsapp: menuWhatsapp || null,
+      menuWebsite: menuWebsite || null,
     });
+    saveHoursMutation.mutate(openingHours);
   };
 
   const handleLogoUpload = async (file: File) => {
@@ -523,6 +577,10 @@ function MenuAppearancePanel() {
     setMenuProfileImage(url);
   };
 
+  const updateHour = (dayOfWeek: number, field: string, value: any) => {
+    setOpeningHours(prev => prev.map(h => h.dayOfWeek === dayOfWeek ? { ...h, [field]: value } : h));
+  };
+
   return (
     <Card>
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -532,14 +590,14 @@ function MenuAppearancePanel() {
               <div className="flex items-center gap-2">
                 {isOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                 <Palette className="w-4 h-4 text-primary" />
-                <CardTitle className="text-sm font-medium">Menu Appearance</CardTitle>
+                <CardTitle className="text-sm font-medium">Menu Appearance & Info</CardTitle>
               </div>
               <Badge variant="secondary" className="text-xs">Independent styling</Badge>
             </div>
           </CardHeader>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <CardContent className="pt-0 px-4 pb-4 space-y-4">
+          <CardContent className="pt-0 px-4 pb-4 space-y-5">
             <p className="text-xs text-muted-foreground">
               Customize how your menu looks independently from your portfolio profile.
             </p>
@@ -547,13 +605,13 @@ function MenuAppearancePanel() {
             {/* Menu Display Name */}
             <div>
               <Label className="text-xs">Menu Display Name</Label>
-              <Input
-                value={menuDisplayName}
-                onChange={(e) => setMenuDisplayName(e.target.value)}
-                placeholder="e.g. Restaurant Name"
-                className="mt-1"
-              />
-              <p className="text-xs text-muted-foreground mt-1">Leave empty to use your portfolio name</p>
+              <Input value={menuDisplayName} onChange={(e) => setMenuDisplayName(e.target.value)} placeholder="e.g. Restaurant Name" className="mt-1" />
+            </div>
+
+            {/* Menu Description */}
+            <div>
+              <Label className="text-xs">Menu Description</Label>
+              <Textarea value={menuDescription} onChange={(e) => setMenuDescription(e.target.value)} placeholder="e.g. Authentic Italian cuisine since 1990" rows={2} className="mt-1" />
             </div>
 
             {/* Menu Logo */}
@@ -568,23 +626,13 @@ function MenuAppearancePanel() {
                   </div>
                 )}
                 <div>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/gif,image/webp"
-                    className="hidden"
-                    id="menu-logo-upload"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleLogoUpload(file);
-                    }}
-                  />
+                  <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" className="hidden" id="menu-logo-upload"
+                    onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoUpload(file); }} />
                   <Button variant="outline" size="sm" onClick={() => document.getElementById("menu-logo-upload")?.click()}>
                     <Upload className="w-3.5 h-3.5 mr-1" /> Upload
                   </Button>
                   {menuProfileImage && (
-                    <Button variant="ghost" size="sm" className="text-destructive ml-1" onClick={() => setMenuProfileImage("")}>
-                      Remove
-                    </Button>
+                    <Button variant="ghost" size="sm" className="text-destructive ml-1" onClick={() => setMenuProfileImage("")}>Remove</Button>
                   )}
                 </div>
               </div>
@@ -594,42 +642,79 @@ function MenuAppearancePanel() {
             <div>
               <Label className="text-xs">Accent Color</Label>
               <div className="flex items-center gap-2 mt-1">
-                <input
-                  type="color"
-                  value={menuAccentColor || "#6C5CE7"}
-                  onChange={(e) => setMenuAccentColor(e.target.value)}
-                  className="w-9 h-9 rounded-md border cursor-pointer"
-                />
-                <Input
-                  value={menuAccentColor}
-                  onChange={(e) => setMenuAccentColor(e.target.value)}
-                  placeholder="e.g. #6C5CE7"
-                  className="flex-1"
-                />
-                {menuAccentColor && (
-                  <Button variant="ghost" size="sm" onClick={() => setMenuAccentColor("")}>
-                    Reset
-                  </Button>
-                )}
+                <input type="color" value={menuAccentColor || "#6C5CE7"} onChange={(e) => setMenuAccentColor(e.target.value)} className="w-9 h-9 rounded-md border cursor-pointer" />
+                <Input value={menuAccentColor} onChange={(e) => setMenuAccentColor(e.target.value)} placeholder="e.g. #6C5CE7" className="flex-1" />
+                {menuAccentColor && <Button variant="ghost" size="sm" onClick={() => setMenuAccentColor("")}>Reset</Button>}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">Leave empty to use template default</p>
+            </div>
+
+            {/* Contact Information */}
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                <Phone className="w-4 h-4 text-primary" /> Contact Information
+              </h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Phone</Label>
+                  <Input value={menuPhone} onChange={(e) => setMenuPhone(e.target.value)} placeholder="+91 98765 43210" className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs">Email</Label>
+                  <Input value={menuEmail} onChange={(e) => setMenuEmail(e.target.value)} placeholder="info@restaurant.com" className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs">WhatsApp</Label>
+                  <Input value={menuWhatsapp} onChange={(e) => setMenuWhatsapp(e.target.value)} placeholder="+91 98765 43210" className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs">Website</Label>
+                  <Input value={menuWebsite} onChange={(e) => setMenuWebsite(e.target.value)} placeholder="https://restaurant.com" className="mt-1" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <Label className="text-xs">Address</Label>
+                <Textarea value={menuAddress} onChange={(e) => setMenuAddress(e.target.value)} placeholder="123 Food Street, City" rows={2} className="mt-1" />
+              </div>
+              <div className="mt-3">
+                <Label className="text-xs">Google Maps Link</Label>
+                <Input value={menuGoogleMapsUrl} onChange={(e) => setMenuGoogleMapsUrl(e.target.value)} placeholder="https://maps.google.com/..." className="mt-1" />
+              </div>
+            </div>
+
+            {/* Opening Hours */}
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-primary" /> Opening Hours
+              </h4>
+              <div className="space-y-2">
+                {openingHours.map((h) => (
+                  <div key={h.dayOfWeek} className="flex items-center gap-2">
+                    <span className="text-xs w-20 font-medium">{DAY_NAMES[h.dayOfWeek]}</span>
+                    <Switch checked={!h.isClosed} onCheckedChange={(v) => updateHour(h.dayOfWeek, "isClosed", !v)} className="scale-75" />
+                    {!h.isClosed ? (
+                      <>
+                        <Input type="time" value={h.openTime} onChange={(e) => updateHour(h.dayOfWeek, "openTime", e.target.value)} className="w-28 h-8 text-xs" />
+                        <span className="text-xs text-muted-foreground">to</span>
+                        <Input type="time" value={h.closeTime} onChange={(e) => updateHour(h.dayOfWeek, "closeTime", e.target.value)} className="w-28 h-8 text-xs" />
+                      </>
+                    ) : (
+                      <span className="text-xs text-muted-foreground italic">Closed</span>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Template Picker */}
-            <div>
+            <div className="border-t pt-4">
               <Label className="text-xs">Menu Template</Label>
               <p className="text-xs text-muted-foreground mb-2">Pick a different theme for your menu page</p>
               <div className="grid grid-cols-3 gap-2">
                 {TEMPLATES.map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => setMenuTemplate(t.id)}
+                  <button key={t.id} onClick={() => setMenuTemplate(t.id)}
                     className={`relative rounded-lg overflow-hidden border-2 transition-all ${
-                      (menuTemplate || "minimal") === t.id
-                        ? "border-primary ring-2 ring-primary/20"
-                        : "border-transparent hover:border-muted-foreground/30"
-                    }`}
-                  >
+                      (menuTemplate || "minimal") === t.id ? "border-primary ring-2 ring-primary/20" : "border-transparent hover:border-muted-foreground/30"
+                    }`}>
                     <div className={`h-16 ${t.bg} flex items-center justify-center`}>
                       <div className={`w-6 h-6 rounded-full ${t.cardBg}`} />
                     </div>
@@ -641,9 +726,9 @@ function MenuAppearancePanel() {
               </div>
             </div>
 
-            <Button onClick={handleSave} className="w-full" disabled={saveMutation.isPending}>
-              {saveMutation.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-              Save Menu Appearance
+            <Button onClick={handleSave} className="w-full" disabled={saveMutation.isPending || saveHoursMutation.isPending}>
+              {(saveMutation.isPending || saveHoursMutation.isPending) && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+              Save Menu Appearance & Info
             </Button>
           </CardContent>
         </CollapsibleContent>

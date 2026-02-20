@@ -15,6 +15,7 @@ import {
   contacts,
   menuSections,
   menuProducts,
+  menuOpeningHours,
   type User,
   type InsertUser,
   type Link,
@@ -39,6 +40,7 @@ import {
   type InsertMenuSection,
   type MenuProduct,
   type InsertMenuProduct,
+  type MenuOpeningHour,
 } from "@shared/schema";
 import "dotenv/config";
 
@@ -73,6 +75,13 @@ pool.query(`
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS menu_display_name text;
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS menu_profile_image text;
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS menu_accent_color text;
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS menu_description text;
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS menu_phone text;
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS menu_email text;
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS menu_address text;
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS menu_google_maps_url text;
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS menu_whatsapp text;
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS menu_website text;
   
   CREATE TABLE IF NOT EXISTS menu_sections (
     id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -96,6 +105,15 @@ pool.query(`
     active boolean NOT NULL DEFAULT true,
     created_at timestamp NOT NULL DEFAULT now()
   );
+
+  CREATE TABLE IF NOT EXISTS menu_opening_hours (
+    id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    day_of_week integer NOT NULL,
+    open_time text,
+    close_time text,
+    is_closed boolean NOT NULL DEFAULT false
+  );
 `).catch(() => {/* Columns/tables may already exist */});
 
 
@@ -104,7 +122,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateUser(id: string, data: Partial<Pick<User, "displayName" | "bio" | "profileImage" | "coverImage" | "username" | "onboardingCompleted" | "template" | "accountType" | "teamId" | "menuTemplate" | "menuDisplayName" | "menuProfileImage" | "menuAccentColor">>): Promise<User | undefined>;
+  updateUser(id: string, data: Partial<Pick<User, "displayName" | "bio" | "profileImage" | "coverImage" | "username" | "onboardingCompleted" | "template" | "accountType" | "teamId" | "menuTemplate" | "menuDisplayName" | "menuProfileImage" | "menuAccentColor" | "menuDescription" | "menuPhone" | "menuEmail" | "menuAddress" | "menuGoogleMapsUrl" | "menuWhatsapp" | "menuWebsite">>): Promise<User | undefined>;
 
   getPagesByUserId(userId: string): Promise<Page[]>;
   getPageById(id: string): Promise<Page | undefined>;
@@ -179,6 +197,10 @@ export interface IStorage {
   updateMenuProduct(id: string, userId: string, data: Partial<Pick<MenuProduct, "name" | "description" | "price" | "imageUrl" | "active" | "position">>): Promise<MenuProduct | undefined>;
   deleteMenuProduct(id: string, userId: string): Promise<boolean>;
 
+  // Opening Hours
+  getOpeningHoursByUserId(userId: string): Promise<MenuOpeningHour[]>;
+  upsertOpeningHours(userId: string, hours: { dayOfWeek: number; openTime: string | null; closeTime: string | null; isClosed: boolean }[]): Promise<MenuOpeningHour[]>;
+
   recordAnalyticsEvent(data: { userId: string; eventType: string; blockId?: string; pageSlug?: string; referrer?: string }): Promise<void>;
   getAnalyticsSummary(userId: string): Promise<{
     totalViews: number;
@@ -220,7 +242,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async updateUser(id: string, data: Partial<Pick<User, "displayName" | "bio" | "profileImage" | "coverImage" | "username" | "onboardingCompleted" | "template" | "accountType" | "teamId" | "menuTemplate" | "menuDisplayName" | "menuProfileImage" | "menuAccentColor">>): Promise<User | undefined> {
+  async updateUser(id: string, data: Partial<Pick<User, "displayName" | "bio" | "profileImage" | "coverImage" | "username" | "onboardingCompleted" | "template" | "accountType" | "teamId" | "menuTemplate" | "menuDisplayName" | "menuProfileImage" | "menuAccentColor" | "menuDescription" | "menuPhone" | "menuEmail" | "menuAddress" | "menuGoogleMapsUrl" | "menuWhatsapp" | "menuWebsite">>): Promise<User | undefined> {
     const [user] = await db.update(users).set(data).where(eq(users.id, id)).returning();
     return user;
   }
@@ -783,6 +805,20 @@ export class DatabaseStorage implements IStorage {
     if (!existing || existing.userId !== userId) return false;
     await db.delete(menuProducts).where(eq(menuProducts.id, id));
     return true;
+  }
+
+  // ── Opening Hours ──────────────────────────────────────────────────────────
+  async getOpeningHoursByUserId(userId: string): Promise<MenuOpeningHour[]> {
+    return db.select().from(menuOpeningHours).where(eq(menuOpeningHours.userId, userId)).orderBy(asc(menuOpeningHours.dayOfWeek));
+  }
+
+  async upsertOpeningHours(userId: string, hours: { dayOfWeek: number; openTime: string | null; closeTime: string | null; isClosed: boolean }[]): Promise<MenuOpeningHour[]> {
+    // Delete existing and re-insert
+    await db.delete(menuOpeningHours).where(eq(menuOpeningHours.userId, userId));
+    if (hours.length === 0) return [];
+    const rows = hours.map(h => ({ userId, dayOfWeek: h.dayOfWeek, openTime: h.openTime, closeTime: h.closeTime, isClosed: h.isClosed }));
+    const created = await db.insert(menuOpeningHours).values(rows).returning();
+    return created;
   }
 }
 

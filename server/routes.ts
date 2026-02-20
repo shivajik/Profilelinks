@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import session from "express-session";
 import { storage } from "./storage";
 import bcrypt from "bcryptjs";
-import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema, createPageSchema, updatePageSchema, createBlockSchema, updateBlockSchema, changePasswordSchema, deleteAccountSchema, createTeamSchema, updateTeamSchema, updateTeamMemberSchema, createTeamInviteSchema, createTeamMemberSchema, createTeamTemplateSchema, updateTeamTemplateSchema, createContactSchema, updateContactSchema, createMenuSectionSchema, updateMenuSectionSchema, createMenuProductSchema, updateMenuProductSchema, updateMenuSettingsSchema } from "@shared/schema";
+import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema, createPageSchema, updatePageSchema, createBlockSchema, updateBlockSchema, changePasswordSchema, deleteAccountSchema, createTeamSchema, updateTeamSchema, updateTeamMemberSchema, createTeamInviteSchema, createTeamMemberSchema, createTeamTemplateSchema, updateTeamTemplateSchema, createContactSchema, updateContactSchema, createMenuSectionSchema, updateMenuSectionSchema, createMenuProductSchema, updateMenuProductSchema, updateMenuSettingsSchema, upsertOpeningHoursSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import connectPgSimple from "connect-pg-simple";
 import pg from "pg";
@@ -1453,11 +1453,20 @@ export async function registerRoutes(
     try {
       const user = await storage.getUser(req.session.userId!);
       if (!user) return res.status(404).json({ message: "User not found" });
+      const openingHours = await storage.getOpeningHoursByUserId(req.session.userId!);
       res.json({
         menuTemplate: user.menuTemplate,
         menuDisplayName: user.menuDisplayName,
         menuProfileImage: user.menuProfileImage,
         menuAccentColor: user.menuAccentColor,
+        menuDescription: user.menuDescription,
+        menuPhone: user.menuPhone,
+        menuEmail: user.menuEmail,
+        menuAddress: user.menuAddress,
+        menuGoogleMapsUrl: user.menuGoogleMapsUrl,
+        menuWhatsapp: user.menuWhatsapp,
+        menuWebsite: user.menuWebsite,
+        openingHours,
       });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to fetch menu settings" });
@@ -1475,9 +1484,28 @@ export async function registerRoutes(
         menuDisplayName: updated.menuDisplayName,
         menuProfileImage: updated.menuProfileImage,
         menuAccentColor: updated.menuAccentColor,
+        menuDescription: updated.menuDescription,
+        menuPhone: updated.menuPhone,
+        menuEmail: updated.menuEmail,
+        menuAddress: updated.menuAddress,
+        menuGoogleMapsUrl: updated.menuGoogleMapsUrl,
+        menuWhatsapp: updated.menuWhatsapp,
+        menuWebsite: updated.menuWebsite,
       });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to update menu settings" });
+    }
+  });
+
+  // Opening Hours
+  app.put("/api/menu/opening-hours", requireAuth, async (req, res) => {
+    try {
+      const result = upsertOpeningHoursSchema.safeParse(req.body);
+      if (!result.success) return res.status(400).json({ message: fromZodError(result.error).message });
+      const hours = await storage.upsertOpeningHours(req.session.userId!, result.data.hours);
+      res.json(hours);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to save opening hours" });
     }
   });
 
@@ -1572,10 +1600,13 @@ export async function registerRoutes(
         return res.status(404).json({ message: "User not found" });
       }
 
-      const sections = await storage.getMenuSectionsByUserId(user.id);
+      const [sections, products, openingHours, userSocials] = await Promise.all([
+        storage.getMenuSectionsByUserId(user.id),
+        storage.getMenuProductsByUserId(user.id),
+        storage.getOpeningHoursByUserId(user.id),
+        storage.getSocialsByUserId(user.id),
+      ]);
       const activeSections = sections.filter(s => s.active);
-      
-      const products = await storage.getMenuProductsByUserId(user.id);
       const activeProducts = products.filter(p => p.active);
 
       const { password: _, email: __, ...publicUser } = user;
@@ -1601,9 +1632,18 @@ export async function registerRoutes(
           menuDisplayName: user.menuDisplayName,
           menuProfileImage: user.menuProfileImage,
           menuAccentColor: user.menuAccentColor,
+          menuDescription: user.menuDescription,
+          menuPhone: user.menuPhone,
+          menuEmail: user.menuEmail,
+          menuAddress: user.menuAddress,
+          menuGoogleMapsUrl: user.menuGoogleMapsUrl,
+          menuWhatsapp: user.menuWhatsapp,
+          menuWebsite: user.menuWebsite,
         },
         sections: activeSections,
         products: activeProducts,
+        openingHours,
+        socials: userSocials,
         teamBranding,
       });
     } catch (error: any) {

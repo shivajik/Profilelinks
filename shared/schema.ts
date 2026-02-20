@@ -21,6 +21,23 @@ export const users = pgTable("users", {
   menuDisplayName: text("menu_display_name"),
   menuProfileImage: text("menu_profile_image"),
   menuAccentColor: text("menu_accent_color"),
+  menuDescription: text("menu_description"),
+  menuPhone: text("menu_phone"),
+  menuEmail: text("menu_email"),
+  menuAddress: text("menu_address"),
+  menuGoogleMapsUrl: text("menu_google_maps_url"),
+  menuWhatsapp: text("menu_whatsapp"),
+  menuWebsite: text("menu_website"),
+});
+
+// ── Menu Opening Hours ──────────────────────────────────────────────────────
+export const menuOpeningHours = pgTable("menu_opening_hours", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  dayOfWeek: integer("day_of_week").notNull(), // 0=Monday, 6=Sunday
+  openTime: text("open_time"), // "09:00"
+  closeTime: text("close_time"), // "22:00"
+  isClosed: boolean("is_closed").notNull().default(false),
 });
 
 export const pages = pgTable("pages", {
@@ -211,6 +228,22 @@ export const updateMenuSettingsSchema = z.object({
   menuDisplayName: z.string().max(100).optional().nullable(),
   menuProfileImage: z.string().optional().nullable(),
   menuAccentColor: z.string().optional().nullable(),
+  menuDescription: z.string().max(500).optional().nullable(),
+  menuPhone: z.string().max(50).optional().nullable(),
+  menuEmail: z.string().max(100).optional().nullable(),
+  menuAddress: z.string().max(300).optional().nullable(),
+  menuGoogleMapsUrl: z.string().max(500).optional().nullable(),
+  menuWhatsapp: z.string().max(50).optional().nullable(),
+  menuWebsite: z.string().max(300).optional().nullable(),
+});
+
+export const upsertOpeningHoursSchema = z.object({
+  hours: z.array(z.object({
+    dayOfWeek: z.number().int().min(0).max(6),
+    openTime: z.string().nullable(),
+    closeTime: z.string().nullable(),
+    isClosed: z.boolean(),
+  })),
 });
 
 export const insertPageSchema = createInsertSchema(pages).omit({
@@ -424,6 +457,7 @@ export type MenuSection = typeof menuSections.$inferSelect;
 export type InsertMenuSection = z.infer<typeof insertMenuSectionSchema>;
 export type MenuProduct = typeof menuProducts.$inferSelect;
 export type InsertMenuProduct = z.infer<typeof insertMenuProductSchema>;
+export type MenuOpeningHour = typeof menuOpeningHours.$inferSelect;
 
 // =============================================
 // ADMIN + PRICING + PAYMENTS SCHEMA
