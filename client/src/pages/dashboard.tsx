@@ -459,7 +459,7 @@ export default function Dashboard() {
 
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 flex overflow-hidden">
-             <div className={`flex-1 overflow-y-auto border-r bg-background w-full ${activeSection === "design" ? "md:min-w-[300px] md:max-w-[420px]" : ""} ${["team-members", "team-templates", "contacts", "billing", "menu-setup"].includes(activeSection) ? "md:max-w-none" : ""}`}>
+             <div className={`flex-1 overflow-y-auto border-r bg-background w-full ${activeSection === "design" ? "md:min-w-[300px] md:max-w-[420px]" : ""} ${activeSection === "menu-setup" ? "md:min-w-[300px] md:max-w-[420px]" : ""} ${["team-members", "team-templates", "contacts", "billing"].includes(activeSection) ? "md:max-w-none" : ""}`}>
               {activeSection === "billing" && <BillingSection />}
               {activeSection === "menu-setup" && <MenuBuilder />}
               {activeSection === "design" && (
@@ -836,6 +836,45 @@ export default function Dashboard() {
                   currentPage={currentPage || null}
                   mode={previewMode}
                 />
+              </div>
+            </div>
+
+            {/* Menu Preview Panel */}
+            <div className={`${activeSection === "menu-setup" ? "hidden md:flex" : "hidden"} flex-1 bg-muted/30 items-center justify-center p-6`}>
+              <div className="flex flex-col items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setPreviewMode("mobile")}
+                    className={`toggle-elevate ${previewMode === "mobile" ? "toggle-elevated" : ""}`}
+                  >
+                    <Smartphone className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setPreviewMode("desktop")}
+                    className={`toggle-elevate ${previewMode === "desktop" ? "toggle-elevated" : ""}`}
+                  >
+                    <Monitor className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => window.open(`/${user.username}/menu`, "_blank")}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </Button>
+                </div>
+                <div className={`bg-background rounded-2xl shadow-lg overflow-hidden border ${previewMode === "mobile" ? "w-[375px]" : "w-full max-w-[800px]"}`} style={{ height: "70vh" }}>
+                  <iframe
+                    src={`/${user.username}/menu`}
+                    className="w-full h-full border-0"
+                    title="Menu Preview"
+                    key={`menu-preview-${previewMode}`}
+                  />
+                </div>
               </div>
             </div>
 
