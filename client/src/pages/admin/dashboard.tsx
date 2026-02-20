@@ -781,131 +781,155 @@ export default function AdminDashboard() {
                 </CardContent>
               </Card>
 
-              {/* Summary cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                  { label: "Total Revenue", value: stats ? `₹${stats.totalRevenue.toLocaleString()}` : "–", sub: "All time", icon: IndianRupee, color: "text-green-500" },
-                  { label: "Conversion Rate", value: stats && stats.totalUsers > 0 ? `${((stats.activeSubscriptions / stats.totalUsers) * 100).toFixed(1)}%` : "–", sub: "Paid / Total users", icon: TrendingUp, color: "text-blue-500" },
-                  { label: "Payment Success Rate", value: stats && stats.totalPayments > 0 ? `${((stats.successfulPayments / stats.totalPayments) * 100).toFixed(1)}%` : "–", sub: "Successful payments", icon: Check, color: "text-emerald-500" },
-                  { label: "Active Subscribers", value: stats?.activeSubscriptions ?? "–", sub: "Currently active", icon: Star, color: "text-purple-500" },
-                ].map((s) => (
-                  <Card key={s.label}>
-                    <CardContent className="pt-6">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="text-sm text-muted-foreground">{s.label}</p>
-                          <p className="text-2xl font-bold text-foreground mt-1">{s.value}</p>
-                          <p className="text-xs text-muted-foreground mt-1">{s.sub}</p>
-                        </div>
-                        <div className={`h-9 w-9 rounded-full bg-muted flex items-center justify-center ${s.color}`}>
-                          <s.icon className="h-4 w-4" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              {/* Summary cards — computed from filtered payments */}
+              {(() => {
+                const filtered = adminPayments.filter((p) => {
+                  if (reportStatus !== "all" && p.status !== reportStatus) return false;
+                  if (reportPlanId !== "all") {
+                    const matchPlan = plans.find((pl) => pl.id === reportPlanId);
+                    if (matchPlan && p.planName !== matchPlan.name) return false;
+                  }
+                  if (reportStartDate && new Date(p.createdAt) < new Date(reportStartDate)) return false;
+                  if (reportEndDate && new Date(p.createdAt) > new Date(reportEndDate + "T23:59:59")) return false;
+                  return true;
+                });
+                const filteredRevenue = filtered.filter(p => p.status === "success").reduce((sum, p) => sum + parseFloat(p.amount), 0);
+                const filteredTotal = filtered.length;
+                const filteredSuccess = filtered.filter(p => p.status === "success").length;
+                const filteredPending = filtered.filter(p => p.status === "pending").length;
+                const filteredFailed = filtered.filter(p => p.status === "failed").length;
+                const hasFilters = reportStartDate || reportEndDate || reportStatus !== "all" || reportPlanId !== "all";
+                const subLabel = hasFilters ? "Filtered" : "All time";
 
-              {/* User breakdown */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card>
-                  <CardHeader><CardTitle className="text-base">User Breakdown</CardTitle></CardHeader>
-                  <CardContent className="space-y-3">
-                    {[
-                      { label: "Personal accounts", value: adminUsers.filter(u => u.accountType === "personal").length, color: "bg-blue-500" },
-                      { label: "Team accounts", value: adminUsers.filter(u => u.accountType === "team").length, color: "bg-purple-500" },
-                      { label: "Disabled accounts", value: adminUsers.filter(u => u.isDisabled).length, color: "bg-red-400" },
-                    ].map((row) => (
-                      <div key={row.label} className="flex items-center gap-3">
-                        <div className={`h-2.5 w-2.5 rounded-full ${row.color}`} />
-                        <span className="text-sm text-muted-foreground flex-1">{row.label}</span>
-                        <span className="font-semibold text-foreground">{row.value}</span>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader><CardTitle className="text-base">Payment Summary</CardTitle></CardHeader>
-                  <CardContent className="space-y-3">
-                    {[
-                      { label: "Successful", value: adminPayments.filter(p => p.status === "success").length, color: "bg-green-500" },
-                      { label: "Pending", value: adminPayments.filter(p => p.status === "pending").length, color: "bg-yellow-400" },
-                      { label: "Failed", value: adminPayments.filter(p => p.status === "failed").length, color: "bg-red-500" },
-                    ].map((row) => (
-                      <div key={row.label} className="flex items-center gap-3">
-                        <div className={`h-2.5 w-2.5 rounded-full ${row.color}`} />
-                        <span className="text-sm text-muted-foreground flex-1">{row.label}</span>
-                        <span className="font-semibold text-foreground">{row.value}</span>
-                      </div>
-                    ))}
-                    <div className="pt-2 border-t">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-foreground">Total Collected</span>
-                        <span className="font-bold text-foreground">₹{stats?.totalRevenue.toLocaleString() ?? "–"}</span>
-                      </div>
+                return (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {[
+                        { label: "Total Revenue", value: `₹${filteredRevenue.toLocaleString()}`, sub: subLabel, icon: IndianRupee, color: "text-green-500" },
+                        { label: "Conversion Rate", value: stats && stats.totalUsers > 0 ? `${((stats.activeSubscriptions / stats.totalUsers) * 100).toFixed(1)}%` : "–", sub: "Paid / Total users", icon: TrendingUp, color: "text-blue-500" },
+                        { label: "Payment Success Rate", value: filteredTotal > 0 ? `${((filteredSuccess / filteredTotal) * 100).toFixed(1)}%` : "–", sub: "Successful payments", icon: Check, color: "text-emerald-500" },
+                        { label: "Active Subscribers", value: stats?.activeSubscriptions ?? "–", sub: "Currently active", icon: Star, color: "text-purple-500" },
+                      ].map((s) => (
+                        <Card key={s.label}>
+                          <CardContent className="pt-6">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <p className="text-sm text-muted-foreground">{s.label}</p>
+                                <p className="text-2xl font-bold text-foreground mt-1">{s.value}</p>
+                                <p className="text-xs text-muted-foreground mt-1">{s.sub}</p>
+                              </div>
+                              <div className={`h-9 w-9 rounded-full bg-muted flex items-center justify-center ${s.color}`}>
+                                <s.icon className="h-4 w-4" />
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
 
-              {/* Plan-wise breakdown */}
-              <Card>
-                <CardHeader><CardTitle className="text-base">Plan-wise Revenue</CardTitle></CardHeader>
-                <CardContent className="space-y-3">
-                  {plans.filter(p => p.isActive).map((plan) => {
-                    const planPayments = adminPayments.filter(p => p.planName === plan.name && p.status === "success");
-                    const planRevenue = planPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
-                    return (
-                      <div key={plan.id} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Package className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm text-foreground">{plan.name}</span>
-                          <Badge variant="outline" className="text-xs">{planPayments.length} payments</Badge>
-                        </div>
-                        <span className="font-semibold text-foreground">₹{planRevenue.toLocaleString()}</span>
-                      </div>
-                    );
-                  })}
-                  {plans.filter(p => p.isActive).length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center">No active plans</p>
-                  )}
-                </CardContent>
-              </Card>
+                    {/* User breakdown */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Card>
+                        <CardHeader><CardTitle className="text-base">User Breakdown</CardTitle></CardHeader>
+                        <CardContent className="space-y-3">
+                          {[
+                            { label: "Personal accounts", value: adminUsers.filter(u => u.accountType === "personal").length, color: "bg-blue-500" },
+                            { label: "Team accounts", value: adminUsers.filter(u => u.accountType === "team").length, color: "bg-purple-500" },
+                            { label: "Disabled accounts", value: adminUsers.filter(u => u.isDisabled).length, color: "bg-red-400" },
+                          ].map((row) => (
+                            <div key={row.label} className="flex items-center gap-3">
+                              <div className={`h-2.5 w-2.5 rounded-full ${row.color}`} />
+                              <span className="text-sm text-muted-foreground flex-1">{row.label}</span>
+                              <span className="font-semibold text-foreground">{row.value}</span>
+                            </div>
+                          ))}
+                        </CardContent>
+                      </Card>
 
-              {/* Recent payments table */}
-              <Card>
-                <CardHeader><CardTitle className="text-base">Recent Transactions</CardTitle></CardHeader>
-                <CardContent className="p-0">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b bg-muted/50">
-                          <th className="text-left p-3 font-medium text-muted-foreground">User</th>
-                          <th className="text-left p-3 font-medium text-muted-foreground">Plan</th>
-                          <th className="text-left p-3 font-medium text-muted-foreground">Amount</th>
-                          <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
-                          <th className="text-left p-3 font-medium text-muted-foreground">Date</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {adminPayments.slice(0, 10).map((p) => (
-                          <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
-                            <td className="p-3"><div className="font-medium text-foreground">{p.username ?? "—"}</div></td>
-                            <td className="p-3 text-muted-foreground">{p.planName ?? "—"}</td>
-                            <td className="p-3 font-medium text-foreground">₹{parseFloat(p.amount).toLocaleString()}</td>
-                            <td className="p-3"><StatusBadge status={p.status} /></td>
-                            <td className="p-3 text-muted-foreground text-xs">{new Date(p.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
-                          </tr>
-                        ))}
-                        {adminPayments.length === 0 && (
-                          <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No transactions yet</td></tr>
+                      <Card>
+                        <CardHeader><CardTitle className="text-base">Payment Summary</CardTitle></CardHeader>
+                        <CardContent className="space-y-3">
+                          {[
+                            { label: "Successful", value: filteredSuccess, color: "bg-green-500" },
+                            { label: "Pending", value: filteredPending, color: "bg-yellow-400" },
+                            { label: "Failed", value: filteredFailed, color: "bg-red-500" },
+                          ].map((row) => (
+                            <div key={row.label} className="flex items-center gap-3">
+                              <div className={`h-2.5 w-2.5 rounded-full ${row.color}`} />
+                              <span className="text-sm text-muted-foreground flex-1">{row.label}</span>
+                              <span className="font-semibold text-foreground">{row.value}</span>
+                            </div>
+                          ))}
+                          <div className="pt-2 border-t">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-foreground">Total Collected</span>
+                              <span className="font-bold text-foreground">₹{filteredRevenue.toLocaleString()}</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Plan-wise breakdown */}
+                    <Card>
+                      <CardHeader><CardTitle className="text-base">Plan-wise Revenue</CardTitle></CardHeader>
+                      <CardContent className="space-y-3">
+                        {plans.filter(p => p.isActive).map((plan) => {
+                          const planPayments = filtered.filter(p => p.planName === plan.name && p.status === "success");
+                          const planRevenue = planPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+                          return (
+                            <div key={plan.id} className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Package className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-sm text-foreground">{plan.name}</span>
+                                <Badge variant="outline" className="text-xs">{planPayments.length} payments</Badge>
+                              </div>
+                              <span className="font-semibold text-foreground">₹{planRevenue.toLocaleString()}</span>
+                            </div>
+                          );
+                        })}
+                        {plans.filter(p => p.isActive).length === 0 && (
+                          <p className="text-sm text-muted-foreground text-center">No active plans</p>
                         )}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
+                      </CardContent>
+                    </Card>
+
+                    {/* Recent payments table */}
+                    <Card>
+                      <CardHeader><CardTitle className="text-base">Recent Transactions</CardTitle></CardHeader>
+                      <CardContent className="p-0">
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b bg-muted/50">
+                                <th className="text-left p-3 font-medium text-muted-foreground">User</th>
+                                <th className="text-left p-3 font-medium text-muted-foreground">Plan</th>
+                                <th className="text-left p-3 font-medium text-muted-foreground">Amount</th>
+                                <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
+                                <th className="text-left p-3 font-medium text-muted-foreground">Date</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filtered.slice(0, 10).map((p) => (
+                                <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
+                                  <td className="p-3"><div className="font-medium text-foreground">{p.username ?? "—"}</div></td>
+                                  <td className="p-3 text-muted-foreground">{p.planName ?? "—"}</td>
+                                  <td className="p-3 font-medium text-foreground">₹{parseFloat(p.amount).toLocaleString()}</td>
+                                  <td className="p-3"><StatusBadge status={p.status} /></td>
+                                  <td className="p-3 text-muted-foreground text-xs">{new Date(p.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                                </tr>
+                              ))}
+                              {filtered.length === 0 && (
+                                <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No transactions match the filters</td></tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
+                );
+              })()}
             </div>
           )}
 
