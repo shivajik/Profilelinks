@@ -1531,6 +1531,48 @@ export async function registerRoutes(
     res.json({ message: "Deleted" });
   });
 
+  // ── Public Menu Endpoint ────────────────────────────────────────────────────
+  app.get("/api/menu/:username", async (req, res) => {
+    try {
+      const user = await storage.getUserByUsername(req.params.username);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const sections = await storage.getMenuSectionsByUserId(user.id);
+      const activeSections = sections.filter(s => s.active);
+      
+      const products = await storage.getMenuProductsByUserId(user.id);
+      const activeProducts = products.filter(p => p.active);
+
+      const { password: _, email: __, ...publicUser } = user;
+
+      // Get team branding if applicable
+      let teamBranding: any = null;
+      if (user.accountType === "team" && user.teamId) {
+        const team = await storage.getTeam(user.teamId);
+        const templates = await storage.getTeamTemplates(user.teamId);
+        const defaultTemplate = templates.find(t => t.isDefault) || templates[0];
+        const tData: any = defaultTemplate?.templateData || {};
+        teamBranding = {
+          companyLogo: team?.logoUrl || tData.companyLogo,
+          companyName: tData.companyName || team?.name,
+          themeColor: tData.themeColor,
+        };
+      }
+
+      res.json({
+        user: publicUser,
+        sections: activeSections,
+        products: activeProducts,
+        teamBranding,
+      });
+    } catch (error: any) {
+      console.error("Public menu load error:", error);
+      res.status(500).json({ message: "Failed to load menu" });
+    }
+  });
+
   // Register admin and payment routes
   app.use(adminRouter);
   app.use(paymentRouter);

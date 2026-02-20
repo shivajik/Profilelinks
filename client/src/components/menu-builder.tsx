@@ -35,8 +35,15 @@ import {
   Shield,
   ImageIcon,
   Upload,
+  Copy,
+  Check,
+  QrCode,
+  ExternalLink,
+  Eye,
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { QRCodeSVG } from "qrcode.react";
+import { getTemplate } from "@/lib/templates";
 
 interface MenuSection {
   id: string;
@@ -245,6 +252,9 @@ export function MenuBuilder() {
 
   return (
     <div className="p-4 space-y-4 max-w-2xl">
+      {/* Menu Link + QR Code Panel */}
+      <MenuLinkPanel username={user!.username} template={user!.template} />
+
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold">Menu Builder</h2>
@@ -449,5 +459,118 @@ export function MenuBuilder() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function MenuLinkPanel({ username, template: templateId }: { username: string; template: string | null }) {
+  const [copied, setCopied] = useState(false);
+  const [showQr, setShowQr] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const menuUrl = `${window.location.origin}/${username}/menu`;
+  const template = getTemplate(templateId);
+  const brandColor = template.accent;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(menuUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <>
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold">Menu Link & QR Code</h3>
+            <div className="flex gap-1">
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowPreview(true)}>
+                <Eye className="w-3.5 h-3.5" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.open(menuUrl, "_blank")}>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 bg-muted rounded-md px-3 py-2 mb-3">
+            <span className="text-xs text-muted-foreground truncate flex-1">{menuUrl}</span>
+            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={handleCopy}>
+              {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+            </Button>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="flex-1" onClick={() => setShowQr(true)}>
+              <QrCode className="w-3.5 h-3.5 mr-1" /> View QR Code
+            </Button>
+            <Button variant="outline" size="sm" className="flex-1" onClick={handleCopy}>
+              <Copy className="w-3.5 h-3.5 mr-1" /> Copy Link
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* QR Code Dialog */}
+      <Dialog open={showQr} onOpenChange={setShowQr}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="text-center">Menu QR Code</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-4">
+            <div className="bg-white p-4 rounded-xl shadow-sm">
+              <QRCodeSVG
+                id="menu-qr-code"
+                value={menuUrl}
+                size={200}
+                fgColor={brandColor}
+                level="M"
+                includeMargin={false}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground text-center">
+              Print or share this QR code so customers can scan to view your menu
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => {
+                const svg = document.getElementById("menu-qr-code");
+                if (!svg) return;
+                const svgData = new XMLSerializer().serializeToString(svg);
+                const canvas = document.createElement("canvas");
+                canvas.width = 400;
+                canvas.height = 400;
+                const ctx = canvas.getContext("2d");
+                const img = new Image();
+                img.onload = () => {
+                  ctx?.drawImage(img, 0, 0, 400, 400);
+                  const a = document.createElement("a");
+                  a.download = `${username}-menu-qr.png`;
+                  a.href = canvas.toDataURL("image/png");
+                  a.click();
+                };
+                img.src = "data:image/svg+xml;base64," + btoa(svgData);
+              }}>
+                Download PNG
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleCopy}>
+                {copied ? <Check className="w-3.5 h-3.5 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
+                Copy Link
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Preview Dialog */}
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent className="max-w-md p-0 overflow-hidden max-h-[85vh]">
+          <div className="overflow-y-auto max-h-[85vh]">
+            <iframe
+              src={menuUrl}
+              className="w-full border-0"
+              style={{ height: "80vh" }}
+              title="Menu Preview"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

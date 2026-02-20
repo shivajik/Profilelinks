@@ -9,6 +9,7 @@ import AuthPage from "@/pages/auth";
 import Dashboard from "@/pages/dashboard";
 import Onboarding from "@/pages/onboarding";
 import PublicProfile from "@/pages/profile";
+import PublicMenu from "@/pages/public-menu";
 import InviteAccept from "@/pages/invite";
 import NotFound from "@/pages/not-found";
 import AdminLogin from "@/pages/admin/login";
@@ -32,6 +33,7 @@ function Router() {
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin/dashboard" component={AdminDashboard} />
       <Route path="/invite/:token" component={InviteAccept} />
+      <Route path="/:username/menu" component={PublicMenu} />
       <Route path="/:username" component={PublicProfile} />
       <Route component={NotFound} />
     </Switch>
