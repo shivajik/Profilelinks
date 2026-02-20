@@ -1,5 +1,5 @@
 import { db } from "./storage";
-import { userSubscriptions, pricingPlans, links, pages, blocks, socials, teamMembers } from "@shared/schema";
+import { userSubscriptions, pricingPlans, links, pages, blocks, socials, teamMembers, menuSocials } from "@shared/schema";
 import { eq, and, sql, count } from "drizzle-orm";
 
 export interface PlanLimits {
@@ -70,11 +70,12 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
   const limits = plan || FREE_LIMITS;
 
   // Get all current usage counts in parallel
-  const [linksResult, pagesResult, blocksResult, socialsResult] = await Promise.all([
+  const [linksResult, pagesResult, blocksResult, socialsResult, menuSocialsResult] = await Promise.all([
     db.select({ count: count() }).from(links).where(eq(links.userId, userId)),
     db.select({ count: count() }).from(pages).where(eq(pages.userId, userId)),
     db.select({ count: count() }).from(blocks).where(eq(blocks.userId, userId)),
     db.select({ count: count() }).from(socials).where(eq(socials.userId, userId)),
+    db.select({ count: count() }).from(menuSocials).where(eq(menuSocials.userId, userId)),
   ]);
 
   // Team members count (if user has a team)
@@ -101,7 +102,7 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
     currentLinks: Number(linksResult[0]?.count ?? 0),
     currentPages: Number(pagesResult[0]?.count ?? 0),
     currentBlocks: Number(blocksResult[0]?.count ?? 0),
-    currentSocials: Number(socialsResult[0]?.count ?? 0),
+    currentSocials: Number(socialsResult[0]?.count ?? 0) + Number(menuSocialsResult[0]?.count ?? 0),
     currentTeamMembers: teamMembersCount,
     hasActivePlan,
   };

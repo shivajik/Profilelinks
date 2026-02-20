@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { QRCodeSVG } from "qrcode.react";
 import { Loader2, Copy, Check, ChevronDown, ChevronRight, Package, QrCode, Phone, Mail, MapPin, Globe, Clock, MessageCircle } from "lucide-react";
+import { SocialIcon } from "@/components/social-icon";
 
 
 interface MenuSection {
@@ -182,7 +183,7 @@ export default function PublicMenu() {
               <a key={social.id} href={social.url} target="_blank" rel="noopener noreferrer"
                 className={`w-9 h-9 rounded-full flex items-center justify-center transition-opacity hover:opacity-80 ${template.cardBg}`}
                 style={{ color: brandColor }}>
-                <SocialIconSmall platform={social.platform} />
+                <SocialIcon platform={social.platform} className="w-4 h-4" />
               </a>
             ))}
           </div>
@@ -337,11 +338,3 @@ export default function PublicMenu() {
   );
 }
 
-function SocialIconSmall({ platform }: { platform: string }) {
-  // Simple inline icon based on platform name
-  const icons: Record<string, string> = {
-    twitter: "𝕏", instagram: "📷", linkedin: "in", github: "⌨", facebook: "f",
-    youtube: "▶", tiktok: "♪", pinterest: "📌", snapchat: "👻", telegram: "✈",
-  };
-  return <span className="text-xs font-bold">{icons[platform] || platform.charAt(0).toUpperCase()}</span>;
-}

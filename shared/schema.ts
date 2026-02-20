@@ -30,6 +30,15 @@ export const users = pgTable("users", {
   menuWebsite: text("menu_website"),
 });
 
+// ── Menu Social Links ──────────────────────────────────────────────────────
+export const menuSocials = pgTable("menu_socials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  platform: text("platform").notNull(),
+  url: text("url").notNull(),
+  position: integer("position").notNull().default(0),
+});
+
 // ── Menu Opening Hours ──────────────────────────────────────────────────────
 export const menuOpeningHours = pgTable("menu_opening_hours", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -458,6 +467,18 @@ export type InsertMenuSection = z.infer<typeof insertMenuSectionSchema>;
 export type MenuProduct = typeof menuProducts.$inferSelect;
 export type InsertMenuProduct = z.infer<typeof insertMenuProductSchema>;
 export type MenuOpeningHour = typeof menuOpeningHours.$inferSelect;
+export type MenuSocial = typeof menuSocials.$inferSelect;
+export type InsertMenuSocial = z.infer<typeof insertMenuSocialSchema>;
+
+export const insertMenuSocialSchema = createInsertSchema(menuSocials).omit({ id: true });
+export const createMenuSocialSchema = z.object({
+  platform: z.string().min(1, "Platform is required"),
+  url: z.string().default(""),
+});
+export const updateMenuSocialSchema = z.object({
+  url: z.string().min(1).optional(),
+  position: z.number().int().min(0).optional(),
+});
 
 // =============================================
 // ADMIN + PRICING + PAYMENTS SCHEMA

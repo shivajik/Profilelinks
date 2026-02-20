@@ -24,6 +24,13 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Plus,
   Pencil,
   Trash2,
@@ -44,10 +51,13 @@ import {
   User as UserIcon,
   Phone,
   Clock,
+  Share2,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { QRCodeSVG } from "qrcode.react";
 import { getTemplate, TEMPLATES } from "@/lib/templates";
+import { SOCIAL_PLATFORMS } from "@/lib/social-platforms";
+import { SocialIcon } from "@/components/social-icon";
 
 interface MenuSection {
   id: string;
@@ -486,8 +496,14 @@ function MenuAppearancePanel() {
     menuWhatsapp: string | null;
     menuWebsite: string | null;
     openingHours: { id: string; dayOfWeek: number; openTime: string | null; closeTime: string | null; isClosed: boolean }[];
+    menuSocials: { id: string; platform: string; url: string; position: number }[];
   }>({
     queryKey: ["/api/menu/settings"],
+  });
+
+  // Menu Socials
+  const { data: menuSocials = [] } = useQuery<{ id: string; platform: string; url: string; position: number }[]>({
+    queryKey: ["/api/menu/socials"],
   });
 
   const [menuTemplate, setMenuTemplate] = useState<string | null>(null);
@@ -550,6 +566,50 @@ function MenuAppearancePanel() {
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
+
+  // Menu social link mutations
+  const [newSocialPlatform, setNewSocialPlatform] = useState("");
+  const [newSocialUrl, setNewSocialUrl] = useState("");
+  const [editingSocial, setEditingSocial] = useState<{ id: string; url: string } | null>(null);
+
+  const addSocialMutation = useMutation({
+    mutationFn: async (data: { platform: string; url: string }) => {
+      await apiRequest("POST", "/api/menu/socials", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/menu/socials"] });
+      setNewSocialPlatform("");
+      setNewSocialUrl("");
+      toast({ title: "Social link added!" });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const updateSocialMutation = useMutation({
+    mutationFn: async ({ id, url }: { id: string; url: string }) => {
+      await apiRequest("PATCH", `/api/menu/socials/${id}`, { url });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/menu/socials"] });
+      setEditingSocial(null);
+      toast({ title: "Social link updated!" });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const deleteSocialMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/menu/socials/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/menu/socials"] });
+      toast({ title: "Social link removed!" });
+    },
+  });
+
+  const availablePlatforms = SOCIAL_PLATFORMS.filter(
+    p => !menuSocials.some(s => s.platform === p.id)
+  );
 
   const handleSave = () => {
     saveMutation.mutate({
@@ -703,6 +763,95 @@ function MenuAppearancePanel() {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Menu Social Links */}
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                <Share2 className="w-4 h-4 text-primary" /> Menu Social Links
+              </h4>
+              <p className="text-xs text-muted-foreground mb-3">
+                Add social links specific to your menu (e.g., restaurant Instagram, Google Maps). These are separate from your portfolio social links.
+              </p>
+
+              {/* Existing menu socials */}
+              {menuSocials.length > 0 && (
+                <div className="space-y-2 mb-3">
+                  {menuSocials.map((social) => {
+                    const platform = SOCIAL_PLATFORMS.find(p => p.id === social.platform);
+                    return (
+                      <div key={social.id} className="flex items-center gap-2 p-2 rounded-md border bg-background">
+                        <SocialIcon platform={social.platform} className="w-4 h-4 shrink-0" />
+                        <span className="text-xs font-medium w-20 shrink-0">{platform?.name || social.platform}</span>
+                        {editingSocial?.id === social.id ? (
+                          <>
+                            <Input
+                              value={editingSocial.url}
+                              onChange={(e) => setEditingSocial({ ...editingSocial, url: e.target.value })}
+                              className="h-7 text-xs flex-1"
+                              placeholder={platform?.placeholder}
+                            />
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateSocialMutation.mutate({ id: social.id, url: editingSocial.url })}>
+                              <Check className="w-3 h-3" />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-xs text-muted-foreground truncate flex-1">{social.url || "No URL set"}</span>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingSocial({ id: social.id, url: social.url })}>
+                              <Pencil className="w-3 h-3" />
+                            </Button>
+                          </>
+                        )}
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteSocialMutation.mutate(social.id)}>
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Add new social */}
+              {availablePlatforms.length > 0 && (
+                <div className="flex items-end gap-2">
+                  <div className="flex-1">
+                    <Label className="text-xs">Platform</Label>
+                    <Select value={newSocialPlatform} onValueChange={setNewSocialPlatform}>
+                      <SelectTrigger className="h-8 text-xs mt-1">
+                        <SelectValue placeholder="Select platform" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availablePlatforms.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            <span className="flex items-center gap-2">
+                              <SocialIcon platform={p.id} className="w-3.5 h-3.5" />
+                              {p.name}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex-1">
+                    <Label className="text-xs">URL</Label>
+                    <Input
+                      value={newSocialUrl}
+                      onChange={(e) => setNewSocialUrl(e.target.value)}
+                      placeholder={SOCIAL_PLATFORMS.find(p => p.id === newSocialPlatform)?.placeholder || "https://..."}
+                      className="h-8 text-xs mt-1"
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    className="h-8"
+                    disabled={!newSocialPlatform || addSocialMutation.isPending}
+                    onClick={() => addSocialMutation.mutate({ platform: newSocialPlatform, url: newSocialUrl })}
+                  >
+                    {addSocialMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* Template Picker */}

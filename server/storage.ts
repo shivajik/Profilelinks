@@ -16,6 +16,7 @@ import {
   menuSections,
   menuProducts,
   menuOpeningHours,
+  menuSocials,
   type User,
   type InsertUser,
   type Link,
@@ -41,6 +42,8 @@ import {
   type MenuProduct,
   type InsertMenuProduct,
   type MenuOpeningHour,
+  type MenuSocial,
+  type InsertMenuSocial,
 } from "@shared/schema";
 import "dotenv/config";
 
@@ -113,6 +116,14 @@ pool.query(`
     open_time text,
     close_time text,
     is_closed boolean NOT NULL DEFAULT false
+  );
+
+  CREATE TABLE IF NOT EXISTS menu_socials (
+    id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    platform text NOT NULL,
+    url text NOT NULL,
+    position integer NOT NULL DEFAULT 0
   );
 `).catch(() => {/* Columns/tables may already exist */});
 
@@ -200,6 +211,12 @@ export interface IStorage {
   // Opening Hours
   getOpeningHoursByUserId(userId: string): Promise<MenuOpeningHour[]>;
   upsertOpeningHours(userId: string, hours: { dayOfWeek: number; openTime: string | null; closeTime: string | null; isClosed: boolean }[]): Promise<MenuOpeningHour[]>;
+
+  // Menu Socials
+  getMenuSocialsByUserId(userId: string): Promise<MenuSocial[]>;
+  createMenuSocial(social: InsertMenuSocial & { userId: string }): Promise<MenuSocial>;
+  updateMenuSocial(id: string, userId: string, data: Partial<Pick<MenuSocial, "url" | "position">>): Promise<MenuSocial | undefined>;
+  deleteMenuSocial(id: string, userId: string): Promise<boolean>;
 
   recordAnalyticsEvent(data: { userId: string; eventType: string; blockId?: string; pageSlug?: string; referrer?: string }): Promise<void>;
   getAnalyticsSummary(userId: string): Promise<{
@@ -819,6 +836,32 @@ export class DatabaseStorage implements IStorage {
     const rows = hours.map(h => ({ userId, dayOfWeek: h.dayOfWeek, openTime: h.openTime, closeTime: h.closeTime, isClosed: h.isClosed }));
     const created = await db.insert(menuOpeningHours).values(rows).returning();
     return created;
+  }
+
+  // ── Menu Socials ──────────────────────────────────────────────────────────
+  async getMenuSocialsByUserId(userId: string): Promise<MenuSocial[]> {
+    return db.select().from(menuSocials).where(eq(menuSocials.userId, userId)).orderBy(asc(menuSocials.position));
+  }
+
+  async createMenuSocial(social: InsertMenuSocial & { userId: string }): Promise<MenuSocial> {
+    const existing = await this.getMenuSocialsByUserId(social.userId);
+    const maxPos = existing.length > 0 ? Math.max(...existing.map((s) => s.position)) : -1;
+    const [created] = await db.insert(menuSocials).values({ ...social, position: maxPos + 1 }).returning();
+    return created;
+  }
+
+  async updateMenuSocial(id: string, userId: string, data: Partial<Pick<MenuSocial, "url" | "position">>): Promise<MenuSocial | undefined> {
+    const [existing] = await db.select().from(menuSocials).where(eq(menuSocials.id, id));
+    if (!existing || existing.userId !== userId) return undefined;
+    const [updated] = await db.update(menuSocials).set(data).where(eq(menuSocials.id, id)).returning();
+    return updated;
+  }
+
+  async deleteMenuSocial(id: string, userId: string): Promise<boolean> {
+    const [existing] = await db.select().from(menuSocials).where(eq(menuSocials.id, id));
+    if (!existing || existing.userId !== userId) return false;
+    await db.delete(menuSocials).where(eq(menuSocials.id, id));
+    return true;
   }
 }
 

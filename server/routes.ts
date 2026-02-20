@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import session from "express-session";
 import { storage } from "./storage";
 import bcrypt from "bcryptjs";
-import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema, createPageSchema, updatePageSchema, createBlockSchema, updateBlockSchema, changePasswordSchema, deleteAccountSchema, createTeamSchema, updateTeamSchema, updateTeamMemberSchema, createTeamInviteSchema, createTeamMemberSchema, createTeamTemplateSchema, updateTeamTemplateSchema, createContactSchema, updateContactSchema, createMenuSectionSchema, updateMenuSectionSchema, createMenuProductSchema, updateMenuProductSchema, updateMenuSettingsSchema, upsertOpeningHoursSchema } from "@shared/schema";
+import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema, createPageSchema, updatePageSchema, createBlockSchema, updateBlockSchema, changePasswordSchema, deleteAccountSchema, createTeamSchema, updateTeamSchema, updateTeamMemberSchema, createTeamInviteSchema, createTeamMemberSchema, createTeamTemplateSchema, updateTeamTemplateSchema, createContactSchema, updateContactSchema, createMenuSectionSchema, updateMenuSectionSchema, createMenuProductSchema, updateMenuProductSchema, updateMenuSettingsSchema, upsertOpeningHoursSchema, createMenuSocialSchema, updateMenuSocialSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import connectPgSimple from "connect-pg-simple";
 import pg from "pg";
@@ -1453,7 +1453,10 @@ export async function registerRoutes(
     try {
       const user = await storage.getUser(req.session.userId!);
       if (!user) return res.status(404).json({ message: "User not found" });
-      const openingHours = await storage.getOpeningHoursByUserId(req.session.userId!);
+      const [openingHours, menuSocialLinks] = await Promise.all([
+        storage.getOpeningHoursByUserId(req.session.userId!),
+        storage.getMenuSocialsByUserId(req.session.userId!),
+      ]);
       res.json({
         menuTemplate: user.menuTemplate,
         menuDisplayName: user.menuDisplayName,
@@ -1467,6 +1470,7 @@ export async function registerRoutes(
         menuWhatsapp: user.menuWhatsapp,
         menuWebsite: user.menuWebsite,
         openingHours,
+        menuSocials: menuSocialLinks,
       });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to fetch menu settings" });
@@ -1592,6 +1596,46 @@ export async function registerRoutes(
     res.json({ message: "Deleted" });
   });
 
+  // ── Menu Social Links ─────────────────────────────────────────────────────
+  app.get("/api/menu/socials", requireAuth, async (req, res) => {
+    const menuSocialsList = await storage.getMenuSocialsByUserId(req.session.userId!);
+    res.json(menuSocialsList);
+  });
+
+  app.post("/api/menu/socials", requireAuth, async (req, res) => {
+    try {
+      const result = createMenuSocialSchema.safeParse(req.body);
+      if (!result.success) return res.status(400).json({ message: fromZodError(result.error).message });
+      // Enforce combined social limit
+      const limits = await getUserPlanLimits(req.session.userId!);
+      if (limits.currentSocials >= limits.maxSocials) {
+        return res.status(403).json({ message: `Social link limit reached (${limits.maxSocials}). Upgrade your plan to add more.` });
+      }
+      const social = await storage.createMenuSocial({ ...result.data, userId: req.session.userId! });
+      res.status(201).json(social);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to create menu social" });
+    }
+  });
+
+  app.patch("/api/menu/socials/:id", requireAuth, async (req, res) => {
+    try {
+      const result = updateMenuSocialSchema.safeParse(req.body);
+      if (!result.success) return res.status(400).json({ message: fromZodError(result.error).message });
+      const updated = await storage.updateMenuSocial(req.params.id as string, req.session.userId!, result.data);
+      if (!updated) return res.status(404).json({ message: "Menu social not found" });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to update menu social" });
+    }
+  });
+
+  app.delete("/api/menu/socials/:id", requireAuth, async (req, res) => {
+    const deleted = await storage.deleteMenuSocial(req.params.id as string, req.session.userId!);
+    if (!deleted) return res.status(404).json({ message: "Menu social not found" });
+    res.json({ message: "Deleted" });
+  });
+
   // ── Public Menu Endpoint ────────────────────────────────────────────────────
   app.get("/api/menu/:username", async (req, res) => {
     try {
@@ -1600,11 +1644,11 @@ export async function registerRoutes(
         return res.status(404).json({ message: "User not found" });
       }
 
-      const [sections, products, openingHours, userSocials] = await Promise.all([
+      const [sections, products, openingHours, menuSocialLinks] = await Promise.all([
         storage.getMenuSectionsByUserId(user.id),
         storage.getMenuProductsByUserId(user.id),
         storage.getOpeningHoursByUserId(user.id),
-        storage.getSocialsByUserId(user.id),
+        storage.getMenuSocialsByUserId(user.id),
       ]);
       const activeSections = sections.filter(s => s.active);
       const activeProducts = products.filter(p => p.active);
@@ -1643,7 +1687,7 @@ export async function registerRoutes(
         sections: activeSections,
         products: activeProducts,
         openingHours,
-        socials: userSocials,
+        socials: menuSocialLinks,
         teamBranding,
       });
     } catch (error: any) {
