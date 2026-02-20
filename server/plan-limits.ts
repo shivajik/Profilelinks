@@ -12,6 +12,7 @@ export interface PlanLimits {
   qrCodeEnabled: boolean;
   analyticsEnabled: boolean;
   customTemplatesEnabled: boolean;
+  menuBuilderEnabled: boolean;
   currentLinks: number;
   currentPages: number;
   currentBlocks: number;
@@ -30,6 +31,7 @@ const FREE_LIMITS = {
   qrCodeEnabled: false,
   analyticsEnabled: false,
   customTemplatesEnabled: false,
+  menuBuilderEnabled: false,
 };
 
 // Simple in-memory cache to avoid redundant DB queries within same request cycle
@@ -55,6 +57,7 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
       qrCodeEnabled: pricingPlans.qrCodeEnabled,
       analyticsEnabled: pricingPlans.analyticsEnabled,
       customTemplatesEnabled: pricingPlans.customTemplatesEnabled,
+      menuBuilderEnabled: pricingPlans.menuBuilderEnabled,
     })
     .from(userSubscriptions)
     .innerJoin(pricingPlans, eq(userSubscriptions.planId, pricingPlans.id))
@@ -94,6 +97,7 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
     qrCodeEnabled: limits.qrCodeEnabled ?? FREE_LIMITS.qrCodeEnabled,
     analyticsEnabled: limits.analyticsEnabled ?? FREE_LIMITS.analyticsEnabled,
     customTemplatesEnabled: limits.customTemplatesEnabled ?? FREE_LIMITS.customTemplatesEnabled,
+    menuBuilderEnabled: limits.menuBuilderEnabled ?? FREE_LIMITS.menuBuilderEnabled,
     currentLinks: Number(linksResult[0]?.count ?? 0),
     currentPages: Number(pagesResult[0]?.count ?? 0),
     currentBlocks: Number(blocksResult[0]?.count ?? 0),

@@ -13,6 +13,8 @@ import {
   teamInvites,
   teamTemplates,
   contacts,
+  menuSections,
+  menuProducts,
   type User,
   type InsertUser,
   type Link,
@@ -33,6 +35,10 @@ import {
   type InsertTeamTemplate,
   type Contact,
   type InsertContact,
+  type MenuSection,
+  type InsertMenuSection,
+  type MenuProduct,
+  type InsertMenuProduct,
 } from "@shared/schema";
 import "dotenv/config";
 
@@ -62,7 +68,31 @@ pool.query(`
   ALTER TABLE IF EXISTS pricing_plans ADD COLUMN IF NOT EXISTS qr_code_enabled boolean NOT NULL DEFAULT false;
   ALTER TABLE IF EXISTS pricing_plans ADD COLUMN IF NOT EXISTS analytics_enabled boolean NOT NULL DEFAULT false;
   ALTER TABLE IF EXISTS pricing_plans ADD COLUMN IF NOT EXISTS custom_templates_enabled boolean NOT NULL DEFAULT false;
-`).catch(() => {/* Columns may already exist or table not yet created */});
+  ALTER TABLE IF EXISTS pricing_plans ADD COLUMN IF NOT EXISTS menu_builder_enabled boolean NOT NULL DEFAULT false;
+  
+  CREATE TABLE IF NOT EXISTS menu_sections (
+    id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name text NOT NULL,
+    description text,
+    position integer NOT NULL DEFAULT 0,
+    active boolean NOT NULL DEFAULT true,
+    created_at timestamp NOT NULL DEFAULT now()
+  );
+  
+  CREATE TABLE IF NOT EXISTS menu_products (
+    id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+    section_id varchar NOT NULL REFERENCES menu_sections(id) ON DELETE CASCADE,
+    user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name text NOT NULL,
+    description text,
+    price text,
+    image_url text,
+    position integer NOT NULL DEFAULT 0,
+    active boolean NOT NULL DEFAULT true,
+    created_at timestamp NOT NULL DEFAULT now()
+  );
+`).catch(() => {/* Columns/tables may already exist */});
 
 
 export interface IStorage {
@@ -133,6 +163,17 @@ export interface IStorage {
   createContact(contact: InsertContact): Promise<Contact>;
   updateContact(id: string, ownerId: string, data: Partial<Pick<Contact, "name" | "email" | "phone" | "company" | "jobTitle" | "notes" | "type">>): Promise<Contact | undefined>;
   deleteContact(id: string, ownerId: string): Promise<boolean>;
+
+  // Menu Builder
+  getMenuSectionsByUserId(userId: string): Promise<MenuSection[]>;
+  createMenuSection(section: InsertMenuSection & { userId: string }): Promise<MenuSection>;
+  updateMenuSection(id: string, userId: string, data: Partial<Pick<MenuSection, "name" | "description" | "active" | "position">>): Promise<MenuSection | undefined>;
+  deleteMenuSection(id: string, userId: string): Promise<boolean>;
+  getMenuProductsBySectionId(sectionId: string): Promise<MenuProduct[]>;
+  getMenuProductsByUserId(userId: string): Promise<MenuProduct[]>;
+  createMenuProduct(product: InsertMenuProduct & { userId: string }): Promise<MenuProduct>;
+  updateMenuProduct(id: string, userId: string, data: Partial<Pick<MenuProduct, "name" | "description" | "price" | "imageUrl" | "active" | "position">>): Promise<MenuProduct | undefined>;
+  deleteMenuProduct(id: string, userId: string): Promise<boolean>;
 
   recordAnalyticsEvent(data: { userId: string; eventType: string; blockId?: string; pageSlug?: string; referrer?: string }): Promise<void>;
   getAnalyticsSummary(userId: string): Promise<{
@@ -682,6 +723,62 @@ export class DatabaseStorage implements IStorage {
       .slice(0, 10);
 
     return { totalViews, totalClicks, viewsByDay, clicksByDay, topBlocks, topReferrers, topPages };
+  }
+
+  // ── Menu Builder ──────────────────────────────────────────────────────────
+  async getMenuSectionsByUserId(userId: string): Promise<MenuSection[]> {
+    return db.select().from(menuSections).where(eq(menuSections.userId, userId)).orderBy(asc(menuSections.position));
+  }
+
+  async createMenuSection(section: InsertMenuSection & { userId: string }): Promise<MenuSection> {
+    const existing = await this.getMenuSectionsByUserId(section.userId);
+    const maxPos = existing.length > 0 ? Math.max(...existing.map(s => s.position)) : -1;
+    const [created] = await db.insert(menuSections).values({ ...section, position: maxPos + 1 }).returning();
+    return created;
+  }
+
+  async updateMenuSection(id: string, userId: string, data: Partial<Pick<MenuSection, "name" | "description" | "active" | "position">>): Promise<MenuSection | undefined> {
+    const [existing] = await db.select().from(menuSections).where(eq(menuSections.id, id));
+    if (!existing || existing.userId !== userId) return undefined;
+    const [updated] = await db.update(menuSections).set(data).where(eq(menuSections.id, id)).returning();
+    return updated;
+  }
+
+  async deleteMenuSection(id: string, userId: string): Promise<boolean> {
+    const [existing] = await db.select().from(menuSections).where(eq(menuSections.id, id));
+    if (!existing || existing.userId !== userId) return false;
+    await db.delete(menuProducts).where(eq(menuProducts.sectionId, id));
+    await db.delete(menuSections).where(eq(menuSections.id, id));
+    return true;
+  }
+
+  async getMenuProductsBySectionId(sectionId: string): Promise<MenuProduct[]> {
+    return db.select().from(menuProducts).where(eq(menuProducts.sectionId, sectionId)).orderBy(asc(menuProducts.position));
+  }
+
+  async getMenuProductsByUserId(userId: string): Promise<MenuProduct[]> {
+    return db.select().from(menuProducts).where(eq(menuProducts.userId, userId)).orderBy(asc(menuProducts.position));
+  }
+
+  async createMenuProduct(product: InsertMenuProduct & { userId: string }): Promise<MenuProduct> {
+    const existing = await this.getMenuProductsBySectionId(product.sectionId);
+    const maxPos = existing.length > 0 ? Math.max(...existing.map(p => p.position)) : -1;
+    const [created] = await db.insert(menuProducts).values({ ...product, position: maxPos + 1 }).returning();
+    return created;
+  }
+
+  async updateMenuProduct(id: string, userId: string, data: Partial<Pick<MenuProduct, "name" | "description" | "price" | "imageUrl" | "active" | "position">>): Promise<MenuProduct | undefined> {
+    const [existing] = await db.select().from(menuProducts).where(eq(menuProducts.id, id));
+    if (!existing || existing.userId !== userId) return undefined;
+    const [updated] = await db.update(menuProducts).set(data).where(eq(menuProducts.id, id)).returning();
+    return updated;
+  }
+
+  async deleteMenuProduct(id: string, userId: string): Promise<boolean> {
+    const [existing] = await db.select().from(menuProducts).where(eq(menuProducts.id, id));
+    if (!existing || existing.userId !== userId) return false;
+    await db.delete(menuProducts).where(eq(menuProducts.id, id));
+    return true;
   }
 }
 

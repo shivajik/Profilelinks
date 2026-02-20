@@ -11,6 +11,7 @@ export interface PlanLimits {
   qrCodeEnabled: boolean;
   analyticsEnabled: boolean;
   customTemplatesEnabled: boolean;
+  menuBuilderEnabled: boolean;
   currentLinks: number;
   currentPages: number;
   currentBlocks: number;

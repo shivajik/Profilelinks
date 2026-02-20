@@ -74,6 +74,7 @@ import {
   CreditCard,
   MoreVertical,
   MapPin,
+  UtensilsCrossed,
 } from "lucide-react";
 import {
   Dialog,
@@ -112,6 +113,7 @@ import { BLOCK_TYPES } from "@shared/schema";
 import { BillingSection } from "@/components/billing-section";
 import { PlanUsageBanner, canPerformAction } from "@/components/plan-usage-banner";
 import { usePlanLimits, type PlanLimits } from "@/hooks/use-plan-limits";
+import { MenuBuilder } from "@/components/menu-builder";
 
 function normalizeUrl(url: string): string {
   if (!url) return "#";
@@ -370,6 +372,7 @@ export default function Dashboard() {
 
   const sidebarItems = [
     { id: "design", label: "Design", icon: Palette, active: true },
+    { id: "menu-setup", label: "Menu Setup", icon: UtensilsCrossed },
     { id: "settings", label: "Settings", icon: Settings },
     { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "qrcodes", label: "QR Codes", icon: QrCode },
@@ -456,8 +459,9 @@ export default function Dashboard() {
 
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 flex overflow-hidden">
-            <div className={`flex-1 overflow-y-auto border-r bg-background w-full ${activeSection === "design" ? "md:min-w-[300px] md:max-w-[420px]" : ""} ${["team-members", "team-templates", "contacts", "billing"].includes(activeSection) ? "md:max-w-none" : ""}`}>
+             <div className={`flex-1 overflow-y-auto border-r bg-background w-full ${activeSection === "design" ? "md:min-w-[300px] md:max-w-[420px]" : ""} ${["team-members", "team-templates", "contacts", "billing", "menu-setup"].includes(activeSection) ? "md:max-w-none" : ""}`}>
               {activeSection === "billing" && <BillingSection />}
+              {activeSection === "menu-setup" && <MenuBuilder />}
               {activeSection === "design" && (
               <div className="p-4 space-y-4">
                 <div className="flex items-center gap-2 mb-2">

@@ -31,6 +31,7 @@ interface PricingPlan {
   features: string[]; maxLinks: number; maxPages: number;
   maxTeamMembers: number; maxBlocks: number; maxSocials: number;
   qrCodeEnabled: boolean; analyticsEnabled: boolean; customTemplatesEnabled: boolean;
+  menuBuilderEnabled: boolean;
   isActive: boolean; isFeatured: boolean; sortOrder: number;
 }
 interface AdminStats {
@@ -73,6 +74,7 @@ const planSchema = z.object({
   qrCodeEnabled: z.boolean().default(false),
   analyticsEnabled: z.boolean().default(false),
   customTemplatesEnabled: z.boolean().default(false),
+  menuBuilderEnabled: z.boolean().default(false),
   isActive: z.boolean().default(true),
   isFeatured: z.boolean().default(false),
   sortOrder: z.coerce.number().int().min(0).default(0),
@@ -205,11 +207,11 @@ export default function AdminDashboard() {
 
   // ── Plan CRUD ──────────────────────────────────────────────────────────────
   const openNewPlan = () => {
-    planForm.reset({ name: "", description: "", monthlyPrice: 0, yearlyPrice: 0, featuresText: "", maxLinks: 10, maxPages: 1, maxTeamMembers: 1, maxBlocks: 20, maxSocials: 5, qrCodeEnabled: false, analyticsEnabled: false, customTemplatesEnabled: false, isActive: true, isFeatured: false, sortOrder: 0 });
+    planForm.reset({ name: "", description: "", monthlyPrice: 0, yearlyPrice: 0, featuresText: "", maxLinks: 10, maxPages: 1, maxTeamMembers: 1, maxBlocks: 20, maxSocials: 5, qrCodeEnabled: false, analyticsEnabled: false, customTemplatesEnabled: false, menuBuilderEnabled: false, isActive: true, isFeatured: false, sortOrder: 0 });
     setPlanDialog({ open: true });
   };
   const openEditPlan = (plan: PricingPlan) => {
-    planForm.reset({ name: plan.name, description: plan.description ?? "", monthlyPrice: parseFloat(plan.monthlyPrice), yearlyPrice: parseFloat(plan.yearlyPrice), featuresText: (plan.features ?? []).join("\n"), maxLinks: plan.maxLinks, maxPages: plan.maxPages, maxTeamMembers: plan.maxTeamMembers, maxBlocks: plan.maxBlocks ?? 20, maxSocials: plan.maxSocials ?? 5, qrCodeEnabled: plan.qrCodeEnabled ?? false, analyticsEnabled: plan.analyticsEnabled ?? false, customTemplatesEnabled: plan.customTemplatesEnabled ?? false, isActive: plan.isActive, isFeatured: plan.isFeatured, sortOrder: plan.sortOrder });
+    planForm.reset({ name: plan.name, description: plan.description ?? "", monthlyPrice: parseFloat(plan.monthlyPrice), yearlyPrice: parseFloat(plan.yearlyPrice), featuresText: (plan.features ?? []).join("\n"), maxLinks: plan.maxLinks, maxPages: plan.maxPages, maxTeamMembers: plan.maxTeamMembers, maxBlocks: plan.maxBlocks ?? 20, maxSocials: plan.maxSocials ?? 5, qrCodeEnabled: plan.qrCodeEnabled ?? false, analyticsEnabled: plan.analyticsEnabled ?? false, customTemplatesEnabled: plan.customTemplatesEnabled ?? false, menuBuilderEnabled: plan.menuBuilderEnabled ?? false, isActive: plan.isActive, isFeatured: plan.isFeatured, sortOrder: plan.sortOrder });
     setPlanDialog({ open: true, plan });
   };
   const onSavePlan = async (data: PlanForm) => {
@@ -1163,6 +1165,7 @@ export default function AdminDashboard() {
               <div className="flex items-center gap-3"><Switch checked={planForm.watch("qrCodeEnabled")} onCheckedChange={(v) => planForm.setValue("qrCodeEnabled", v)} /><Label>QR Code</Label></div>
               <div className="flex items-center gap-3"><Switch checked={planForm.watch("analyticsEnabled")} onCheckedChange={(v) => planForm.setValue("analyticsEnabled", v)} /><Label>Analytics</Label></div>
               <div className="flex items-center gap-3"><Switch checked={planForm.watch("customTemplatesEnabled")} onCheckedChange={(v) => planForm.setValue("customTemplatesEnabled", v)} /><Label>Custom Templates</Label></div>
+              <div className="flex items-center gap-3"><Switch checked={planForm.watch("menuBuilderEnabled")} onCheckedChange={(v) => planForm.setValue("menuBuilderEnabled", v)} /><Label>Menu Builder</Label></div>
               <div className="col-span-2"><Separator className="my-2" /></div>
               <div className="flex items-center gap-3"><Switch checked={planForm.watch("isActive")} onCheckedChange={(v) => planForm.setValue("isActive", v)} /><Label>Active</Label></div>
               <div className="flex items-center gap-3"><Switch checked={planForm.watch("isFeatured")} onCheckedChange={(v) => planForm.setValue("isFeatured", v)} /><Label>Featured</Label></div>

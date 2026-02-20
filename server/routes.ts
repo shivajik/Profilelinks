@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import session from "express-session";
 import { storage } from "./storage";
 import bcrypt from "bcryptjs";
-import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema, createPageSchema, updatePageSchema, createBlockSchema, updateBlockSchema, changePasswordSchema, deleteAccountSchema, createTeamSchema, updateTeamSchema, updateTeamMemberSchema, createTeamInviteSchema, createTeamMemberSchema, createTeamTemplateSchema, updateTeamTemplateSchema, createContactSchema, updateContactSchema } from "@shared/schema";
+import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema, createPageSchema, updatePageSchema, createBlockSchema, updateBlockSchema, changePasswordSchema, deleteAccountSchema, createTeamSchema, updateTeamSchema, updateTeamMemberSchema, createTeamInviteSchema, createTeamMemberSchema, createTeamTemplateSchema, updateTeamTemplateSchema, createContactSchema, updateContactSchema, createMenuSectionSchema, updateMenuSectionSchema, createMenuProductSchema, updateMenuProductSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import connectPgSimple from "connect-pg-simple";
 import pg from "pg";
@@ -1446,6 +1446,89 @@ export async function registerRoutes(
       console.error("Analytics fetch error:", error);
       res.status(500).json({ message: "Failed to load analytics" });
     }
+  });
+
+  // ── Menu Builder Routes ─────────────────────────────────────────────────────
+  app.get("/api/menu/sections", requireAuth, async (req, res) => {
+    const sections = await storage.getMenuSectionsByUserId(req.session.userId!);
+    res.json(sections);
+  });
+
+  app.post("/api/menu/sections", requireAuth, async (req, res) => {
+    try {
+      const result = createMenuSectionSchema.safeParse(req.body);
+      if (!result.success) return res.status(400).json({ message: fromZodError(result.error).message });
+      // Check plan permission
+      const limits = await getUserPlanLimits(req.session.userId!);
+      if (!limits.menuBuilderEnabled) {
+        return res.status(403).json({ message: "Menu builder is not available on your plan. Please upgrade." });
+      }
+      const section = await storage.createMenuSection({ ...result.data, userId: req.session.userId!, active: true });
+      res.status(201).json(section);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to create section" });
+    }
+  });
+
+  app.patch("/api/menu/sections/:id", requireAuth, async (req, res) => {
+    try {
+      const result = updateMenuSectionSchema.safeParse(req.body);
+      if (!result.success) return res.status(400).json({ message: fromZodError(result.error).message });
+      const updated = await storage.updateMenuSection(req.params.id as string, req.session.userId!, result.data);
+      if (!updated) return res.status(404).json({ message: "Section not found" });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to update section" });
+    }
+  });
+
+  app.delete("/api/menu/sections/:id", requireAuth, async (req, res) => {
+    const deleted = await storage.deleteMenuSection(req.params.id as string, req.session.userId!);
+    if (!deleted) return res.status(404).json({ message: "Section not found" });
+    res.json({ message: "Deleted" });
+  });
+
+  app.get("/api/menu/products", requireAuth, async (req, res) => {
+    const sectionId = req.query.sectionId as string | undefined;
+    if (sectionId) {
+      const products = await storage.getMenuProductsBySectionId(sectionId);
+      return res.json(products);
+    }
+    const products = await storage.getMenuProductsByUserId(req.session.userId!);
+    res.json(products);
+  });
+
+  app.post("/api/menu/products", requireAuth, async (req, res) => {
+    try {
+      const result = createMenuProductSchema.safeParse(req.body);
+      if (!result.success) return res.status(400).json({ message: fromZodError(result.error).message });
+      const limits = await getUserPlanLimits(req.session.userId!);
+      if (!limits.menuBuilderEnabled) {
+        return res.status(403).json({ message: "Menu builder is not available on your plan. Please upgrade." });
+      }
+      const product = await storage.createMenuProduct({ ...result.data, userId: req.session.userId!, active: true });
+      res.status(201).json(product);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to create product" });
+    }
+  });
+
+  app.patch("/api/menu/products/:id", requireAuth, async (req, res) => {
+    try {
+      const result = updateMenuProductSchema.safeParse(req.body);
+      if (!result.success) return res.status(400).json({ message: fromZodError(result.error).message });
+      const updated = await storage.updateMenuProduct(req.params.id as string, req.session.userId!, result.data);
+      if (!updated) return res.status(404).json({ message: "Product not found" });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to update product" });
+    }
+  });
+
+  app.delete("/api/menu/products/:id", requireAuth, async (req, res) => {
+    const deleted = await storage.deleteMenuProduct(req.params.id as string, req.session.userId!);
+    if (!deleted) return res.status(404).json({ message: "Product not found" });
+    res.json({ message: "Deleted" });
   });
 
   // Register admin and payment routes

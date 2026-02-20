@@ -123,6 +123,30 @@ export const teamTemplates = pgTable("team_templates", {
   isDefault: boolean("is_default").notNull().default(false),
 });
 
+// ── Menu Builder Tables ──────────────────────────────────────────────────────
+export const menuSections = pgTable("menu_sections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  position: integer("position").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const menuProducts = pgTable("menu_products", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sectionId: varchar("section_id").notNull().references(() => menuSections.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  price: text("price"),
+  imageUrl: text("image_url"),
+  position: integer("position").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const contacts = pgTable("contacts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   teamId: varchar("team_id").references(() => teams.id, { onDelete: "cascade" }),
@@ -351,6 +375,41 @@ export type InsertTeamTemplate = z.infer<typeof insertTeamTemplateSchema>;
 export type Contact = typeof contacts.$inferSelect;
 export type InsertContact = z.infer<typeof insertContactSchema>;
 
+// ── Menu Builder Schemas ──────────────────────────────────────────────────────
+export const insertMenuSectionSchema = createInsertSchema(menuSections).omit({ id: true, createdAt: true });
+export const createMenuSectionSchema = z.object({
+  name: z.string().min(1, "Section name is required").max(100),
+  description: z.string().max(500).optional().or(z.literal("")),
+});
+export const updateMenuSectionSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().max(500).optional().nullable(),
+  active: z.boolean().optional(),
+  position: z.number().int().min(0).optional(),
+});
+
+export const insertMenuProductSchema = createInsertSchema(menuProducts).omit({ id: true, createdAt: true });
+export const createMenuProductSchema = z.object({
+  sectionId: z.string().min(1, "Section is required"),
+  name: z.string().min(1, "Product name is required").max(100),
+  description: z.string().max(500).optional().or(z.literal("")),
+  price: z.string().max(50).optional().or(z.literal("")),
+  imageUrl: z.string().optional().or(z.literal("")),
+});
+export const updateMenuProductSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().max(500).optional().nullable(),
+  price: z.string().max(50).optional().nullable(),
+  imageUrl: z.string().optional().nullable(),
+  active: z.boolean().optional(),
+  position: z.number().int().min(0).optional(),
+});
+
+export type MenuSection = typeof menuSections.$inferSelect;
+export type InsertMenuSection = z.infer<typeof insertMenuSectionSchema>;
+export type MenuProduct = typeof menuProducts.$inferSelect;
+export type InsertMenuProduct = z.infer<typeof insertMenuProductSchema>;
+
 // =============================================
 // ADMIN + PRICING + PAYMENTS SCHEMA
 // =============================================
@@ -378,6 +437,7 @@ export const pricingPlans = pgTable("pricing_plans", {
   qrCodeEnabled: boolean("qr_code_enabled").notNull().default(false),
   analyticsEnabled: boolean("analytics_enabled").notNull().default(false),
   customTemplatesEnabled: boolean("custom_templates_enabled").notNull().default(false),
+  menuBuilderEnabled: boolean("menu_builder_enabled").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
   isFeatured: boolean("is_featured").notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
@@ -438,6 +498,7 @@ export const createPricingPlanSchema = z.object({
   qrCodeEnabled: z.boolean().default(false),
   analyticsEnabled: z.boolean().default(false),
   customTemplatesEnabled: z.boolean().default(false),
+  menuBuilderEnabled: z.boolean().default(false),
   isActive: z.boolean().default(true),
   isFeatured: z.boolean().default(false),
   sortOrder: z.number().int().min(0).default(0),
@@ -457,6 +518,7 @@ export const updatePricingPlanSchema = z.object({
   qrCodeEnabled: z.boolean().optional(),
   analyticsEnabled: z.boolean().optional(),
   customTemplatesEnabled: z.boolean().optional(),
+  menuBuilderEnabled: z.boolean().optional(),
   isActive: z.boolean().optional(),
   isFeatured: z.boolean().optional(),
   sortOrder: z.number().int().min(0).optional(),
