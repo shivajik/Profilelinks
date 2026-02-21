@@ -377,6 +377,7 @@ export default function Dashboard() {
     { id: "qrcodes", label: "QR Codes", icon: QrCode },
     { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "billing", label: "Billing", icon: CreditCard },
+    { id: "usage", label: "Usage", icon: Eye },
   ];
 
   const teamSidebarItems = [
@@ -444,14 +445,6 @@ export default function Dashboard() {
                 </SidebarGroup>
               </>
             )}
-            <SidebarSeparator />
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <div className="px-2 py-2">
-                  <PlanUsageBanner />
-                </div>
-              </SidebarGroupContent>
-            </SidebarGroup>
           </SidebarContent>
           <SidebarFooter>
             <SidebarMenu>
@@ -467,8 +460,17 @@ export default function Dashboard() {
 
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 flex overflow-hidden">
-             <div className={`flex-1 overflow-y-auto border-r bg-background w-full ${activeSection === "design" ? "md:min-w-[300px] md:max-w-[420px]" : ""} ${activeSection === "menu-setup" ? "md:min-w-[300px] md:max-w-[420px]" : ""} ${["team-members", "team-templates", "contacts", "billing"].includes(activeSection) ? "md:max-w-none" : ""}`}>
+             <div className={`flex-1 overflow-y-auto border-r bg-background w-full ${activeSection === "design" ? "md:min-w-[300px] md:max-w-[420px]" : ""} ${activeSection === "menu-setup" ? "md:min-w-[300px] md:max-w-[420px]" : ""} ${["team-members", "team-templates", "contacts", "billing", "usage"].includes(activeSection) ? "md:max-w-none" : ""}`}>
               {activeSection === "billing" && <BillingSection />}
+              {activeSection === "usage" && (
+                <div className="p-6 max-w-2xl mx-auto space-y-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <SidebarTrigger />
+                    <h2 className="text-xl font-semibold">Usage Analytics</h2>
+                  </div>
+                  <PlanUsageBanner />
+                </div>
+              )}
               {activeSection === "menu-setup" && <MenuBuilder />}
               {activeSection === "design" && (
               <div className="p-4 space-y-4">
@@ -876,10 +878,14 @@ export default function Dashboard() {
                       }
                       window.open(`/${user.username}/menu`, "_blank");
                     }}
-                    className={!planLimits?.menuBuilderEnabled ? "opacity-50" : ""}
+                    className={!planLimits?.menuBuilderEnabled ? "opacity-50 cursor-not-allowed" : ""}
                     title={!planLimits?.menuBuilderEnabled ? "Upgrade to Pro to open menu link" : "Open menu in new tab"}
                   >
-                    <ExternalLink className="w-4 h-4" />
+                    {!planLimits?.menuBuilderEnabled ? (
+                      <Shield className="w-4 h-4 text-muted-foreground" />
+                    ) : (
+                      <ExternalLink className="w-4 h-4" />
+                    )}
                   </Button>
                 </div>
                 <div className={`bg-background rounded-2xl shadow-lg overflow-hidden border ${previewMode === "mobile" ? "w-[375px]" : "w-full max-w-[800px]"}`} style={{ height: "70vh" }}>

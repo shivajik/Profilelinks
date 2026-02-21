@@ -574,6 +574,7 @@ function MenuAppearancePanel() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/menu/settings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/menu/socials"] });
       toast({ title: "Menu appearance saved!" });
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
@@ -649,6 +650,10 @@ function MenuAppearancePanel() {
       menuWebsite: menuWebsite || null,
     });
     saveHoursMutation.mutate(openingHours);
+    // Also save any pending social link that was filled but not yet added
+    if (newSocialPlatform) {
+      addSocialMutation.mutate({ platform: newSocialPlatform, url: newSocialUrl });
+    }
   };
 
   const handleLogoUpload = async (file: File) => {
