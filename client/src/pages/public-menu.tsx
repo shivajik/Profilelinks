@@ -83,6 +83,7 @@ export default function PublicMenu() {
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [userClicked, setUserClicked] = useState(false);
+  const isEmbed = new URLSearchParams(window.location.search).get("embed") === "1";
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const tabsRef = useRef<HTMLDivElement | null>(null);
 
@@ -187,14 +188,16 @@ export default function PublicMenu() {
       <div className="max-w-lg mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="flex justify-end gap-2 mb-4">
-            <Button variant="ghost" size="icon" onClick={handleCopy} className={template.textColor}>
-              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => setShowQr(true)} className={template.textColor}>
-              <QrCode className="w-4 h-4" />
-            </Button>
-          </div>
+          {!isEmbed && (
+            <div className="flex justify-end gap-2 mb-4">
+              <Button variant="ghost" size="icon" onClick={handleCopy} className={template.textColor}>
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => setShowQr(true)} className={template.textColor}>
+                <QrCode className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
 
           {teamBranding?.companyLogo ? (
             <div className="w-20 h-20 rounded-full mx-auto mb-3 overflow-hidden border-2 border-white/20 shadow-lg">
@@ -234,7 +237,7 @@ export default function PublicMenu() {
                       onClick={() => scrollToSection(section.id)}
                       className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-all shrink-0 ${
                         isActive
-                          ? "text-white shadow-md"
+                          ? "shadow-md"
                           : `${template.textColor} opacity-70 hover:opacity-100`
                       }`}
                       style={isActive ? { backgroundColor: brandColor } : {}}

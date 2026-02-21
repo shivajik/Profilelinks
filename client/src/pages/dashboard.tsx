@@ -75,6 +75,7 @@ import {
   MoreVertical,
   MapPin,
   UtensilsCrossed,
+  Lock,
 } from "lucide-react";
 import {
   Dialog,
@@ -872,17 +873,37 @@ export default function Dashboard() {
                     variant="ghost"
                     size="icon"
                     onClick={() => {
-                      if (!planLimits?.menuBuilderEnabled) {
-                        toast({ title: "Upgrade Required", description: "Please upgrade to Pro to open the menu link.", variant: "destructive" });
+                      if (!isTeamAccount) {
+                        toast({ title: "Upgrade Required", description: "Copy menu link is available for team accounts.", variant: "destructive" });
+                        return;
+                      }
+                      navigator.clipboard.writeText(`${window.location.origin}/${user.username}/menu`);
+                      toast({ title: "Menu link copied!" });
+                    }}
+                    className={!isTeamAccount ? "opacity-50 cursor-not-allowed" : ""}
+                    title={!isTeamAccount ? "Upgrade to Team to copy menu link" : "Copy menu link"}
+                  >
+                    {!isTeamAccount ? (
+                      <Lock className="w-4 h-4 text-muted-foreground" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      if (!isTeamAccount) {
+                        toast({ title: "Upgrade Required", description: "QR code is available for team accounts.", variant: "destructive" });
                         return;
                       }
                       window.open(`/${user.username}/menu`, "_blank");
                     }}
-                    className={!planLimits?.menuBuilderEnabled ? "opacity-50 cursor-not-allowed" : ""}
-                    title={!planLimits?.menuBuilderEnabled ? "Upgrade to Pro to open menu link" : "Open menu in new tab"}
+                    className={!isTeamAccount ? "opacity-50 cursor-not-allowed" : ""}
+                    title={!isTeamAccount ? "Upgrade to Team to use QR code" : "Open menu in new tab"}
                   >
-                    {!planLimits?.menuBuilderEnabled ? (
-                      <Shield className="w-4 h-4 text-muted-foreground" />
+                    {!isTeamAccount ? (
+                      <Lock className="w-4 h-4 text-muted-foreground" />
                     ) : (
                       <ExternalLink className="w-4 h-4" />
                     )}
@@ -890,7 +911,7 @@ export default function Dashboard() {
                 </div>
                 <div className={`bg-background rounded-2xl shadow-lg overflow-hidden border ${previewMode === "mobile" ? "w-[375px]" : "w-full max-w-[800px]"}`} style={{ height: "70vh" }}>
                   <iframe
-                    src={`/${user.username}/menu`}
+                    src={`/${user.username}/menu?embed=1`}
                     className="w-full h-full border-0"
                     title="Menu Preview"
                     key={`menu-preview-${previewMode}`}
