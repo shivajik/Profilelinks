@@ -1,14 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { getTemplate, TEMPLATES } from "@/lib/templates";
+import { getTemplate } from "@/lib/templates";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { QRCodeSVG } from "qrcode.react";
-import { Loader2, Copy, Check, ChevronDown, ChevronRight, Package, QrCode, Phone, Mail, MapPin, Globe, Clock, MessageCircle } from "lucide-react";
+import { Loader2, Copy, Check, Package, QrCode, Phone, Mail, MapPin, Globe, Clock, MessageCircle } from "lucide-react";
 import { SocialIcon } from "@/components/social-icon";
-
 
 interface MenuSection {
   id: string;
@@ -82,7 +81,10 @@ export default function PublicMenu() {
   const { username } = useParams<{ username: string }>();
   const [showQr, setShowQr] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+  const [activeTab, setActiveTab] = useState<string | null>(null);
+  const [userClicked, setUserClicked] = useState(false);
+  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const tabsRef = useRef<HTMLDivElement | null>(null);
 
   const { data, isLoading, error } = useQuery<PublicMenuData>({
     queryKey: ["/api/menu", username],
@@ -92,6 +94,53 @@ export default function PublicMenu() {
       return res.json();
     },
   });
+
+  const sortedSections = data?.sections?.sort((a, b) => a.position - b.position) || [];
+
+  // Set initial active tab
+  useEffect(() => {
+    if (sortedSections.length > 0 && !activeTab) {
+      setActiveTab(sortedSections[0].id);
+    }
+  }, [sortedSections, activeTab]);
+
+  // Scroll spy: update active tab based on scroll position
+  const handleScroll = useCallback(() => {
+    if (userClicked) return;
+    const tabsHeight = tabsRef.current?.getBoundingClientRect().bottom || 0;
+    let closest: string | null = null;
+    let closestDist = Infinity;
+    for (const section of sortedSections) {
+      const el = sectionRefs.current[section.id];
+      if (!el) continue;
+      const rect = el.getBoundingClientRect();
+      const dist = Math.abs(rect.top - tabsHeight - 10);
+      if (rect.top <= tabsHeight + 100 && dist < closestDist) {
+        closestDist = dist;
+        closest = section.id;
+      }
+    }
+    if (closest && closest !== activeTab) {
+      setActiveTab(closest);
+    }
+  }, [sortedSections, activeTab, userClicked]);
+
+  useEffect(() => {
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [handleScroll]);
+
+  const scrollToSection = (sectionId: string) => {
+    setActiveTab(sectionId);
+    setUserClicked(true);
+    const el = sectionRefs.current[sectionId];
+    if (el) {
+      const tabsHeight = tabsRef.current?.getBoundingClientRect().height || 50;
+      const y = el.getBoundingClientRect().top + window.scrollY - tabsHeight - 10;
+      window.scrollTo({ top: y, behavior: "smooth" });
+    }
+    setTimeout(() => setUserClicked(false), 800);
+  };
 
   if (isLoading) {
     return (
@@ -117,7 +166,7 @@ export default function PublicMenu() {
     );
   }
 
-  const { user, sections, products, openingHours, socials, teamBranding } = data;
+  const { user, products, openingHours, socials, teamBranding } = data;
   const template = getTemplate(user.menuTemplate || user.template);
   const displayName = user.menuDisplayName || user.displayName || user.username;
   const profileImage = user.menuProfileImage || user.profileImage;
@@ -126,12 +175,6 @@ export default function PublicMenu() {
   const menuUrl = typeof window !== "undefined" ? `${window.location.origin}/${username}/menu` : `/${username}/menu`;
 
   const hasContact = user.menuPhone || user.menuEmail || user.menuAddress || user.menuWhatsapp || user.menuWebsite || user.menuGoogleMapsUrl;
-
-  const toggleSection = (id: string) => {
-    setExpandedSections(prev => ({ ...prev, [id]: prev[id] === false ? true : prev[id] === undefined ? false : !prev[id] }));
-  };
-
-  const isSectionExpanded = (id: string) => expandedSections[id] !== false;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(menuUrl);
@@ -176,7 +219,7 @@ export default function PublicMenu() {
           <div className="w-16 h-1 rounded-full mx-auto mt-4" style={{ backgroundColor: brandColor }} />
         </div>
 
-        {/* Social Links (from portfolio) */}
+        {/* Social Links */}
         {socials.length > 0 && (
           <div className="flex justify-center gap-3 mb-6">
             {socials.map((social) => (
@@ -189,9 +232,84 @@ export default function PublicMenu() {
           </div>
         )}
 
-        {/* Contact Info */}
+        {/* Sticky Category Tabs */}
+        {sortedSections.length > 0 && (
+          <div ref={tabsRef} className="sticky top-0 z-10 -mx-4 px-4 py-2" style={{ backgroundColor: 'inherit' }}>
+            <div className={`${template.bg} rounded-xl py-2`}>
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+                {sortedSections.map((section) => {
+                  const isActive = activeTab === section.id;
+                  return (
+                    <button
+                      key={section.id}
+                      onClick={() => scrollToSection(section.id)}
+                      className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-all shrink-0 ${
+                        isActive
+                          ? "text-white shadow-md"
+                          : `${template.textColor} opacity-70 hover:opacity-100`
+                      }`}
+                      style={isActive ? { backgroundColor: brandColor } : {}}
+                    >
+                      {section.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Menu Sections - All visible, scrollable */}
+        {sortedSections.length === 0 ? (
+          <div className={`text-center py-12 ${template.textColor} opacity-60`}>
+            <p className="text-lg">No menu items yet</p>
+          </div>
+        ) : (
+          <div className="space-y-6 mt-4">
+            {sortedSections.map((section) => {
+              const sectionProducts = products.filter(p => p.sectionId === section.id).sort((a, b) => a.position - b.position);
+              return (
+                <div
+                  key={section.id}
+                  ref={(el) => { sectionRefs.current[section.id] = el; }}
+                >
+                  <div className="mb-3">
+                    <h2 className={`text-lg font-bold ${template.textColor}`}>{section.name}</h2>
+                    {section.description && <p className={`text-xs ${template.textColor} opacity-60 mt-0.5`}>{section.description}</p>}
+                  </div>
+                  {sectionProducts.length > 0 && (
+                    <div className="space-y-3">
+                      {sectionProducts.map((product) => (
+                        <div key={product.id} className={`rounded-xl overflow-hidden ${template.cardBg} backdrop-blur-sm p-3`}>
+                          <div className="flex items-start gap-3">
+                            {product.imageUrl ? (
+                              <img src={product.imageUrl} alt={product.name} className="w-20 h-20 rounded-lg object-cover shrink-0 shadow-sm" />
+                            ) : (
+                              <div className="w-20 h-20 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: brandColor + "15" }}>
+                                <Package className="w-7 h-7" style={{ color: brandColor + "60" }} />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <h3 className={`text-sm font-semibold ${template.cardTextColor}`}>{product.name}</h3>
+                                {product.price && <span className="text-sm font-bold shrink-0" style={{ color: brandColor }}>{product.price}</span>}
+                              </div>
+                              {product.description && <p className={`text-xs mt-1 ${template.cardTextColor} opacity-60 line-clamp-2`}>{product.description}</p>}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Contact Info - AFTER menu */}
         {hasContact && (
-          <div className={`rounded-xl overflow-hidden ${template.cardBg} backdrop-blur-sm mb-4 p-4`}>
+          <div className={`rounded-xl overflow-hidden ${template.cardBg} backdrop-blur-sm mt-6 p-4`}>
             <h3 className={`text-sm font-semibold mb-3 ${template.cardTextColor}`}>Contact</h3>
             <div className="space-y-2">
               {user.menuPhone && (
@@ -214,7 +332,7 @@ export default function PublicMenu() {
                 </a>
               )}
               {user.menuWebsite && (
-                <a href={user.menuWebsite} target="_blank" rel="noopener noreferrer"
+                <a href={user.menuWebsite.startsWith('http') ? user.menuWebsite : `https://${user.menuWebsite}`} target="_blank" rel="noopener noreferrer"
                   className={`flex items-center gap-2 text-sm ${template.cardTextColor} opacity-80 hover:opacity-100`}>
                   <Globe className="w-4 h-4 shrink-0" style={{ color: brandColor }} />
                   {user.menuWebsite.replace(/^https?:\/\//, '')}
@@ -227,7 +345,7 @@ export default function PublicMenu() {
                 </div>
               )}
               {user.menuGoogleMapsUrl && (
-                <a href={user.menuGoogleMapsUrl} target="_blank" rel="noopener noreferrer"
+                <a href={user.menuGoogleMapsUrl.startsWith('http') ? user.menuGoogleMapsUrl : `https://${user.menuGoogleMapsUrl}`} target="_blank" rel="noopener noreferrer"
                   className="text-xs underline opacity-60 hover:opacity-100 ml-6" style={{ color: brandColor }}>
                   View on Google Maps →
                 </a>
@@ -236,9 +354,9 @@ export default function PublicMenu() {
           </div>
         )}
 
-        {/* Opening Hours */}
+        {/* Opening Hours - AFTER menu */}
         {openingHours.length > 0 && (
-          <div className={`rounded-xl overflow-hidden ${template.cardBg} backdrop-blur-sm mb-4 p-4`}>
+          <div className={`rounded-xl overflow-hidden ${template.cardBg} backdrop-blur-sm mt-4 p-4`}>
             <h3 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${template.cardTextColor}`}>
               <Clock className="w-4 h-4" style={{ color: brandColor }} /> Opening Hours
             </h3>
@@ -254,57 +372,6 @@ export default function PublicMenu() {
                 </div>
               ))}
             </div>
-          </div>
-        )}
-
-        {/* Menu Sections */}
-        {sections.length === 0 ? (
-          <div className={`text-center py-12 ${template.textColor} opacity-60`}>
-            <p className="text-lg">No menu items yet</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {sections.sort((a, b) => a.position - b.position).map((section) => {
-              const sectionProducts = products.filter(p => p.sectionId === section.id).sort((a, b) => a.position - b.position);
-              const expanded = isSectionExpanded(section.id);
-              return (
-                <div key={section.id} className={`rounded-xl overflow-hidden ${template.cardBg} backdrop-blur-sm`}>
-                  <button onClick={() => toggleSection(section.id)}
-                    className={`w-full flex items-center justify-between px-5 py-4 ${template.cardTextColor}`}>
-                    <div className="text-left">
-                      <h2 className="text-base font-semibold">{section.name}</h2>
-                      {section.description && <p className="text-xs opacity-60 mt-0.5">{section.description}</p>}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs opacity-50">{sectionProducts.length} items</span>
-                      {expanded ? <ChevronDown className="w-4 h-4 opacity-50" /> : <ChevronRight className="w-4 h-4 opacity-50" />}
-                    </div>
-                  </button>
-                  {expanded && sectionProducts.length > 0 && (
-                    <div className="px-5 pb-4 space-y-3">
-                      {sectionProducts.map((product) => (
-                        <div key={product.id} className="flex items-start gap-3">
-                          {product.imageUrl ? (
-                            <img src={product.imageUrl} alt={product.name} className="w-16 h-16 rounded-lg object-cover shrink-0 shadow-sm" />
-                          ) : (
-                            <div className="w-16 h-16 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: brandColor + "15" }}>
-                              <Package className="w-6 h-6" style={{ color: brandColor + "60" }} />
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <h3 className={`text-sm font-medium ${template.cardTextColor}`}>{product.name}</h3>
-                              {product.price && <span className="text-sm font-bold shrink-0" style={{ color: brandColor }}>{product.price}</span>}
-                            </div>
-                            {product.description && <p className={`text-xs mt-0.5 ${template.cardTextColor} opacity-60 line-clamp-2`}>{product.description}</p>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
           </div>
         )}
 
@@ -337,4 +404,3 @@ export default function PublicMenu() {
     </div>
   );
 }
-

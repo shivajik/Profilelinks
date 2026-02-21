@@ -495,17 +495,19 @@ export default function Landing() {
             <div>
               <h4 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wider">Company</h4>
               <ul className="space-y-2.5">
-                <li><span className="text-sm text-muted-foreground">About</span></li>
-                <li><span className="text-sm text-muted-foreground">Blog</span></li>
-                <li><span className="text-sm text-muted-foreground">Careers</span></li>
+                <li><WouterLink href="/about"><a className="text-sm text-muted-foreground hover:text-foreground">About</a></WouterLink></li>
+                <li><WouterLink href="/contact"><a className="text-sm text-muted-foreground hover:text-foreground">Contact Us</a></WouterLink></li>
+                <li><WouterLink href="/gdpr"><a className="text-sm text-muted-foreground hover:text-foreground">GDPR Compliance</a></WouterLink></li>
               </ul>
             </div>
             <div>
               <h4 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wider">Support</h4>
               <ul className="space-y-2.5">
+                <li><WouterLink href="/support"><a className="text-sm text-muted-foreground hover:text-foreground">Support</a></WouterLink></li>
                 <li><WouterLink href="/docs"><a className="text-sm text-muted-foreground hover:text-foreground">Documentation</a></WouterLink></li>
                 <li><WouterLink href="/privacy"><a className="text-sm text-muted-foreground hover:text-foreground">Privacy Policy</a></WouterLink></li>
                 <li><WouterLink href="/terms"><a className="text-sm text-muted-foreground hover:text-foreground">Terms of Service</a></WouterLink></li>
+                <li><WouterLink href="/refund-policy"><a className="text-sm text-muted-foreground hover:text-foreground">Refund Policy</a></WouterLink></li>
               </ul>
             </div>
           </div>

@@ -18,6 +18,11 @@ import PricingPage from "@/pages/pricing";
 import TermsPage from "@/pages/terms";
 import PrivacyPage from "@/pages/privacy";
 import DocsPage from "@/pages/docs";
+import AboutPage from "@/pages/about";
+import ContactPage from "@/pages/contact";
+import SupportPage from "@/pages/support";
+import GdprPage from "@/pages/gdpr";
+import RefundPolicyPage from "@/pages/refund-policy";
 
 
 function Router() {
@@ -31,6 +36,11 @@ function Router() {
       <Route path="/terms" component={TermsPage} />
       <Route path="/privacy" component={PrivacyPage} />
       <Route path="/docs" component={DocsPage} />
+      <Route path="/about" component={AboutPage} />
+      <Route path="/contact" component={ContactPage} />
+      <Route path="/support" component={SupportPage} />
+      <Route path="/gdpr" component={GdprPage} />
+      <Route path="/refund-policy" component={RefundPolicyPage} />
       <Route path="/admin" component={AdminLogin} />
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin/dashboard" component={AdminDashboard} />

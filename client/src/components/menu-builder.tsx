@@ -266,10 +266,29 @@ export function MenuBuilder() {
     );
   }
 
+  const isTeamAccount = user!.accountType === "team" && user!.teamId;
+
   return (
     <div className="p-4 space-y-4 max-w-2xl">
-      {/* Menu Link + QR Code Panel */}
-      <MenuLinkPanel username={user!.username} template={user!.template} />
+      {/* Menu Link + QR Code Panel - Only for team accounts */}
+      {isTeamAccount ? (
+        <MenuLinkPanel username={user!.username} template={user!.template} />
+      ) : (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <Shield className="w-4 h-4 text-primary" />
+            </div>
+            <h3 className="text-sm font-semibold">Public Menu Link & QR Code</h3>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            To get your public menu link and QR code, upgrade to a <strong>team account</strong>. You can still set up your menu below.
+          </p>
+          <Button variant="outline" size="sm" onClick={() => navigate("/pricing")}>
+            Upgrade to Team
+          </Button>
+        </div>
+      )}
 
       {/* Documentation / How to Use */}
 

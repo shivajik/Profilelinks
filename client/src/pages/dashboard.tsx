@@ -374,8 +374,8 @@ export default function Dashboard() {
     { id: "design", label: "Design", icon: Palette, active: true },
     { id: "menu-setup", label: "Menu Setup", icon: UtensilsCrossed },
     { id: "settings", label: "Settings", icon: Settings },
-    { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "qrcodes", label: "QR Codes", icon: QrCode },
+    { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "billing", label: "Billing", icon: CreditCard },
   ];
 
@@ -926,7 +926,7 @@ function SettingsPanel({
   profileUrl,
   onLogout,
 }: {
-  user: { id: string; username: string; email: string; displayName: string | null; bio: string | null; profileImage: string | null; template: string | null };
+  user: { id: string; username: string; email: string; displayName: string | null; bio: string | null; profileImage: string | null; template: string | null; accountType: string };
   profileUrl: string;
   onLogout: () => void;
 }) {
@@ -1174,6 +1174,25 @@ function SettingsPanel({
           </Button>
         </div>
       </div>
+
+      {/* Upgrade to Team - only show for individual users */}
+      {user.accountType !== "team" && (
+        <div>
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <Users className="w-4 h-4" />
+            Upgrade to Team
+          </h3>
+          <div className="p-4 rounded-md border border-primary/20 bg-primary/5">
+            <p className="text-sm text-foreground mb-2 font-medium">Want team features?</p>
+            <p className="text-xs text-muted-foreground mb-3">
+              Upgrade to a team account to unlock public menu links, QR codes, team member management, company branding, and shared templates.
+            </p>
+            <Button size="sm" onClick={() => window.location.href = "/pricing"}>
+              View Team Plans
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div>
         <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
