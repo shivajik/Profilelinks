@@ -31,7 +31,7 @@ interface PricingPlan {
   features: string[]; maxLinks: number; maxPages: number;
   maxTeamMembers: number; maxBlocks: number; maxSocials: number;
   qrCodeEnabled: boolean; analyticsEnabled: boolean; customTemplatesEnabled: boolean;
-  menuBuilderEnabled: boolean;
+  menuBuilderEnabled: boolean; planType: string;
   isActive: boolean; isFeatured: boolean; sortOrder: number;
 }
 interface AdminStats {
@@ -75,6 +75,7 @@ const planSchema = z.object({
   analyticsEnabled: z.boolean().default(false),
   customTemplatesEnabled: z.boolean().default(false),
   menuBuilderEnabled: z.boolean().default(false),
+  planType: z.enum(["individual", "team"]).default("individual"),
   isActive: z.boolean().default(true),
   isFeatured: z.boolean().default(false),
   sortOrder: z.coerce.number().int().min(0).default(0),
@@ -207,11 +208,11 @@ export default function AdminDashboard() {
 
   // ── Plan CRUD ──────────────────────────────────────────────────────────────
   const openNewPlan = () => {
-    planForm.reset({ name: "", description: "", monthlyPrice: 0, yearlyPrice: 0, featuresText: "", maxLinks: 10, maxPages: 1, maxTeamMembers: 1, maxBlocks: 20, maxSocials: 5, qrCodeEnabled: false, analyticsEnabled: false, customTemplatesEnabled: false, menuBuilderEnabled: false, isActive: true, isFeatured: false, sortOrder: 0 });
+    planForm.reset({ name: "", description: "", monthlyPrice: 0, yearlyPrice: 0, featuresText: "", maxLinks: 10, maxPages: 1, maxTeamMembers: 1, maxBlocks: 20, maxSocials: 5, qrCodeEnabled: false, analyticsEnabled: false, customTemplatesEnabled: false, menuBuilderEnabled: false, planType: "individual", isActive: true, isFeatured: false, sortOrder: 0 });
     setPlanDialog({ open: true });
   };
   const openEditPlan = (plan: PricingPlan) => {
-    planForm.reset({ name: plan.name, description: plan.description ?? "", monthlyPrice: parseFloat(plan.monthlyPrice), yearlyPrice: parseFloat(plan.yearlyPrice), featuresText: (plan.features ?? []).join("\n"), maxLinks: plan.maxLinks, maxPages: plan.maxPages, maxTeamMembers: plan.maxTeamMembers, maxBlocks: plan.maxBlocks ?? 20, maxSocials: plan.maxSocials ?? 5, qrCodeEnabled: plan.qrCodeEnabled ?? false, analyticsEnabled: plan.analyticsEnabled ?? false, customTemplatesEnabled: plan.customTemplatesEnabled ?? false, menuBuilderEnabled: plan.menuBuilderEnabled ?? false, isActive: plan.isActive, isFeatured: plan.isFeatured, sortOrder: plan.sortOrder });
+    planForm.reset({ name: plan.name, description: plan.description ?? "", monthlyPrice: parseFloat(plan.monthlyPrice), yearlyPrice: parseFloat(plan.yearlyPrice), featuresText: (plan.features ?? []).join("\n"), maxLinks: plan.maxLinks, maxPages: plan.maxPages, maxTeamMembers: plan.maxTeamMembers, maxBlocks: plan.maxBlocks ?? 20, maxSocials: plan.maxSocials ?? 5, qrCodeEnabled: plan.qrCodeEnabled ?? false, analyticsEnabled: plan.analyticsEnabled ?? false, customTemplatesEnabled: plan.customTemplatesEnabled ?? false, menuBuilderEnabled: plan.menuBuilderEnabled ?? false, planType: (plan.planType as "individual" | "team") ?? "individual", isActive: plan.isActive, isFeatured: plan.isFeatured, sortOrder: plan.sortOrder });
     setPlanDialog({ open: true, plan });
   };
   const onSavePlan = async (data: PlanForm) => {
@@ -533,6 +534,17 @@ export default function AdminDashboard() {
                   <p className="text-muted-foreground text-sm">Create and manage subscription plans.</p>
                 </div>
                 <Button onClick={openNewPlan}><Plus className="h-4 w-4 mr-2" /> New Plan</Button>
+                <Button variant="outline" onClick={async () => {
+                  try {
+                    const r = await fetch("/api/admin/seed-team-packages", { method: "POST" });
+                    const j = await r.json();
+                    if (!r.ok) throw new Error(j.message);
+                    toast({ title: "Team packages seeded!", description: j.message });
+                    fetchPlans();
+                  } catch (err: any) {
+                    toast({ title: "Seed failed", description: err.message, variant: "destructive" });
+                  }
+                }}>Seed Team Packages</Button>
               </div>
               {plans.length === 0 ? (
                 <Card><CardContent className="py-12 text-center"><Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" /><p className="text-muted-foreground">No pricing plans yet.</p><Button className="mt-4" onClick={openNewPlan}>Create your first plan</Button></CardContent></Card>
@@ -547,6 +559,7 @@ export default function AdminDashboard() {
                               <span className="font-semibold text-foreground">{plan.name}</span>
                               {plan.isFeatured && <Badge variant="default" className="text-xs">Featured</Badge>}
                               {!plan.isActive && <Badge variant="secondary" className="text-xs">Inactive</Badge>}
+                              <Badge variant={plan.planType === "team" ? "default" : "outline"} className="text-xs capitalize">{plan.planType || "individual"}</Badge>
                             </div>
                             {plan.description && <p className="text-sm text-muted-foreground mt-0.5 truncate">{plan.description}</p>}
                             <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
@@ -1166,6 +1179,18 @@ export default function AdminDashboard() {
               <div className="flex items-center gap-3"><Switch checked={planForm.watch("analyticsEnabled")} onCheckedChange={(v) => planForm.setValue("analyticsEnabled", v)} /><Label>Analytics</Label></div>
               <div className="flex items-center gap-3"><Switch checked={planForm.watch("customTemplatesEnabled")} onCheckedChange={(v) => planForm.setValue("customTemplatesEnabled", v)} /><Label>Custom Templates</Label></div>
               <div className="flex items-center gap-3"><Switch checked={planForm.watch("menuBuilderEnabled")} onCheckedChange={(v) => planForm.setValue("menuBuilderEnabled", v)} /><Label>Menu Builder</Label></div>
+              <div className="col-span-2"><Separator className="my-2" /><p className="text-sm font-medium text-foreground mb-3">Plan Type</p></div>
+              <div className="col-span-2 space-y-1.5">
+                <Label>Plan Type</Label>
+                <Select value={planForm.watch("planType")} onValueChange={(v) => planForm.setValue("planType", v as "individual" | "team")}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="individual">Individual</SelectItem>
+                    <SelectItem value="team">Team (auto-upgrades buyer to team)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Team plans automatically convert individual users to team accounts upon purchase.</p>
+              </div>
               <div className="col-span-2"><Separator className="my-2" /></div>
               <div className="flex items-center gap-3"><Switch checked={planForm.watch("isActive")} onCheckedChange={(v) => planForm.setValue("isActive", v)} /><Label>Active</Label></div>
               <div className="flex items-center gap-3"><Switch checked={planForm.watch("isFeatured")} onCheckedChange={(v) => planForm.setValue("isFeatured", v)} /><Label>Featured</Label></div>

@@ -11,6 +11,7 @@ interface PricingPlan {
   monthlyPrice: string; yearlyPrice: string;
   features: string[]; maxLinks: number; maxPages: number;
   maxTeamMembers: number; isActive: boolean; isFeatured: boolean;
+  planType?: string;
 }
 
 declare global {

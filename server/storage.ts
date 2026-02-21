@@ -74,6 +74,7 @@ pool.query(`
   ALTER TABLE IF EXISTS pricing_plans ADD COLUMN IF NOT EXISTS analytics_enabled boolean NOT NULL DEFAULT false;
   ALTER TABLE IF EXISTS pricing_plans ADD COLUMN IF NOT EXISTS custom_templates_enabled boolean NOT NULL DEFAULT false;
   ALTER TABLE IF EXISTS pricing_plans ADD COLUMN IF NOT EXISTS menu_builder_enabled boolean NOT NULL DEFAULT false;
+  ALTER TABLE IF EXISTS pricing_plans ADD COLUMN IF NOT EXISTS plan_type text NOT NULL DEFAULT 'individual';
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS menu_template text;
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS menu_display_name text;
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS menu_profile_image text;

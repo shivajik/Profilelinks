@@ -1,10 +1,11 @@
 import { Router, type Request, type Response } from "express";
 import crypto from "crypto";
-import { db } from "./storage";
+import { db, storage } from "./storage";
 import {
   pricingPlans,
   payments,
   userSubscriptions,
+  users,
   createPaymentOrderSchema,
   verifyPaymentSchema,
 } from "@shared/schema";
@@ -91,6 +92,26 @@ router.post("/api/payments/create-order", requireAuth as any, async (req: Reques
           ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
           : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       });
+
+      // If team plan, auto-upgrade user
+      if (plan.planType === "team") {
+        const user = await storage.getUser(req.session.userId!);
+        if (user && user.accountType !== "team") {
+          const team = await storage.createTeam({
+            name: user.displayName ? `${user.displayName}'s Team` : `${user.username}'s Team`,
+            size: "1-5",
+            ownerId: user.id,
+          });
+          await storage.addTeamMember({
+            teamId: team.id,
+            userId: user.id,
+            role: "owner",
+            status: "activated",
+          });
+          await storage.updateUser(user.id, { accountType: "team", teamId: team.id });
+        }
+      }
+
       return res.json({ free: true, message: "Subscribed to free plan" });
     }
 
@@ -265,6 +286,28 @@ router.post("/api/payments/verify", requireAuth as any, async (req: Request, res
         currentPeriodStart: new Date(),
         currentPeriodEnd: periodEnd,
       });
+    }
+
+    // If this is a team plan, auto-upgrade user to team
+    const planRows = await db.select().from(pricingPlans).where(sql`${pricingPlans.id} = ${planId}`);
+    const purchasedPlan = planRows[0];
+    if (purchasedPlan && purchasedPlan.planType === "team") {
+      const user = await storage.getUser(req.session.userId!);
+      if (user && user.accountType !== "team") {
+        // Create a team for this user
+        const team = await storage.createTeam({
+          name: user.displayName ? `${user.displayName}'s Team` : `${user.username}'s Team`,
+          size: "1-5",
+          ownerId: user.id,
+        });
+        await storage.addTeamMember({
+          teamId: team.id,
+          userId: user.id,
+          role: "owner",
+          status: "activated",
+        });
+        await storage.updateUser(user.id, { accountType: "team", teamId: team.id });
+      }
     }
 
     res.json({ success: true, message: "Payment verified and subscription activated" });

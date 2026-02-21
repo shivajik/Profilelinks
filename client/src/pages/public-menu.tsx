@@ -306,13 +306,16 @@ export default function PublicMenu() {
               <span>Follow Us</span>
             </h3>
             <div className="flex flex-wrap gap-3">
-              {socials.map((social) => (
-                <a key={social.id} href={social.url} target="_blank" rel="noopener noreferrer"
+              {socials.map((social) => {
+                const href = social.url.startsWith('http') || social.url.startsWith('mailto:') || social.url.startsWith('tel:') ? social.url : `https://${social.url}`;
+                return (
+                <a key={social.id} href={href} target="_blank" rel="noopener noreferrer"
                   className={`w-9 h-9 rounded-full flex items-center justify-center transition-opacity hover:opacity-80 ${template.cardBg} border border-white/10`}
                   style={{ color: brandColor }}>
                   <SocialIcon platform={social.platform} className="w-4 h-4" />
                 </a>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

@@ -508,6 +508,7 @@ export const pricingPlans = pgTable("pricing_plans", {
   analyticsEnabled: boolean("analytics_enabled").notNull().default(false),
   customTemplatesEnabled: boolean("custom_templates_enabled").notNull().default(false),
   menuBuilderEnabled: boolean("menu_builder_enabled").notNull().default(false),
+  planType: text("plan_type").notNull().default("individual"), // "individual" | "team"
   isActive: boolean("is_active").notNull().default(true),
   isFeatured: boolean("is_featured").notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
@@ -569,6 +570,7 @@ export const createPricingPlanSchema = z.object({
   analyticsEnabled: z.boolean().default(false),
   customTemplatesEnabled: z.boolean().default(false),
   menuBuilderEnabled: z.boolean().default(false),
+  planType: z.enum(["individual", "team"]).default("individual"),
   isActive: z.boolean().default(true),
   isFeatured: z.boolean().default(false),
   sortOrder: z.number().int().min(0).default(0),
@@ -589,6 +591,7 @@ export const updatePricingPlanSchema = z.object({
   analyticsEnabled: z.boolean().optional(),
   customTemplatesEnabled: z.boolean().optional(),
   menuBuilderEnabled: z.boolean().optional(),
+  planType: z.enum(["individual", "team"]).optional(),
   isActive: z.boolean().optional(),
   isFeatured: z.boolean().optional(),
   sortOrder: z.number().int().min(0).optional(),

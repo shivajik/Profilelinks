@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import bcrypt from "bcryptjs";
-import { db } from "./storage";
+import { db, storage } from "./storage";
 import { requireAdminAuth } from "./admin-auth";
 import {
   adminUsers,
@@ -477,6 +477,112 @@ router.get("/api/admin/reports/download", requireAdminAuth, async (req: Request,
   } catch (error: any) {
     console.error("Report download error:", error);
     res.status(500).json({ message: "Failed to generate report" });
+  }
+});
+
+// ─── Seed Team Packages ─────────────────────────────────────────────────────
+router.post("/api/admin/seed-team-packages", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const teamPackages = [
+      {
+        name: "Team Starter",
+        description: "Perfect for small teams getting started. Upgrade from individual to team account.",
+        monthlyPrice: "499",
+        yearlyPrice: "4990",
+        features: JSON.stringify([
+          "Up to 5 team members",
+          "Team branding & templates",
+          "Shared contact management",
+          "Menu builder access",
+          "QR codes for all members",
+          "Basic analytics",
+        ]),
+        maxLinks: 25,
+        maxPages: 5,
+        maxTeamMembers: 5,
+        maxBlocks: 50,
+        maxSocials: 10,
+        qrCodeEnabled: true,
+        analyticsEnabled: true,
+        customTemplatesEnabled: true,
+        menuBuilderEnabled: true,
+        planType: "team",
+        isActive: true,
+        isFeatured: false,
+        sortOrder: 10,
+      },
+      {
+        name: "Team Pro",
+        description: "For growing teams that need more power and customization.",
+        monthlyPrice: "999",
+        yearlyPrice: "9990",
+        features: JSON.stringify([
+          "Up to 20 team members",
+          "Advanced team branding",
+          "Custom templates library",
+          "Full menu builder",
+          "QR codes & analytics",
+          "Priority support",
+          "Shared contacts",
+        ]),
+        maxLinks: 50,
+        maxPages: 10,
+        maxTeamMembers: 20,
+        maxBlocks: 100,
+        maxSocials: 20,
+        qrCodeEnabled: true,
+        analyticsEnabled: true,
+        customTemplatesEnabled: true,
+        menuBuilderEnabled: true,
+        planType: "team",
+        isActive: true,
+        isFeatured: true,
+        sortOrder: 11,
+      },
+      {
+        name: "Team Enterprise",
+        description: "Unlimited power for large organizations. Full control and customization.",
+        monthlyPrice: "2499",
+        yearlyPrice: "24990",
+        features: JSON.stringify([
+          "Up to 200 team members",
+          "White-label branding",
+          "Unlimited templates",
+          "Full menu builder",
+          "Advanced analytics",
+          "Dedicated support",
+          "API access",
+          "Custom integrations",
+        ]),
+        maxLinks: 200,
+        maxPages: 50,
+        maxTeamMembers: 200,
+        maxBlocks: 500,
+        maxSocials: 50,
+        qrCodeEnabled: true,
+        analyticsEnabled: true,
+        customTemplatesEnabled: true,
+        menuBuilderEnabled: true,
+        planType: "team",
+        isActive: true,
+        isFeatured: false,
+        sortOrder: 12,
+      },
+    ];
+
+    const inserted = [];
+    for (const pkg of teamPackages) {
+      const [plan] = await db
+        .insert(pricingPlans)
+        .values(pkg)
+        .returning();
+      inserted.push(plan);
+    }
+
+    res.status(201).json({ message: `${inserted.length} team packages created`, plans: inserted });
+  } catch (error: any) {
+    console.error("Seed team packages error:", error);
+    res.status(500).json({ message: "Failed to seed team packages" });
   }
 });
 
