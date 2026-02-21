@@ -219,18 +219,7 @@ export default function PublicMenu() {
           <div className="w-16 h-1 rounded-full mx-auto mt-4" style={{ backgroundColor: brandColor }} />
         </div>
 
-        {/* Social Links */}
-        {socials.length > 0 && (
-          <div className="flex justify-center gap-3 mb-6">
-            {socials.map((social) => (
-              <a key={social.id} href={social.url} target="_blank" rel="noopener noreferrer"
-                className={`w-9 h-9 rounded-full flex items-center justify-center transition-opacity hover:opacity-80 ${template.cardBg}`}
-                style={{ color: brandColor }}>
-                <SocialIcon platform={social.platform} className="w-4 h-4" />
-              </a>
-            ))}
-          </div>
-        )}
+        {/* Social Links moved below menu */}
 
         {/* Sticky Category Tabs */}
         {sortedSections.length > 0 && (
@@ -304,6 +293,24 @@ export default function PublicMenu() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Social Links - AFTER menu */}
+        {socials.length > 0 && (
+          <div className={`rounded-xl overflow-hidden ${template.cardBg} backdrop-blur-sm mt-6 p-4`}>
+            <h3 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${template.cardTextColor}`}>
+              <span>Follow Us</span>
+            </h3>
+            <div className="flex flex-wrap gap-3">
+              {socials.map((social) => (
+                <a key={social.id} href={social.url} target="_blank" rel="noopener noreferrer"
+                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-opacity hover:opacity-80 ${template.cardBg} border border-white/10`}
+                  style={{ color: brandColor }}>
+                  <SocialIcon platform={social.platform} className="w-4 h-4" />
+                </a>
+              ))}
+            </div>
           </div>
         )}
 

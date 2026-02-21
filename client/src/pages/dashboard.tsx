@@ -444,6 +444,14 @@ export default function Dashboard() {
                 </SidebarGroup>
               </>
             )}
+            <SidebarSeparator />
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <div className="px-2 py-2">
+                  <PlanUsageBanner />
+                </div>
+              </SidebarGroupContent>
+            </SidebarGroup>
           </SidebarContent>
           <SidebarFooter>
             <SidebarMenu>
@@ -476,8 +484,6 @@ export default function Dashboard() {
                     </Button>
                   </div>
                 </div>
-
-                <PlanUsageBanner />
 
                 <CategorySection
                   id="header"
@@ -863,7 +869,15 @@ export default function Dashboard() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => window.open(`/${user.username}/menu`, "_blank")}
+                    onClick={() => {
+                      if (!planLimits?.menuBuilderEnabled) {
+                        toast({ title: "Upgrade Required", description: "Please upgrade to Pro to open the menu link.", variant: "destructive" });
+                        return;
+                      }
+                      window.open(`/${user.username}/menu`, "_blank");
+                    }}
+                    className={!planLimits?.menuBuilderEnabled ? "opacity-50" : ""}
+                    title={!planLimits?.menuBuilderEnabled ? "Upgrade to Pro to open menu link" : "Open menu in new tab"}
                   >
                     <ExternalLink className="w-4 h-4" />
                   </Button>
