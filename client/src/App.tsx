@@ -23,7 +23,7 @@ import ContactPage from "@/pages/contact";
 import SupportPage from "@/pages/support";
 import GdprPage from "@/pages/gdpr";
 import RefundPolicyPage from "@/pages/refund-policy";
-
+import AffiliateDashboard from "@/pages/affiliate-dashboard";
 
 function Router() {
   return (
@@ -41,6 +41,7 @@ function Router() {
       <Route path="/support" component={SupportPage} />
       <Route path="/gdpr" component={GdprPage} />
       <Route path="/refund-policy" component={RefundPolicyPage} />
+      <Route path="/affiliate" component={AffiliateDashboard} />
       <Route path="/admin" component={AdminLogin} />
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin/dashboard" component={AdminDashboard} />

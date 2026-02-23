@@ -18,13 +18,14 @@ interface PricingPlan {
   isFeatured: boolean;
 }
 
-interface PricingCardProps {
+export interface PricingCardProps {
   plan: PricingPlan;
   billingCycle: "monthly" | "yearly";
   isCurrentPlan?: boolean;
   onSelect?: (plan: PricingPlan) => void;
   loading?: boolean;
   ctaLabel?: string;
+  discountPercent?: number;
 }
 
 export function PricingCard({
@@ -34,12 +35,17 @@ export function PricingCard({
   onSelect,
   loading,
   ctaLabel,
+  discountPercent,
 }: PricingCardProps) {
-  const price = billingCycle === "yearly"
+  const originalPrice = billingCycle === "yearly"
     ? parseFloat(plan.yearlyPrice)
     : parseFloat(plan.monthlyPrice);
 
-  const isFree = price === 0;
+  const price = discountPercent && originalPrice > 0
+    ? Math.round(originalPrice * (1 - discountPercent / 100))
+    : originalPrice;
+
+  const isFree = price === 0 && originalPrice === 0;
 
   return (
     <Card
@@ -85,7 +91,12 @@ export function PricingCard({
               </span>
             )}
           </div>
-          {!isFree && billingCycle === "yearly" && (
+          {discountPercent && originalPrice > 0 && (
+            <p className="text-xs text-muted-foreground mt-1 line-through">
+              ₹{originalPrice.toLocaleString("en-IN")}
+            </p>
+          )}
+          {!isFree && billingCycle === "yearly" && !discountPercent && (
             <p className="text-xs text-primary mt-1">
               Save {Math.round(100 - (parseFloat(plan.yearlyPrice) / (parseFloat(plan.monthlyPrice) * 12)) * 100)}% vs monthly
             </p>

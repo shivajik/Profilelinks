@@ -6,6 +6,9 @@ import {
   payments,
   userSubscriptions,
   users,
+  promoCodes,
+  affiliates,
+  affiliateReferrals,
   createPaymentOrderSchema,
   verifyPaymentSchema,
 } from "@shared/schema";
@@ -71,6 +74,7 @@ router.post("/api/payments/create-order", requireAuth as any, async (req: Reques
       return res.status(400).json({ message: fromZodError(result.error).message });
     }
     const { planId, billingCycle } = result.data;
+    const promoCode = req.body.promoCode as string | undefined;
 
     const plans = await db.select().from(pricingPlans).where(sql`${pricingPlans.id} = ${planId}`);
     const plan = plans[0];
@@ -78,7 +82,18 @@ router.post("/api/payments/create-order", requireAuth as any, async (req: Reques
       return res.status(404).json({ message: "Plan not found or inactive" });
     }
 
-    const price = billingCycle === "yearly" ? parseFloat(plan.yearlyPrice) : parseFloat(plan.monthlyPrice);
+    let price = billingCycle === "yearly" ? parseFloat(plan.yearlyPrice) : parseFloat(plan.monthlyPrice);
+
+    // Apply promo code discount
+    let appliedPromoId: string | null = null;
+    if (promoCode) {
+      const [code] = await db.select().from(promoCodes).where(eq(promoCodes.code, promoCode.toUpperCase()));
+      if (code && code.isActive && (!code.maxUses || code.maxUses === 0 || code.currentUses < code.maxUses) && (!code.expiresAt || new Date(code.expiresAt) > new Date())) {
+        const discount = parseFloat(code.discountPercent);
+        price = Math.round(price * (1 - discount / 100));
+        appliedPromoId = code.id;
+      }
+    }
 
     if (price === 0) {
       // Free plan — create subscription directly
@@ -307,6 +322,39 @@ router.post("/api/payments/verify", requireAuth as any, async (req: Request, res
           status: "activated",
         });
         await storage.updateUser(user.id, { accountType: "team", teamId: team.id });
+      }
+    }
+
+    // If promo code was used, increment usage
+    const promoCode = req.body.promoCode as string | undefined;
+    if (promoCode) {
+      await db.update(promoCodes)
+        .set({ currentUses: sql`${promoCodes.currentUses} + 1` })
+        .where(eq(promoCodes.code, promoCode.toUpperCase()));
+    }
+
+    // Track affiliate commission if user was referred
+    const [referral] = await db.select().from(affiliateReferrals)
+      .where(sql`${affiliateReferrals.referredUserId} = ${req.session.userId} AND ${affiliateReferrals.status} = 'pending'`);
+    
+    if (referral) {
+      const [affiliate] = await db.select().from(affiliates).where(sql`${affiliates.id} = ${referral.affiliateId}`);
+      if (affiliate) {
+        // Get actual payment amount
+        const [paymentRecord] = await db.select().from(payments)
+          .where(sql`${payments.razorpayOrderId} = ${razorpayOrderId}`);
+        const paymentAmount = paymentRecord ? parseFloat(paymentRecord.amount) : 0;
+        const commission = Math.round(paymentAmount * parseFloat(affiliate.commissionRate) / 100 * 100) / 100;
+
+        await db.update(affiliateReferrals).set({
+          status: "converted",
+          paymentId: paymentRecord?.id,
+          commissionAmount: commission.toString(),
+        }).where(sql`${affiliateReferrals.id} = ${referral.id}`);
+
+        await db.update(affiliates).set({
+          totalEarnings: sql`${affiliates.totalEarnings} + ${commission}`,
+        }).where(sql`${affiliates.id} = ${affiliate.id}`);
       }
     }
 

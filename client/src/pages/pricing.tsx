@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
-import { Link as WouterLink, useLocation } from "wouter";
+import { Link as WouterLink, useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { PricingCard } from "@/components/pricing-card";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Tag, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 
@@ -22,10 +23,7 @@ declare global {
 
 function loadRazorpayScript(): Promise<boolean> {
   return new Promise((resolve) => {
-    if (document.querySelector('script[src*="razorpay"]')) {
-      resolve(true);
-      return;
-    }
+    if (document.querySelector('script[src*="razorpay"]')) { resolve(true); return; }
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
     script.onload = () => resolve(true);
@@ -45,13 +43,15 @@ export default function PricingPage() {
   const [payingPlanId, setPayingPlanId] = useState<string | null>(null);
   const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
 
+  // Promo code state
+  const [promoInput, setPromoInput] = useState("");
+  const [promoValidating, setPromoValidating] = useState(false);
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPercent: number } | null>(null);
+
   useEffect(() => {
     fetch("/api/pricing/plans")
       .then((r) => r.json())
-      .then((data) => {
-        // Guard: only accept an array (DB may not be migrated yet)
-        setPlans(Array.isArray(data) ? data : []);
-      })
+      .then((data) => { setPlans(Array.isArray(data) ? data : []); })
       .catch(() => setPlans([]))
       .finally(() => setLoading(false));
   }, []);
@@ -64,11 +64,34 @@ export default function PricingPage() {
       .catch(() => {});
   }, [user]);
 
-  const handleSelectPlan = useCallback(async (plan: PricingPlan) => {
-    if (!user) {
-      navigate("/auth");
-      return;
+  const validatePromo = async () => {
+    if (!promoInput.trim()) return;
+    setPromoValidating(true);
+    try {
+      const res = await fetch("/api/promo-codes/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: promoInput.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      setAppliedPromo({ code: data.code, discountPercent: data.discountPercent });
+      toast({ title: "Promo code applied! 🎉", description: `${data.discountPercent}% discount will be applied.` });
+    } catch (err: any) {
+      toast({ title: "Invalid promo code", description: err.message, variant: "destructive" });
+      setAppliedPromo(null);
+    } finally {
+      setPromoValidating(false);
     }
+  };
+
+  const removePromo = () => {
+    setAppliedPromo(null);
+    setPromoInput("");
+  };
+
+  const handleSelectPlan = useCallback(async (plan: PricingPlan) => {
+    if (!user) { navigate("/auth"); return; }
     if (currentPlanId === plan.id) return;
 
     setPayingPlanId(plan.id);
@@ -76,7 +99,11 @@ export default function PricingPage() {
       const res = await fetch("/api/payments/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId: plan.id, billingCycle }),
+        body: JSON.stringify({
+          planId: plan.id,
+          billingCycle,
+          promoCode: appliedPromo?.code || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
@@ -88,7 +115,6 @@ export default function PricingPage() {
         return;
       }
 
-      // Load Razorpay
       const loaded = await loadRazorpayScript();
       if (!loaded) throw new Error("Razorpay failed to load. Please refresh and try again.");
 
@@ -97,7 +123,7 @@ export default function PricingPage() {
         amount: data.amount,
         currency: data.currency,
         name: "Linkfolio",
-        description: `${plan.name} Plan — ${billingCycle}`,
+        description: `${plan.name} Plan — ${billingCycle}${appliedPromo ? ` (${appliedPromo.discountPercent}% off)` : ""}`,
         order_id: data.orderId,
         handler: async (response: {
           razorpay_payment_id: string;
@@ -114,6 +140,7 @@ export default function PricingPage() {
                 razorpaySignature: response.razorpay_signature,
                 planId: plan.id,
                 billingCycle,
+                promoCode: appliedPromo?.code || undefined,
               }),
             });
             const vData = await verifyRes.json();
@@ -135,7 +162,7 @@ export default function PricingPage() {
       toast({ title: "Payment failed", description: err.message, variant: "destructive" });
       setPayingPlanId(null);
     }
-  }, [user, billingCycle, currentPlanId, navigate, toast]);
+  }, [user, billingCycle, currentPlanId, navigate, toast, appliedPromo]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -186,6 +213,41 @@ export default function PricingPage() {
         </div>
       </section>
 
+      {/* Promo Code Section */}
+      <section className="max-w-md mx-auto px-4 pb-8">
+        <div className="bg-muted/50 border rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Tag className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium text-foreground">Have a promo code?</span>
+          </div>
+          {appliedPromo ? (
+            <div className="flex items-center justify-between bg-primary/10 rounded-md px-3 py-2">
+              <div className="flex items-center gap-2">
+                <Check className="h-4 w-4 text-primary" />
+                <span className="font-semibold text-primary">{appliedPromo.code}</span>
+                <span className="text-sm text-muted-foreground">— {appliedPromo.discountPercent}% off</span>
+              </div>
+              <Button variant="ghost" size="sm" onClick={removePromo} className="h-7 w-7 p-0">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter promo code"
+                value={promoInput}
+                onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                onKeyDown={(e) => e.key === "Enter" && validatePromo()}
+                className="uppercase"
+              />
+              <Button onClick={validatePromo} disabled={promoValidating || !promoInput.trim()} size="sm">
+                {promoValidating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+              </Button>
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* Plans */}
       <section className="max-w-5xl mx-auto px-4 pb-20">
         {loading ? (
@@ -207,6 +269,7 @@ export default function PricingPage() {
                 isCurrentPlan={currentPlanId === plan.id}
                 loading={payingPlanId === plan.id}
                 onSelect={handleSelectPlan}
+                discountPercent={appliedPromo?.discountPercent}
               />
             ))}
           </div>
@@ -223,6 +286,7 @@ export default function PricingPage() {
               { q: "What payment methods are accepted?", a: "We accept all major credit/debit cards, UPI, net banking, and wallets via Razorpay." },
               { q: "Is there a free plan?", a: "Yes, we offer a free plan to get you started. Upgrade when you need more features." },
               { q: "Are prices in INR?", a: "Yes, all prices are in Indian Rupees (₹) and payments are processed securely via Razorpay." },
+              { q: "How do promo codes work?", a: "Enter a valid promo code before selecting a plan to get a percentage discount on your purchase." },
             ].map((item) => (
               <div key={item.q} className="bg-background border rounded-lg p-4">
                 <h3 className="font-semibold text-foreground mb-1">{item.q}</h3>

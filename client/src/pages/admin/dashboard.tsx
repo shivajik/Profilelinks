@@ -20,6 +20,7 @@ import {
   UserCheck, UserX, ChevronRight, Menu, X as XIcon,
   FileText, Eye, User, Mail, AtSign, Calendar, Hash,
   Download, ArrowLeft, Link2, FileStack, Globe, MessageSquare,
+  Handshake, Tag, Percent, Copy,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -57,6 +58,15 @@ interface UserDetail {
     maxBlocks: number; maxSocials: number; currentLinks: number; currentPages: number;
     currentBlocks: number; currentSocials: number; currentTeamMembers: number; hasActivePlan: boolean;
   };
+}
+interface AffiliateRow {
+  id: string; userId: string; referralCode: string; commissionRate: string;
+  isActive: boolean; totalEarnings: string; createdAt: string;
+  username?: string; email?: string; displayName?: string;
+}
+interface PromoCodeRow {
+  id: string; code: string; discountPercent: string; maxUses: number | null;
+  currentUses: number; isActive: boolean; expiresAt?: string; createdAt: string;
 }
 
 // ─── Plan Form Schema ────────────────────────────────────────────────────────
@@ -99,12 +109,14 @@ function StatusBadge({ status }: { status: string }) {
 
 // ─── Sidebar Nav Items ───────────────────────────────────────────────────────
 const NAV_ITEMS = [
-  { key: "overview",  label: "Overview",       icon: LayoutDashboard },
-  { key: "users",     label: "Users",          icon: Users },
-  { key: "plans",     label: "Pricing Plans",  icon: Package },
-  { key: "payments",  label: "Payments",       icon: CreditCard },
-  { key: "reports",   label: "Reports",        icon: BarChart3 },
-  { key: "settings",  label: "Settings",       icon: Settings },
+  { key: "overview",    label: "Overview",       icon: LayoutDashboard },
+  { key: "users",       label: "Users",          icon: Users },
+  { key: "plans",       label: "Pricing Plans",  icon: Package },
+  { key: "payments",    label: "Payments",       icon: CreditCard },
+  { key: "affiliates",  label: "Affiliates",     icon: Handshake },
+  { key: "promo-codes", label: "Promo Codes",    icon: Tag },
+  { key: "reports",     label: "Reports",        icon: BarChart3 },
+  { key: "settings",    label: "Settings",       icon: Settings },
 ];
 
 export default function AdminDashboard() {
@@ -149,6 +161,23 @@ export default function AdminDashboard() {
 
   const planForm = useForm<PlanForm>({ resolver: zodResolver(planSchema) });
 
+  // Affiliate state
+  const [adminAffiliates, setAdminAffiliates] = useState<AffiliateRow[]>([]);
+  const [affiliateUserId, setAffiliateUserId] = useState("");
+  const [affiliateRate, setAffiliateRate] = useState("10");
+  const [creatingAffiliate, setCreatingAffiliate] = useState(false);
+  const [deletingAffiliateId, setDeletingAffiliateId] = useState<string | null>(null);
+
+  // Promo code state
+  const [adminPromoCodes, setAdminPromoCodes] = useState<PromoCodeRow[]>([]);
+  const [promoDialog, setPromoDialog] = useState<{ open: boolean; promo?: PromoCodeRow }>({ open: false });
+  const [promoCode, setPromoCode] = useState("");
+  const [promoDiscount, setPromoDiscount] = useState("10");
+  const [promoMaxUses, setPromoMaxUses] = useState("0");
+  const [promoExpiry, setPromoExpiry] = useState("");
+  const [savingPromo, setSavingPromo] = useState(false);
+  const [deletingPromoId, setDeletingPromoId] = useState<string | null>(null);
+
   // ── Auth check ─────────────────────────────────────────────────────────────
   useEffect(() => {
     fetch("/api/admin/me")
@@ -157,15 +186,17 @@ export default function AdminDashboard() {
       .catch(() => navigate("/admin/login"));
   }, [navigate]);
 
-  const fetchStats   = useCallback(async () => { const r = await fetch("/api/admin/stats");    if (r.ok) setStats(await r.json()); }, []);
-  const fetchPlans   = useCallback(async () => { const r = await fetch("/api/admin/plans");    if (r.ok) setPlans(await r.json()); }, []);
-  const fetchUsers   = useCallback(async () => { const r = await fetch("/api/admin/users");    if (r.ok) { const d = await r.json(); setAdminUsers(d.users ?? []); } }, []);
-  const fetchPayments= useCallback(async () => { const r = await fetch("/api/admin/payments"); if (r.ok) { const d = await r.json(); setAdminPayments(d.payments ?? []); } }, []);
+  const fetchStats      = useCallback(async () => { const r = await fetch("/api/admin/stats");    if (r.ok) setStats(await r.json()); }, []);
+  const fetchPlans      = useCallback(async () => { const r = await fetch("/api/admin/plans");    if (r.ok) setPlans(await r.json()); }, []);
+  const fetchUsers      = useCallback(async () => { const r = await fetch("/api/admin/users");    if (r.ok) { const d = await r.json(); setAdminUsers(d.users ?? []); } }, []);
+  const fetchPayments   = useCallback(async () => { const r = await fetch("/api/admin/payments"); if (r.ok) { const d = await r.json(); setAdminPayments(d.payments ?? []); } }, []);
+  const fetchAffiliates = useCallback(async () => { const r = await fetch("/api/admin/affiliates"); if (r.ok) setAdminAffiliates(await r.json()); }, []);
+  const fetchPromoCodes = useCallback(async () => { const r = await fetch("/api/admin/promo-codes"); if (r.ok) setAdminPromoCodes(await r.json()); }, []);
 
   const refreshAll = useCallback(() => {
     setLoadingData(true);
-    Promise.all([fetchStats(), fetchPlans(), fetchUsers(), fetchPayments()]).finally(() => setLoadingData(false));
-  }, [fetchStats, fetchPlans, fetchUsers, fetchPayments]);
+    Promise.all([fetchStats(), fetchPlans(), fetchUsers(), fetchPayments(), fetchAffiliates(), fetchPromoCodes()]).finally(() => setLoadingData(false));
+  }, [fetchStats, fetchPlans, fetchUsers, fetchPayments, fetchAffiliates, fetchPromoCodes]);
 
   useEffect(() => { if (admin) refreshAll(); }, [admin, refreshAll]);
 
@@ -739,6 +770,231 @@ export default function AdminDashboard() {
             </div>
           )}
 
+          {/* ── AFFILIATES ──────────────────────────────────────────────────────── */}
+          {activeSection === "affiliates" && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground">Affiliate Programme</h2>
+                <p className="text-muted-foreground text-sm">Assign users as affiliates, set commission rates, and track referrals.</p>
+              </div>
+
+              {/* Add affiliate */}
+              <Card>
+                <CardContent className="pt-4">
+                  <p className="text-sm font-medium text-foreground mb-3">Add New Affiliate</p>
+                  <div className="flex flex-wrap gap-3 items-end">
+                    <div className="space-y-1 flex-1 min-w-[200px]">
+                      <Label className="text-xs">User ID or Email</Label>
+                      <Input placeholder="User ID" value={affiliateUserId} onChange={(e) => setAffiliateUserId(e.target.value)} />
+                    </div>
+                    <div className="space-y-1 w-32">
+                      <Label className="text-xs">Commission %</Label>
+                      <Input type="number" min="0" max="100" value={affiliateRate} onChange={(e) => setAffiliateRate(e.target.value)} />
+                    </div>
+                    <Button
+                      disabled={creatingAffiliate || !affiliateUserId.trim()}
+                      onClick={async () => {
+                        setCreatingAffiliate(true);
+                        try {
+                          // Try to find user by email first
+                          let userId = affiliateUserId.trim();
+                          if (userId.includes("@")) {
+                            // Search from users list
+                            const match = adminUsers.find(u => u.email.toLowerCase() === userId.toLowerCase());
+                            if (match) userId = match.id;
+                            else throw new Error("User not found with that email");
+                          }
+                          const r = await fetch("/api/admin/affiliates", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ userId, commissionRate: parseFloat(affiliateRate) }),
+                          });
+                          const j = await r.json();
+                          if (!r.ok) throw new Error(j.message);
+                          toast({ title: "Affiliate created!" });
+                          setAffiliateUserId("");
+                          fetchAffiliates();
+                        } catch (err: any) {
+                          toast({ title: "Failed", description: err.message, variant: "destructive" });
+                        }
+                        setCreatingAffiliate(false);
+                      }}
+                    >
+                      {creatingAffiliate ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
+                      Add
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Affiliates list */}
+              <Card>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left p-3 font-medium text-muted-foreground">User</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Referral Code</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Commission</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Earnings</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {adminAffiliates.length === 0 ? (
+                        <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No affiliates yet</td></tr>
+                      ) : adminAffiliates.map((a) => (
+                        <tr key={a.id} className="border-b last:border-0 hover:bg-muted/30">
+                          <td className="p-3">
+                            <div className="font-medium text-foreground">{a.displayName || a.username}</div>
+                            <div className="text-xs text-muted-foreground">{a.email}</div>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex items-center gap-1">
+                              <code className="bg-muted px-2 py-0.5 rounded text-xs">{a.referralCode}</code>
+                              <button
+                                onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/auth?ref=${a.referralCode}`); toast({ title: "Link copied!" }); }}
+                                className="text-muted-foreground hover:text-foreground"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </td>
+                          <td className="p-3 font-medium">{parseFloat(a.commissionRate)}%</td>
+                          <td className="p-3 font-medium text-foreground">₹{parseFloat(a.totalEarnings).toLocaleString()}</td>
+                          <td className="p-3">
+                            <Badge variant={a.isActive ? "default" : "secondary"} className="text-xs">
+                              {a.isActive ? "Active" : "Inactive"}
+                            </Badge>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex items-center gap-1.5">
+                              <Button
+                                variant="outline" size="sm"
+                                onClick={async () => {
+                                  const r = await fetch(`/api/admin/affiliates/${a.id}`, {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ isActive: !a.isActive }),
+                                  });
+                                  if (r.ok) { toast({ title: a.isActive ? "Deactivated" : "Activated" }); fetchAffiliates(); }
+                                }}
+                                title={a.isActive ? "Deactivate" : "Activate"}
+                              >
+                                {a.isActive ? <UserX className="h-3.5 w-3.5" /> : <UserCheck className="h-3.5 w-3.5" />}
+                              </Button>
+                              <Button
+                                variant="outline" size="sm"
+                                onClick={async () => {
+                                  if (!confirm("Delete this affiliate?")) return;
+                                  setDeletingAffiliateId(a.id);
+                                  const r = await fetch(`/api/admin/affiliates/${a.id}`, { method: "DELETE" });
+                                  if (r.ok) { toast({ title: "Affiliate removed" }); fetchAffiliates(); }
+                                  setDeletingAffiliateId(null);
+                                }}
+                                disabled={deletingAffiliateId === a.id}
+                                className="text-destructive hover:bg-destructive/10"
+                              >
+                                {deletingAffiliateId === a.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </div>
+          )}
+
+          {/* ── PROMO CODES ──────────────────────────────────────────────────────── */}
+          {activeSection === "promo-codes" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-foreground">Promo Codes</h2>
+                  <p className="text-muted-foreground text-sm">Create discount codes for your customers.</p>
+                </div>
+                <Button onClick={() => {
+                  setPromoCode("");
+                  setPromoDiscount("10");
+                  setPromoMaxUses("0");
+                  setPromoExpiry("");
+                  setPromoDialog({ open: true });
+                }}>
+                  <Plus className="h-4 w-4 mr-2" /> New Promo Code
+                </Button>
+              </div>
+
+              <Card>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left p-3 font-medium text-muted-foreground">Code</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Discount</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Uses</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Expires</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {adminPromoCodes.length === 0 ? (
+                        <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No promo codes yet</td></tr>
+                      ) : adminPromoCodes.map((p) => (
+                        <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
+                          <td className="p-3"><code className="bg-muted px-2 py-0.5 rounded text-xs font-bold">{p.code}</code></td>
+                          <td className="p-3 font-medium">{parseFloat(p.discountPercent)}%</td>
+                          <td className="p-3 text-muted-foreground">{p.currentUses}{p.maxUses ? ` / ${p.maxUses}` : " / ∞"}</td>
+                          <td className="p-3 text-muted-foreground text-xs">{p.expiresAt ? new Date(p.expiresAt).toLocaleDateString("en-IN") : "Never"}</td>
+                          <td className="p-3">
+                            <Badge variant={p.isActive ? "default" : "secondary"} className="text-xs">
+                              {p.isActive ? "Active" : "Inactive"}
+                            </Badge>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex items-center gap-1.5">
+                              <Button
+                                variant="outline" size="sm"
+                                onClick={async () => {
+                                  const r = await fetch(`/api/admin/promo-codes/${p.id}`, {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ isActive: !p.isActive }),
+                                  });
+                                  if (r.ok) { toast({ title: p.isActive ? "Deactivated" : "Activated" }); fetchPromoCodes(); }
+                                }}
+                              >
+                                {p.isActive ? <XIcon className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />}
+                              </Button>
+                              <Button
+                                variant="outline" size="sm"
+                                onClick={async () => {
+                                  if (!confirm("Delete this promo code?")) return;
+                                  setDeletingPromoId(p.id);
+                                  const r = await fetch(`/api/admin/promo-codes/${p.id}`, { method: "DELETE" });
+                                  if (r.ok) { toast({ title: "Promo code deleted" }); fetchPromoCodes(); }
+                                  setDeletingPromoId(null);
+                                }}
+                                disabled={deletingPromoId === p.id}
+                                className="text-destructive hover:bg-destructive/10"
+                              >
+                                {deletingPromoId === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </div>
+          )}
+
           {/* ── REPORTS ───────────────────────────────────────────────────────── */}
           {activeSection === "reports" && (
             <div className="space-y-6">
@@ -1200,6 +1456,69 @@ export default function AdminDashboard() {
               <Button type="submit" disabled={savingPlan}>{savingPlan ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}{planDialog.plan ? "Save Changes" : "Create Plan"}</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Promo Code Dialog ──────────────────────────────────────────────── */}
+      <Dialog open={promoDialog.open} onOpenChange={(open) => setPromoDialog({ open })}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{promoDialog.promo ? "Edit Promo Code" : "New Promo Code"}</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Code</Label>
+              <Input
+                placeholder="e.g. WELCOME20"
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                disabled={!!promoDialog.promo}
+                className="uppercase"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Discount Percentage (%)</Label>
+              <Input type="number" min="1" max="100" value={promoDiscount} onChange={(e) => setPromoDiscount(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Max Uses (0 = unlimited)</Label>
+              <Input type="number" min="0" value={promoMaxUses} onChange={(e) => setPromoMaxUses(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Expiry Date (optional)</Label>
+              <Input type="date" value={promoExpiry} onChange={(e) => setPromoExpiry(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPromoDialog({ open: false })}>Cancel</Button>
+            <Button
+              disabled={savingPromo || !promoCode.trim()}
+              onClick={async () => {
+                setSavingPromo(true);
+                try {
+                  const res = await fetch("/api/admin/promo-codes", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      code: promoCode,
+                      discountPercent: parseFloat(promoDiscount),
+                      maxUses: parseInt(promoMaxUses),
+                      expiresAt: promoExpiry || undefined,
+                    }),
+                  });
+                  const j = await res.json();
+                  if (!res.ok) throw new Error(j.message);
+                  toast({ title: "Promo code created!" });
+                  setPromoDialog({ open: false });
+                  fetchPromoCodes();
+                } catch (err: any) {
+                  toast({ title: "Failed", description: err.message, variant: "destructive" });
+                }
+                setSavingPromo(false);
+              }}
+            >
+              {savingPromo ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Create Code
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

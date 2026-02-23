@@ -13,6 +13,7 @@ import fs from "fs";
 import crypto from "crypto";
 import adminRouter from "./admin-routes";
 import paymentRouter from "./payment-routes";
+import affiliateRouter from "./affiliate-routes";
 import { getUserPlanLimits } from "./plan-limits";
 
 declare module "express-session" {
@@ -1696,9 +1697,10 @@ export async function registerRoutes(
     }
   });
 
-  // Register admin and payment routes
+  // Register admin, payment, and affiliate routes
   app.use(adminRouter);
   app.use(paymentRouter);
+  app.use(affiliateRouter);
 
   return httpServer;
 }

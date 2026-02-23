@@ -126,6 +126,37 @@ pool.query(`
     url text NOT NULL,
     position integer NOT NULL DEFAULT 0
   );
+
+  CREATE TABLE IF NOT EXISTS affiliates (
+    id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    referral_code text NOT NULL UNIQUE,
+    commission_rate numeric(5,2) NOT NULL DEFAULT 10,
+    is_active boolean NOT NULL DEFAULT true,
+    total_earnings numeric(10,2) NOT NULL DEFAULT 0,
+    created_at timestamp NOT NULL DEFAULT now()
+  );
+
+  CREATE TABLE IF NOT EXISTS affiliate_referrals (
+    id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+    affiliate_id varchar NOT NULL REFERENCES affiliates(id) ON DELETE CASCADE,
+    referred_user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    payment_id varchar REFERENCES payments(id),
+    commission_amount numeric(10,2) DEFAULT 0,
+    status text NOT NULL DEFAULT 'pending',
+    created_at timestamp NOT NULL DEFAULT now()
+  );
+
+  CREATE TABLE IF NOT EXISTS promo_codes (
+    id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+    code text NOT NULL UNIQUE,
+    discount_percent numeric(5,2) NOT NULL DEFAULT 10,
+    max_uses integer DEFAULT 0,
+    current_uses integer NOT NULL DEFAULT 0,
+    is_active boolean NOT NULL DEFAULT true,
+    expires_at timestamp,
+    created_at timestamp NOT NULL DEFAULT now()
+  );
 `).catch(() => {/* Columns/tables may already exist */});
 
 

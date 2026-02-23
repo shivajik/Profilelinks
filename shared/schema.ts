@@ -623,3 +623,70 @@ export type UserSubscription = typeof userSubscriptions.$inferSelect;
 export type InsertUserSubscription = z.infer<typeof insertUserSubscriptionSchema>;
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+
+// =============================================
+// AFFILIATES & PROMO CODES
+// =============================================
+
+export const affiliates = pgTable("affiliates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  referralCode: text("referral_code").notNull().unique(),
+  commissionRate: numeric("commission_rate", { precision: 5, scale: 2 }).notNull().default("10"), // percentage
+  isActive: boolean("is_active").notNull().default(true),
+  totalEarnings: numeric("total_earnings", { precision: 10, scale: 2 }).notNull().default("0"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const affiliateReferrals = pgTable("affiliate_referrals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  affiliateId: varchar("affiliate_id").notNull().references(() => affiliates.id, { onDelete: "cascade" }),
+  referredUserId: varchar("referred_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  paymentId: varchar("payment_id").references(() => payments.id),
+  commissionAmount: numeric("commission_amount", { precision: 10, scale: 2 }).default("0"),
+  status: text("status").notNull().default("pending"), // pending | converted | paid
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const promoCodes = pgTable("promo_codes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: text("code").notNull().unique(),
+  discountPercent: numeric("discount_percent", { precision: 5, scale: 2 }).notNull().default("10"),
+  maxUses: integer("max_uses").default(0), // 0 = unlimited
+  currentUses: integer("current_uses").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const createAffiliateSchema = z.object({
+  userId: z.string().min(1, "User ID is required"),
+  commissionRate: z.number().min(0).max(100).default(10),
+});
+
+export const updateAffiliateSchema = z.object({
+  commissionRate: z.number().min(0).max(100).optional(),
+  isActive: z.boolean().optional(),
+});
+
+export const createPromoCodeSchema = z.object({
+  code: z.string().min(1, "Code is required").max(50).regex(/^[A-Z0-9_-]+$/i, "Only letters, numbers, hyphens and underscores"),
+  discountPercent: z.number().min(1).max(100),
+  maxUses: z.number().int().min(0).default(0),
+  expiresAt: z.string().optional(),
+});
+
+export const updatePromoCodeSchema = z.object({
+  discountPercent: z.number().min(1).max(100).optional(),
+  maxUses: z.number().int().min(0).optional(),
+  isActive: z.boolean().optional(),
+  expiresAt: z.string().optional().nullable(),
+});
+
+export const validatePromoCodeSchema = z.object({
+  code: z.string().min(1),
+});
+
+export type Affiliate = typeof affiliates.$inferSelect;
+export type AffiliateReferral = typeof affiliateReferrals.$inferSelect;
+export type PromoCode = typeof promoCodes.$inferSelect;

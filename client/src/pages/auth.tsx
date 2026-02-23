@@ -21,7 +21,8 @@ export default function AuthPage() {
   const search = useSearch();
   const params = new URLSearchParams(search);
   const initialTab = params.get("tab") === "register" ? "register" : "login";
-  const [tab, setTab] = useState<"login" | "register">(initialTab);
+  const refCode = params.get("ref");
+  const [tab, setTab] = useState<"login" | "register">(refCode ? "register" : initialTab);
   const [, navigate] = useLocation();
   const { login, register, user } = useAuth();
   const { toast } = useToast();
@@ -135,6 +136,20 @@ export default function AuthPage() {
               <RegisterForm onSubmit={async (username, email, password) => {
                 try {
                   await register(username, email, password);
+                  // Track referral if ref code exists
+                  if (refCode) {
+                    try {
+                      const meRes = await fetch("/api/auth/me");
+                      if (meRes.ok) {
+                        const me = await meRes.json();
+                        await fetch("/api/affiliate/track", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ referralCode: refCode, userId: me.id }),
+                        });
+                      }
+                    } catch { /* ignore tracking errors */ }
+                  }
                 } catch (e: any) {
                   toast({ title: "Registration failed", description: e.message, variant: "destructive" });
                 }
