@@ -216,7 +216,7 @@ router.delete("/api/admin/promo-codes/:id", requireAdminAuth, async (req: Reques
 // PUBLIC: Validate promo code
 // ═══════════════════════════════════════════════════
 
-router.post("/api/promo-codes/validate", requireAuth as any, async (req: Request, res: Response) => {
+router.post("/api/promo-codes/validate", async (req: Request, res: Response) => {
   try {
     const result = validatePromoCodeSchema.safeParse(req.body);
     if (!result.success) {

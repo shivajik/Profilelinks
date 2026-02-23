@@ -223,6 +223,17 @@ export default function Dashboard() {
 
   const { data: planLimits } = usePlanLimits();
 
+  const [isAffiliate, setIsAffiliate] = useState(false);
+  const [affiliateData, setAffiliateData] = useState<any>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    fetch("/api/affiliate/dashboard", { credentials: "include" })
+      .then(r => { if (r.ok) return r.json(); throw new Error(); })
+      .then(d => { setIsAffiliate(true); setAffiliateData(d); })
+      .catch(() => setIsAffiliate(false));
+  }, [user]);
+
   useEffect(() => {
     if (user) {
       setHeaderName(user.displayName || "");
@@ -379,6 +390,7 @@ export default function Dashboard() {
     { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "billing", label: "Billing", icon: CreditCard },
     { id: "usage", label: "Usage", icon: Eye },
+    ...(isAffiliate ? [{ id: "affiliate", label: "Affiliate", icon: Share2 }] : []),
   ];
 
   const teamSidebarItems = [
@@ -461,8 +473,90 @@ export default function Dashboard() {
 
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 flex overflow-hidden">
-             <div className={`flex-1 overflow-y-auto border-r bg-background w-full ${activeSection === "design" ? "md:min-w-[300px] md:max-w-[420px]" : ""} ${activeSection === "menu-setup" ? "md:min-w-[300px] md:max-w-[420px]" : ""} ${["team-members", "team-templates", "contacts", "billing", "usage"].includes(activeSection) ? "md:max-w-none" : ""}`}>
+             <div className={`flex-1 overflow-y-auto border-r bg-background w-full ${activeSection === "design" ? "md:min-w-[300px] md:max-w-[420px]" : ""} ${activeSection === "menu-setup" ? "md:min-w-[300px] md:max-w-[420px]" : ""} ${["team-members", "team-templates", "contacts", "billing", "usage", "affiliate"].includes(activeSection) ? "md:max-w-none" : ""}`}>
               {activeSection === "billing" && <BillingSection />}
+              {activeSection === "affiliate" && affiliateData && (
+                <div className="p-6 max-w-4xl mx-auto space-y-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <SidebarTrigger />
+                    <h2 className="text-xl font-semibold">Affiliate Dashboard</h2>
+                    <Badge variant={affiliateData.affiliate.isActive ? "default" : "secondary"} className="ml-2">
+                      {affiliateData.affiliate.isActive ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Commission rate: <span className="font-semibold text-primary">{affiliateData.affiliate.commissionRate}%</span>
+                  </p>
+
+                  {/* Referral Link */}
+                  <Card>
+                    <CardHeader><CardTitle className="text-base">Your Referral Link</CardTitle></CardHeader>
+                    <CardContent>
+                      <div className="flex gap-2">
+                        <Input value={`${window.location.origin}/auth?ref=${affiliateData.affiliate.referralCode}`} readOnly className="font-mono text-xs" />
+                        <Button variant="outline" size="sm" onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/auth?ref=${affiliateData.affiliate.referralCode}`);
+                          toast({ title: "Copied!", description: "Referral link copied." });
+                        }}>
+                          <Copy className="h-4 w-4 mr-1" /> Copy
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Stats */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <Card><CardContent className="pt-6">
+                      <p className="text-sm text-muted-foreground">Total Referrals</p>
+                      <p className="text-2xl font-bold mt-1">{affiliateData.stats.totalReferrals}</p>
+                    </CardContent></Card>
+                    <Card><CardContent className="pt-6">
+                      <p className="text-sm text-muted-foreground">Pending</p>
+                      <p className="text-2xl font-bold mt-1">{affiliateData.stats.pendingReferrals}</p>
+                    </CardContent></Card>
+                    <Card><CardContent className="pt-6">
+                      <p className="text-sm text-muted-foreground">Converted</p>
+                      <p className="text-2xl font-bold mt-1">{affiliateData.stats.convertedReferrals}</p>
+                    </CardContent></Card>
+                    <Card><CardContent className="pt-6">
+                      <p className="text-sm text-muted-foreground">Total Earnings</p>
+                      <p className="text-2xl font-bold mt-1">₹{affiliateData.stats.totalEarnings.toLocaleString()}</p>
+                    </CardContent></Card>
+                  </div>
+
+                  {/* Referrals Table */}
+                  <Card>
+                    <CardHeader><CardTitle className="text-base">Referral History</CardTitle></CardHeader>
+                    <CardContent className="p-0">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>User</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Commission</TableHead>
+                            <TableHead>Date</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {affiliateData.referrals.length === 0 ? (
+                            <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No referrals yet. Share your link to start earning!</TableCell></TableRow>
+                          ) : affiliateData.referrals.map((r: any) => (
+                            <TableRow key={r.id}>
+                              <TableCell>
+                                <div className="font-medium">{r.username ?? "Unknown"}</div>
+                                <div className="text-xs text-muted-foreground">{r.email ?? ""}</div>
+                              </TableCell>
+                              <TableCell><Badge variant={r.status === "converted" ? "default" : "secondary"} className="capitalize text-xs">{r.status}</Badge></TableCell>
+                              <TableCell className="font-medium">{parseFloat(r.commissionAmount) > 0 ? `₹${parseFloat(r.commissionAmount).toLocaleString()}` : "—"}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground">{new Date(r.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
               {activeSection === "usage" && (
                 <div className="p-6 max-w-2xl mx-auto space-y-6">
                   <div className="flex items-center gap-2 mb-2">
