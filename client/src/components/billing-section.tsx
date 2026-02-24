@@ -5,7 +5,8 @@ import { PricingCard } from "@/components/pricing-card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, CreditCard, CalendarDays, CheckCircle2, FileText, Hash, Clock, Receipt } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Loader2, CreditCard, CalendarDays, CheckCircle2, FileText, Hash, Clock, Receipt, Tag, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface PricingPlan {
@@ -91,6 +92,11 @@ export function BillingSection() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [invoiceDialog, setInvoiceDialog] = useState<{ open: boolean; payment?: PaymentHistory }>({ open: false });
 
+  // Promo code state
+  const [promoInput, setPromoInput] = useState("");
+  const [promoValidating, setPromoValidating] = useState(false);
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPercent: number } | null>(null);
+
   const fetchHistory = useCallback(async () => {
     setHistoryLoading(true);
     try {
@@ -116,6 +122,32 @@ export function BillingSection() {
 
   useEffect(() => { fetchData(); fetchHistory(); }, [fetchData, fetchHistory]);
 
+  const validatePromo = async () => {
+    if (!promoInput.trim()) return;
+    setPromoValidating(true);
+    try {
+      const res = await fetch("/api/promo-codes/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: promoInput.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      setAppliedPromo({ code: data.code, discountPercent: data.discountPercent });
+      toast({ title: "Promo code applied! 🎉", description: `${data.discountPercent}% discount will be applied.` });
+    } catch (err: any) {
+      toast({ title: "Invalid promo code", description: err.message, variant: "destructive" });
+      setAppliedPromo(null);
+    } finally {
+      setPromoValidating(false);
+    }
+  };
+
+  const removePromo = () => {
+    setAppliedPromo(null);
+    setPromoInput("");
+  };
+
 
   const handleSelectPlan = useCallback(async (plan: PricingPlan) => {
     if (!user) return;
@@ -126,7 +158,7 @@ export function BillingSection() {
       const res = await fetch("/api/payments/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId: plan.id, billingCycle }),
+        body: JSON.stringify({ planId: plan.id, billingCycle, promoCode: appliedPromo?.code || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
@@ -146,7 +178,7 @@ export function BillingSection() {
         amount: data.amount,
         currency: data.currency,
         name: "Linkfolio",
-        description: `${plan.name} Plan — ${billingCycle}`,
+        description: `${plan.name} Plan — ${billingCycle}${appliedPromo ? ` (${appliedPromo.discountPercent}% off)` : ""}`,
         order_id: data.orderId,
         handler: async (response: {
           razorpay_payment_id: string;
@@ -163,6 +195,7 @@ export function BillingSection() {
                 razorpaySignature: response.razorpay_signature,
                 planId: plan.id,
                 billingCycle,
+                promoCode: appliedPromo?.code || undefined,
               }),
             });
             const vData = await verifyRes.json();
@@ -184,7 +217,7 @@ export function BillingSection() {
       toast({ title: "Payment failed", description: err.message, variant: "destructive" });
       setPayingPlanId(null);
     }
-  }, [user, billingCycle, subscription, fetchData, fetchHistory, toast]);
+  }, [user, billingCycle, subscription, fetchData, fetchHistory, toast, appliedPromo]);
 
   if (loading) {
     return (
@@ -247,6 +280,39 @@ export function BillingSection() {
         </button>
       </div>
 
+      {/* Promo Code Section */}
+      <div className="bg-muted/50 border rounded-lg p-4 max-w-md">
+        <div className="flex items-center gap-2 mb-2">
+          <Tag className="h-4 w-4 text-primary" />
+          <span className="text-sm font-medium text-foreground">Have a promo code?</span>
+        </div>
+        {appliedPromo ? (
+          <div className="flex items-center justify-between bg-primary/10 rounded-md px-3 py-2">
+            <div className="flex items-center gap-2">
+              <Check className="h-4 w-4 text-primary" />
+              <span className="font-semibold text-primary">{appliedPromo.code}</span>
+              <span className="text-sm text-muted-foreground">— {appliedPromo.discountPercent}% off</span>
+            </div>
+            <Button variant="ghost" size="sm" onClick={removePromo} className="h-7 w-7 p-0">
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <Input
+              placeholder="Enter promo code"
+              value={promoInput}
+              onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+              onKeyDown={(e) => e.key === "Enter" && validatePromo()}
+              className="uppercase"
+            />
+            <Button onClick={validatePromo} disabled={promoValidating || !promoInput.trim()} size="sm">
+              {promoValidating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+            </Button>
+          </div>
+        )}
+      </div>
+
       {/* Plans grid */}
       {plans.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground border rounded-xl">
@@ -263,6 +329,7 @@ export function BillingSection() {
               isCurrentPlan={subscription?.planId === plan.id && subscription?.status === "active"}
               loading={payingPlanId === plan.id}
               onSelect={handleSelectPlan}
+              discountPercent={appliedPromo?.discountPercent}
             />
           ))}
         </div>
