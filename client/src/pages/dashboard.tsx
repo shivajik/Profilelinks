@@ -76,6 +76,7 @@ import {
   MapPin,
   UtensilsCrossed,
   Lock,
+  Briefcase,
 } from "lucide-react";
 import {
   Dialog,
@@ -115,6 +116,7 @@ import { BillingSection } from "@/components/billing-section";
 import { PlanUsageBanner, canPerformAction, LimitReachedDialog } from "@/components/plan-usage-banner";
 import { usePlanLimits, type PlanLimits } from "@/hooks/use-plan-limits";
 import { MenuBuilder } from "@/components/menu-builder";
+import { BusinessProfileSection } from "@/components/business-profile-section";
 
 function normalizeUrl(url: string): string {
   if (!url) return "#";
@@ -401,6 +403,7 @@ export default function Dashboard() {
 
   const sidebarItems = [
     { id: "design", label: "Design", icon: Palette, active: true },
+    ...(isTeamAccount ? [{ id: "business-profile", label: "Business Profile", icon: Briefcase }] : []),
     ...(isTeamAccount && isRestaurant ? [{ id: "menu-setup", label: "Menu Setup", icon: UtensilsCrossed }] : []),
     { id: "settings", label: "Settings", icon: Settings },
     { id: "qrcodes", label: "QR Codes", icon: QrCode },
@@ -488,8 +491,9 @@ export default function Dashboard() {
 
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 flex overflow-hidden">
-             <div className={`flex-1 overflow-y-auto border-r bg-background w-full ${activeSection === "design" ? "md:min-w-[300px] md:max-w-[420px]" : ""} ${activeSection === "menu-setup" ? "md:min-w-[300px] md:max-w-[420px]" : ""} ${["team-members", "team-templates", "contacts", "billing", "usage", "affiliate"].includes(activeSection) ? "md:max-w-none" : ""}`}>
+             <div className={`flex-1 overflow-y-auto border-r bg-background w-full ${activeSection === "design" ? "md:min-w-[300px] md:max-w-[420px]" : ""} ${activeSection === "menu-setup" ? "md:min-w-[300px] md:max-w-[420px]" : ""} ${["team-members", "team-templates", "contacts", "billing", "usage", "affiliate", "business-profile"].includes(activeSection) ? "md:max-w-none" : ""}`}>
               {activeSection === "billing" && <BillingSection />}
+              {activeSection === "business-profile" && <BusinessProfileSection />}
               {activeSection === "affiliate" && affiliateData && (
                 <div className="p-6 max-w-4xl mx-auto space-y-6">
                   <div className="flex items-center gap-2 mb-2">

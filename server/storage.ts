@@ -217,7 +217,7 @@ export interface IStorage {
 
   getTeamMembers(teamId: string): Promise<(TeamMember & { user: Pick<User, "id" | "username" | "email" | "displayName" | "profileImage"> })[]>;
   addTeamMember(member: InsertTeamMember): Promise<TeamMember>;
-  updateTeamMember(id: string, teamId: string, data: Partial<Pick<TeamMember, "role" | "jobTitle" | "status">>): Promise<TeamMember | undefined>;
+  updateTeamMember(id: string, teamId: string, data: Partial<Pick<TeamMember, "role" | "jobTitle" | "status" | "businessName" | "businessPhone" | "businessProfileImage" | "businessBio">>): Promise<TeamMember | undefined>;
   removeTeamMember(id: string, teamId: string): Promise<boolean>;
   getTeamMemberByUserId(teamId: string, userId: string): Promise<TeamMember | undefined>;
 

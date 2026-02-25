@@ -148,6 +148,10 @@ export const teamMembers = pgTable("team_members", {
   role: text("role").notNull().default("member"),
   jobTitle: text("job_title"),
   status: text("status").notNull().default("activated"),
+  businessName: text("business_name"),
+  businessPhone: text("business_phone"),
+  businessProfileImage: text("business_profile_image"),
+  businessBio: text("business_bio"),
 });
 
 export const teamInvites = pgTable("team_invites", {
@@ -393,6 +397,14 @@ export const updateTeamMemberSchema = z.object({
   role: z.enum(TEAM_ROLES).optional(),
   jobTitle: z.string().max(100).optional().nullable(),
   status: z.enum(MEMBER_STATUSES).optional(),
+});
+
+export const updateBusinessProfileSchema = z.object({
+  businessName: z.string().max(100).optional().nullable(),
+  businessPhone: z.string().max(50).optional().nullable(),
+  businessProfileImage: z.string().optional().nullable(),
+  businessBio: z.string().max(500).optional().nullable(),
+  jobTitle: z.string().max(100).optional().nullable(),
 });
 
 export const createTeamInviteSchema = z.object({
