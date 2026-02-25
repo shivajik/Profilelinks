@@ -3266,6 +3266,7 @@ function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUs
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "members"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "invites"] });
       setCreateOpen(false);
       setCreateName("");
       setCreateEmail("");
@@ -3544,7 +3545,7 @@ function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUs
                       <Badge 
                         variant={invite.status === "accepted" ? "default" : invite.status === "revoked" ? "destructive" : "secondary"}
                       >
-                        {invite.status === "pending" ? "Pending" : invite.status === "accepted" ? "Accepted" : "Revoked"}
+                        {invite.status === "pending" ? "Invitation Sent" : invite.status === "accepted" ? "Active" : "Revoked"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">

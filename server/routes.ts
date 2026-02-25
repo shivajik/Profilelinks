@@ -944,8 +944,19 @@ export async function registerRoutes(
           jobTitle: jobTitle || null,
           status: "activated",
         });
-        await storage.updateUser(existingUser.id, { teamId: req.params.teamId as string, accountType: "team", });
-
+        await storage.updateUser(existingUser.id, { teamId: req.params.teamId as string, accountType: "team" });
+        // Create invite record as "accepted" (existing user)
+        const inviteRecords = await storage.createTeamInvites([{
+          teamId: req.params.teamId as string,
+          email: normalizedEmail,
+          role: memberRole || "member",
+          invitedById: req.session.userId!,
+          token: crypto.randomUUID(),
+        }]);
+        // Mark as accepted immediately for existing users
+        if (inviteRecords[0]) {
+          await storage.updateTeamInviteStatus(inviteRecords[0].id, "accepted");
+        }
         // Send invite notification email to existing user
           const team = await storage.getTeam(req.params.teamId as string);
           const inviter = await storage.getUser(req.session.userId!);
@@ -979,6 +990,14 @@ export async function registerRoutes(
         jobTitle: jobTitle || null,
         status: "activated",
       });
+      // Create invite record as "pending" (new user with temp password)
+      await storage.createTeamInvites([{
+        teamId: req.params.teamId as string,
+        email: normalizedEmail,
+        role: memberRole || "member",
+        invitedById: req.session.userId!,
+        token: crypto.randomUUID(),
+      }]);
       const homePage = await storage.createPage({
         userId: newUser.id,
         title: "Home",
