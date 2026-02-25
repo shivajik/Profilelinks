@@ -116,12 +116,28 @@ export type TeamRole = typeof TEAM_ROLES[number];
 export const MEMBER_STATUSES = ["invited", "activated", "deactivated"] as const;
 export type MemberStatus = typeof MEMBER_STATUSES[number];
 
+export const BUSINESS_TYPES = [
+  "Software Company",
+  "Restaurant",
+  "Retail Store",
+  "Healthcare",
+  "Education",
+  "Real Estate",
+  "Marketing Agency",
+  "Consulting",
+  "Finance",
+  "Other",
+] as const;
+
+export type BusinessType = typeof BUSINESS_TYPES[number];
+
 export const teams = pgTable("teams", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   size: text("size"),
   websiteUrl: text("website_url"),
   logoUrl: text("logo_url"),
+  businessType: text("business_type"),
   ownerId: varchar("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
 });
 
@@ -362,12 +378,14 @@ export const createTeamSchema = z.object({
   size: z.enum(TEAM_SIZES).optional(),
   websiteUrl: z.string().url().optional().or(z.literal("")),
   logoUrl: z.string().optional(),
+  businessType: z.string().max(100).optional(),
 });
 export const updateTeamSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   size: z.enum(TEAM_SIZES).optional(),
   websiteUrl: z.string().url().optional().or(z.literal("")),
   logoUrl: z.string().optional().nullable(),
+  businessType: z.string().max(100).optional().nullable(),
 });
 
 export const insertTeamMemberSchema = createInsertSchema(teamMembers).omit({ id: true });

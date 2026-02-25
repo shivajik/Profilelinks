@@ -4,7 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
 import { TEMPLATES } from "@/lib/templates";
-import { TEAM_SIZES } from "@shared/schema";
+import { TEAM_SIZES, BUSINESS_TYPES } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -60,6 +60,8 @@ export default function Onboarding() {
   const [companySize, setCompanySize] = useState("");
   const [companyUrl, setCompanyUrl] = useState("");
   const [companyLogo, setCompanyLogo] = useState("");
+  const [businessType, setBusinessType] = useState("");
+  const [customBusinessType, setCustomBusinessType] = useState("");
   const [inviteEmails, setInviteEmails] = useState<string[]>([]);
 
   if (!user) {
@@ -102,11 +104,13 @@ export default function Onboarding() {
       });
 
       if (accountType === "team") {
+        const finalBusinessType = businessType === "Other" ? customBusinessType : businessType;
         const teamRes = await apiRequest("POST", "/api/teams", {
           name: companyName,
           size: companySize || undefined,
           websiteUrl: companyUrl || undefined,
           logoUrl: companyLogo || undefined,
+          businessType: finalBusinessType || undefined,
         });
         const teamData = await teamRes.json();
 
@@ -165,7 +169,7 @@ export default function Onboarding() {
       if (step === 3) return <SocialStep selectedSocials={selectedSocials} socialEntries={socialEntries} toggleSocial={toggleSocial} updateSocialUrl={updateSocialUrl} removeSocialEntry={removeSocialEntry} />;
       if (step === 4) return <UrlStep username={username} setUsername={setUsername} />;
     } else {
-      if (step === 2) return <WorkspaceStep companyName={companyName} setCompanyName={setCompanyName} companySize={companySize} setCompanySize={setCompanySize} companyUrl={companyUrl} setCompanyUrl={setCompanyUrl} companyLogo={companyLogo} setCompanyLogo={setCompanyLogo} />;
+      if (step === 2) return <WorkspaceStep companyName={companyName} setCompanyName={setCompanyName} companySize={companySize} setCompanySize={setCompanySize} companyUrl={companyUrl} setCompanyUrl={setCompanyUrl} companyLogo={companyLogo} setCompanyLogo={setCompanyLogo} businessType={businessType} setBusinessType={setBusinessType} customBusinessType={customBusinessType} setCustomBusinessType={setCustomBusinessType} />;
       if (step === 3) return <ProfileStep displayName={displayName} setDisplayName={setDisplayName} bio={bio} setBio={setBio} profileImage={profileImage} setProfileImage={setProfileImage} />;
       if (step === 4) return <InviteMembersStep inviteEmails={inviteEmails} setInviteEmails={setInviteEmails} />;
       if (step === 5) return <UrlStep username={username} setUsername={setUsername} />;
@@ -347,6 +351,10 @@ function WorkspaceStep({
   setCompanyUrl,
   companyLogo,
   setCompanyLogo,
+  businessType,
+  setBusinessType,
+  customBusinessType,
+  setCustomBusinessType,
 }: {
   companyName: string;
   setCompanyName: (v: string) => void;
@@ -356,6 +364,10 @@ function WorkspaceStep({
   setCompanyUrl: (v: string) => void;
   companyLogo: string;
   setCompanyLogo: (v: string) => void;
+  businessType: string;
+  setBusinessType: (v: string) => void;
+  customBusinessType: string;
+  setCustomBusinessType: (v: string) => void;
 }) {
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
@@ -490,6 +502,30 @@ function WorkspaceStep({
             onChange={(e) => setCompanyUrl(e.target.value)}
             data-testid="input-workspace-company-url"
           />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="onb-business-type">Business Type</Label>
+          <Select value={businessType} onValueChange={setBusinessType}>
+            <SelectTrigger data-testid="select-workspace-business-type">
+              <SelectValue placeholder="Select business type" />
+            </SelectTrigger>
+            <SelectContent>
+              {BUSINESS_TYPES.map((type) => (
+                <SelectItem key={type} value={type} data-testid={`select-item-type-${type}`}>
+                  {type}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {businessType === "Other" && (
+            <Input
+              placeholder="Enter your business type"
+              value={customBusinessType}
+              onChange={(e) => setCustomBusinessType(e.target.value)}
+              data-testid="input-workspace-custom-business-type"
+              className="mt-2"
+            />
+          )}
         </div>
       </div>
     </div>

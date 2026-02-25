@@ -784,6 +784,20 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/teams/:id", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.id as string, req.session.userId!);
+      if (!role) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      const team = await storage.getTeam(req.params.id as string);
+      if (!team) return res.status(404).json({ message: "Team not found" });
+      res.json(team);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to get team" });
+    }
+  });
+
   app.patch("/api/teams/:id", requireAuth, async (req, res) => {
     try {
       const role = await getTeamMemberRole(req.params.id as string, req.session.userId!);
@@ -1277,9 +1291,12 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Not authorized" });
       }
       
-      const { displayName } = req.body;
-      if (displayName !== undefined) {
-        await storage.updateUser(member.userId, { displayName });
+      const { displayName, profileImage } = req.body;
+      const updates: Record<string, any> = {};
+      if (displayName !== undefined) updates.displayName = displayName;
+      if (profileImage !== undefined) updates.profileImage = profileImage;
+      if (Object.keys(updates).length > 0) {
+        await storage.updateUser(member.userId, updates);
       }
       res.json({ message: "Profile updated" });
     } catch (error: any) {

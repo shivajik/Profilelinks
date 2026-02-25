@@ -182,6 +182,8 @@ export default function Dashboard() {
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
   const [addingPage, setAddingPage] = useState(false);
   const [managingPages, setManagingPages] = useState(false);
+  const [limitDialogOpen, setLimitDialogOpen] = useState(false);
+  const [limitMessage, setLimitMessage] = useState("");
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
     page: true,
     header: true,
@@ -222,6 +224,18 @@ export default function Dashboard() {
   });
 
   const { data: planLimits } = usePlanLimits();
+
+  // Fetch team data for business type
+  const { data: teamData } = useQuery<any>({
+    queryKey: ["/api/teams", user?.teamId],
+    queryFn: async () => {
+      if (!user?.teamId) return null;
+      const res = await fetch(`/api/teams/${user.teamId}`, { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!user?.teamId,
+  });
 
   const [isAffiliate, setIsAffiliate] = useState(false);
   const [affiliateData, setAffiliateData] = useState<any>(null);
@@ -382,9 +396,12 @@ export default function Dashboard() {
     setOpenCategories((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const isTeamAccount = user.accountType === "team" && user.teamId;
+  const isRestaurant = teamData?.businessType?.toLowerCase() === "restaurant";
+
   const sidebarItems = [
     { id: "design", label: "Design", icon: Palette, active: true },
-    { id: "menu-setup", label: "Menu Setup", icon: UtensilsCrossed },
+    ...(isTeamAccount && isRestaurant ? [{ id: "menu-setup", label: "Menu Setup", icon: UtensilsCrossed }] : []),
     { id: "settings", label: "Settings", icon: Settings },
     { id: "qrcodes", label: "QR Codes", icon: QrCode },
     { id: "analytics", label: "Analytics", icon: BarChart3 },
@@ -398,8 +415,6 @@ export default function Dashboard() {
     { id: "team-templates", label: "Team Templates", icon: LayoutTemplate },
     { id: "contacts", label: "Contacts", icon: BookUser },
   ];
-
-  const isTeamAccount = user.accountType === "team" && user.teamId;
 
   const sidebarStyle = {
     "--sidebar-width": "11rem",
@@ -757,7 +772,7 @@ export default function Dashboard() {
                         className="w-full justify-center gap-2"
                         onClick={() => {
                           const check = canPerformAction(planLimits, "addSocial");
-                          if (!check.allowed) { toast({ title: "Limit reached", description: check.message, variant: "destructive" }); return; }
+                          if (!check.allowed) { setLimitMessage(check.message || ""); setLimitDialogOpen(true); return; }
                           setAddingSocial(true);
                         }}
                         data-testid="button-add-social"
@@ -800,7 +815,7 @@ export default function Dashboard() {
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => {
                             const check = canPerformAction(planLimits, "addPage");
-                            if (!check.allowed) { toast({ title: "Limit reached", description: check.message, variant: "destructive" }); return; }
+                            if (!check.allowed) { setLimitMessage(check.message || ""); setLimitDialogOpen(true); return; }
                             setAddingPage(true);
                           }} data-testid="button-add-new-page">
                             <Plus className="w-3.5 h-3.5" />
@@ -1046,6 +1061,12 @@ export default function Dashboard() {
         onClose={() => setManagingPages(false)}
         pages={userPages}
         onSelectPage={(id) => { setSelectedPageId(id); setManagingPages(false); }}
+      />
+      <LimitReachedDialog
+        open={limitDialogOpen}
+        onOpenChange={setLimitDialogOpen}
+        message={limitMessage}
+        onUpgrade={() => navigate("/pricing")}
       />
     </SidebarProvider>
   );
@@ -3065,10 +3086,11 @@ function AddSocialDialog({
   );
 }
 
-function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, toast }: { member: any; isOpen: boolean; onClose: () => void; teamId: string; isAdmin: boolean; toast: any }) {
+function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, isSelf, toast }: { member: any; isOpen: boolean; onClose: () => void; teamId: string; isAdmin: boolean; isSelf: boolean; toast: any }) {
   const [editJobTitle, setEditJobTitle] = useState(member?.jobTitle || "");
   const [editDisplayName, setEditDisplayName] = useState(member?.user?.displayName || "");
   const [editRole, setEditRole] = useState(member?.role || "member");
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     if (member) {
@@ -3096,6 +3118,9 @@ function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, toast }: {
     },
   });
 
+  // For non-admin self-edit: only name and profile image
+  const isMemberSelfEdit = isSelf && !isAdmin;
+
   if (!member) return null;
 
   return (
@@ -3107,12 +3132,53 @@ function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, toast }: {
         </DialogHeader>
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            <Avatar className="w-10 h-10 border border-border">
-              <AvatarImage src={member.user?.profileImage || undefined} />
-              <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                {(member.user?.displayName || member.user?.username || "?").charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative group">
+              {isMemberSelfEdit ? (
+                <>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    className="hidden"
+                    id="edit-member-avatar"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setUploadingImage(true);
+                      try {
+                        const fd = new FormData();
+                        fd.append("file", file);
+                        const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+                        if (res.ok) {
+                          const { url } = await res.json();
+                          await apiRequest("PATCH", `/api/teams/${teamId}/members/${member.id}/profile`, { profileImage: url });
+                          queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "members"] });
+                          queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+                          toast({ title: "Profile image updated!" });
+                        }
+                      } catch {} finally { setUploadingImage(false); }
+                    }}
+                  />
+                  <label htmlFor="edit-member-avatar" className="cursor-pointer block">
+                    <Avatar className="w-14 h-14 border border-border">
+                      <AvatarImage src={member.user?.profileImage || undefined} />
+                      <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                        {(member.user?.displayName || member.user?.username || "?").charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      {uploadingImage ? <Loader2 className="w-4 h-4 text-white animate-spin" /> : <Camera className="w-4 h-4 text-white" />}
+                    </div>
+                  </label>
+                </>
+              ) : (
+                <Avatar className="w-10 h-10 border border-border">
+                  <AvatarImage src={member.user?.profileImage || undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                    {(member.user?.displayName || member.user?.username || "?").charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              )}
+            </div>
             <div>
               <div className="text-sm font-medium">{member.user?.displayName || member.user?.username || "Unknown"}</div>
               <div className="text-xs text-muted-foreground">{member.user?.email || ""}</div>
@@ -3122,10 +3188,12 @@ function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, toast }: {
             <Label htmlFor="edit-display-name">Display Name</Label>
             <Input id="edit-display-name" value={editDisplayName} onChange={(e) => setEditDisplayName(e.target.value)} placeholder="Full Name" />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-job-title">Job Title</Label>
-            <Input id="edit-job-title" value={editJobTitle} onChange={(e) => setEditJobTitle(e.target.value)} placeholder="e.g. Software Engineer" />
-          </div>
+          {!isMemberSelfEdit && (
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-job-title">Job Title</Label>
+              <Input id="edit-job-title" value={editJobTitle} onChange={(e) => setEditJobTitle(e.target.value)} placeholder="e.g. Software Engineer" />
+            </div>
+          )}
           {isAdmin && member.role !== "owner" && (
             <div className="space-y-1.5">
               <Label htmlFor="edit-role">Role</Label>
@@ -3843,7 +3911,7 @@ function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUs
         </DialogContent>
       </Dialog>
 
-      <EditMemberDialog member={editMember} isOpen={!!editMember} onClose={() => setEditMember(null)} teamId={teamId} isAdmin={isAdmin} toast={toast} />
+      <EditMemberDialog member={editMember} isOpen={!!editMember} onClose={() => setEditMember(null)} teamId={teamId} isAdmin={isAdmin} isSelf={editMember?.userId === currentUserId} toast={toast} />
 
       <LimitReachedDialog
         open={limitDialogOpen}
