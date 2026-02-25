@@ -132,6 +132,14 @@ export default function AdminDashboard() {
   const [activeSection, setActiveSection] = useState("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Assign plan dialog
+  const [assignPlanDialog, setAssignPlanDialog] = useState<{ open: boolean; userId?: string; userName?: string }>({ open: false });
+  const [assignPlanId, setAssignPlanId] = useState("");
+  const [assignBillingCycle, setAssignBillingCycle] = useState("monthly");
+  const [assignPaymentMethod, setAssignPaymentMethod] = useState("cash");
+  const [assignNotes, setAssignNotes] = useState("");
+  const [assigningPlan, setAssigningPlan] = useState(false);
+
   // User filter
   const [userTypeFilter, setUserTypeFilter] = useState("all");
   const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
@@ -704,6 +712,17 @@ export default function AdminDashboard() {
                           <div className="flex justify-between"><span className="text-muted-foreground">Billing</span><span className="capitalize">{d.subscription?.billingCycle ?? "—"}</span></div>
                           <div className="flex justify-between"><span className="text-muted-foreground">Status</span>{d.subscription ? <StatusBadge status={d.subscription.status} /> : <span>—</span>}</div>
                         </CardContent>
+                        <div className="px-6 pb-4">
+                          <Button size="sm" variant="outline" className="w-full" onClick={() => {
+                            setAssignPlanId("");
+                            setAssignBillingCycle("monthly");
+                            setAssignPaymentMethod("cash");
+                            setAssignNotes("");
+                            setAssignPlanDialog({ open: true, userId: d.user.id, userName: d.user.displayName || d.user.username });
+                          }}>
+                            <Package className="h-4 w-4 mr-1" /> Assign / Change Plan
+                          </Button>
+                        </div>
                       </Card>
                       <Card>
                         <CardHeader><CardTitle className="text-base">Usage</CardTitle></CardHeader>
@@ -1517,6 +1536,104 @@ export default function AdminDashboard() {
             >
               {savingPromo ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Create Code
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* ── Assign Plan Dialog ────────────────────────────────────────────── */}
+      <Dialog open={assignPlanDialog.open} onOpenChange={(open) => setAssignPlanDialog({ open })}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-primary" /> Assign Plan
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Assign a plan to <span className="font-semibold text-foreground">{assignPlanDialog.userName}</span>
+            </p>
+            <div className="space-y-1.5">
+              <Label>Select Plan</Label>
+              <Select value={assignPlanId} onValueChange={setAssignPlanId}>
+                <SelectTrigger><SelectValue placeholder="Choose a plan" /></SelectTrigger>
+                <SelectContent>
+                  {plans.filter(p => p.isActive).map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name} — ₹{parseFloat(p.monthlyPrice).toLocaleString()}/mo
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Billing Cycle</Label>
+              <Select value={assignBillingCycle} onValueChange={setAssignBillingCycle}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="yearly">Yearly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Payment Method</Label>
+              <Select value={assignPaymentMethod} onValueChange={setAssignPaymentMethod}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="online">Online</SelectItem>
+                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                  <SelectItem value="upi">UPI</SelectItem>
+                  <SelectItem value="free">Free / Complimentary</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Notes / Reference</Label>
+              <Textarea
+                value={assignNotes}
+                onChange={(e) => setAssignNotes(e.target.value)}
+                placeholder="e.g. Payment received via cash on 15-Feb, Receipt #123"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignPlanDialog({ open: false })}>Cancel</Button>
+            <Button
+              disabled={!assignPlanId || assigningPlan}
+              onClick={async () => {
+                setAssigningPlan(true);
+                try {
+                  const r = await fetch(`/api/admin/users/${assignPlanDialog.userId}/assign-plan`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      planId: assignPlanId,
+                      billingCycle: assignBillingCycle,
+                      paymentMethod: assignPaymentMethod,
+                      notes: assignNotes,
+                    }),
+                  });
+                  const j = await r.json();
+                  if (!r.ok) throw new Error(j.message);
+                  toast({ title: "Plan assigned!", description: j.message });
+                  setAssignPlanDialog({ open: false });
+                  // Refresh user detail
+                  if (assignPlanDialog.userId) {
+                    openUserDetail(assignPlanDialog.userId);
+                  }
+                  fetchUsers();
+                  fetchStats();
+                  fetchPayments();
+                } catch (err: any) {
+                  toast({ title: "Failed to assign plan", description: err.message, variant: "destructive" });
+                }
+                setAssigningPlan(false);
+              }}
+            >
+              {assigningPlan ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Assign Plan
             </Button>
           </DialogFooter>
         </DialogContent>

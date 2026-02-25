@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Crown, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 function UsageBar({ label, current, max }: { label: string; current: number; max: number }) {
   const percent = Math.min((current / max) * 100, 100);
@@ -90,33 +91,55 @@ export function canPerformAction(
   switch (action) {
     case "addLink":
       return limits.currentLinks >= limits.maxLinks
-        ? { allowed: false, message: `Link limit reached (${limits.maxLinks}). Upgrade your plan.` }
+        ? { allowed: false, message: `You've reached your link limit (${limits.currentLinks}/${limits.maxLinks}). Would you like to upgrade your plan for more links?` }
         : { allowed: true };
     case "addPage":
       return limits.currentPages >= limits.maxPages
-        ? { allowed: false, message: `Page limit reached (${limits.maxPages}). Upgrade your plan.` }
+        ? { allowed: false, message: `You've reached your page limit (${limits.currentPages}/${limits.maxPages}). Would you like to upgrade your plan for more pages?` }
         : { allowed: true };
     case "addBlock":
       return limits.currentBlocks >= limits.maxBlocks
-        ? { allowed: false, message: `Block limit reached (${limits.maxBlocks}). Upgrade your plan.` }
+        ? { allowed: false, message: `You've reached your block limit (${limits.currentBlocks}/${limits.maxBlocks}). Would you like to upgrade your plan for more blocks?` }
         : { allowed: true };
     case "addSocial":
       return limits.currentSocials >= limits.maxSocials
-        ? { allowed: false, message: `Social limit reached (${limits.maxSocials}). Upgrade your plan.` }
+        ? { allowed: false, message: `You've reached your social link limit (${limits.currentSocials}/${limits.maxSocials}). Would you like to upgrade your plan for more social links?` }
         : { allowed: true };
     case "addTeamMember":
       return limits.currentTeamMembers >= limits.maxTeamMembers
-        ? { allowed: false, message: `Team member limit reached (${limits.maxTeamMembers}). Upgrade your plan.` }
+        ? { allowed: false, message: `You've reached your team member limit (${limits.currentTeamMembers}/${limits.maxTeamMembers}). Would you like to upgrade your plan to add more members?` }
         : { allowed: true };
     case "useQrCode":
       return !limits.qrCodeEnabled
-        ? { allowed: false, message: "QR Code feature requires a paid plan." }
+        ? { allowed: false, message: "QR Code feature requires a paid plan. Would you like to upgrade?" }
         : { allowed: true };
     case "useAnalytics":
       return !limits.analyticsEnabled
-        ? { allowed: false, message: "Analytics feature requires a paid plan." }
+        ? { allowed: false, message: "Analytics feature requires a paid plan. Would you like to upgrade?" }
         : { allowed: true };
     default:
       return { allowed: true };
   }
+}
+
+export function LimitReachedDialog({ open, onOpenChange, message, onUpgrade }: { open: boolean; onOpenChange: (v: boolean) => void; message: string; onUpgrade: () => void }) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-destructive" />
+            Limit Reached
+          </DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">{message}</p>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Not Now</Button>
+          <Button size="sm" onClick={() => { onOpenChange(false); onUpgrade(); }}>
+            <Crown className="w-4 h-4 mr-1" /> Upgrade Plan
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }

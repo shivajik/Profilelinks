@@ -3061,6 +3061,122 @@ function AddSocialDialog({
   );
 }
 
+function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, toast }: { member: any; isOpen: boolean; onClose: () => void; teamId: string; isAdmin: boolean; toast: any }) {
+  const [editJobTitle, setEditJobTitle] = useState(member?.jobTitle || "");
+  const [editDisplayName, setEditDisplayName] = useState(member?.user?.displayName || "");
+  const [editRole, setEditRole] = useState(member?.role || "member");
+
+  useEffect(() => {
+    if (member) {
+      setEditJobTitle(member.jobTitle || "");
+      setEditDisplayName(member.user?.displayName || "");
+      setEditRole(member.role || "member");
+    }
+  }, [member]);
+
+  const updateMemberMut = useMutation({
+    mutationFn: async ({ memberId, jobTitle }: { memberId: string; jobTitle: string }) => {
+      await apiRequest("PATCH", `/api/teams/${teamId}/members/${memberId}`, { jobTitle: jobTitle || null });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "members"] });
+    },
+  });
+
+  const updateRoleMut = useMutation({
+    mutationFn: async ({ memberId, role }: { memberId: string; role: string }) => {
+      await apiRequest("PATCH", `/api/teams/${teamId}/members/${memberId}`, { role });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "members"] });
+    },
+  });
+
+  if (!member) return null;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="sm:max-w-md" aria-describedby="edit-member-desc">
+        <DialogHeader>
+          <DialogTitle>Edit Member</DialogTitle>
+          <DialogDescription id="edit-member-desc">Update team member details.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Avatar className="w-10 h-10 border border-border">
+              <AvatarImage src={member.user?.profileImage || undefined} />
+              <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                {(member.user?.displayName || member.user?.username || "?").charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <div className="text-sm font-medium">{member.user?.displayName || member.user?.username || "Unknown"}</div>
+              <div className="text-xs text-muted-foreground">{member.user?.email || ""}</div>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-display-name">Display Name</Label>
+            <Input id="edit-display-name" value={editDisplayName} onChange={(e) => setEditDisplayName(e.target.value)} placeholder="Full Name" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-job-title">Job Title</Label>
+            <Input id="edit-job-title" value={editJobTitle} onChange={(e) => setEditJobTitle(e.target.value)} placeholder="e.g. Software Engineer" />
+          </div>
+          {isAdmin && member.role !== "owner" && (
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-role">Role</Label>
+              <Select value={editRole} onValueChange={setEditRole}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="member">Member</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {member.user?.username && (
+            <div className="space-y-1.5">
+              <Label>Profile URL</Label>
+              <div className="flex items-center gap-2">
+                <Input readOnly value={`${window.location.origin}/${member.user.username}`} className="text-xs" />
+                <Button variant="outline" size="icon" onClick={() => {
+                  navigator.clipboard.writeText(`${window.location.origin}/${member.user.username}`);
+                  toast({ title: "Profile URL copied" });
+                }}>
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+            <Button
+              size="sm"
+              onClick={async () => {
+                await updateMemberMut.mutateAsync({ memberId: member.id, jobTitle: editJobTitle });
+                if (editRole !== member.role && isAdmin && member.role !== "owner") {
+                  await updateRoleMut.mutateAsync({ memberId: member.id, role: editRole });
+                }
+                if (editDisplayName !== (member.user?.displayName || "")) {
+                  try {
+                    await apiRequest("PATCH", `/api/teams/${teamId}/members/${member.id}/profile`, { displayName: editDisplayName });
+                    queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "members"] });
+                  } catch {}
+                }
+                onClose();
+                toast({ title: "Member updated" });
+              }}
+              disabled={updateMemberMut.isPending}
+            >
+              {updateMemberMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUserId: string }) {
   const { toast } = useToast();
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -3075,7 +3191,6 @@ function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUs
   const [createTemplateId, setCreateTemplateId] = useState<string>("");
   const [removeConfirmMember, setRemoveConfirmMember] = useState<any>(null);
   const [editMember, setEditMember] = useState<any>(null);
-  const [editJobTitle, setEditJobTitle] = useState("");
   const [createdCredentials, setCreatedCredentials] = useState<{ email: string; password: string; username: string } | null>(null);
 
   const { data: members = [], isLoading } = useQuery<any[]>({
@@ -3282,7 +3397,7 @@ function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUs
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => { setEditMember(member); setEditJobTitle(member.jobTitle || ""); }}
+                        onClick={() => setEditMember(member)}
                         data-testid={`button-edit-member-${member.id}`}
                         title="Edit member"
                       >
@@ -3569,75 +3684,7 @@ function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUs
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!editMember} onOpenChange={(v) => { if (!v) setEditMember(null); }}>
-        <DialogContent className="sm:max-w-sm" aria-describedby="edit-member-desc">
-          <DialogHeader>
-            <DialogTitle>Edit Member</DialogTitle>
-            <DialogDescription id="edit-member-desc">Update team member details.</DialogDescription>
-          </DialogHeader>
-          {editMember && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <Avatar className="w-10 h-10 border border-border">
-                  <AvatarImage src={editMember.user?.profileImage || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                    {(editMember.user?.displayName || editMember.user?.username || "?").charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <div className="text-sm font-medium">{editMember.user?.displayName || editMember.user?.username || "Unknown"}</div>
-                  <div className="text-xs text-muted-foreground">{editMember.user?.email || ""}</div>
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-job-title">Job Title</Label>
-                <Input
-                  id="edit-job-title"
-                  value={editJobTitle}
-                  onChange={(e) => setEditJobTitle(e.target.value)}
-                  placeholder="e.g. Software Engineer"
-                  data-testid="input-edit-job-title"
-                />
-              </div>
-              {editMember.user?.username && (
-                <div className="space-y-1.5">
-                  <Label>Profile URL</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      readOnly
-                      value={`${window.location.origin}/${editMember.user.username}`}
-                      className="text-xs"
-                      data-testid="input-profile-url"
-                    />
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/${editMember.user.username}`);
-                        toast({ title: "Profile URL copied" });
-                      }}
-                      data-testid="button-copy-profile-url"
-                    >
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" size="sm" onClick={() => setEditMember(null)} data-testid="button-cancel-edit-member">Cancel</Button>
-                <Button
-                  size="sm"
-                  onClick={() => updateMemberMutation.mutate({ memberId: editMember.id, jobTitle: editJobTitle })}
-                  disabled={updateMemberMutation.isPending}
-                  data-testid="button-save-edit-member"
-                >
-                  {updateMemberMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <EditMemberDialog member={editMember} isOpen={!!editMember} onClose={() => setEditMember(null)} teamId={teamId} isAdmin={isAdmin} toast={toast} />
     </div>
   );
 }

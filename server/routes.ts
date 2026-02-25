@@ -1100,6 +1100,31 @@ export async function registerRoutes(
     }
   });
 
+  // ── Update Team Member Profile (display name) ───────────────────────────────
+  app.patch("/api/teams/:teamId/members/:memberId/profile", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      const members = await storage.getTeamMembers(req.params.teamId as string);
+      const member = members.find(m => m.id === req.params.memberId);
+      if (!member) return res.status(404).json({ message: "Member not found" });
+      
+      // Allow admin/owner or self-edit
+      const isSelf = member.userId === req.session.userId;
+      const isTeamAdmin = role && ["owner", "admin"].includes(role);
+      if (!isSelf && !isTeamAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      
+      const { displayName } = req.body;
+      if (displayName !== undefined) {
+        await storage.updateUser(member.userId, { displayName });
+      }
+      res.json({ message: "Profile updated" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to update member profile" });
+    }
+  });
+
   // Team Templates
   app.get("/api/teams/:teamId/templates", requireAuth, async (req, res) => {
     try {

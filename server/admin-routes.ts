@@ -415,6 +415,74 @@ router.get("/api/admin/users/:id", requireAdminAuth, async (req: Request, res: R
   }
 });
 
+// ─── Admin Assign Plan to User ──────────────────────────────────────────────
+router.post("/api/admin/users/:id/assign-plan", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = req.params.id;
+    const { planId, billingCycle, paymentMethod, notes } = req.body;
+
+    if (!planId) return res.status(400).json({ message: "Plan ID is required" });
+
+    // Verify user exists
+    const userResult = await db.select({ id: users.id }).from(users).where(sql`${users.id} = ${userId}`).limit(1);
+    if (!userResult.length) return res.status(404).json({ message: "User not found" });
+
+    // Verify plan exists
+    const planResult = await db.select().from(pricingPlans).where(sql`${pricingPlans.id} = ${planId}`).limit(1);
+    if (!planResult.length) return res.status(404).json({ message: "Plan not found" });
+
+    const plan = planResult[0];
+    const cycle = billingCycle || "monthly";
+    const amount = cycle === "yearly" ? plan.yearlyPrice : plan.monthlyPrice;
+
+    // Deactivate existing subscriptions
+    await db
+      .update(userSubscriptions)
+      .set({ status: "cancelled", updatedAt: new Date() })
+      .where(sql`${userSubscriptions.userId} = ${userId} AND ${userSubscriptions.status} = 'active'`);
+
+    // Create new subscription
+    const periodEnd = new Date();
+    periodEnd.setMonth(periodEnd.getMonth() + (cycle === "yearly" ? 12 : 1));
+
+    await db.insert(userSubscriptions).values({
+      userId: userId as string,
+      planId: planId as string,
+      status: "active",
+      billingCycle: cycle as string,
+      currentPeriodStart: new Date(),
+      currentPeriodEnd: periodEnd,
+    });
+
+    // Record payment with admin note
+    await db.insert(payments).values({
+      userId: userId as string,
+      planId: planId as string,
+      amount: amount.toString(),
+      currency: "INR",
+      status: "success",
+      billingCycle: cycle as string,
+      razorpayOrderId: `ADMIN-${Date.now()}`,
+      razorpayPaymentId: `admin-assigned-${(paymentMethod as string) || "manual"}${notes ? ` | ${notes}` : ""}`,
+    });
+
+    // If team plan, convert user to team account
+    if (plan.planType === "team") {
+      const existingUser = await db.select({ accountType: users.accountType, teamId: users.teamId }).from(users).where(sql`${users.id} = ${userId}`).limit(1);
+      if (existingUser[0] && existingUser[0].accountType !== "team") {
+        const team = await storage.createTeam({ name: "My Team", ownerId: userId as string });
+        await storage.addTeamMember({ teamId: team.id, userId: userId as string, role: "owner", status: "activated" });
+        await storage.updateUser(userId as string, { accountType: "team", teamId: team.id });
+      }
+    }
+
+    res.json({ message: `Plan "${plan.name}" assigned to user successfully` });
+  } catch (error: any) {
+    console.error("Assign plan error:", error);
+    res.status(500).json({ message: "Failed to assign plan" });
+  }
+});
+
 // ─── Reports CSV Download ───────────────────────────────────────────────────
 router.get("/api/admin/reports/download", requireAdminAuth, async (req: Request, res: Response) => {
   try {
