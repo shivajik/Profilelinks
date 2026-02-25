@@ -111,7 +111,8 @@ export function BusinessProfileSection() {
     );
   }
 
-  const { team, templateData } = data;
+  const { team, member, templateData } = data;
+  const isOwner = member.role === "owner";
 
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6">
@@ -125,44 +126,46 @@ export function BusinessProfileSection() {
         This is your business card profile for <strong>{team.name}</strong>. Changes here will appear on your public profile when viewed as a team member.
       </p>
 
-      {/* Company Info (read-only) */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Building2 className="w-4 h-4" />
-            Company Info
-            <Badge variant="outline" className="ml-auto text-xs">Set by team admin</Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center gap-3">
-            {team.logoUrl && (
-              <img src={team.logoUrl} alt={team.name} className="w-10 h-10 rounded-full object-cover" />
-            )}
-            <div>
-              <p className="font-medium">{templateData.companyName || team.name}</p>
-              {team.websiteUrl && (
-                <p className="text-xs text-muted-foreground">{team.websiteUrl}</p>
+      {/* Company Info (read-only) — only visible to team owner */}
+      {isOwner && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Building2 className="w-4 h-4" />
+              Company Info
+              <Badge variant="outline" className="ml-auto text-xs">Set by team admin</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center gap-3">
+              {team.logoUrl && (
+                <img src={team.logoUrl} alt={team.name} className="w-10 h-10 rounded-full object-cover" />
               )}
+              <div>
+                <p className="font-medium">{templateData.companyName || team.name}</p>
+                {team.websiteUrl && (
+                  <p className="text-xs text-muted-foreground">{team.websiteUrl}</p>
+                )}
+              </div>
             </div>
-          </div>
-          {templateData.companyPhone && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Phone className="w-3.5 h-3.5" /> {templateData.companyPhone}
-            </div>
-          )}
-          {templateData.companyEmail && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Mail className="w-3.5 h-3.5" /> {templateData.companyEmail}
-            </div>
-          )}
-          {templateData.companyAddress && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <MapPin className="w-3.5 h-3.5" /> {templateData.companyAddress}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            {templateData.companyPhone && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Phone className="w-3.5 h-3.5" /> {templateData.companyPhone}
+              </div>
+            )}
+            {templateData.companyEmail && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Mail className="w-3.5 h-3.5" /> {templateData.companyEmail}
+              </div>
+            )}
+            {templateData.companyAddress && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <MapPin className="w-3.5 h-3.5" /> {templateData.companyAddress}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Editable Business Profile */}
       <Card>
