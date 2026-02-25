@@ -112,7 +112,7 @@ import { SocialIcon } from "@/components/social-icon";
 import type { Link, Social, Page, Block, BlockContent, BlockType } from "@shared/schema";
 import { BLOCK_TYPES } from "@shared/schema";
 import { BillingSection } from "@/components/billing-section";
-import { PlanUsageBanner, canPerformAction } from "@/components/plan-usage-banner";
+import { PlanUsageBanner, canPerformAction, LimitReachedDialog } from "@/components/plan-usage-banner";
 import { usePlanLimits, type PlanLimits } from "@/hooks/use-plan-limits";
 import { MenuBuilder } from "@/components/menu-builder";
 
@@ -609,6 +609,8 @@ export default function Dashboard() {
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (!file) return;
+                            const label = document.getElementById('dash-avatar-upload-label');
+                            if (label) label.setAttribute('data-uploading', 'true');
                             const formData = new FormData();
                             formData.append("file", file);
                             try {
@@ -620,18 +622,20 @@ export default function Dashboard() {
                                 toast({ title: "Profile picture updated!" });
                               }
                             } catch {}
+                            if (label) label.removeAttribute('data-uploading');
                           }}
                           data-testid="input-header-avatar-upload"
                         />
-                        <label htmlFor="dash-avatar-upload" className="cursor-pointer block">
+                        <label htmlFor="dash-avatar-upload" id="dash-avatar-upload-label" className="cursor-pointer block relative [&[data-uploading]]:pointer-events-none">
                           <Avatar className="w-12 h-12 border-2 border-border">
                             <AvatarImage src={user.profileImage || undefined} />
                             <AvatarFallback className="bg-primary/10 text-primary text-sm">
                               {(user.displayName || user.username).charAt(0).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
-                          <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Camera className="w-3.5 h-3.5 text-white" />
+                          <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity [label[data-uploading]>&]:opacity-100">
+                            <Loader2 className="w-3.5 h-3.5 text-white animate-spin hidden [label[data-uploading]>&]:block" />
+                            <Camera className="w-3.5 h-3.5 text-white [label[data-uploading]>&]:hidden" />
                           </div>
                         </label>
                       </div>
@@ -3179,6 +3183,7 @@ function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, toast }: {
 
 function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUserId: string }) {
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const [inviteOpen, setInviteOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [cardPreviewMember, setCardPreviewMember] = useState<any>(null);
@@ -3192,6 +3197,8 @@ function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUs
   const [removeConfirmMember, setRemoveConfirmMember] = useState<any>(null);
   const [editMember, setEditMember] = useState<any>(null);
   const [createdCredentials, setCreatedCredentials] = useState<{ email: string; password: string; username: string } | null>(null);
+  const [limitDialogOpen, setLimitDialogOpen] = useState(false);
+  const [limitMessage, setLimitMessage] = useState("");
 
   const { data: members = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/teams", teamId, "members"],
@@ -3258,7 +3265,19 @@ function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUs
       }
     },
     onError: (err: any) => {
-      toast({ title: "Failed to create member", description: err.message, variant: "destructive" });
+      // Parse limit reached errors to show upgrade dialog
+      const msg = err.message || "";
+      let parsedMsg = msg;
+      try {
+        const jsonMatch = msg.match(/\{.*\}/);
+        if (jsonMatch) parsedMsg = JSON.parse(jsonMatch[0]).message || msg;
+      } catch {}
+      if (parsedMsg.toLowerCase().includes("limit reached") || parsedMsg.toLowerCase().includes("upgrade")) {
+        setLimitMessage(parsedMsg);
+        setLimitDialogOpen(true);
+      } else {
+        toast({ title: "Failed to create member", description: parsedMsg, variant: "destructive" });
+      }
     },
   });
 
@@ -3291,6 +3310,16 @@ function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUs
       queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "members"] });
       setEditMember(null);
       toast({ title: "Member updated" });
+    },
+  });
+
+  const deactivateMutation = useMutation({
+    mutationFn: async ({ memberId, status }: { memberId: string; status: string }) => {
+      await apiRequest("PATCH", `/api/teams/${teamId}/members/${memberId}`, { status });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "members"] });
+      toast({ title: "Member status updated" });
     },
   });
 
@@ -3365,11 +3394,11 @@ function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUs
                 </TableCell>
                 <TableCell>
                   <Badge
-                    variant={member.status === "activated" ? "secondary" : "default"}
-                    className={member.status === "activated" ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 no-default-hover-elevate" : ""}
+                    variant={member.status === "activated" ? "secondary" : member.status === "deactivated" ? "destructive" : "default"}
+                    className={member.status === "activated" ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 no-default-hover-elevate" : member.status === "deactivated" ? "" : ""}
                     data-testid={`badge-member-status-${member.id}`}
                   >
-                    {member.status === "activated" ? "Active" : "Invited"}
+                    {member.status === "activated" ? "Active" : member.status === "deactivated" ? "Deactivated" : "Invited"}
                   </Badge>
                 </TableCell>
                 <TableCell>
@@ -3417,6 +3446,11 @@ function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUs
                             data-testid={`button-edit-role-${member.id}`}
                           >
                             {member.role === "admin" ? "Demote to Member" : "Promote to Admin"}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => deactivateMutation.mutate({ memberId: member.id, status: member.status === "deactivated" ? "activated" : "deactivated" })}
+                          >
+                            {member.status === "deactivated" ? "Reactivate Member" : "Deactivate Member"}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
@@ -3685,6 +3719,13 @@ function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUs
       </Dialog>
 
       <EditMemberDialog member={editMember} isOpen={!!editMember} onClose={() => setEditMember(null)} teamId={teamId} isAdmin={isAdmin} toast={toast} />
+
+      <LimitReachedDialog
+        open={limitDialogOpen}
+        onOpenChange={setLimitDialogOpen}
+        message={limitMessage}
+        onUpgrade={() => navigate("/pricing")}
+      />
     </div>
   );
 }
@@ -3880,6 +3921,42 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
     updateMutation.mutate({ id: selectedTemplate.id, data: { [field]: value } });
   };
 
+  const tDataRef: TemplateData = selectedTemplate?.templateData || {};
+  const themeColorRef = tDataRef.themeColor || "#6C5CE7";
+  const [localFont, setLocalFont] = useState(tDataRef.font || "inter");
+  const [localThemeColor, setLocalThemeColor] = useState(themeColorRef);
+  const [templateDirty, setTemplateDirty] = useState(false);
+
+  useEffect(() => {
+    if (selectedTemplate) {
+      setLocalFont(tDataRef.font || "inter");
+      setLocalThemeColor(tDataRef.themeColor || "#6C5CE7");
+      setTemplateDirty(false);
+    }
+  }, [selectedTemplate?.id]);
+
+  const handleSaveTemplate = () => {
+    if (!selectedTemplate) return;
+    const newTemplateData = {
+      ...selectedTemplate.templateData,
+      companyName: localCompanyName,
+      companyPhone: localPhone,
+      companyEmail: localEmail,
+      companyWebsite: localWebsite,
+      companyAddress: localAddress,
+      companyContact: localContact,
+      font: localFont,
+      themeColor: localThemeColor,
+    };
+    const metaUpdates: Record<string, any> = { templateData: newTemplateData };
+    if (localName.trim() && localName !== selectedTemplate.name) metaUpdates.name = localName;
+    if (localDesc !== (selectedTemplate.description || "")) metaUpdates.description = localDesc;
+    updateMutation.mutate({ id: selectedTemplate.id, data: metaUpdates });
+    setTemplateDirty(false);
+  };
+
+  const markDirty = () => setTemplateDirty(true);
+
   const handleUpload = async (file: File, field: "coverPhoto" | "companyLogo") => {
     if (!selectedTemplate) return;
     const fd = new FormData();
@@ -3898,7 +3975,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
   };
 
   const tData: TemplateData = selectedTemplate?.templateData || {};
-  const themeColor = tData.themeColor || "#6C5CE7";
+  const themeColor = localThemeColor;
 
   const [localName, setLocalName] = useState("");
   const [localDesc, setLocalDesc] = useState("");
@@ -4011,8 +4088,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                       <Label className="text-xs text-muted-foreground">Name</Label>
                       <Input
                         value={localName}
-                        onChange={(e) => setLocalName(e.target.value)}
-                        onBlur={() => { if (localName.trim() && localName !== selectedTemplate.name) updateTemplateMeta("name", localName); }}
+                        onChange={(e) => { setLocalName(e.target.value); markDirty(); }}
                         placeholder="Template name"
                         data-testid="input-template-name"
                       />
@@ -4021,8 +4097,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                       <Label className="text-xs text-muted-foreground">Description</Label>
                       <Input
                         value={localDesc}
-                        onChange={(e) => setLocalDesc(e.target.value)}
-                        onBlur={() => { if (localDesc !== (selectedTemplate.description || "")) updateTemplateMeta("description", localDesc); }}
+                        onChange={(e) => { setLocalDesc(e.target.value); markDirty(); }}
                         placeholder="Optional description"
                         data-testid="input-template-description"
                       />

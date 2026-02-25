@@ -647,10 +647,41 @@ router.post("/api/admin/seed-team-packages", requireAdminAuth, async (req: Reque
       inserted.push(plan);
     }
 
-    res.status(201).json({ message: `${inserted.length} team packages created`, plans: inserted });
+  res.status(201).json({ message: `${inserted.length} team packages created`, plans: inserted });
   } catch (error: any) {
     console.error("Seed team packages error:", error);
     res.status(500).json({ message: "Failed to seed team packages" });
+  }
+});
+
+// ─── Payment Gateway Settings ───────────────────────────────────────────────
+router.get("/api/admin/settings/payment-keys", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const result = await db.execute(sql`SELECT key, CASE WHEN length(value) > 8 THEN substring(value, 1, 4) || '****' || substring(value, length(value) - 3) ELSE '********' END as masked_value FROM app_settings WHERE key IN ('razorpay_key_id', 'razorpay_key_secret')`);
+    const keys: Record<string, string> = {};
+    for (const row of result.rows as any[]) {
+      keys[row.key] = row.masked_value;
+    }
+    res.json(keys);
+  } catch (error: any) {
+    console.error("Payment keys fetch error:", error);
+    res.status(500).json({ message: "Failed to fetch payment keys" });
+  }
+});
+
+router.post("/api/admin/settings/payment-keys", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const { razorpayKeyId, razorpayKeySecret } = req.body;
+    if (razorpayKeyId) {
+      await db.execute(sql`INSERT INTO app_settings (key, value, updated_at) VALUES ('razorpay_key_id', ${razorpayKeyId}, now()) ON CONFLICT (key) DO UPDATE SET value = ${razorpayKeyId}, updated_at = now()`);
+    }
+    if (razorpayKeySecret) {
+      await db.execute(sql`INSERT INTO app_settings (key, value, updated_at) VALUES ('razorpay_key_secret', ${razorpayKeySecret}, now()) ON CONFLICT (key) DO UPDATE SET value = ${razorpayKeySecret}, updated_at = now()`);
+    }
+    res.json({ message: "Payment gateway keys updated successfully" });
+  } catch (error: any) {
+    console.error("Payment keys update error:", error);
+    res.status(500).json({ message: "Failed to update payment keys" });
   }
 });
 

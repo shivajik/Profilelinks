@@ -130,11 +130,18 @@ router.post("/api/payments/create-order", requireAuth as any, async (req: Reques
       return res.json({ free: true, message: "Subscribed to free plan" });
     }
 
-    const keyId = process.env.RAZORPAY_KEY_ID;
-    const keySecret = process.env.RAZORPAY_KEY_SECRET;
- 
+    // Read payment keys from DB first, fallback to env
+    let keyId = process.env.RAZORPAY_KEY_ID;
+    let keySecret = process.env.RAZORPAY_KEY_SECRET;
+    try {
+      const [dbKeyId] = await db.select().from(sql`app_settings`).where(sql`key = 'razorpay_key_id'`);
+      const [dbKeySecret] = await db.select().from(sql`app_settings`).where(sql`key = 'razorpay_key_secret'`);
+      if (dbKeyId) keyId = (dbKeyId as any).value;
+      if (dbKeySecret) keySecret = (dbKeySecret as any).value;
+    } catch { /* table may not exist yet */ }
+
     if (!keyId || !keySecret) {
-      return res.status(500).json({ message: "Payment gateway not configured. Please add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET." });
+      return res.status(500).json({ message: "Payment gateway not configured. Admin needs to set Razorpay keys in Settings." });
     }
 
     // Amount in paise (INR smallest unit)
@@ -243,7 +250,11 @@ router.post("/api/payments/verify", requireAuth as any, async (req: Request, res
 
     const { razorpayOrderId, razorpayPaymentId, razorpaySignature, planId, billingCycle } = result.data;
 
-    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    let keySecret = process.env.RAZORPAY_KEY_SECRET;
+    try {
+      const [dbKeySecret] = await db.select().from(sql`app_settings`).where(sql`key = 'razorpay_key_secret'`);
+      if (dbKeySecret) keySecret = (dbKeySecret as any).value;
+    } catch { /* table may not exist yet */ }
     if (!keySecret) {
       return res.status(500).json({ message: "Payment gateway not configured" });
     }

@@ -112,7 +112,7 @@ export type TeamSize = typeof TEAM_SIZES[number];
 export const TEAM_ROLES = ["owner", "admin", "member"] as const;
 export type TeamRole = typeof TEAM_ROLES[number];
 
-export const MEMBER_STATUSES = ["invited", "activated"] as const;
+export const MEMBER_STATUSES = ["invited", "activated", "deactivated"] as const;
 export type MemberStatus = typeof MEMBER_STATUSES[number];
 
 export const teams = pgTable("teams", {
