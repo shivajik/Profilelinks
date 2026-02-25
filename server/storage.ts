@@ -238,6 +238,7 @@ export interface IStorage {
   createContact(contact: InsertContact): Promise<Contact>;
   updateContact(id: string, ownerId: string, data: Partial<Pick<Contact, "name" | "email" | "phone" | "company" | "jobTitle" | "notes" | "type">>): Promise<Contact | undefined>;
   deleteContact(id: string, ownerId: string): Promise<boolean>;
+  deleteContactByTeam(id: string, teamId: string): Promise<boolean>;
 
   // Menu Builder
   getMenuSectionsByUserId(userId: string): Promise<MenuSection[]>;
@@ -714,6 +715,14 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(contacts)
       .where(and(eq(contacts.id, id), eq(contacts.ownerId, ownerId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  async deleteContactByTeam(id: string, teamId: string): Promise<boolean> {
+    const result = await db
+      .delete(contacts)
+      .where(and(eq(contacts.id, id), eq(contacts.teamId, teamId)))
       .returning();
     return result.length > 0;
   }

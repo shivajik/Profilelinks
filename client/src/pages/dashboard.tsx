@@ -405,14 +405,15 @@ export default function Dashboard() {
   };
 
   const isTeamAccount = user.accountType === "team" && user.teamId;
-  const isTeamMember = !isTeamAccount && !!businessProfileData;
+  const isTeamOwner = isTeamAccount && teamData && teamData.ownerId === user.id;
+  const isTeamMember = isTeamAccount && !isTeamOwner;
   const isRestaurant = teamData?.businessType?.toLowerCase() === "restaurant";
 
-  const isIndividual = !isTeamAccount && !isTeamMember;
+  const isIndividual = !isTeamAccount;
 
   const sidebarItems = [
     { id: "design", label: "Design", icon: Palette, active: true },
-    ...((isTeamAccount || isTeamMember) ? [{ id: "business-profile", label: "Business Profile", icon: Briefcase }] : []),
+    ...(isTeamAccount ? [{ id: "business-profile", label: "Business Profile", icon: Briefcase }] : []),
     ...(isTeamAccount && isRestaurant ? [{ id: "menu-setup", label: "Menu Setup", icon: UtensilsCrossed }] : []),
     { id: "settings", label: "Settings", icon: Settings },
     { id: "qrcodes", label: "QR Codes", icon: QrCode },
@@ -424,8 +425,8 @@ export default function Dashboard() {
   ];
 
   const teamSidebarItems = [
-    ...(isTeamAccount ? [{ id: "team-members", label: "Team Members", icon: Users }] : []),
-    ...(isTeamAccount ? [{ id: "team-templates", label: "Team Templates", icon: LayoutTemplate }] : []),
+    ...(isTeamOwner ? [{ id: "team-members", label: "Team Members", icon: Users }] : []),
+    ...(isTeamOwner ? [{ id: "team-templates", label: "Team Templates", icon: LayoutTemplate }] : []),
     { id: "contacts", label: "Contacts", icon: BookUser },
   ];
 
@@ -462,7 +463,7 @@ export default function Dashboard() {
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
-            {(isTeamAccount || isTeamMember) && (
+            {isTeamAccount && (
               <>
                 <SidebarSeparator />
                 <SidebarGroup>
@@ -967,8 +968,8 @@ export default function Dashboard() {
               {activeSection === "team-templates" && isTeamAccount && (
                 <TeamTemplatesPanel teamId={user.teamId!} />
               )}
-              {activeSection === "contacts" && (isTeamAccount || isTeamMember) && (
-                <ContactsPanel teamId={isTeamAccount ? user.teamId! : businessProfileData?.team?.id} userId={user.id} />
+              {activeSection === "contacts" && isTeamAccount && (
+                <ContactsPanel teamId={user.teamId!} userId={user.id} />
               )}
             </div>
 

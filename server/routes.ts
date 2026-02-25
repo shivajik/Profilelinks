@@ -1584,13 +1584,11 @@ export async function registerRoutes(
         return res.status(404).json({ message: "User not found" });
       }
       const delContactId = req.params.id as string;
+      // Try personal delete first
       let deleted = await storage.deleteContact(delContactId, user.id);
+      // If not found and user has a team, try team-based delete
       if (!deleted && user.teamId) {
-        const allContacts = await storage.getContacts({ teamId: user.teamId });
-        const contact = allContacts.find(c => c.id === delContactId);
-        if (contact && contact.teamId === user.teamId) {
-          deleted = await storage.deleteContact(delContactId, contact.ownerId || user.id);
-        }
+        deleted = await storage.deleteContactByTeam(delContactId, user.teamId);
       }
       if (!deleted) {
         return res.status(404).json({ message: "Contact not found" });
