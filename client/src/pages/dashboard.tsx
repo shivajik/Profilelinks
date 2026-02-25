@@ -424,8 +424,8 @@ export default function Dashboard() {
   ];
 
   const teamSidebarItems = [
-    { id: "team-members", label: "Team Members", icon: Users },
-    { id: "team-templates", label: "Team Templates", icon: LayoutTemplate },
+    ...(isTeamAccount ? [{ id: "team-members", label: "Team Members", icon: Users }] : []),
+    ...(isTeamAccount ? [{ id: "team-templates", label: "Team Templates", icon: LayoutTemplate }] : []),
     { id: "contacts", label: "Contacts", icon: BookUser },
   ];
 
@@ -469,7 +469,7 @@ export default function Dashboard() {
                   <SidebarGroupLabel>Team</SidebarGroupLabel>
                   <SidebarGroupContent>
                     <SidebarMenu>
-                      {isTeamAccount && teamSidebarItems.map((item) => (
+                      {teamSidebarItems.map((item) => (
                         <SidebarMenuItem key={item.id}>
                           <SidebarMenuButton
                             onClick={() => setActiveSection(item.id)}
@@ -481,18 +481,6 @@ export default function Dashboard() {
                           </SidebarMenuButton>
                         </SidebarMenuItem>
                       ))}
-                      {isTeamMember && (
-                        <SidebarMenuItem>
-                          <SidebarMenuButton
-                            onClick={() => setActiveSection("contacts")}
-                            isActive={activeSection === "contacts"}
-                            data-testid="sidebar-contacts"
-                          >
-                            <BookUser className="w-4 h-4" />
-                            <span>Contacts</span>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      )}
                     </SidebarMenu>
                   </SidebarGroupContent>
                 </SidebarGroup>

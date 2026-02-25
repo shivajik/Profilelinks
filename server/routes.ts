@@ -1000,6 +1000,18 @@ export async function registerRoutes(
             inviteLink: `${req.protocol}://${req.get("host")}/auth`,
             role: memberRole || "member",
           }).catch(() => {}); // Fire and forget
+        // Auto-create contact for this team member
+        try {
+          await storage.createContact({
+            teamId: req.params.teamId as string,
+            name: existingUser.displayName || existingUser.username || displayName,
+            email: normalizedEmail,
+            phone: null,
+            company: team?.name || "",
+            jobTitle: jobTitle || null,
+            type: "company",
+          });
+        } catch (_) { /* contact may already exist */ }
 
         return res.status(201).json(member);
       }
@@ -1055,6 +1067,18 @@ export async function registerRoutes(
         console.log("❌ Email Sending Failed");
         console.error(emailError);
       }
+      // Auto-create contact for new team member
+      try {
+        await storage.createContact({
+          teamId: req.params.teamId as string,
+          name: displayName || username,
+          email: normalizedEmail,
+          phone: null,
+          company: team?.name || "",
+          jobTitle: jobTitle || null,
+          type: "company",
+        });
+      } catch (_) { /* contact may already exist */ }
 
       res.status(201).json({
         ...member,
@@ -1288,6 +1312,19 @@ export async function registerRoutes(
         isHome: true,
       });
       await storage.updateTeamInviteStatus(invite.id, "accepted");
+      // Auto-create contact for newly joined member
+      try {
+        const team = await storage.getTeam(invite.teamId);
+        await storage.createContact({
+          teamId: invite.teamId,
+          name: username,
+          email: invite.email.toLowerCase(),
+          phone: null,
+          company: team?.name || "",
+          jobTitle: null,
+          type: "company",
+        });
+      } catch (_) { /* contact may already exist */ }
       req.session.userId = newUser.id;
       res.json({ message: "Account created and joined team successfully" });
     } catch (error: any) {
@@ -1452,10 +1489,23 @@ export async function registerRoutes(
       const type = req.query.type as string | undefined;
       let contactsList;
       if (type === "company") {
-        if (!user.teamId) {
+        // For team members, also check businessProfileData teamId
+        const teamId = user.teamId || (req.query.teamId as string);
+        if (!teamId) {
           return res.status(400).json({ message: "No team associated" });
         }
-        contactsList = await storage.getContacts({ teamId: user.teamId, type: "company" });
+        contactsList = await storage.getContacts({ teamId, type: "company" });
+        // Filter out contacts whose email belongs to a deactivated team member
+        const members = await storage.getTeamMembers(teamId);
+        const deactivatedMembers = members.filter(m => m.status === "deactivated");
+        if (deactivatedMembers.length > 0) {
+          const deactivatedEmails = new Set<string>();
+          for (const m of deactivatedMembers) {
+            const u = await storage.getUser(m.userId);
+            if (u?.email) deactivatedEmails.add(u.email.toLowerCase());
+          }
+          contactsList = contactsList.filter(c => !c.email || !deactivatedEmails.has(c.email.toLowerCase()));
+        }
       } else {
         contactsList = await storage.getContacts({ ownerId: user.id, type: type || "personal" });
       }
