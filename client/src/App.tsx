@@ -11,6 +11,7 @@ import Onboarding from "@/pages/onboarding";
 import PublicProfile from "@/pages/profile";
 import PublicMenu from "@/pages/public-menu";
 import InviteAccept from "@/pages/invite";
+import ForceChangePassword from "@/pages/change-password";
 import NotFound from "@/pages/not-found";
 import AdminLogin from "@/pages/admin/login";
 import AdminDashboard from "@/pages/admin/dashboard";
@@ -45,6 +46,7 @@ function Router() {
       <Route path="/admin" component={AdminLogin} />
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin/dashboard" component={AdminDashboard} />
+      <Route path="/change-password" component={ForceChangePassword} />
       <Route path="/invite/:token" component={InviteAccept} />
       <Route path="/:username/menu" component={PublicMenu} />
       <Route path="/:username" component={PublicProfile} />

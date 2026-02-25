@@ -41,6 +41,9 @@ export default function AuthPage() {
   };
 
   if (user) {
+    if ((user as any).mustChangePassword) {
+      return <Redirect to="/change-password" />;
+    }
     return <Redirect to={user.onboardingCompleted ? "/dashboard" : "/onboarding"} />;
   }
 

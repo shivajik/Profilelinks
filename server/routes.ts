@@ -15,6 +15,7 @@ import adminRouter from "./admin-routes";
 import paymentRouter from "./payment-routes";
 import affiliateRouter from "./affiliate-routes";
 import { getUserPlanLimits } from "./plan-limits";
+import { sendInviteEmail, sendCredentialsEmail } from "./email";
 
 declare module "express-session" {
   interface SessionData {
@@ -351,6 +352,33 @@ export async function registerRoutes(
 
       const hashedPassword = await bcrypt.hash(result.data.newPassword, 10);
       await storage.updateUserPassword(req.session.userId!, hashedPassword);
+      res.json({ message: "Password changed successfully" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Password change failed" });
+    }
+  });
+
+  // Force change password for temp password users
+  app.post("/api/auth/force-change-password", requireAuth, async (req, res) => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: "Current and new password are required" });
+      }
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: "New password must be at least 6 characters" });
+      }
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const valid = await bcrypt.compare(currentPassword, user.password);
+      if (!valid) {
+        return res.status(400).json({ message: "Temporary password is incorrect" });
+      }
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await storage.updateUserPassword(req.session.userId!, hashedPassword);
+      await storage.updateUser(req.session.userId!, { mustChangePassword: false } as any);
       res.json({ message: "Password changed successfully" });
     } catch (error: any) {
       res.status(500).json({ message: "Password change failed" });
@@ -930,6 +958,8 @@ export async function registerRoutes(
         accountType: "team",
         teamId: req.params.teamId as string,
       });
+      // Set mustChangePassword flag
+      await storage.updateUser(newUser.id, { mustChangePassword: true } as any);
       const member = await storage.addTeamMember({
         teamId: req.params.teamId as string,
         userId: newUser.id,
@@ -944,6 +974,16 @@ export async function registerRoutes(
         position: 0,
         isHome: true,
       });
+      // Send credentials email
+      const team = await storage.getTeam(req.params.teamId as string);
+      const inviter = await storage.getUser(req.session.userId!);
+      console.log(`Sending credentials email to ${normalizedEmail} with temp password ${tempPassword}`);
+      await sendCredentialsEmail({
+        to: normalizedEmail,
+        teamName: team?.name || "Team",
+        loginUrl: `${req.protocol}://${req.get("host")}/auth`,
+        tempPassword,
+      }).catch(() => {}); // Fire and forget
       res.status(201).json({ ...member, tempPassword, tempEmail: normalizedEmail, tempUsername: username });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to create member" });
@@ -961,7 +1001,44 @@ export async function registerRoutes(
       if (!result.success) {
         return res.status(400).json({ message: fromZodError(result.error).message });
       }
-      const invites = result.data.emails.map(email => ({
+
+      // Validate each email for duplicates
+      const existingInvites = await storage.getTeamInvites(req.params.teamId as string);
+      const members = await storage.getTeamMembers(req.params.teamId as string);
+      const skipped: string[] = [];
+      const validEmails: string[] = [];
+
+      for (const email of result.data.emails) {
+        const normalizedEmail = email.toLowerCase().trim();
+        // Check if already a team member
+        const existingUser = await storage.getUserByEmail(normalizedEmail);
+        if (existingUser) {
+          const isMember = members.some(m => m.userId === existingUser.id);
+          if (isMember) {
+            skipped.push(`${normalizedEmail} (already a team member)`);
+            continue;
+          }
+        }
+        // Check if already has a pending invite
+        const hasPendingInvite = existingInvites.some(
+          inv => inv.email.toLowerCase() === normalizedEmail && inv.status === "pending"
+        );
+        if (hasPendingInvite) {
+          skipped.push(`${normalizedEmail} (already has a pending invite)`);
+          continue;
+        }
+        validEmails.push(normalizedEmail);
+      }
+
+      if (validEmails.length === 0) {
+        return res.status(400).json({ 
+          message: skipped.length > 0 
+            ? `All emails were skipped: ${skipped.join(", ")}` 
+            : "No valid emails to invite" 
+        });
+      }
+
+      const invites = validEmails.map(email => ({
         teamId: req.params.teamId as string,
         email,
         role: result.data.role || "member",
@@ -969,7 +1046,25 @@ export async function registerRoutes(
         token: crypto.randomUUID(),
       }));
       const created = await storage.createTeamInvites(invites);
-      res.status(201).json({ invites: created });
+
+      // Send invite emails (fire and forget)
+      const team = await storage.getTeam(req.params.teamId as string);
+      const inviter = await storage.getUser(req.session.userId!);
+      for (const invite of created) {
+        const inviteLink = `${req.protocol}://${req.get("host")}/invite/${invite.token}`;
+        sendInviteEmail({
+          to: invite.email,
+          inviterName: inviter?.displayName || inviter?.username || "Team Admin",
+          teamName: team?.name || "Team",
+          inviteLink,
+          role: invite.role,
+        }).catch(() => {});
+      }
+
+      res.status(201).json({ 
+        invites: created, 
+        skipped: skipped.length > 0 ? skipped : undefined 
+      });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to send invites" });
     }
@@ -985,6 +1080,28 @@ export async function registerRoutes(
       res.json(invites);
     } catch (error: any) {
       res.status(500).json({ message: "Failed to get invites" });
+    }
+  });
+
+  // Revoke an invite (set status to revoked instead of deleting)
+  app.patch("/api/teams/:teamId/invites/:id/revoke", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role || !["owner", "admin"].includes(role)) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      const invites = await storage.getTeamInvites(req.params.teamId as string);
+      const invite = invites.find(i => i.id === req.params.id);
+      if (!invite) {
+        return res.status(404).json({ message: "Invite not found" });
+      }
+      if (invite.status !== "pending") {
+        return res.status(400).json({ message: `Cannot revoke an invite that is already ${invite.status}` });
+      }
+      const updated = await storage.updateTeamInviteStatus(req.params.id as string, "revoked");
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to revoke invite" });
     }
   });
 

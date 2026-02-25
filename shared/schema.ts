@@ -17,6 +17,7 @@ export const users = pgTable("users", {
   accountType: text("account_type").notNull().default("personal"),
   teamId: varchar("team_id"),
   isDisabled: boolean("is_disabled").notNull().default(false),
+  mustChangePassword: boolean("must_change_password").notNull().default(false),
   menuTemplate: text("menu_template"),
   menuDisplayName: text("menu_display_name"),
   menuProfileImage: text("menu_profile_image"),

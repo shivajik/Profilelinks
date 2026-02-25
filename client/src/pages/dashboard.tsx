@@ -3199,6 +3199,7 @@ function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUs
   const [createdCredentials, setCreatedCredentials] = useState<{ email: string; password: string; username: string } | null>(null);
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
   const [limitMessage, setLimitMessage] = useState("");
+  const [activeTab, setActiveTab] = useState<"members" | "invitations">("members");
 
   const { data: members = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/teams", teamId, "members"],
@@ -3218,9 +3219,20 @@ function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUs
     },
   });
 
+  const { data: invitations = [] } = useQuery<any[]>({
+    queryKey: ["/api/teams", teamId, "invites"],
+    queryFn: async () => {
+      const res = await fetch(`/api/teams/${teamId}/invites`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
   const defaultTemplate = templates.find((t: any) => t.isDefault) || templates[0] || null;
   const currentMember = members.find((m: any) => m.userId === currentUserId);
   const isAdmin = currentMember?.role === "owner" || currentMember?.role === "admin";
+
+  const pendingInvites = invitations.filter((i: any) => i.status === "pending");
 
   const [inviteLink, setInviteLink] = useState<string | null>(null);
 
@@ -3231,6 +3243,7 @@ function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUs
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "members"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "invites"] });
       setInviteEmail("");
       setInviteRole("member");
       if (data.invites && data.invites[0]?.token) {
@@ -3323,6 +3336,19 @@ function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUs
     },
   });
 
+  const revokeMutation = useMutation({
+    mutationFn: async (inviteId: string) => {
+      await apiRequest("PATCH", `/api/teams/${teamId}/invites/${inviteId}/revoke`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "invites"] });
+      toast({ title: "Invitation revoked" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to revoke invite", description: err.message, variant: "destructive" });
+    },
+  });
+
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -3344,6 +3370,26 @@ function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUs
         )}
       </div>
 
+      {/* Tabs for Members / Invitations */}
+      <div className="flex gap-1 border-b">
+        <button
+          className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === "members" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          onClick={() => setActiveTab("members")}
+        >
+          Members ({members.length})
+        </button>
+        {isAdmin && (
+          <button
+            className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === "invitations" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            onClick={() => setActiveTab("invitations")}
+          >
+            Invitations ({pendingInvites.length} pending)
+          </button>
+        )}
+      </div>
+
+      {activeTab === "members" ? (
+        <>
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -3469,6 +3515,77 @@ function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUs
             ))}
           </TableBody>
         </Table>
+      )}
+        </>
+      ) : (
+        /* Invitations Tab */
+        <div className="space-y-3">
+          {invitations.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">No invitations sent yet.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Sent</TableHead>
+                  {isAdmin && <TableHead className="text-right">Actions</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {invitations.map((invite: any) => (
+                  <TableRow key={invite.id}>
+                    <TableCell className="font-medium text-sm">{invite.email}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="capitalize">{invite.role}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant={invite.status === "accepted" ? "default" : invite.status === "revoked" ? "destructive" : "secondary"}
+                      >
+                        {invite.status === "pending" ? "Pending" : invite.status === "accepted" ? "Accepted" : "Revoked"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {new Date(invite.createdAt).toLocaleDateString()}
+                    </TableCell>
+                    {isAdmin && (
+                      <TableCell className="text-right">
+                        {invite.status === "pending" && (
+                          <div className="flex items-center gap-1 justify-end">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const link = `${window.location.origin}/invite/${invite.token}`;
+                                navigator.clipboard.writeText(link);
+                                toast({ title: "Invite link copied!" });
+                              }}
+                            >
+                              <Copy className="w-3 h-3 mr-1" />
+                              Copy Link
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => revokeMutation.mutate(invite.id)}
+                              disabled={revokeMutation.isPending}
+                            >
+                              <XCircle className="w-3 h-3 mr-1" />
+                              Revoke
+                            </Button>
+                          </div>
+                        )}
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </div>
       )}
 
       <Dialog open={inviteOpen} onOpenChange={(v) => { if (!v) { setInviteOpen(false); setInviteLink(null); } }}>
