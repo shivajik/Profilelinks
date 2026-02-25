@@ -61,9 +61,7 @@ export function PlanUsageBanner() {
           <UsageBar label="Pages" current={limits.currentPages} max={limits.maxPages} />
           <UsageBar label="Blocks" current={limits.currentBlocks} max={limits.maxBlocks} />
           <UsageBar label="Socials" current={limits.currentSocials} max={limits.maxSocials} />
-          {limits.maxTeamMembers > 1 && (
-            <UsageBar label="Team Members" current={limits.currentTeamMembers} max={limits.maxTeamMembers} />
-          )}
+          <UsageBar label="Team Members" current={limits.currentTeamMembers} max={limits.maxTeamMembers} />
         </div>
         <div className="flex flex-wrap gap-1.5 pt-1">
           <FeatureBadge label="QR Code" enabled={limits.qrCodeEnabled} />

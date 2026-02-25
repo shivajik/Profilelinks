@@ -3668,7 +3668,14 @@ function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUs
                 </Button>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">The member can change their password after logging in via Settings.</p>
+            <div className="rounded-md border border-primary/20 bg-primary/5 p-3 space-y-1">
+              <p className="text-xs font-medium text-primary">How to login</p>
+              <p className="text-xs text-muted-foreground">
+                The team member can log in at{" "}
+                <span className="font-mono font-medium text-foreground">{window.location.origin}/auth</span>{" "}
+                using the email and temporary password above. They can change their password after logging in via Settings.
+              </p>
+            </div>
             <Button className="w-full" onClick={() => setCreatedCredentials(null)} data-testid="button-close-credentials">
               Done
             </Button>
