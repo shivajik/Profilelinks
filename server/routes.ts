@@ -896,6 +896,25 @@ export async function registerRoutes(
         }
         return res.json(updated);
       }
+
+      // Handle deactivation: remove team association but keep the member record
+      if (result.data.status === "deactivated") {
+        const members = await storage.getTeamMembers(req.params.teamId as string);
+        const targetMember = members.find(m => m.id === req.params.id);
+        if (targetMember && targetMember.role !== "owner") {
+          // Remove team association so user can use individual account
+          await storage.updateUser(targetMember.userId, { teamId: null, accountType: "personal" });
+        }
+      }
+      // Handle reactivation: restore team association
+      if (result.data.status === "activated") {
+        const members = await storage.getTeamMembers(req.params.teamId as string);
+        const targetMember = members.find(m => m.id === req.params.id);
+        if (targetMember) {
+          await storage.updateUser(targetMember.userId, { teamId: req.params.teamId as string, accountType: "team" });
+        }
+      }
+
       const updated = await storage.updateTeamMember(req.params.id as string, req.params.teamId as string, result.data);
       if (!updated) {
         return res.status(404).json({ message: "Team member not found" });
@@ -1583,9 +1602,11 @@ export async function registerRoutes(
       } else {
         // Check if user is a member of any team (invited member)
         const memberships = await storage.getTeamMembershipsByUserId(user.id);
-        if (memberships.length > 0) {
-          teamId = memberships[0].teamId;
-          member = memberships[0];
+        // Only use active memberships
+        const activeMembership = memberships.find(m => m.status === "activated");
+        if (activeMembership) {
+          teamId = activeMembership.teamId;
+          member = activeMembership;
         }
       }
 
@@ -1936,24 +1957,24 @@ export async function registerRoutes(
     try {
       const userId = req.session.userId!;
       const memberships = await storage.getTeamMembershipsByUserId(userId);
-      if (!memberships.length) {
+      // Only return active memberships
+      const activeMembership = memberships.find(m => m.status === "activated");
+      if (!activeMembership) {
         return res.json(null);
       }
-      // Use the first team membership
-      const membership = memberships[0];
-      const team = membership.team;
+      const team = activeMembership.team;
       const templates = await storage.getTeamTemplates(team.id);
       const defaultTemplate = templates.find((t) => t.isDefault) || templates[0];
 
       res.json({
         member: {
-          id: membership.id,
-          businessName: membership.businessName,
-          businessPhone: membership.businessPhone,
-          businessProfileImage: membership.businessProfileImage,
-          businessBio: membership.businessBio,
-          jobTitle: membership.jobTitle,
-          role: membership.role,
+          id: activeMembership.id,
+          businessName: activeMembership.businessName,
+          businessPhone: activeMembership.businessPhone,
+          businessProfileImage: activeMembership.businessProfileImage,
+          businessBio: activeMembership.businessBio,
+          jobTitle: activeMembership.jobTitle,
+          role: activeMembership.role,
         },
         team: {
           id: team.id,

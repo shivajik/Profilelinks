@@ -408,6 +408,8 @@ export default function Dashboard() {
   const isTeamMember = !isTeamAccount && !!businessProfileData;
   const isRestaurant = teamData?.businessType?.toLowerCase() === "restaurant";
 
+  const isIndividual = !isTeamAccount && !isTeamMember;
+
   const sidebarItems = [
     { id: "design", label: "Design", icon: Palette, active: true },
     ...((isTeamAccount || isTeamMember) ? [{ id: "business-profile", label: "Business Profile", icon: Briefcase }] : []),
@@ -417,6 +419,7 @@ export default function Dashboard() {
     { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "billing", label: "Billing", icon: CreditCard },
     { id: "usage", label: "Usage", icon: Eye },
+    ...(isIndividual ? [{ id: "invite-friend", label: "Invite a Friend", icon: Share2 }] : []),
     ...(isAffiliate ? [{ id: "affiliate", label: "Affiliate", icon: Share2 }] : []),
   ];
 
@@ -459,14 +462,14 @@ export default function Dashboard() {
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
-            {isTeamAccount && (
+            {(isTeamAccount || isTeamMember) && (
               <>
                 <SidebarSeparator />
                 <SidebarGroup>
                   <SidebarGroupLabel>Team</SidebarGroupLabel>
                   <SidebarGroupContent>
                     <SidebarMenu>
-                      {teamSidebarItems.map((item) => (
+                      {isTeamAccount && teamSidebarItems.map((item) => (
                         <SidebarMenuItem key={item.id}>
                           <SidebarMenuButton
                             onClick={() => setActiveSection(item.id)}
@@ -478,6 +481,18 @@ export default function Dashboard() {
                           </SidebarMenuButton>
                         </SidebarMenuItem>
                       ))}
+                      {isTeamMember && (
+                        <SidebarMenuItem>
+                          <SidebarMenuButton
+                            onClick={() => setActiveSection("contacts")}
+                            isActive={activeSection === "contacts"}
+                            data-testid="sidebar-contacts"
+                          >
+                            <BookUser className="w-4 h-4" />
+                            <span>Contacts</span>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      )}
                     </SidebarMenu>
                   </SidebarGroupContent>
                 </SidebarGroup>
@@ -590,6 +605,41 @@ export default function Dashboard() {
                     <h2 className="text-xl font-semibold">Usage Analytics</h2>
                   </div>
                   <PlanUsageBanner />
+                </div>
+              )}
+              {activeSection === "invite-friend" && (
+                <div className="p-6 max-w-2xl mx-auto space-y-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <SidebarTrigger />
+                    <h2 className="text-xl font-semibold">Invite a Friend</h2>
+                  </div>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Share Linkfolio</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <p className="text-sm text-muted-foreground">
+                        Love using Linkfolio? Share it with your friends and help us grow! Copy the link below and send it to anyone who might find it useful.
+                      </p>
+                      <div className="flex gap-2">
+                        <Input
+                          value={`${window.location.origin}/auth`}
+                          readOnly
+                          className="font-mono text-xs"
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${window.location.origin}/auth`);
+                            toast({ title: "Link copied!", description: "Share it with your friends." });
+                          }}
+                        >
+                          <Copy className="h-4 w-4 mr-1" /> Copy
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               )}
               {activeSection === "menu-setup" && <MenuBuilder />}
@@ -929,8 +979,8 @@ export default function Dashboard() {
               {activeSection === "team-templates" && isTeamAccount && (
                 <TeamTemplatesPanel teamId={user.teamId!} />
               )}
-              {activeSection === "contacts" && isTeamAccount && (
-                <ContactsPanel teamId={user.teamId!} userId={user.id} />
+              {activeSection === "contacts" && (isTeamAccount || isTeamMember) && (
+                <ContactsPanel teamId={isTeamAccount ? user.teamId! : businessProfileData?.team?.id} userId={user.id} />
               )}
             </div>
 

@@ -380,7 +380,7 @@ export const insertTeamSchema = createInsertSchema(teams).omit({ id: true });
 export const createTeamSchema = z.object({
   name: z.string().min(1, "Company name is required").max(100),
   size: z.enum(TEAM_SIZES).optional(),
-  websiteUrl: z.string().url().optional().or(z.literal("")),
+  websiteUrl: z.string().optional().or(z.literal("")).transform(v => v || ""),
   logoUrl: z.string().optional(),
   businessType: z.string().max(100).optional(),
 });

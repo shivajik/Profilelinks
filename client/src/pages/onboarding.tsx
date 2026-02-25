@@ -151,6 +151,7 @@ export default function Onboarding() {
   const canProceed = () => {
     if (step === lastStep && username.length < 3) return false;
     if (accountType === "team" && step === 2 && !companyName.trim()) return false;
+    if (accountType === "team" && step === 2 && companyUrl && !/^https?:\/\/.+\..+/.test(companyUrl)) return false;
     return true;
   };
 
@@ -502,6 +503,9 @@ function WorkspaceStep({
             onChange={(e) => setCompanyUrl(e.target.value)}
             data-testid="input-workspace-company-url"
           />
+          {companyUrl && !/^https?:\/\/.+\..+/.test(companyUrl) && (
+            <p className="text-xs text-destructive">Enter a valid URL (e.g. https://example.com)</p>
+          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="onb-business-type">Business Type</Label>
@@ -578,6 +582,7 @@ function InviteMembersStep({
           </div>
           <Input
             id="onb-invite-email"
+            type="email"
             placeholder="name@company.com"
             value={emailInput}
             onChange={(e) => setEmailInput(e.target.value)}
