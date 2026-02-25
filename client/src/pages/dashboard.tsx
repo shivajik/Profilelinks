@@ -239,6 +239,12 @@ export default function Dashboard() {
     enabled: !!user?.teamId,
   });
 
+  // Check if user is a member of any team (for non-owners)
+  const { data: businessProfileData } = useQuery<any>({
+    queryKey: ["/api/auth/business-profile"],
+    enabled: !!user,
+  });
+
   const [isAffiliate, setIsAffiliate] = useState(false);
   const [affiliateData, setAffiliateData] = useState<any>(null);
 
@@ -399,11 +405,12 @@ export default function Dashboard() {
   };
 
   const isTeamAccount = user.accountType === "team" && user.teamId;
+  const isTeamMember = !isTeamAccount && !!businessProfileData;
   const isRestaurant = teamData?.businessType?.toLowerCase() === "restaurant";
 
   const sidebarItems = [
     { id: "design", label: "Design", icon: Palette, active: true },
-    ...(isTeamAccount ? [{ id: "business-profile", label: "Business Profile", icon: Briefcase }] : []),
+    ...((isTeamAccount || isTeamMember) ? [{ id: "business-profile", label: "Business Profile", icon: Briefcase }] : []),
     ...(isTeamAccount && isRestaurant ? [{ id: "menu-setup", label: "Menu Setup", icon: UtensilsCrossed }] : []),
     { id: "settings", label: "Settings", icon: Settings },
     { id: "qrcodes", label: "QR Codes", icon: QrCode },

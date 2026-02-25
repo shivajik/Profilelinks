@@ -1574,10 +1574,24 @@ export async function registerRoutes(
         teamName?: string;
       } | null = null;
 
-      if (user.accountType === "team" && user.teamId) {
-        const team = await storage.getTeam(user.teamId);
-        const member = await storage.getTeamMemberByUserId(user.teamId, user.id);
-        const templates = await storage.getTeamTemplates(user.teamId);
+      // Check if user is a team owner OR a team member
+      let teamId = user.accountType === "team" ? user.teamId : null;
+      let member: any = null;
+
+      if (teamId) {
+        member = await storage.getTeamMemberByUserId(teamId, user.id);
+      } else {
+        // Check if user is a member of any team (invited member)
+        const memberships = await storage.getTeamMembershipsByUserId(user.id);
+        if (memberships.length > 0) {
+          teamId = memberships[0].teamId;
+          member = memberships[0];
+        }
+      }
+
+      if (teamId) {
+        const team = await storage.getTeam(teamId);
+        const templates = await storage.getTeamTemplates(teamId);
         const defaultTemplate = templates.find((t) => t.isDefault) || templates[0];
         const tData: any = defaultTemplate?.templateData || {};
 
@@ -1914,6 +1928,64 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Public menu load error:", error);
       res.status(500).json({ message: "Failed to load menu" });
+    }
+  });
+
+  // ── Business Profile API (for team members) ──────────────────────────
+  app.get("/api/auth/business-profile", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const memberships = await storage.getTeamMembershipsByUserId(userId);
+      if (!memberships.length) {
+        return res.json(null);
+      }
+      // Use the first team membership
+      const membership = memberships[0];
+      const team = membership.team;
+      const templates = await storage.getTeamTemplates(team.id);
+      const defaultTemplate = templates.find((t) => t.isDefault) || templates[0];
+
+      res.json({
+        member: {
+          id: membership.id,
+          businessName: membership.businessName,
+          businessPhone: membership.businessPhone,
+          businessProfileImage: membership.businessProfileImage,
+          businessBio: membership.businessBio,
+          jobTitle: membership.jobTitle,
+          role: membership.role,
+        },
+        team: {
+          id: team.id,
+          name: team.name,
+          logoUrl: team.logoUrl,
+          websiteUrl: team.websiteUrl,
+        },
+        templateData: defaultTemplate?.templateData || {},
+      });
+    } catch (error: any) {
+      console.error("Business profile fetch error:", error);
+      res.status(500).json({ message: "Failed to fetch business profile" });
+    }
+  });
+
+  app.patch("/api/auth/business-profile", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const memberships = await storage.getTeamMembershipsByUserId(userId);
+      if (!memberships.length) {
+        return res.status(404).json({ message: "No team membership found" });
+      }
+      const membership = memberships[0];
+      const result = updateBusinessProfileSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+      const updated = await storage.updateTeamMember(membership.id, membership.teamId, result.data);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Business profile update error:", error);
+      res.status(500).json({ message: "Failed to update business profile" });
     }
   });
 

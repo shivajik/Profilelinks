@@ -220,6 +220,7 @@ export interface IStorage {
   updateTeamMember(id: string, teamId: string, data: Partial<Pick<TeamMember, "role" | "jobTitle" | "status" | "businessName" | "businessPhone" | "businessProfileImage" | "businessBio">>): Promise<TeamMember | undefined>;
   removeTeamMember(id: string, teamId: string): Promise<boolean>;
   getTeamMemberByUserId(teamId: string, userId: string): Promise<TeamMember | undefined>;
+  getTeamMembershipsByUserId(userId: string): Promise<(TeamMember & { team: Team })[]>;
 
   createTeamInvites(invites: { teamId: string; email: string; role: string; invitedById: string; token: string }[]): Promise<TeamInvite[]>;
   getTeamInvites(teamId: string): Promise<TeamInvite[]>;
@@ -589,6 +590,15 @@ export class DatabaseStorage implements IStorage {
       .from(teamMembers)
       .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId)));
     return member;
+  }
+
+  async getTeamMembershipsByUserId(userId: string): Promise<(TeamMember & { team: Team })[]> {
+    const rows = await db
+      .select({ member: teamMembers, team: teams })
+      .from(teamMembers)
+      .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+      .where(eq(teamMembers.userId, userId));
+    return rows.map(r => ({ ...r.member, team: r.team }));
   }
 
   async createTeamInvites(invites: { teamId: string; email: string; role: string; invitedById: string; token: string }[]): Promise<TeamInvite[]> {
