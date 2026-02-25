@@ -157,6 +157,14 @@ pool.query(`
     expires_at timestamp,
     created_at timestamp NOT NULL DEFAULT now()
   );
+
+  CREATE TABLE IF NOT EXISTS app_settings (
+    key text PRIMARY KEY,
+    value text NOT NULL,
+    updated_at timestamp NOT NULL DEFAULT now()
+  );
+
+  ALTER TABLE IF EXISTS team_members ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'activated';
 `).catch(() => {/* Columns/tables may already exist */});
 
 

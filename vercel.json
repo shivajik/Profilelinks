@@ -1,4 +1,7 @@
 {
   "buildCommand": "npm run build",
-  "framework": null
+  "framework": null,
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api" }
+  ]
 }
