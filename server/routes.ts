@@ -944,7 +944,19 @@ export async function registerRoutes(
           jobTitle: jobTitle || null,
           status: "activated",
         });
-        await storage.updateUser(existingUser.id, { teamId: req.params.teamId as string, accountType: "team" });
+        await storage.updateUser(existingUser.id, { teamId: req.params.teamId as string, accountType: "team", });
+
+        // Send invite notification email to existing user
+          const team = await storage.getTeam(req.params.teamId as string);
+          const inviter = await storage.getUser(req.session.userId!);
+          await sendInviteEmail({
+            to: normalizedEmail,
+            inviterName: inviter?.displayName || inviter?.username || "Team Admin",
+            teamName: team?.name || "Team",
+            inviteLink: `${req.protocol}://${req.get("host")}/auth`,
+            role: memberRole || "member",
+          }).catch(() => {}); // Fire and forget
+
         return res.status(201).json(member);
       }
       const username = normalizedEmail.split("@")[0] + "_" + Date.now().toString(36);
@@ -977,14 +989,28 @@ export async function registerRoutes(
       // Send credentials email
       const team = await storage.getTeam(req.params.teamId as string);
       const inviter = await storage.getUser(req.session.userId!);
-      console.log(`Sending credentials email to ${normalizedEmail} with temp password ${tempPassword}`);
-      await sendCredentialsEmail({
-        to: normalizedEmail,
-        teamName: team?.name || "Team",
-        loginUrl: `${req.protocol}://${req.get("host")}/auth`,
+      console.log("Inviter Info:", inviter);
+     try {
+        await sendCredentialsEmail({
+          to: normalizedEmail,
+          teamName: team?.name || "Team",
+          loginUrl: `${req.protocol}://${req.get("host")}/auth`,
+          tempPassword,
+        });
+
+        console.log("✅ Email Sent Successfully");
+      } catch (emailError) {
+        console.log("❌ Email Sending Failed");
+        console.error(emailError);
+      }
+
+      res.status(201).json({
+        ...member,
         tempPassword,
-      }).catch(() => {}); // Fire and forget
-      res.status(201).json({ ...member, tempPassword, tempEmail: normalizedEmail, tempUsername: username });
+        tempEmail: normalizedEmail,
+        tempUsername: username,
+      });
+
     } catch (error: any) {
       res.status(500).json({ message: "Failed to create member" });
     }
