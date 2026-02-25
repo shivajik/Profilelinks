@@ -24,6 +24,20 @@ function requireAuth(req: Request, res: Response, next: () => void) {
   next();
 }
 
+async function getAppSettingValue(key: string): Promise<string | undefined> {
+  try {
+    const result = await db.execute(sql`SELECT value FROM app_settings WHERE key = ${key} LIMIT 1`);
+    const row = (result.rows?.[0] ?? null) as { value?: unknown } | null;
+    if (typeof row?.value === "string" && row.value.trim()) {
+      return row.value.trim();
+    }
+  } catch {
+    // app_settings table may not exist yet
+  }
+
+  return undefined;
+}
+
 // ─── Get all public pricing plans ──────────────────────────────────────────
 router.get("/api/pricing/plans", async (req: Request, res: Response) => {
   try {
@@ -131,14 +145,10 @@ router.post("/api/payments/create-order", requireAuth as any, async (req: Reques
     }
 
     // Read payment keys from DB first, fallback to env
-    let keyId = process.env.RAZORPAY_KEY_ID;
-    let keySecret = process.env.RAZORPAY_KEY_SECRET;
-    try {
-      const [dbKeyId] = await db.select().from(sql`app_settings`).where(sql`key = 'razorpay_key_id'`);
-      const [dbKeySecret] = await db.select().from(sql`app_settings`).where(sql`key = 'razorpay_key_secret'`);
-      if (dbKeyId) keyId = (dbKeyId as any).value;
-      if (dbKeySecret) keySecret = (dbKeySecret as any).value;
-    } catch { /* table may not exist yet */ }
+    const keyIdFromDb = await getAppSettingValue("razorpay_key_id");
+    const keySecretFromDb = await getAppSettingValue("razorpay_key_secret");
+    const keyId = keyIdFromDb ?? process.env.RAZORPAY_KEY_ID;
+    const keySecret = keySecretFromDb ?? process.env.RAZORPAY_KEY_SECRET;
 
     if (!keyId || !keySecret) {
       return res.status(500).json({ message: "Payment gateway not configured. Admin needs to set Razorpay keys in Settings." });
@@ -250,11 +260,8 @@ router.post("/api/payments/verify", requireAuth as any, async (req: Request, res
 
     const { razorpayOrderId, razorpayPaymentId, razorpaySignature, planId, billingCycle } = result.data;
 
-    let keySecret = process.env.RAZORPAY_KEY_SECRET;
-    try {
-      const [dbKeySecret] = await db.select().from(sql`app_settings`).where(sql`key = 'razorpay_key_secret'`);
-      if (dbKeySecret) keySecret = (dbKeySecret as any).value;
-    } catch { /* table may not exist yet */ }
+    const keySecretFromDb = await getAppSettingValue("razorpay_key_secret");
+    const keySecret = keySecretFromDb ?? process.env.RAZORPAY_KEY_SECRET;
     if (!keySecret) {
       return res.status(500).json({ message: "Payment gateway not configured" });
     }

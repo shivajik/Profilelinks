@@ -1,9 +1,34 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+function extractApiErrorMessage(rawText: string, fallbackMessage: string) {
+  const cleanedRaw = rawText.replace(/^\d{3}\s*:\s*/, "").trim();
+
+  try {
+    const parsed = JSON.parse(cleanedRaw);
+
+    if (typeof parsed === "string" && parsed.trim()) {
+      return parsed.trim();
+    }
+
+    if (parsed && typeof parsed === "object") {
+      if (typeof (parsed as { message?: unknown }).message === "string") {
+        return ((parsed as { message: string }).message || "").trim() || fallbackMessage;
+      }
+      if (typeof (parsed as { error?: unknown }).error === "string") {
+        return ((parsed as { error: string }).error || "").trim() || fallbackMessage;
+      }
+    }
+  } catch {
+    // Not JSON; fall through to cleaned raw text.
+  }
+
+  return cleanedRaw || fallbackMessage;
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    const text = (await res.text()) || "";
+    throw new Error(extractApiErrorMessage(text, res.statusText || "Request failed"));
   }
 }
 
