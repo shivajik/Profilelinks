@@ -17,7 +17,7 @@ import {
   Shield, Users, CreditCard, LayoutDashboard, Settings,
   Plus, Pencil, Trash2, LogOut, Loader2, Star, Check,
   TrendingUp, Package, IndianRupee, RefreshCw, BarChart3,
-  UserCheck, UserX, ChevronRight, Menu, X as XIcon,
+  UserCheck, UserX, ChevronRight, Menu, X as XIcon, Search,
   FileText, Eye, User, Mail, AtSign, Calendar, Hash,
   Download, ArrowLeft, Link2, FileStack, Globe, MessageSquare,
   Handshake, Tag, Percent, Copy,
@@ -797,52 +797,33 @@ export default function AdminDashboard() {
                 <p className="text-muted-foreground text-sm">Assign users as affiliates, set commission rates, and track referrals.</p>
               </div>
 
-              {/* Add affiliate */}
+              {/* Add affiliate with email autocomplete */}
               <Card>
                 <CardContent className="pt-4">
                   <p className="text-sm font-medium text-foreground mb-3">Add New Affiliate</p>
-                  <div className="flex flex-wrap gap-3 items-end">
-                    <div className="space-y-1 flex-1 min-w-[200px]">
-                      <Label className="text-xs">User ID or Email</Label>
-                      <Input placeholder="User ID" value={affiliateUserId} onChange={(e) => setAffiliateUserId(e.target.value)} />
-                    </div>
-                    <div className="space-y-1 w-32">
-                      <Label className="text-xs">Commission %</Label>
-                      <Input type="number" min="0" max="100" value={affiliateRate} onChange={(e) => setAffiliateRate(e.target.value)} />
-                    </div>
-                    <Button
-                      disabled={creatingAffiliate || !affiliateUserId.trim()}
-                      onClick={async () => {
-                        setCreatingAffiliate(true);
-                        try {
-                          // Try to find user by email first
-                          let userId = affiliateUserId.trim();
-                          if (userId.includes("@")) {
-                            // Search from users list
-                            const match = adminUsers.find(u => u.email.toLowerCase() === userId.toLowerCase());
-                            if (match) userId = match.id;
-                            else throw new Error("User not found with that email");
-                          }
-                          const r = await fetch("/api/admin/affiliates", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ userId, commissionRate: parseFloat(affiliateRate) }),
-                          });
-                          const j = await r.json();
-                          if (!r.ok) throw new Error(j.message);
-                          toast({ title: "Affiliate created!" });
-                          setAffiliateUserId("");
-                          fetchAffiliates();
-                        } catch (err: any) {
-                          toast({ title: "Failed", description: err.message, variant: "destructive" });
-                        }
-                        setCreatingAffiliate(false);
-                      }}
-                    >
-                      {creatingAffiliate ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
-                      Add
-                    </Button>
-                  </div>
+                  <AffiliateEmailSearch
+                    adminUsers={adminUsers}
+                    affiliateRate={affiliateRate}
+                    setAffiliateRate={setAffiliateRate}
+                    onAdd={async (userId: string) => {
+                      setCreatingAffiliate(true);
+                      try {
+                        const r = await fetch("/api/admin/affiliates", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ userId, commissionRate: parseFloat(affiliateRate) }),
+                        });
+                        const j = await r.json();
+                        if (!r.ok) throw new Error(j.message);
+                        toast({ title: "Affiliate created!" });
+                        fetchAffiliates();
+                      } catch (err: any) {
+                        toast({ title: "Failed", description: err.message, variant: "destructive" });
+                      }
+                      setCreatingAffiliate(false);
+                    }}
+                    creating={creatingAffiliate}
+                  />
                 </CardContent>
               </Card>
 
@@ -1225,39 +1206,7 @@ export default function AdminDashboard() {
 
           {/* ── SETTINGS ──────────────────────────────────────────────────────── */}
           {activeSection === "settings" && (
-            <div className="space-y-4 max-w-xl">
-              <div>
-                <h2 className="text-2xl font-bold text-foreground">Settings</h2>
-                <p className="text-muted-foreground text-sm">Manage your admin account and integrations.</p>
-              </div>
-              <Card>
-                <CardHeader><CardTitle className="text-base">Admin Account</CardTitle></CardHeader>
-                <CardContent className="space-y-3">
-                  <div><Label className="text-xs text-muted-foreground">Name</Label><p className="font-medium text-foreground">{admin.name}</p></div>
-                  <div><Label className="text-xs text-muted-foreground">Email</Label><p className="font-medium text-foreground">{admin.email}</p></div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader><CardTitle className="text-base">Razorpay Integration</CardTitle></CardHeader>
-                <CardContent className="space-y-2">
-                  <p className="text-sm text-muted-foreground">Configure Razorpay by adding secrets in your Lovable Cloud settings:</p>
-                  <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
-                    <li><code className="bg-muted px-1 rounded">RAZORPAY_KEY_ID</code> — your Razorpay Key ID</li>
-                    <li><code className="bg-muted px-1 rounded">RAZORPAY_KEY_SECRET</code> — your Razorpay Key Secret</li>
-                  </ul>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader><CardTitle className="text-base">Legal Pages</CardTitle></CardHeader>
-                <CardContent className="space-y-2">
-                  <p className="text-sm text-muted-foreground">Your platform's legal documents are publicly accessible:</p>
-                  <div className="flex gap-2 flex-wrap">
-                    <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">Terms of Service ↗</a>
-                    <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">Privacy Policy ↗</a>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <RazorpaySettingsSection admin={admin} />
           )}
         </main>
       </div>
@@ -1638,6 +1587,247 @@ export default function AdminDashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// ── Razorpay Settings Section ──────────────────────────────────────────────
+function RazorpaySettingsSection({ admin }: { admin: { name: string; email: string } }) {
+  const { toast } = useToast();
+  const [keyId, setKeyId] = useState("");
+  const [keySecret, setKeySecret] = useState("");
+  const [environment, setEnvironment] = useState("test");
+  const [saving, setSaving] = useState(false);
+  const [maskedKeys, setMaskedKeys] = useState<Record<string, string>>({});
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/admin/settings/payment-keys")
+      .then(r => r.ok ? r.json() : {})
+      .then((data: Record<string, string>) => {
+        setMaskedKeys(data);
+        if (data.razorpay_environment) setEnvironment(data.razorpay_environment);
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const body: Record<string, string> = { razorpayEnvironment: environment };
+      if (keyId.trim()) body.razorpayKeyId = keyId.trim();
+      if (keySecret.trim()) body.razorpayKeySecret = keySecret.trim();
+      const r = await fetch("/api/admin/settings/payment-keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.message);
+      toast({ title: "Payment keys saved!" });
+      setKeyId("");
+      setKeySecret("");
+      // Refresh masked keys
+      const r2 = await fetch("/api/admin/settings/payment-keys");
+      if (r2.ok) setMaskedKeys(await r2.json());
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="space-y-4 max-w-xl">
+      <div>
+        <h2 className="text-2xl font-bold text-foreground">Settings</h2>
+        <p className="text-muted-foreground text-sm">Manage your admin account and payment integrations.</p>
+      </div>
+      <Card>
+        <CardHeader><CardTitle className="text-base">Admin Account</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <div><Label className="text-xs text-muted-foreground">Name</Label><p className="font-medium text-foreground">{admin.name}</p></div>
+          <div><Label className="text-xs text-muted-foreground">Email</Label><p className="font-medium text-foreground">{admin.email}</p></div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Razorpay Integration</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Environment</Label>
+            <Select value={environment} onValueChange={setEnvironment}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="test">Test (Sandbox)</SelectItem>
+                <SelectItem value="live">Live (Production)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {environment === "test" ? "Use test keys for development. No real payments." : "⚠️ Live mode — real payments will be processed."}
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">Razorpay Key ID</Label>
+            {maskedKeys.razorpay_key_id && (
+              <p className="text-xs text-muted-foreground mb-1">Current: <code className="bg-muted px-1 rounded">{maskedKeys.razorpay_key_id}</code></p>
+            )}
+            <Input
+              value={keyId}
+              onChange={(e) => setKeyId(e.target.value)}
+              placeholder={maskedKeys.razorpay_key_id ? "Leave empty to keep current" : "rzp_test_xxxxx or rzp_live_xxxxx"}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">Razorpay Key Secret</Label>
+            {maskedKeys.razorpay_key_secret && (
+              <p className="text-xs text-muted-foreground mb-1">Current: <code className="bg-muted px-1 rounded">{maskedKeys.razorpay_key_secret}</code></p>
+            )}
+            <Input
+              type="password"
+              value={keySecret}
+              onChange={(e) => setKeySecret(e.target.value)}
+              placeholder={maskedKeys.razorpay_key_secret ? "Leave empty to keep current" : "Enter secret key"}
+            />
+          </div>
+
+          <Button onClick={handleSave} disabled={saving} className="w-full">
+            {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            Save Payment Gateway Settings
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Legal Pages</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          <p className="text-sm text-muted-foreground">Your platform's legal documents are publicly accessible:</p>
+          <div className="flex gap-2 flex-wrap">
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">Terms of Service ↗</a>
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">Privacy Policy ↗</a>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ── Affiliate Email Search with Autocomplete ─────────────────────────────────
+function AffiliateEmailSearch({
+  adminUsers,
+  affiliateRate,
+  setAffiliateRate,
+  onAdd,
+  creating,
+}: {
+  adminUsers: UserRow[];
+  affiliateRate: string;
+  setAffiliateRate: (v: string) => void;
+  onAdd: (userId: string) => void;
+  creating: boolean;
+}) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<{ id: string; email: string; username: string; displayName?: string }[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [searchTimer, setSearchTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+
+  const doSearch = (q: string) => {
+    if (q.length < 2) { setResults([]); setShowDropdown(false); return; }
+    // Search from loaded users first for instant results
+    const local = adminUsers.filter(u =>
+      u.email.toLowerCase().includes(q.toLowerCase()) ||
+      u.username.toLowerCase().includes(q.toLowerCase())
+    ).slice(0, 8);
+    setResults(local);
+    setShowDropdown(true);
+    // Also hit server for better results
+    fetch(`/api/admin/users/search?q=${encodeURIComponent(q)}`)
+      .then(r => r.ok ? r.json() : [])
+      .then((data: { id: string; email: string; username: string; displayName?: string }[]) => {
+        if (data.length > 0) {
+          setResults(data);
+        }
+      })
+      .catch(() => {});
+  };
+
+  const handleInputChange = (value: string) => {
+    setQuery(value);
+    setSelectedUserId("");
+    if (searchTimer) clearTimeout(searchTimer);
+    setSearchTimer(setTimeout(() => doSearch(value), 300));
+  };
+
+  const selectUser = (user: { id: string; email: string; username: string; displayName?: string }) => {
+    setQuery(user.email);
+    setSelectedUserId(user.id);
+    setShowDropdown(false);
+  };
+
+  return (
+    <div className="flex flex-wrap gap-3 items-end">
+      <div className="space-y-1 flex-1 min-w-[200px] relative">
+        <Label className="text-xs">User ID or Email</Label>
+        <div className="relative">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Type email to search..."
+            value={query}
+            onChange={(e) => handleInputChange(e.target.value)}
+            onFocus={() => { if (results.length > 0) setShowDropdown(true); }}
+            onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+            className="pl-9"
+          />
+        </div>
+        {showDropdown && results.length > 0 && (
+          <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-48 overflow-y-auto">
+            {results.map((user) => (
+              <button
+                key={user.id}
+                className="w-full text-left px-3 py-2 hover:bg-accent text-sm flex items-center gap-2 transition-colors"
+                onMouseDown={(e) => { e.preventDefault(); selectUser(user); }}
+              >
+                <Mail className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <div className="min-w-0">
+                  <span className="text-foreground truncate block">{user.email}</span>
+                  <span className="text-xs text-muted-foreground">@{user.username}{user.displayName ? ` · ${user.displayName}` : ""}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="space-y-1 w-32">
+        <Label className="text-xs">Commission %</Label>
+        <Input type="number" min="0" max="100" value={affiliateRate} onChange={(e) => setAffiliateRate(e.target.value)} />
+      </div>
+      <Button
+        disabled={creating || (!selectedUserId && !query.trim())}
+        onClick={() => {
+          const userId = selectedUserId || query.trim();
+          if (userId) {
+            // If it's an email, try to find from results
+            if (!selectedUserId && query.includes("@")) {
+              const match = results.find(r => r.email.toLowerCase() === query.toLowerCase());
+              if (match) {
+                onAdd(match.id);
+                setQuery("");
+                setSelectedUserId("");
+                return;
+              }
+            }
+            onAdd(userId);
+            setQuery("");
+            setSelectedUserId("");
+          }
+        }}
+      >
+        {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
+        Add
+      </Button>
     </div>
   );
 }

@@ -4114,8 +4114,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                       <Label className="text-xs text-muted-foreground">Company Name</Label>
                       <Input
                         value={localCompanyName}
-                        onChange={(e) => setLocalCompanyName(e.target.value)}
-                        onBlur={() => { if (localCompanyName !== (tData.companyName || "")) updateField("companyName", localCompanyName); }}
+                        onChange={(e) => { setLocalCompanyName(e.target.value); markDirty(); }}
                         placeholder="Acme Corp"
                         data-testid="input-tpl-company-name"
                       />
@@ -4124,8 +4123,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                       <Label className="text-xs text-muted-foreground">Phone</Label>
                       <Input
                         value={localPhone}
-                        onChange={(e) => setLocalPhone(e.target.value)}
-                        onBlur={() => { if (localPhone !== (tData.companyPhone || "")) updateField("companyPhone", localPhone); }}
+                        onChange={(e) => { setLocalPhone(e.target.value); markDirty(); }}
                         placeholder="+1 555-0100"
                         data-testid="input-tpl-company-phone"
                       />
@@ -4135,8 +4133,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                       <Input
                         type="email"
                         value={localEmail}
-                        onChange={(e) => setLocalEmail(e.target.value)}
-                        onBlur={() => { if (localEmail !== (tData.companyEmail || "")) updateField("companyEmail", localEmail); }}
+                        onChange={(e) => { setLocalEmail(e.target.value); markDirty(); }}
                         placeholder="info@company.com"
                         data-testid="input-tpl-company-email"
                       />
@@ -4145,8 +4142,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                       <Label className="text-xs text-muted-foreground">Website</Label>
                       <Input
                         value={localWebsite}
-                        onChange={(e) => setLocalWebsite(e.target.value)}
-                        onBlur={() => { if (localWebsite !== (tData.companyWebsite || "")) updateField("companyWebsite", localWebsite); }}
+                        onChange={(e) => { setLocalWebsite(e.target.value); markDirty(); }}
                         placeholder="https://company.com"
                         data-testid="input-tpl-company-website"
                       />
@@ -4155,8 +4151,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                       <Label className="text-xs text-muted-foreground">Contact Number</Label>
                       <Input
                         value={localContact}
-                        onChange={(e) => setLocalContact(e.target.value)}
-                        onBlur={() => { if (localContact !== (tData.companyContact || "")) updateField("companyContact", localContact); }}
+                        onChange={(e) => { setLocalContact(e.target.value); markDirty(); }}
                         placeholder="+1 555-0200"
                         data-testid="input-tpl-company-contact"
                       />
@@ -4165,8 +4160,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                       <Label className="text-xs text-muted-foreground">Address</Label>
                       <Input
                         value={localAddress}
-                        onChange={(e) => setLocalAddress(e.target.value)}
-                        onBlur={() => { if (localAddress !== (tData.companyAddress || "")) updateField("companyAddress", localAddress); }}
+                        onChange={(e) => { setLocalAddress(e.target.value); markDirty(); }}
                         placeholder="123 Main St, City, Country"
                         data-testid="input-tpl-company-address"
                       />
@@ -4284,6 +4278,21 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Save Changes Button - appears when dirty */}
+              {templateDirty && (
+                <div className="sticky bottom-4 z-10">
+                  <Button
+                    onClick={handleSaveTemplate}
+                    disabled={updateMutation.isPending}
+                    className="w-full shadow-lg"
+                    data-testid="button-save-template-changes"
+                  >
+                    {updateMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                    Save Changes
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>

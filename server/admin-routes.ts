@@ -654,10 +654,26 @@ router.post("/api/admin/seed-team-packages", requireAdminAuth, async (req: Reque
   }
 });
 
+// ─── User Search (for affiliate autocomplete) ──────────────────────────────
+router.get("/api/admin/users/search", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const q = (req.query.q as string || "").trim().toLowerCase();
+    if (q.length < 2) return res.json([]);
+    const results = await db
+      .select({ id: users.id, email: users.email, username: users.username, displayName: users.displayName })
+      .from(users)
+      .where(sql`LOWER(${users.email}) LIKE ${'%' + q + '%'} OR LOWER(${users.username}) LIKE ${'%' + q + '%'}`)
+      .limit(10);
+    res.json(results);
+  } catch {
+    res.status(500).json({ message: "Search failed" });
+  }
+});
+
 // ─── Payment Gateway Settings ───────────────────────────────────────────────
 router.get("/api/admin/settings/payment-keys", requireAdminAuth, async (req: Request, res: Response) => {
   try {
-    const result = await db.execute(sql`SELECT key, CASE WHEN length(value) > 8 THEN substring(value, 1, 4) || '****' || substring(value, length(value) - 3) ELSE '********' END as masked_value FROM app_settings WHERE key IN ('razorpay_key_id', 'razorpay_key_secret')`);
+    const result = await db.execute(sql`SELECT key, CASE WHEN key = 'razorpay_environment' THEN value WHEN length(value) > 8 THEN substring(value, 1, 4) || '****' || substring(value, length(value) - 3) ELSE '********' END as masked_value FROM app_settings WHERE key IN ('razorpay_key_id', 'razorpay_key_secret', 'razorpay_environment')`);
     const keys: Record<string, string> = {};
     for (const row of result.rows as any[]) {
       keys[row.key] = row.masked_value;
@@ -671,12 +687,15 @@ router.get("/api/admin/settings/payment-keys", requireAdminAuth, async (req: Req
 
 router.post("/api/admin/settings/payment-keys", requireAdminAuth, async (req: Request, res: Response) => {
   try {
-    const { razorpayKeyId, razorpayKeySecret } = req.body;
+    const { razorpayKeyId, razorpayKeySecret, razorpayEnvironment } = req.body;
     if (razorpayKeyId) {
       await db.execute(sql`INSERT INTO app_settings (key, value, updated_at) VALUES ('razorpay_key_id', ${razorpayKeyId}, now()) ON CONFLICT (key) DO UPDATE SET value = ${razorpayKeyId}, updated_at = now()`);
     }
     if (razorpayKeySecret) {
       await db.execute(sql`INSERT INTO app_settings (key, value, updated_at) VALUES ('razorpay_key_secret', ${razorpayKeySecret}, now()) ON CONFLICT (key) DO UPDATE SET value = ${razorpayKeySecret}, updated_at = now()`);
+    }
+    if (razorpayEnvironment) {
+      await db.execute(sql`INSERT INTO app_settings (key, value, updated_at) VALUES ('razorpay_environment', ${razorpayEnvironment}, now()) ON CONFLICT (key) DO UPDATE SET value = ${razorpayEnvironment}, updated_at = now()`);
     }
     res.json({ message: "Payment gateway keys updated successfully" });
   } catch (error: any) {
