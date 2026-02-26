@@ -258,10 +258,16 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (user) {
-      setHeaderName(user.displayName || "");
-      setHeaderBio(user.bio || "");
+      // For team members, use business profile data instead of personal profile
+      if (user.accountType === "team" && user.teamId && businessProfileData?.member) {
+        setHeaderName(businessProfileData.member.businessName || user.displayName || "");
+        setHeaderBio(businessProfileData.member.businessBio || user.bio || "");
+      } else {
+        setHeaderName(user.displayName || "");
+        setHeaderBio(user.bio || "");
+      }
     }
-  }, [user]);
+  }, [user, businessProfileData]);
 
   const profileMutation = useMutation({
     mutationFn: async (data: { displayName?: string | null; bio?: string | null; profileImage?: string | null; coverImage?: string | null }) => {
@@ -419,8 +425,8 @@ export default function Dashboard() {
     { id: "settings", label: "Settings", icon: Settings },
     { id: "qrcodes", label: "QR Codes", icon: QrCode },
     { id: "analytics", label: "Analytics", icon: BarChart3 },
-    { id: "billing", label: "Billing", icon: CreditCard },
-    { id: "usage", label: "Usage", icon: Eye },
+    ...(!isTeamMember ? [{ id: "billing", label: "Billing", icon: CreditCard }] : []),
+    ...(!isTeamMember ? [{ id: "usage", label: "Usage", icon: Eye }] : []),
     ...(isIndividual ? [{ id: "invite-friend", label: "Invite a Friend", icon: Share2 }] : []),
     ...(isAffiliate ? [{ id: "affiliate", label: "Affiliate", icon: Share2 }] : []),
   ];
@@ -706,6 +712,7 @@ export default function Dashboard() {
                         </label>
                       </div>
                     </div>
+                    {!isTeamMember && (
                     <div className="border rounded-md p-3 space-y-2">
                       <span className="text-sm font-medium">Cover Image</span>
                       <div className="relative group w-full h-20 rounded-md overflow-hidden bg-muted">
@@ -757,37 +764,44 @@ export default function Dashboard() {
                         />
                       </div>
                     </div>
+                    )}
                     <div className="space-y-1.5">
                       <Label htmlFor="header-name" className="text-xs text-muted-foreground">Name</Label>
                       <Input
                         id="header-name"
                         value={headerName}
-                        onChange={(e) => { setHeaderName(e.target.value); setHeaderDirty(true); }}
+                        onChange={(e) => { if (!isTeamMember) { setHeaderName(e.target.value); setHeaderDirty(true); } }}
                         onBlur={() => {
-                          if (headerDirty && headerName !== (user.displayName || "")) {
+                          if (!isTeamMember && headerDirty && headerName !== (user.displayName || "")) {
                             profileMutation.mutate({ displayName: headerName || null });
                           }
                         }}
                         placeholder="Your name"
+                        readOnly={!!isTeamMember}
+                        className={isTeamMember ? "opacity-60 cursor-not-allowed" : ""}
                         data-testid="input-header-name"
                       />
+                      {isTeamMember && <p className="text-xs text-muted-foreground">Managed by team owner</p>}
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="header-bio" className="text-xs text-muted-foreground">Bio</Label>
                       <Textarea
                         id="header-bio"
                         value={headerBio}
-                        onChange={(e) => { setHeaderBio(e.target.value); setHeaderDirty(true); }}
+                        onChange={(e) => { if (!isTeamMember) { setHeaderBio(e.target.value); setHeaderDirty(true); } }}
                         onBlur={() => {
-                          if (headerDirty && headerBio !== (user.bio || "")) {
+                          if (!isTeamMember && headerDirty && headerBio !== (user.bio || "")) {
                             profileMutation.mutate({ bio: headerBio || null });
                           }
                         }}
                         placeholder="Tell the world about yourself..."
                         maxLength={500}
                         rows={3}
+                        readOnly={!!isTeamMember}
+                        className={isTeamMember ? "opacity-60 cursor-not-allowed" : ""}
                         data-testid="input-header-bio"
                       />
+                      {isTeamMember && <p className="text-xs text-muted-foreground">Managed by team owner</p>}
                     </div>
                   </div>
                 </CategorySection>
@@ -970,45 +984,83 @@ export default function Dashboard() {
                 <TeamTemplatesPanel teamId={user.teamId!} />
               )}
               {activeSection === "contacts" && isTeamAccount && (
-                <ContactsPanel teamId={user.teamId!} userId={user.id} />
+                <ContactsPanel teamId={user.teamId!} userId={user.id} isTeamMember={!!isTeamMember} />
               )}
             </div>
 
             <div className={`${activeSection === "design" ? "hidden md:flex" : "hidden"} flex-1 bg-muted/30 items-center justify-center p-6`}>
               <div className="flex flex-col items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setPreviewMode("mobile")}
-                    className={`toggle-elevate ${previewMode === "mobile" ? "toggle-elevated" : ""}`}
-                    data-testid="button-preview-mobile"
-                  >
-                    <Smartphone className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setPreviewMode("desktop")}
-                    className={`toggle-elevate ${previewMode === "desktop" ? "toggle-elevated" : ""}`}
-                    data-testid="button-preview-desktop"
-                  >
-                    <Monitor className="w-4 h-4" />
-                  </Button>
-                </div>
-                <PhonePreview
-                  template={currentTemplate}
-                  displayName={headerName || user.username}
-                  bio={headerBio}
-                  profileImage={user.profileImage || ""}
-                  coverImage={user.coverImage || ""}
-                  username={user.username}
-                  blocks={sortedBlocks}
-                  socials={userSocials}
-                  pages={userPages}
-                  currentPage={currentPage || null}
-                  mode={previewMode}
-                />
+                {isTeamMember ? (
+                  /* Team members see their actual public profile page */
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setPreviewMode("mobile")}
+                        className={`toggle-elevate ${previewMode === "mobile" ? "toggle-elevated" : ""}`}
+                      >
+                        <Smartphone className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setPreviewMode("desktop")}
+                        className={`toggle-elevate ${previewMode === "desktop" ? "toggle-elevated" : ""}`}
+                      >
+                        <Monitor className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <div
+                      className={`rounded-2xl overflow-hidden border shadow-lg bg-background ${
+                        previewMode === "mobile" ? "w-[375px] h-[700px]" : "w-[900px] h-[700px]"
+                      }`}
+                    >
+                      <iframe
+                        src={`/${user.username}?preview=1&t=${Date.now()}`}
+                        className="w-full h-full border-0"
+                        title="Profile Preview"
+                        key={`${headerName}-${headerBio}-${previewMode}`}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setPreviewMode("mobile")}
+                        className={`toggle-elevate ${previewMode === "mobile" ? "toggle-elevated" : ""}`}
+                        data-testid="button-preview-mobile"
+                      >
+                        <Smartphone className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setPreviewMode("desktop")}
+                        className={`toggle-elevate ${previewMode === "desktop" ? "toggle-elevated" : ""}`}
+                        data-testid="button-preview-desktop"
+                      >
+                        <Monitor className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <PhonePreview
+                      template={currentTemplate}
+                      displayName={headerName || user.username}
+                      bio={headerBio}
+                      profileImage={user.profileImage || ""}
+                      coverImage={user.coverImage || ""}
+                      username={user.username}
+                      blocks={sortedBlocks}
+                      socials={userSocials}
+                      pages={userPages}
+                      currentPage={currentPage || null}
+                      mode={previewMode}
+                    />
+                  </>
+                )}
               </div>
             </div>
 
@@ -1090,6 +1142,7 @@ export default function Dashboard() {
                 currentTemplateId={user.template || "minimal"}
                 onSelectTemplate={(id) => templateMutation.mutate(id)}
                 saving={templateMutation.isPending}
+                disabled={!!isTeamMember}
               />
             </div>
           </div>
@@ -2111,10 +2164,12 @@ function DesignPanel({
   currentTemplateId,
   onSelectTemplate,
   saving,
+  disabled = false,
 }: {
   currentTemplateId: string;
   onSelectTemplate: (id: string) => void;
   saving: boolean;
+  disabled?: boolean;
 }) {
   const currentTemplate = getTemplate(currentTemplateId);
 
@@ -2156,7 +2211,7 @@ function DesignPanel({
             <button
               key={t.id}
               onClick={() => onSelectTemplate(t.id)}
-              disabled={saving}
+              disabled={saving || disabled}
               className={`relative rounded-md overflow-hidden aspect-[3/4] p-2 flex flex-col items-center justify-center text-center transition-all border-2 ${
                 currentTemplateId === t.id ? "border-primary ring-1 ring-primary/20" : "border-transparent"
               } ${t.bg}`}
@@ -4677,7 +4732,7 @@ function TemplateCardPreview({ data, themeColor }: { data: TemplateData; themeCo
   );
 }
 
-function ContactsPanel({ teamId, userId }: { teamId: string; userId: string }) {
+function ContactsPanel({ teamId, userId, isTeamMember = false }: { teamId: string; userId: string; isTeamMember?: boolean }) {
   const { toast } = useToast();
   const [contactType, setContactType] = useState<"company" | "personal">("company");
   const [searchQuery, setSearchQuery] = useState("");
@@ -4723,6 +4778,10 @@ function ContactsPanel({ teamId, userId }: { teamId: string; userId: string }) {
       queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
       setDeleteConfirmId(null);
       toast({ title: "Contact deleted!" });
+    },
+    onError: (err: any) => {
+      setDeleteConfirmId(null);
+      toast({ title: "Only team owners can delete company contacts", variant: "destructive" });
     },
   });
 
@@ -4796,57 +4855,69 @@ function ContactsPanel({ teamId, userId }: { teamId: string; userId: string }) {
       ) : filteredContacts.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-8">No contacts yet.</p>
       ) : (
-        <div className="space-y-2">
-          {filteredContacts.map((contact: any) => (
-            <Card key={contact.id} data-testid={`card-contact-${contact.id}`}>
-              <CardContent className="flex items-center justify-between gap-4 py-3">
-                <div className="min-w-0 flex-1 space-y-0.5">
-                  <div className="text-sm font-medium truncate" data-testid={`text-contact-name-${contact.id}`}>
-                    {contact.name}
-                  </div>
-                  {contact.email && (
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Mail className="w-3 h-3 shrink-0" />
-                      <span className="truncate" data-testid={`text-contact-email-${contact.id}`}>{contact.email}</span>
-                    </div>
+        <div className="border rounded-lg overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Phone</TableHead>
+                {/* <TableHead>Company</TableHead> */}
+                <TableHead>Job Title</TableHead>
+                {!isTeamMember && <TableHead className="w-12"></TableHead>}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredContacts.map((contact: any) => (
+                <TableRow key={contact.id} data-testid={`row-contact-${contact.id}`}>
+                  <TableCell className="font-medium">{contact.name}</TableCell>
+                  <TableCell>
+                    {contact.email ? (
+                      <div className="flex items-center gap-1.5 text-sm">
+                        <Mail className="w-3 h-3 shrink-0 text-muted-foreground" />
+                        <span>{contact.email}</span>
+                      </div>
+                    ) : <span className="text-muted-foreground">—</span>}
+                  </TableCell>
+                  <TableCell>
+                    {contact.phone ? (
+                      <div className="flex items-center gap-1.5 text-sm">
+                        <Phone className="w-3 h-3 shrink-0 text-muted-foreground" />
+                        <span>{contact.phone}</span>
+                      </div>
+                    ) : <span className="text-muted-foreground">—</span>}
+                  </TableCell>
+                  {/* <TableCell>
+                    {contact.company ? (
+                      <div className="flex items-center gap-1.5 text-sm">
+                        <Building2 className="w-3 h-3 shrink-0 text-muted-foreground" />
+                        <span>{contact.company}</span>
+                      </div>
+                    ) : <span className="text-muted-foreground">—</span>}
+                  </TableCell> */}
+                  <TableCell>{contact.jobTitle || <span className="text-muted-foreground">—</span>}</TableCell>
+                  {!isTeamMember && (
+                    <TableCell>
+                      {deleteConfirmId === contact.id ? (
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(contact.id)}>
+                            <Check className="w-4 h-4 text-destructive" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => setDeleteConfirmId(null)}>
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button variant="ghost" size="icon" onClick={() => setDeleteConfirmId(contact.id)}>
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      )}
+                    </TableCell>
                   )}
-                  {contact.phone && (
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Phone className="w-3 h-3 shrink-0" />
-                      <span className="truncate" data-testid={`text-contact-phone-${contact.id}`}>{contact.phone}</span>
-                    </div>
-                  )}
-                  {contact.company && (
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Building2 className="w-3 h-3 shrink-0" />
-                      <span className="truncate" data-testid={`text-contact-company-${contact.id}`}>{contact.company}</span>
-                    </div>
-                  )}
-                  {contact.jobTitle && (
-                    <div className="text-xs text-muted-foreground" data-testid={`text-contact-jobtitle-${contact.id}`}>
-                      {contact.jobTitle}
-                    </div>
-                  )}
-                </div>
-                <div className="shrink-0">
-                  {deleteConfirmId === contact.id ? (
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(contact.id)} data-testid={`button-confirm-delete-contact-${contact.id}`}>
-                        <Check className="w-4 h-4 text-destructive" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => setDeleteConfirmId(null)} data-testid={`button-cancel-delete-contact-${contact.id}`}>
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button variant="ghost" size="icon" onClick={() => setDeleteConfirmId(contact.id)} data-testid={`button-delete-contact-${contact.id}`}>
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
 
