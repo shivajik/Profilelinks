@@ -1026,8 +1026,8 @@ export async function registerRoutes(
         accountType: "team",
         teamId: req.params.teamId as string,
       });
-      // Set mustChangePassword flag
-      await storage.updateUser(newUser.id, { mustChangePassword: true } as any);
+      // Set mustChangePassword flag and mark onboarding as completed (team member inherits company details)
+      await storage.updateUser(newUser.id, { mustChangePassword: true, onboardingCompleted: true } as any);
       const member = await storage.addTeamMember({
         teamId: req.params.teamId as string,
         userId: newUser.id,
@@ -1586,8 +1586,12 @@ export async function registerRoutes(
       const delContactId = req.params.id as string;
       // Try personal delete first
       let deleted = await storage.deleteContact(delContactId, user.id);
-      // If not found and user has a team, try team-based delete
+      // If not found and user has a team, only team owners can delete team contacts
       if (!deleted && user.teamId) {
+        const memberRole = await getTeamMemberRole(user.teamId, user.id);
+        if (!memberRole || !["owner", "admin"].includes(memberRole)) {
+          return res.status(403).json({ message: "Only team owners can delete company contacts" });
+        }
         deleted = await storage.deleteContactByTeam(delContactId, user.teamId);
       }
       if (!deleted) {

@@ -44,6 +44,10 @@ export default function AuthPage() {
     if ((user as any).mustChangePassword) {
       return <Redirect to="/change-password" />;
     }
+    // Team members skip onboarding — they inherit company details
+    if ((user as any).teamId && (user as any).accountType === "team") {
+      return <Redirect to="/dashboard" />;
+    }
     return <Redirect to={user.onboardingCompleted ? "/dashboard" : "/onboarding"} />;
   }
 

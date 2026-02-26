@@ -68,6 +68,11 @@ export default function Onboarding() {
     return <Redirect to="/auth" />;
   }
 
+  // Team members skip onboarding entirely — they inherit company details
+  if ((user as any).teamId && (user as any).accountType === "team") {
+    return <Redirect to="/dashboard" />;
+  }
+
   const totalSteps = accountType === "team" ? 6 : 5;
   const lastStep = totalSteps - 1;
 

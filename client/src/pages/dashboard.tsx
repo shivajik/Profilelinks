@@ -370,7 +370,8 @@ export default function Dashboard() {
     return <Redirect to="/auth" />;
   }
 
-  if (!user.onboardingCompleted) {
+  // Team members skip onboarding (they inherit company details)
+  if (!user.onboardingCompleted && !(user.accountType === "team" && user.teamId)) {
     return <Redirect to="/onboarding" />;
   }
 
