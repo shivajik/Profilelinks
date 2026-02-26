@@ -1017,10 +1017,9 @@ export default function Dashboard() {
                       }`}
                     >
                       <iframe
-                        src={`/${user.username}?preview=1&t=${Date.now()}`}
+                        src={`/${user.username}?preview=1`}
                         className="w-full h-full border-0"
                         title="Profile Preview"
-                        key={`${headerName}-${headerBio}-${previewMode}`}
                       />
                     </div>
                   </div>
@@ -3278,15 +3277,15 @@ function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, isSelf, to
                 </>
               ) : (
                 <Avatar className="w-10 h-10 border border-border">
-                  <AvatarImage src={member.user?.profileImage || undefined} />
+                  <AvatarImage src={member.businessProfileImage || member.user?.profileImage || undefined} />
                   <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                    {(member.user?.displayName || member.user?.username || "?").charAt(0).toUpperCase()}
+                    {(member.businessName || member.user?.displayName || member.user?.username || "?").charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
               )}
             </div>
             <div>
-              <div className="text-sm font-medium">{member.user?.displayName || member.user?.username || "Unknown"}</div>
+              <div className="text-sm font-medium">{member.businessName || member.user?.displayName || member.user?.username || "Unknown"}</div>
               <div className="text-xs text-muted-foreground">{member.user?.email || ""}</div>
             </div>
           </div>
@@ -3588,14 +3587,14 @@ function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUs
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <Avatar className="w-8 h-8 border border-border">
-                      <AvatarImage src={member.user?.profileImage || undefined} />
+                      <AvatarImage src={member.businessProfileImage || member.user?.profileImage || undefined} />
                       <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                        {(member.user?.displayName || member.user?.username || "?").charAt(0).toUpperCase()}
+                        {(member.businessName || member.user?.displayName || member.user?.username || "?").charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div>
                       <div className="text-sm font-medium" data-testid={`text-member-name-${member.id}`}>
-                        {member.user?.displayName || member.user?.username || "Unknown"}
+                        {member.businessName || member.user?.displayName || member.user?.username || "Unknown"}
                       </div>
                       <div className="text-xs text-muted-foreground" data-testid={`text-member-email-${member.id}`}>
                         {member.user?.email || ""}
@@ -4030,7 +4029,7 @@ function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUs
 }
 
 function MemberCardPreview({ member, templateData, themeColor }: { member: any; templateData: any; themeColor: string }) {
-  const memberName = member.user?.displayName || member.user?.username || "Team Member";
+  const memberName = member.businessName || member.user?.displayName || member.user?.username || "Team Member";
   const memberEmail = member.user?.email || "";
   const memberJobTitle = member.jobTitle || "";
   const companyName = templateData.companyName || "";
@@ -4862,7 +4861,7 @@ function ContactsPanel({ teamId, userId, isTeamMember = false }: { teamId: strin
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Phone</TableHead>
-                {/* <TableHead>Company</TableHead> */}
+                <TableHead>Company</TableHead>
                 <TableHead>Job Title</TableHead>
                 {!isTeamMember && <TableHead className="w-12"></TableHead>}
               </TableRow>
@@ -4887,14 +4886,14 @@ function ContactsPanel({ teamId, userId, isTeamMember = false }: { teamId: strin
                       </div>
                     ) : <span className="text-muted-foreground">—</span>}
                   </TableCell>
-                  {/* <TableCell>
+                  <TableCell>
                     {contact.company ? (
                       <div className="flex items-center gap-1.5 text-sm">
                         <Building2 className="w-3 h-3 shrink-0 text-muted-foreground" />
                         <span>{contact.company}</span>
                       </div>
                     ) : <span className="text-muted-foreground">—</span>}
-                  </TableCell> */}
+                  </TableCell>
                   <TableCell>{contact.jobTitle || <span className="text-muted-foreground">—</span>}</TableCell>
                   {!isTeamMember && (
                     <TableCell>
