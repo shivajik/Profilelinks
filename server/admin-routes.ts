@@ -766,13 +766,13 @@ router.post("/api/auth/verify-email", async (req: Request, res: Response) => {
     }
 
     const data = await response.json();
-    // CleanSignups returns verification result
-    const isValid = data.valid !== false && data.disposable !== true && data.is_disposable !== true;
 
-    if (!isValid) {
+    // If isTemporary = true → invalid email
+    if (data.isTemporary === true) {
       return res.json({ valid: false, message: "Temporary or disposable emails are not allowed. Please use a valid email address." });
     }
 
+    // If isTemporary = false → valid email
     return res.json({ valid: true });
   } catch (error: any) {
     console.error("Email verification error:", error);
