@@ -96,6 +96,7 @@ type TeamBranding = {
   font?: string;
   jobTitle?: string;
   teamName?: string;
+  memberEmail?: string;
 };
 
 type PublicProfile = {
@@ -314,11 +315,15 @@ export default function PublicProfile(props?: any) {
                   {teamBranding?.jobTitle && (
                     <p className="text-sm text-muted-foreground" data-testid="text-profile-jobtitle">{teamBranding.jobTitle}</p>
                   )}
-                  {teamBranding?.companyName && (
-                    <p className="text-sm font-medium" style={{ color: brandColor }} data-testid="text-profile-company">
-                      {teamBranding.companyName}
-                    </p>
-                  )}
+                   {teamBranding?.memberEmail ? (
+                     <p className="text-sm font-medium" style={{ color: brandColor }} data-testid="text-profile-company">
+                       {teamBranding.memberEmail}
+                     </p>
+                   ) : teamBranding?.companyName && (
+                     <p className="text-sm font-medium" style={{ color: brandColor }} data-testid="text-profile-company">
+                       {teamBranding.companyName}
+                     </p>
+                   )}
                   <p className="text-xs text-muted-foreground" data-testid="text-profile-username">
                     @{user.username}
                   </p>
