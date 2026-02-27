@@ -40,7 +40,7 @@ const uploadStorage = multer.memoryStorage();
 
 const upload = multer({
   storage: uploadStorage,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 1 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp"];
     if (allowed.includes(file.mimetype)) {
@@ -417,7 +417,7 @@ export async function registerRoutes(
       if (err) {
         if (err instanceof multer.MulterError) {
           if (err.code === "LIMIT_FILE_SIZE") {
-            return res.status(400).json({ message: "File too large. Maximum size is 5MB." });
+            return res.status(400).json({ message: "File too large. Maximum size is 1MB." });
           }
           return res.status(400).json({ message: err.message });
         }
@@ -1686,6 +1686,7 @@ export async function registerRoutes(
         font: tData.font || undefined,
         jobTitle: member?.jobTitle || undefined,
         teamName: team.name || undefined,
+        memberEmail: user.email || undefined,
       };
 
       if (member?.businessName) (publicUser as any).displayName = member.businessName;

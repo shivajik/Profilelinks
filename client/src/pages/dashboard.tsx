@@ -678,7 +678,7 @@ export default function Dashboard() {
                 >
                   <div className="px-4 pb-4 pt-1 space-y-4">
                     <div className="flex items-center justify-between gap-4 border rounded-md p-3">
-                      <span className="text-sm font-medium">Profile Picture</span>
+                      <span className="text-sm font-medium">Profile Picture <span className="text-[10px] text-muted-foreground font-normal">(Max 1MB)</span></span>
                       <div className="relative group">
                         <input
                           type="file"
@@ -688,19 +688,28 @@ export default function Dashboard() {
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (!file) return;
+                            if (file.size > 1 * 1024 * 1024) {
+                              toast({ title: "File too large", description: "Maximum file size is 1MB.", variant: "destructive" });
+                              return;
+                            }
                             const label = document.getElementById('dash-avatar-upload-label');
                             if (label) label.setAttribute('data-uploading', 'true');
                             const formData = new FormData();
                             formData.append("file", file);
                             try {
                               const res = await fetch("/api/upload", { method: "POST", body: formData });
-                              const data = await res.json();
                               if (res.ok) {
+                                const data = await res.json();
                                 await apiRequest("PATCH", "/api/auth/profile", { profileImage: data.url });
                                 queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
                                 toast({ title: "Profile picture updated!" });
+                              } else {
+                                const errData = await res.json().catch(() => ({}));
+                                toast({ title: "Upload failed", description: errData.message || "Max 1MB", variant: "destructive" });
                               }
-                            } catch {}
+                            } catch {
+                              toast({ title: "Upload failed", variant: "destructive" });
+                            }
                             if (label) label.removeAttribute('data-uploading');
                           }}
                           data-testid="input-header-avatar-upload"
@@ -721,20 +730,21 @@ export default function Dashboard() {
                     </div>
                     {!isTeamMember && (
                     <div className="border rounded-md p-3 space-y-2">
-                      <span className="text-sm font-medium">Cover Image</span>
-                      <div className="relative group w-full h-20 rounded-md overflow-hidden bg-muted">
+                      <span className="text-sm font-medium">Cover Image <span className="text-[10px] text-muted-foreground font-normal">(Max 1MB)</span></span>
+                       <div className="relative group w-full h-20 rounded-md overflow-hidden bg-muted" id="dash-cover-container">
                         {user.coverImage ? (
                           <>
                             <img src={user.coverImage} alt="Cover" className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <label htmlFor="dash-cover-upload" className="cursor-pointer p-1.5 rounded-full bg-white/20 hover-elevate">
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity [div[data-uploading]>&]:opacity-100">
+                              <Loader2 className="w-5 h-5 text-white animate-spin hidden [div[data-uploading]>&]:block" />
+                              <label htmlFor="dash-cover-upload" className="cursor-pointer p-1.5 rounded-full bg-white/20 hover-elevate [div[data-uploading]>&]:hidden">
                                 <Camera className="w-3.5 h-3.5 text-white" />
                               </label>
                               <button
                                 onClick={() => {
                                   profileMutation.mutate({ coverImage: null });
                                 }}
-                                className="p-1.5 rounded-full bg-white/20 hover-elevate"
+                                className="p-1.5 rounded-full bg-white/20 hover-elevate [div[data-uploading]>&]:hidden"
                                 data-testid="button-cover-remove"
                               >
                                 <X className="w-3.5 h-3.5 text-white" />
@@ -742,9 +752,11 @@ export default function Dashboard() {
                             </div>
                           </>
                         ) : (
-                          <label htmlFor="dash-cover-upload" className="cursor-pointer w-full h-full flex flex-col items-center justify-center gap-1 text-muted-foreground hover-elevate">
-                            <ImageIcon className="w-5 h-5" />
-                            <span className="text-xs">Add cover image</span>
+                          <label htmlFor="dash-cover-upload" className="cursor-pointer w-full h-full flex flex-col items-center justify-center gap-1 text-muted-foreground hover-elevate [div[data-uploading]>&]:pointer-events-none">
+                            <Loader2 className="w-5 h-5 animate-spin hidden [div[data-uploading]>&]:block" />
+                            <ImageIcon className="w-5 h-5 [div[data-uploading]>&]:hidden" />
+                            <span className="text-xs [div[data-uploading]>&]:hidden">Add cover image</span>
+                            <span className="text-xs hidden [div[data-uploading]>&]:block">Uploading...</span>
                           </label>
                         )}
                         <input
@@ -755,17 +767,29 @@ export default function Dashboard() {
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (!file) return;
+                            if (file.size > 1 * 1024 * 1024) {
+                              toast({ title: "File too large", description: "Maximum file size is 1MB. Please choose a smaller image.", variant: "destructive" });
+                              return;
+                            }
+                            const coverContainer = document.getElementById('dash-cover-container');
+                            if (coverContainer) coverContainer.setAttribute('data-uploading', 'true');
                             const formData = new FormData();
                             formData.append("file", file);
                             try {
                               const res = await fetch("/api/upload", { method: "POST", body: formData });
-                              const data = await res.json();
                               if (res.ok) {
+                                const data = await res.json();
                                 await apiRequest("PATCH", "/api/auth/profile", { coverImage: data.url });
                                 queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
                                 toast({ title: "Cover image updated!" });
+                              } else {
+                                const errData = await res.json().catch(() => ({}));
+                                toast({ title: "Upload failed", description: errData.message || "Please try a smaller image (max 1MB)", variant: "destructive" });
                               }
-                            } catch {}
+                            } catch {
+                              toast({ title: "Upload failed", description: "Please try again", variant: "destructive" });
+                            }
+                            if (coverContainer) coverContainer.removeAttribute('data-uploading');
                           }}
                           data-testid="input-header-cover-upload"
                         />
@@ -1306,15 +1330,23 @@ function SettingsPanel({
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
+                  if (file.size > 1 * 1024 * 1024) {
+                    toast({ title: "File too large", description: "Maximum file size is 1MB.", variant: "destructive" });
+                    return;
+                  }
                   const formData = new FormData();
                   formData.append("file", file);
                   try {
                     const res = await fetch("/api/upload", { method: "POST", body: formData });
-                    const data = await res.json();
                     if (res.ok) {
+                      const data = await res.json();
                       profileMutation.mutate({ profileImage: data.url });
+                    } else {
+                      toast({ title: "Upload failed", description: "Max 1MB", variant: "destructive" });
                     }
-                  } catch {}
+                  } catch {
+                    toast({ title: "Upload failed", variant: "destructive" });
+                  }
                 }}
                 data-testid="input-settings-avatar-upload"
               />
@@ -3255,6 +3287,10 @@ function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, isSelf, to
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
+                      if (file.size > 1 * 1024 * 1024) {
+                        toast({ title: "File too large", description: "Maximum file size is 1MB.", variant: "destructive" });
+                        return;
+                      }
                       setUploadingImage(true);
                       try {
                         const fd = new FormData();
@@ -4262,8 +4298,15 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
 
   const markDirty = () => setTemplateDirty(true);
 
+  const [uploadingField, setUploadingField] = useState<string | null>(null);
+
   const handleUpload = async (file: File, field: "coverPhoto" | "companyLogo") => {
     if (!selectedTemplate) return;
+    if (file.size > 1 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Maximum file size is 1MB. Please choose a smaller image.", variant: "destructive" });
+      return;
+    }
+    setUploadingField(field);
     const fd = new FormData();
     fd.append("file", file);
     try {
@@ -4272,11 +4315,13 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
         const { url } = await res.json();
         updateField(field, url);
       } else {
-        toast({ title: "Upload failed", description: "Please try again", variant: "destructive" });
+        const errData = await res.json().catch(() => ({}));
+        toast({ title: "Upload failed", description: errData.message || "Max 1MB", variant: "destructive" });
       }
     } catch {
       toast({ title: "Upload failed", description: "Please try again", variant: "destructive" });
     }
+    setUploadingField(null);
   };
 
   const tData: TemplateData = selectedTemplate?.templateData || {};
@@ -4478,10 +4523,15 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                 <CardContent className="pt-4 space-y-3">
                   <h3 className="text-sm font-medium text-muted-foreground">Branding</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Cover Image</Label>
+                     <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Cover Image <span className="text-[10px]">(Max 1MB)</span></Label>
                       <div className="relative h-24 rounded-md border border-dashed bg-muted/30 overflow-hidden group">
-                        {tData.coverPhoto ? (
+                        {uploadingField === "coverPhoto" ? (
+                          <div className="flex flex-col items-center justify-center h-full gap-1.5">
+                            <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                            <span className="text-[11px] text-muted-foreground">Uploading...</span>
+                          </div>
+                        ) : tData.coverPhoto ? (
                           <>
                             <img src={tData.coverPhoto} alt="Cover" className="w-full h-full object-cover" />
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
@@ -4510,10 +4560,14 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Company Logo</Label>
+                      <Label className="text-xs text-muted-foreground">Company Logo <span className="text-[10px]">(Max 1MB)</span></Label>
                       <div className="flex items-center gap-3">
                         <div className="relative w-16 h-16 rounded-full border bg-muted/30 overflow-hidden group shrink-0">
-                          {tData.companyLogo ? (
+                          {uploadingField === "companyLogo" ? (
+                            <div className="flex items-center justify-center w-full h-full">
+                              <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                            </div>
+                          ) : tData.companyLogo ? (
                             <>
                               <img src={tData.companyLogo} alt="Logo" className="w-full h-full object-cover" />
                               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">

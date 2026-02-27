@@ -383,8 +383,8 @@ function WorkspaceStep({
       toast({ title: "Invalid file", description: "Please upload an image file (JPEG, PNG, GIF, or WEBP)", variant: "destructive" });
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Please upload an image smaller than 5MB", variant: "destructive" });
+    if (file.size > 1 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Please upload an image smaller than 1MB", variant: "destructive" });
       return;
     }
     setUploading(true);
@@ -684,8 +684,8 @@ function ProfileStep({
       toast({ title: "Invalid file", description: "Please upload an image file (JPEG, PNG, GIF, or WEBP)", variant: "destructive" });
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Please upload an image smaller than 5MB", variant: "destructive" });
+    if (file.size > 1 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Please upload an image smaller than 1MB", variant: "destructive" });
       return;
     }
     setUploading(true);

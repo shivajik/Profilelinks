@@ -66,9 +66,16 @@ export function BusinessProfileSection() {
     },
   });
 
+  const [imageUploading, setImageUploading] = useState(false);
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 1 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Maximum file size is 1MB.", variant: "destructive" });
+      return;
+    }
+    setImageUploading(true);
     const formData = new FormData();
     formData.append("file", file);
     try {
@@ -77,13 +84,17 @@ export function BusinessProfileSection() {
         credentials: "include",
         body: formData,
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || "Upload failed");
+      }
       const { url } = await res.json();
       setBusinessProfileImage(url);
       updateMutation.mutate({ businessProfileImage: url });
-    } catch {
-      toast({ title: "Failed to upload image", variant: "destructive" });
+    } catch (err: any) {
+      toast({ title: "Failed to upload image", description: err.message || "Max 1MB", variant: "destructive" });
     }
+    setImageUploading(false);
   };
 
   const handleSave = () => {
@@ -186,8 +197,12 @@ export function BusinessProfileSection() {
                 </AvatarFallback>
               </Avatar>
               <label className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center cursor-pointer shadow-sm">
-                <Camera className="w-3 h-3" />
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                {imageUploading ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Camera className="w-3 h-3" />
+                )}
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={imageUploading} />
               </label>
             </div>
             <div>
