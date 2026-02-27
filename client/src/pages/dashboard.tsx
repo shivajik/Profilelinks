@@ -678,7 +678,7 @@ export default function Dashboard() {
                 >
                   <div className="px-4 pb-4 pt-1 space-y-4">
                     <div className="flex items-center justify-between gap-4 border rounded-md p-3">
-                      <span className="text-sm font-medium">Profile Picture <span className="text-[10px] text-muted-foreground font-normal">(Max 1MB)</span></span>
+                      <span className="text-sm font-medium">Profile Picture <span className="text-[10px] text-muted-foreground font-normal">(Max 10MB)</span></span>
                       <div className="relative group">
                         <input
                           type="file"
@@ -688,8 +688,8 @@ export default function Dashboard() {
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (!file) return;
-                            if (file.size > 1 * 1024 * 1024) {
-                              toast({ title: "File too large", description: "Maximum file size is 1MB.", variant: "destructive" });
+                            if (file.size > 10 * 1024 * 1024) {
+                              toast({ title: "File too large", description: "Maximum file size is 10MB.", variant: "destructive" });
                               return;
                             }
                             const label = document.getElementById('dash-avatar-upload-label');
@@ -705,7 +705,7 @@ export default function Dashboard() {
                                 toast({ title: "Profile picture updated!" });
                               } else {
                                 const errData = await res.json().catch(() => ({}));
-                                toast({ title: "Upload failed", description: errData.message || "Max 1MB", variant: "destructive" });
+                                toast({ title: "Upload failed", description: errData.message || "Max 10MB", variant: "destructive" });
                               }
                             } catch {
                               toast({ title: "Upload failed", variant: "destructive" });
@@ -730,7 +730,7 @@ export default function Dashboard() {
                     </div>
                     {!isTeamMember && (
                     <div className="border rounded-md p-3 space-y-2">
-                      <span className="text-sm font-medium">Cover Image <span className="text-[10px] text-muted-foreground font-normal">(Max 1MB)</span></span>
+                      <span className="text-sm font-medium">Cover Image <span className="text-[10px] text-muted-foreground font-normal">(Max 10MB)</span></span>
                        <div className="relative group w-full h-20 rounded-md overflow-hidden bg-muted" id="dash-cover-container">
                         {user.coverImage ? (
                           <>
@@ -767,8 +767,8 @@ export default function Dashboard() {
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (!file) return;
-                            if (file.size > 1 * 1024 * 1024) {
-                              toast({ title: "File too large", description: "Maximum file size is 1MB. Please choose a smaller image.", variant: "destructive" });
+                            if (file.size > 10 * 1024 * 1024) {
+                              toast({ title: "File too large", description: "Maximum file size is 10MB. Please choose a smaller image.", variant: "destructive" });
                               return;
                             }
                             const coverContainer = document.getElementById('dash-cover-container');
@@ -784,7 +784,7 @@ export default function Dashboard() {
                                 toast({ title: "Cover image updated!" });
                               } else {
                                 const errData = await res.json().catch(() => ({}));
-                                toast({ title: "Upload failed", description: errData.message || "Please try a smaller image (max 1MB)", variant: "destructive" });
+                                toast({ title: "Upload failed", description: errData.message || "Please try a smaller image (max 10MB)", variant: "destructive" });
                               }
                             } catch {
                               toast({ title: "Upload failed", description: "Please try again", variant: "destructive" });
@@ -1009,7 +1009,7 @@ export default function Dashboard() {
                 )
               )}
               {activeSection === "team-members" && isTeamAccount && (
-                <TeamMembersPanel teamId={user.teamId!} currentUserId={user.id} />
+                <TeamMembersPanel teamId={user.teamId!} currentUserId={user.id} teamSlug={teamSlug} />
               )}
               {activeSection === "team-templates" && isTeamAccount && (
                 <TeamTemplatesPanel teamId={user.teamId!} />
@@ -1330,8 +1330,8 @@ function SettingsPanel({
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
-                  if (file.size > 1 * 1024 * 1024) {
-                    toast({ title: "File too large", description: "Maximum file size is 1MB.", variant: "destructive" });
+                  if (file.size > 10 * 1024 * 1024) {
+                    toast({ title: "File too large", description: "Maximum file size is 10MB.", variant: "destructive" });
                     return;
                   }
                   const formData = new FormData();
@@ -1342,7 +1342,7 @@ function SettingsPanel({
                       const data = await res.json();
                       profileMutation.mutate({ profileImage: data.url });
                     } else {
-                      toast({ title: "Upload failed", description: "Max 1MB", variant: "destructive" });
+                      toast({ title: "Upload failed", description: "Max 10MB", variant: "destructive" });
                     }
                   } catch {
                     toast({ title: "Upload failed", variant: "destructive" });
@@ -3287,8 +3287,8 @@ function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, isSelf, to
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
-                      if (file.size > 1 * 1024 * 1024) {
-                        toast({ title: "File too large", description: "Maximum file size is 1MB.", variant: "destructive" });
+                      if (file.size > 10 * 1024 * 1024) {
+                        toast({ title: "File too large", description: "Maximum file size is 10MB.", variant: "destructive" });
                         return;
                       }
                       setUploadingImage(true);
@@ -3397,7 +3397,7 @@ function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, isSelf, to
   );
 }
 
-function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUserId: string }) {
+function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string; currentUserId: string; teamSlug?: string }) {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -3670,7 +3670,7 @@ function TeamMembersPanel({ teamId, currentUserId }: { teamId: string; currentUs
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => window.open(`/${member.user.username}`, "_blank")}
+                        onClick={() => window.open(teamSlug ? `/${teamSlug}/${member.user.username}` : `/${member.user.username}`, "_blank")}
                         data-testid={`button-view-profile-${member.id}`}
                         title="View public profile"
                       >
@@ -4178,6 +4178,7 @@ interface TemplateData {
   coverPhoto?: string | null;
   themeColor?: string;
   font?: string;
+  companySocials?: Array<{ platform: string; url: string }>;
 }
 
 function TeamTemplatesPanel({ teamId }: { teamId: string }) {
@@ -4253,8 +4254,8 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
 
   const updateField = (field: string, value: any) => {
     if (!selectedTemplate) return;
-    const newData = { ...selectedTemplate.templateData, [field]: value };
-    updateMutation.mutate({ id: selectedTemplate.id, data: { templateData: newData } });
+    // Send only the changed field - server merges with existing templateData
+    updateMutation.mutate({ id: selectedTemplate.id, data: { templateData: { [field]: value } } });
   };
 
   const updateTemplateMeta = (field: string, value: any) => {
@@ -4278,8 +4279,8 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
 
   const handleSaveTemplate = () => {
     if (!selectedTemplate) return;
-    const newTemplateData = {
-      ...selectedTemplate.templateData,
+    // Only send text fields - server merges with existing data (preserving images)
+    const newTemplateData: Record<string, any> = {
       companyName: localCompanyName,
       companyPhone: localPhone,
       companyEmail: localEmail,
@@ -4302,8 +4303,8 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
 
   const handleUpload = async (file: File, field: "coverPhoto" | "companyLogo") => {
     if (!selectedTemplate) return;
-    if (file.size > 1 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Maximum file size is 1MB. Please choose a smaller image.", variant: "destructive" });
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Maximum file size is 10MB. Please choose a smaller image.", variant: "destructive" });
       return;
     }
     setUploadingField(field);
@@ -4316,7 +4317,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
         updateField(field, url);
       } else {
         const errData = await res.json().catch(() => ({}));
-        toast({ title: "Upload failed", description: errData.message || "Max 1MB", variant: "destructive" });
+        toast({ title: "Upload failed", description: errData.message || "Max 10MB", variant: "destructive" });
       }
     } catch {
       toast({ title: "Upload failed", description: "Please try again", variant: "destructive" });
@@ -4524,7 +4525,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                   <h3 className="text-sm font-medium text-muted-foreground">Branding</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                      <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Cover Image <span className="text-[10px]">(Max 1MB)</span></Label>
+                      <Label className="text-xs text-muted-foreground">Cover Image <span className="text-[10px]">(Max 10MB)</span></Label>
                       <div className="relative h-24 rounded-md border border-dashed bg-muted/30 overflow-hidden group">
                         {uploadingField === "coverPhoto" ? (
                           <div className="flex flex-col items-center justify-center h-full gap-1.5">
@@ -4560,7 +4561,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Company Logo <span className="text-[10px]">(Max 1MB)</span></Label>
+                      <Label className="text-xs text-muted-foreground">Company Logo <span className="text-[10px]">(Max 10MB)</span></Label>
                       <div className="flex items-center gap-3">
                         <div className="relative w-16 h-16 rounded-full border bg-muted/30 overflow-hidden group shrink-0">
                           {uploadingField === "companyLogo" ? (
@@ -4638,7 +4639,79 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                 </CardContent>
               </Card>
 
-              {/* Save Changes Button - appears when dirty */}
+              {/* Company Social Links */}
+              <Card>
+                <CardContent className="pt-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-medium text-muted-foreground">Company Social Links</h3>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const current = tData.companySocials || [];
+                        updateField("companySocials", [...current, { platform: "", url: "" }]);
+                      }}
+                      data-testid="button-add-company-social"
+                    >
+                      <Plus className="w-3.5 h-3.5 mr-1" /> Add
+                    </Button>
+                  </div>
+                  {(tData.companySocials || []).length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4">No social links added yet. Add links to display on the company page.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {(tData.companySocials || []).map((social: { platform: string; url: string }, idx: number) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <Select
+                            value={social.platform}
+                            onValueChange={(val) => {
+                              const updated = [...(tData.companySocials || [])];
+                              updated[idx] = { ...updated[idx], platform: val };
+                              updateField("companySocials", updated);
+                            }}
+                          >
+                            <SelectTrigger className="w-[140px]">
+                              <SelectValue placeholder="Platform" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {SOCIAL_PLATFORMS.map((p) => (
+                                <SelectItem key={p.id} value={p.id}>
+                                  <div className="flex items-center gap-2">
+                                    <SocialIcon platform={p.id} className="w-3.5 h-3.5" />
+                                    <span className="text-xs">{p.name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            value={social.url}
+                            onChange={(e) => {
+                              const updated = [...(tData.companySocials || [])];
+                              updated[idx] = { ...updated[idx], url: e.target.value };
+                              updateField("companySocials", updated);
+                            }}
+                            placeholder={getPlatform(social.platform)?.placeholder || "https://..."}
+                            className="flex-1 text-xs"
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="shrink-0"
+                            onClick={() => {
+                              const updated = (tData.companySocials || []).filter((_: any, i: number) => i !== idx);
+                              updateField("companySocials", updated);
+                            }}
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
               {templateDirty && (
                 <div className="sticky bottom-4 z-10">
                   <Button

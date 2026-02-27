@@ -1437,6 +1437,14 @@ export async function registerRoutes(
           }
         }
       }
+      // Merge templateData with existing to avoid re-sending large image data URIs
+      if (result.data.templateData) {
+        const existingTemplates = await storage.getTeamTemplates(req.params.teamId as string);
+        const existingTemplate = existingTemplates.find(t => t.id === req.params.id);
+        if (existingTemplate?.templateData && typeof existingTemplate.templateData === "object") {
+          result.data.templateData = { ...(existingTemplate.templateData as Record<string, any>), ...result.data.templateData };
+        }
+      }
       const updated = await storage.updateTeamTemplate(req.params.id as string, req.params.teamId as string, result.data);
       if (!updated) {
         return res.status(404).json({ message: "Template not found" });
@@ -1687,6 +1695,7 @@ export async function registerRoutes(
         jobTitle: member?.jobTitle || undefined,
         teamName: team.name || undefined,
         memberEmail: user.email || undefined,
+        companySocials: tData.companySocials || undefined,
       };
 
       if (member?.businessName) (publicUser as any).displayName = member.businessName;
@@ -1760,6 +1769,7 @@ export async function registerRoutes(
         font?: string;
         jobTitle?: string;
         teamName?: string;
+        companySocials?: Array<{ platform: string; url: string }>;
       } | null = null;
 
       // Check if user is a team owner OR a team member
@@ -1798,6 +1808,7 @@ export async function registerRoutes(
           font: tData.font || undefined,
           jobTitle: member?.jobTitle || undefined,
           teamName: team?.name || undefined,
+          companySocials: tData.companySocials || undefined,
         };
 
         // Override user display info with business profile data if set

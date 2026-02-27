@@ -97,6 +97,7 @@ type TeamBranding = {
   jobTitle?: string;
   teamName?: string;
   memberEmail?: string;
+  companySocials?: Array<{ platform: string; url: string }>;
 };
 
 type PublicProfile = {
@@ -356,7 +357,7 @@ export default function PublicProfile(props?: any) {
                   );
                 })()}
                 {activeSocials.length > 0 && (
-                  <div className="flex items-center gap-2 flex-wrap" data-testid="social-icons-row">
+                  <div className="flex items-center gap-2 flex-wrap mb-2" data-testid="social-icons-row">
                     {activeSocials.map((social) => (
                       <a
                         key={social.id}
@@ -366,6 +367,24 @@ export default function PublicProfile(props?: any) {
                         className="p-1.5 rounded-full text-muted-foreground hover-elevate active-elevate-2"
                         title={getPlatform(social.platform)?.name || social.platform}
                         data-testid={`social-icon-${social.platform}`}
+                      >
+                        <SocialIcon platform={social.platform} className="w-4 h-4" />
+                      </a>
+                    ))}
+                  </div>
+                )}
+                {teamBranding?.companySocials && teamBranding.companySocials.length > 0 && (
+                  <div className="flex items-center gap-2 flex-wrap" data-testid="company-social-icons-row">
+                    {teamBranding.companySocials.filter((s: any) => s.platform && s.url).map((social: any, idx: number) => (
+                      <a
+                        key={`company-social-${idx}`}
+                        href={normalizeUrl(social.url, social.platform)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1.5 rounded-full hover-elevate active-elevate-2"
+                        style={{ color: brandColor }}
+                        title={getPlatform(social.platform)?.name || social.platform}
+                        data-testid={`company-social-icon-${social.platform}`}
                       >
                         <SocialIcon platform={social.platform} className="w-4 h-4" />
                       </a>
