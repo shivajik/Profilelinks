@@ -1700,6 +1700,8 @@ function RazorpaySettingsSection({ admin }: { admin: { name: string; email: stri
         </CardContent>
       </Card>
 
+      <CleanSignupsSettings />
+
       <Card>
         <CardHeader><CardTitle className="text-base">Legal Pages</CardTitle></CardHeader>
         <CardContent className="space-y-2">
@@ -1711,6 +1713,114 @@ function RazorpaySettingsSection({ admin }: { admin: { name: string; email: stri
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// ── CleanSignups Settings ──────────────────────────────────────────────────
+function CleanSignupsSettings() {
+  const { toast } = useToast();
+  const [apiKey, setApiKey] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [maskedKey, setMaskedKey] = useState("");
+  const [isSet, setIsSet] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/admin/settings/cleansignups-key")
+      .then(r => r.ok ? r.json() : { masked: "", isSet: false })
+      .then((data: { masked: string; isSet: boolean }) => {
+        setMaskedKey(data.masked);
+        setIsSet(data.isSet);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const r = await fetch("/api/admin/settings/cleansignups-key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey: apiKey.trim() }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.message);
+      toast({ title: j.message });
+      setApiKey("");
+      // Refresh
+      const r2 = await fetch("/api/admin/settings/cleansignups-key");
+      if (r2.ok) {
+        const d = await r2.json();
+        setMaskedKey(d.masked);
+        setIsSet(d.isSet);
+      }
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    }
+    setSaving(false);
+  };
+
+  const handleDisable = async () => {
+    setSaving(true);
+    try {
+      const r = await fetch("/api/admin/settings/cleansignups-key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey: "" }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.message);
+      toast({ title: "Email verification disabled" });
+      setMaskedKey("");
+      setIsSet(false);
+      setApiKey("");
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    }
+    setSaving(false);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Shield className="h-4 w-4" />
+          Email Verification (CleanSignups)
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">
+          Block temporary/disposable emails during sign-up. Get your API key from{" "}
+          <a href="https://cleansignups.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">cleansignups.com</a>.
+          {!isSet && " If no key is set, verification is skipped."}
+        </p>
+
+        {isSet && maskedKey && (
+          <p className="text-xs text-muted-foreground">Current key: <code className="bg-muted px-1 rounded">{maskedKey}</code></p>
+        )}
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">API Key</Label>
+          <Input
+            type="password"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder={isSet ? "Leave empty to keep current" : "Enter CleanSignups API key"}
+          />
+        </div>
+
+        <div className="flex gap-2">
+          <Button onClick={handleSave} disabled={saving} className="flex-1">
+            {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            {isSet ? "Update Key" : "Enable Verification"}
+          </Button>
+          {isSet && (
+            <Button variant="outline" onClick={handleDisable} disabled={saving}>
+              Disable
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

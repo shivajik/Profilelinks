@@ -704,4 +704,81 @@ router.post("/api/admin/settings/payment-keys", requireAdminAuth, async (req: Re
   }
 });
 
+// ─── CleanSignups Email Verification Settings ───────────────────────────────
+router.get("/api/admin/settings/cleansignups-key", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const result = await db.execute(sql`SELECT value FROM app_settings WHERE key = 'cleansignups_api_key'`);
+    const rows = result.rows as any[];
+    const value = rows[0]?.value || "";
+    const masked = value.length > 8 ? value.substring(0, 4) + "****" + value.substring(value.length - 4) : (value ? "********" : "");
+    res.json({ masked, isSet: !!value });
+  } catch (error: any) {
+    res.status(500).json({ message: "Failed to fetch key" });
+  }
+});
+
+router.post("/api/admin/settings/cleansignups-key", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const { apiKey } = req.body;
+    if (!apiKey || !apiKey.trim()) {
+      // Delete the key to disable verification
+      await db.execute(sql`DELETE FROM app_settings WHERE key = 'cleansignups_api_key'`);
+      return res.json({ message: "CleanSignups verification disabled" });
+    }
+    await db.execute(sql`INSERT INTO app_settings (key, value, updated_at) VALUES ('cleansignups_api_key', ${apiKey.trim()}, now()) ON CONFLICT (key) DO UPDATE SET value = ${apiKey.trim()}, updated_at = now()`);
+    res.json({ message: "CleanSignups API key saved successfully" });
+  } catch (error: any) {
+    console.error("CleanSignups key update error:", error);
+    res.status(500).json({ message: "Failed to save API key" });
+  }
+});
+
+// ─── Public Email Verification Endpoint (used before registration) ──────────
+router.post("/api/auth/verify-email", async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Email is required" });
+
+    // Check if CleanSignups API key is configured
+    const result = await db.execute(sql`SELECT value FROM app_settings WHERE key = 'cleansignups_api_key'`);
+    const rows = result.rows as any[];
+    const apiKey = rows[0]?.value;
+
+    if (!apiKey) {
+      // No API key set — skip verification
+      return res.json({ valid: true, skipped: true });
+    }
+
+    // Call CleanSignups API
+    const response = await fetch("https://api.cleansignups.com/api/dashboard/verify", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email }),
+    });
+
+    if (!response.ok) {
+      console.error("CleanSignups API error:", response.status);
+      // If API fails, allow registration (don't block user due to service issues)
+      return res.json({ valid: true, skipped: true, reason: "service_error" });
+    }
+
+    const data = await response.json();
+    // CleanSignups returns verification result
+    const isValid = data.valid !== false && data.disposable !== true && data.is_disposable !== true;
+
+    if (!isValid) {
+      return res.json({ valid: false, message: "Temporary or disposable emails are not allowed. Please use a valid email address." });
+    }
+
+    return res.json({ valid: true });
+  } catch (error: any) {
+    console.error("Email verification error:", error);
+    // On error, allow registration
+    return res.json({ valid: true, skipped: true, reason: "error" });
+  }
+});
+
 export default router;

@@ -142,6 +142,18 @@ export default function AuthPage() {
             ) : (
               <RegisterForm onSubmit={async (username, email, password) => {
                 try {
+                  // Verify email is not temporary/disposable
+                  const verifyRes = await fetch("/api/auth/verify-email", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email }),
+                  });
+                  const verifyData = await verifyRes.json();
+                  if (!verifyData.valid) {
+                    toast({ title: "Invalid email", description: verifyData.message || "Temporary or disposable emails are not allowed.", variant: "destructive" });
+                    return;
+                  }
+
                   await register(username, email, password);
                   // Track referral if ref code exists
                   if (refCode) {
