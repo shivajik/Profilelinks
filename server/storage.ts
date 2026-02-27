@@ -166,7 +166,17 @@ pool.query(`
 
   ALTER TABLE IF EXISTS team_members ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'activated';
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS must_change_password boolean NOT NULL DEFAULT false;
-`).catch(() => {/* Columns/tables may already exist */});
+  ALTER TABLE IF EXISTS teams ADD COLUMN IF NOT EXISTS slug text;
+`).then(async () => {
+  // Backfill slugs for existing teams that don't have one
+  try {
+    const teamsWithoutSlug = await pool.query(`SELECT id, name FROM teams WHERE slug IS NULL OR slug = ''`);
+    for (const row of teamsWithoutSlug.rows) {
+      const slug = row.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').substring(0, 50) || 'team';
+      await pool.query(`UPDATE teams SET slug = $1 WHERE id = $2`, [slug, row.id]);
+    }
+  } catch (_) { /* ignore */ }
+}).catch(() => {/* Columns/tables may already exist */});
 
 
 export interface IStorage {
@@ -212,7 +222,8 @@ export interface IStorage {
   createTeam(team: InsertTeam): Promise<Team>;
   getTeam(id: string): Promise<Team | undefined>;
   getTeamByOwnerId(ownerId: string): Promise<Team | undefined>;
-  updateTeam(id: string, data: Partial<Pick<Team, "name" | "size" | "websiteUrl" | "logoUrl">>): Promise<Team | undefined>;
+  getTeamBySlug(slug: string): Promise<Team | undefined>;
+  updateTeam(id: string, data: Partial<Pick<Team, "name" | "slug" | "size" | "websiteUrl" | "logoUrl">>): Promise<Team | undefined>;
   deleteTeam(id: string): Promise<boolean>;
 
   getTeamMembers(teamId: string): Promise<(TeamMember & { user: Pick<User, "id" | "username" | "email" | "displayName" | "profileImage"> })[]>;
@@ -516,12 +527,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTeam(team: InsertTeam): Promise<Team> {
-    const [created] = await db.insert(teams).values(team).returning();
+    const slug = this.generateSlug(team.name);
+    const [created] = await db.insert(teams).values({ ...team, slug }).returning();
     return created;
   }
 
   async getTeam(id: string): Promise<Team | undefined> {
     const [team] = await db.select().from(teams).where(eq(teams.id, id));
+    // Auto-generate slug if missing
+    if (team && !team.slug) {
+      const slug = this.generateSlug(team.name);
+      await db.update(teams).set({ slug }).where(eq(teams.id, id));
+      team.slug = slug;
+    }
     return team;
   }
 
@@ -530,9 +548,39 @@ export class DatabaseStorage implements IStorage {
     return team;
   }
 
-  async updateTeam(id: string, data: Partial<Pick<Team, "name" | "size" | "websiteUrl" | "logoUrl">>): Promise<Team | undefined> {
-    const [updated] = await db.update(teams).set(data).where(eq(teams.id, id)).returning();
+  async getTeamBySlug(slug: string): Promise<Team | undefined> {
+    // First try exact slug match
+    const [team] = await db.select().from(teams).where(eq(teams.slug, slug));
+    if (team) return team;
+
+    // Fallback: find team whose name generates this slug (for teams not yet backfilled)
+    const allTeams = await db.select().from(teams);
+    const match = allTeams.find(t => this.generateSlug(t.name) === slug);
+    if (match) {
+      // Backfill the slug
+      await db.update(teams).set({ slug }).where(eq(teams.id, match.id));
+      match.slug = slug;
+      return match;
+    }
+    return undefined;
+  }
+
+  async updateTeam(id: string, data: Partial<Pick<Team, "name" | "slug" | "size" | "websiteUrl" | "logoUrl">>): Promise<Team | undefined> {
+    // Auto-update slug when name changes
+    const updateData: any = { ...data };
+    if (data.name && !data.slug) {
+      updateData.slug = this.generateSlug(data.name);
+    }
+    const [updated] = await db.update(teams).set(updateData).where(eq(teams.id, id)).returning();
     return updated;
+  }
+
+  private generateSlug(name: string): string {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .substring(0, 50) || 'team';
   }
 
   async deleteTeam(id: string): Promise<boolean> {

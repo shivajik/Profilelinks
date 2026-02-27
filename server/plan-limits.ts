@@ -1,5 +1,5 @@
 import { db } from "./storage";
-import { userSubscriptions, pricingPlans, links, pages, blocks, socials, teamMembers, menuSocials } from "@shared/schema";
+import { userSubscriptions, pricingPlans, links, pages, blocks, socials, teamMembers, menuSocials, teams, users } from "@shared/schema";
 import { eq, and, sql, count } from "drizzle-orm";
 
 export interface PlanLimits {
@@ -64,8 +64,39 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
     .where(and(eq(userSubscriptions.userId, userId), eq(userSubscriptions.status, "active")))
     .limit(1);
 
-  const plan = subs[0];
-  const hasActivePlan = !!plan;
+  let plan = subs[0];
+  let hasActivePlan = !!plan;
+
+  // If user has no plan, check if they're a team member and inherit owner's analytics/QR
+  let ownerAnalytics = false;
+  let ownerQrCode = false;
+  if (!plan) {
+    // Check if user is a team member
+    const memberRows = await db
+      .select({ teamId: teamMembers.teamId, role: teamMembers.role })
+      .from(teamMembers)
+      .where(and(eq(teamMembers.userId, userId), eq(teamMembers.status, "activated")))
+      .limit(1);
+
+    if (memberRows.length > 0 && memberRows[0].role !== "owner") {
+      const teamRow = await db.select({ ownerId: teams.ownerId }).from(teams).where(eq(teams.id, memberRows[0].teamId)).limit(1);
+      if (teamRow.length > 0) {
+        const ownerSubs = await db
+          .select({
+            analyticsEnabled: pricingPlans.analyticsEnabled,
+            qrCodeEnabled: pricingPlans.qrCodeEnabled,
+          })
+          .from(userSubscriptions)
+          .innerJoin(pricingPlans, eq(userSubscriptions.planId, pricingPlans.id))
+          .where(and(eq(userSubscriptions.userId, teamRow[0].ownerId), eq(userSubscriptions.status, "active")))
+          .limit(1);
+        if (ownerSubs.length > 0) {
+          ownerAnalytics = ownerSubs[0].analyticsEnabled ?? false;
+          ownerQrCode = ownerSubs[0].qrCodeEnabled ?? false;
+        }
+      }
+    }
+  }
 
   const limits = plan || FREE_LIMITS;
 
@@ -95,8 +126,8 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
     maxTeamMembers: limits.maxTeamMembers,
     maxBlocks: limits.maxBlocks ?? FREE_LIMITS.maxBlocks,
     maxSocials: limits.maxSocials ?? FREE_LIMITS.maxSocials,
-    qrCodeEnabled: limits.qrCodeEnabled ?? FREE_LIMITS.qrCodeEnabled,
-    analyticsEnabled: limits.analyticsEnabled ?? FREE_LIMITS.analyticsEnabled,
+    qrCodeEnabled: (limits.qrCodeEnabled ?? FREE_LIMITS.qrCodeEnabled) || ownerQrCode,
+    analyticsEnabled: (limits.analyticsEnabled ?? FREE_LIMITS.analyticsEnabled) || ownerAnalytics,
     customTemplatesEnabled: limits.customTemplatesEnabled ?? FREE_LIMITS.customTemplatesEnabled,
     menuBuilderEnabled: limits.menuBuilderEnabled ?? FREE_LIMITS.menuBuilderEnabled,
     currentLinks: Number(linksResult[0]?.count ?? 0),

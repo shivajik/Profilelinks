@@ -108,8 +108,10 @@ type PublicProfile = {
   teamBranding?: TeamBranding | null;
 };
 
-export default function PublicProfile() {
-  const { username } = useParams<{ username: string }>();
+export default function PublicProfile(props?: any) {
+  const params = useParams<{ username?: string; companySlug?: string }>();
+  const username = props?.username || props?.params?.username || params.username;
+  const companySlug = props?.companySlug || props?.params?.companySlug || params.companySlug;
   const [activePageSlug, setActivePageSlug] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
@@ -117,11 +119,12 @@ export default function PublicProfile() {
   const [copied, setCopied] = useState(false);
 
   const { data, isLoading, isFetching, error } = useQuery<PublicProfile>({
-    queryKey: ["/api/profile", username, activePageSlug],
+    queryKey: ["/api/profile", companySlug, username, activePageSlug],
     queryFn: async () => {
-      const url = activePageSlug
-        ? `/api/profile/${username}?page=${activePageSlug}`
+      const basePath = companySlug
+        ? `/api/profile/${companySlug}/${username}`
         : `/api/profile/${username}`;
+      const url = activePageSlug ? `${basePath}?page=${activePageSlug}` : basePath;
       const res = await fetch(url);
       if (!res.ok) throw new Error("Not found");
       return res.json();

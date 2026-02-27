@@ -10,6 +10,7 @@ import Dashboard from "@/pages/dashboard";
 import Onboarding from "@/pages/onboarding";
 import PublicProfile from "@/pages/profile";
 import PublicMenu from "@/pages/public-menu";
+import TeamMemberProfile from "@/pages/team-member-profile";
 import InviteAccept from "@/pages/invite";
 import ForceChangePassword from "@/pages/change-password";
 import NotFound from "@/pages/not-found";
@@ -49,6 +50,7 @@ function Router() {
       <Route path="/change-password" component={ForceChangePassword} />
       <Route path="/invite/:token" component={InviteAccept} />
       <Route path="/:username/menu" component={PublicMenu} />
+      <Route path="/:companySlug/:username" component={TeamMemberProfile} />
       <Route path="/:username" component={PublicProfile} />
       <Route component={NotFound} />
     </Switch>

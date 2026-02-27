@@ -1603,9 +1603,125 @@ export async function registerRoutes(
     }
   });
 
+  // Team member profile by company slug + username
+  app.get("/api/profile/:companySlug/:memberUsername", async (req, res) => {
+    try {
+      const companySlug = (req.params.companySlug || "").toLowerCase();
+      const memberUsername = req.params.memberUsername;
+
+      const user = await storage.getUserByUsername(memberUsername);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const memberships = await storage.getTeamMembershipsByUserId(user.id);
+      const activeMemberships = memberships.filter((m) => m.status === "activated");
+      const slugifyTeamName = (name: string) =>
+        name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").substring(0, 50) || "team";
+
+      const membershipBySlug = activeMemberships.find(
+        (m) => (m.team.slug || "").toLowerCase() === companySlug || slugifyTeamName(m.team.name) === companySlug,
+      );
+
+      let team = membershipBySlug?.team;
+      let member: any = membershipBySlug ?? null;
+
+      // Fallback for owner URLs or legacy data where membership join is unavailable
+      if (!team) {
+        team = await storage.getTeamBySlug(companySlug);
+      }
+
+      if (!team) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+
+      if (!member) {
+        member = await storage.getTeamMemberByUserId(team.id, user.id);
+      }
+
+      const isTeamUser = user.teamId === team.id || team.ownerId === user.id;
+      if (!member && !isTeamUser) {
+        return res.status(404).json({ message: "Member not found in this team" });
+      }
+
+      if (member && member.status !== "activated") {
+        return res.status(404).json({ message: "Member not found in this team" });
+      }
+
+      // Serve the profile with team branding
+      const userPages = await storage.getPagesByUserId(user.id);
+      const userSocials = await storage.getSocialsByUserId(user.id);
+
+      const pageSlug = req.query.page as string | undefined;
+      let currentPage = userPages.find((p) => p.isHome) || userPages[0];
+      if (pageSlug) {
+        const found = userPages.find((p) => p.slug === pageSlug);
+        if (found) currentPage = found;
+      }
+
+      const userLinks = currentPage
+        ? await storage.getLinksByPageId(currentPage.id)
+        : await storage.getLinksByUserId(user.id);
+
+      const pageBlocks = currentPage
+        ? await storage.getBlocksByPageId(currentPage.id)
+        : await storage.getBlocksByUserId(user.id);
+
+      const { password: _, email: __, ...publicUser } = user;
+
+      const templates = await storage.getTeamTemplates(team.id);
+      const defaultTemplate = templates.find((t) => t.isDefault) || templates[0];
+      const tData: any = defaultTemplate?.templateData || {};
+
+      const teamBranding = {
+        companyLogo: tData.companyLogo || team.logoUrl || undefined,
+        coverPhoto: tData.coverPhoto || undefined,
+        companyName: tData.companyName || team.name || undefined,
+        companyPhone: tData.companyPhone || undefined,
+        companyEmail: tData.companyEmail || undefined,
+        companyWebsite: tData.companyWebsite || team.websiteUrl || undefined,
+        companyAddress: tData.companyAddress || undefined,
+        companyContact: tData.companyContact || undefined,
+        themeColor: tData.themeColor || undefined,
+        font: tData.font || undefined,
+        jobTitle: member?.jobTitle || undefined,
+        teamName: team.name || undefined,
+      };
+
+      if (member?.businessName) (publicUser as any).displayName = member.businessName;
+      if (member?.businessProfileImage) (publicUser as any).profileImage = member.businessProfileImage;
+      if (member?.businessBio) (publicUser as any).bio = member.businessBio;
+      if (tData.template) (publicUser as any).template = tData.template;
+
+      res.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+      res.json({
+        user: publicUser,
+        links: userLinks,
+        blocks: pageBlocks,
+        socials: userSocials,
+        pages: userPages.map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome })),
+        currentPage: currentPage ? { id: currentPage.id, title: currentPage.title, slug: currentPage.slug, isHome: currentPage.isHome } : null,
+        teamBranding,
+      });
+    } catch (error: any) {
+      console.error("Team member profile error:", error);
+      res.status(500).json({ message: "Failed to load profile" });
+    }
+  });
+
   app.get("/api/profile/:username", async (req, res) => {
     try {
-      const user = await storage.getUserByUsername(req.params.username);
+      // First try as username
+      let user = await storage.getUserByUsername(req.params.username);
+      
+      // If not found, check if it's a company slug (team owner profile)
+      if (!user) {
+        const team = await storage.getTeamBySlug(req.params.username);
+        if (team) {
+          user = await storage.getUser(team.ownerId);
+        }
+      }
+
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }

@@ -134,6 +134,7 @@ export type BusinessType = typeof BUSINESS_TYPES[number];
 export const teams = pgTable("teams", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
+  slug: text("slug"),
   size: text("size"),
   websiteUrl: text("website_url"),
   logoUrl: text("logo_url"),

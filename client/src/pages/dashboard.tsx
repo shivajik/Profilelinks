@@ -381,7 +381,6 @@ export default function Dashboard() {
     return <Redirect to="/onboarding" />;
   }
 
-  const profileUrl = `${window.location.origin}/${user.username}`;
   const currentTemplate = getTemplate(user.template);
 
   const copyUrl = () => {
@@ -415,6 +414,14 @@ export default function Dashboard() {
   const isTeamOwner = isTeamAccount && teamData && teamData.ownerId === user.id;
   const isTeamMember = isTeamAccount && !isTeamOwner;
   const isRestaurant = teamData?.businessType?.toLowerCase() === "restaurant";
+
+  // Build profile URL based on team membership
+  const teamSlug = teamData?.slug;
+  const profileUrl = isTeamOwner && teamSlug
+    ? `${window.location.origin}/${teamSlug}`
+    : isTeamMember && teamSlug
+      ? `${window.location.origin}/${teamSlug}/${user.username}`
+      : `${window.location.origin}/${user.username}`;
 
   const isIndividual = !isTeamAccount;
 
@@ -1017,7 +1024,7 @@ export default function Dashboard() {
                       }`}
                     >
                       <iframe
-                        src={`/${user.username}?preview=1`}
+                        src={`${isTeamMember && teamSlug ? `/${teamSlug}/${user.username}` : `/${user.username}`}?preview=1`}
                         className="w-full h-full border-0"
                         title="Profile Preview"
                       />
