@@ -4289,6 +4289,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
       companyContact: localContact,
       font: localFont,
       themeColor: localThemeColor,
+      companySocials: localSocials.filter(s => s.platform && s.url),
     };
     const metaUpdates: Record<string, any> = { templateData: newTemplateData };
     if (localName.trim() && localName !== selectedTemplate.name) metaUpdates.name = localName;
@@ -4336,6 +4337,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
   const [localWebsite, setLocalWebsite] = useState("");
   const [localAddress, setLocalAddress] = useState("");
   const [localContact, setLocalContact] = useState("");
+  const [localSocials, setLocalSocials] = useState<Array<{ platform: string; url: string }>>([]);
 
   useEffect(() => {
     if (selectedTemplate) {
@@ -4347,8 +4349,9 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
       setLocalWebsite(tData.companyWebsite || "");
       setLocalAddress(tData.companyAddress || "");
       setLocalContact(tData.companyContact || "");
+      setLocalSocials(tData.companySocials || []);
     }
-  }, [selectedTemplate?.id, selectedTemplate?.name, selectedTemplate?.description, tData.companyName, tData.companyPhone, tData.companyEmail, tData.companyWebsite, tData.companyAddress, tData.companyContact]);
+  }, [selectedTemplate?.id, selectedTemplate?.name, selectedTemplate?.description, tData.companyName, tData.companyPhone, tData.companyEmail, tData.companyWebsite, tData.companyAddress, tData.companyContact, JSON.stringify(tData.companySocials)]);
 
   return (
     <div className="p-4 space-y-4">
@@ -4384,7 +4387,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
       ) : (
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="lg:w-[320px] shrink-0 space-y-4">
-            <TemplateCardPreview data={tData} themeColor={themeColor} />
+            <TemplateCardPreview data={{ ...tData, companySocials: localSocials }} themeColor={themeColor} />
             {templates.length > 1 && (
               <div className="flex gap-2 flex-wrap">
                 {templates.map((t: any) => (
@@ -4401,6 +4404,81 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                 ))}
               </div>
             )}
+
+            {/* Company Social Links - in left panel */}
+            <Card>
+              <CardContent className="pt-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-muted-foreground">Company Social Links</h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setLocalSocials([...localSocials, { platform: "", url: "" }]);
+                      markDirty();
+                    }}
+                    data-testid="button-add-company-social"
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Add
+                  </Button>
+                </div>
+                {localSocials.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">No social links added yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {localSocials.map((social, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <Select
+                          value={social.platform}
+                          onValueChange={(val) => {
+                            const updated = [...localSocials];
+                            updated[idx] = { ...updated[idx], platform: val };
+                            setLocalSocials(updated);
+                            markDirty();
+                          }}
+                        >
+                          <SelectTrigger className="w-[120px]">
+                            <SelectValue placeholder="Platform" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SOCIAL_PLATFORMS.map((p) => (
+                              <SelectItem key={p.id} value={p.id}>
+                                <div className="flex items-center gap-2">
+                                  <SocialIcon platform={p.id} className="w-3.5 h-3.5" />
+                                  <span className="text-xs">{p.name}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          value={social.url}
+                          onChange={(e) => {
+                            const updated = [...localSocials];
+                            updated[idx] = { ...updated[idx], url: e.target.value };
+                            setLocalSocials(updated);
+                            markDirty();
+                          }}
+                          placeholder={getPlatform(social.platform)?.placeholder || "https://..."}
+                          className="flex-1 text-xs"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0"
+                          onClick={() => {
+                            setLocalSocials(localSocials.filter((_, i) => i !== idx));
+                            markDirty();
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           {selectedTemplate && (
@@ -4639,78 +4717,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                 </CardContent>
               </Card>
 
-              {/* Company Social Links */}
-              <Card>
-                <CardContent className="pt-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-medium text-muted-foreground">Company Social Links</h3>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const current = tData.companySocials || [];
-                        updateField("companySocials", [...current, { platform: "", url: "" }]);
-                      }}
-                      data-testid="button-add-company-social"
-                    >
-                      <Plus className="w-3.5 h-3.5 mr-1" /> Add
-                    </Button>
-                  </div>
-                  {(tData.companySocials || []).length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-4">No social links added yet. Add links to display on the company page.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {(tData.companySocials || []).map((social: { platform: string; url: string }, idx: number) => (
-                        <div key={idx} className="flex items-center gap-2">
-                          <Select
-                            value={social.platform}
-                            onValueChange={(val) => {
-                              const updated = [...(tData.companySocials || [])];
-                              updated[idx] = { ...updated[idx], platform: val };
-                              updateField("companySocials", updated);
-                            }}
-                          >
-                            <SelectTrigger className="w-[140px]">
-                              <SelectValue placeholder="Platform" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {SOCIAL_PLATFORMS.map((p) => (
-                                <SelectItem key={p.id} value={p.id}>
-                                  <div className="flex items-center gap-2">
-                                    <SocialIcon platform={p.id} className="w-3.5 h-3.5" />
-                                    <span className="text-xs">{p.name}</span>
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Input
-                            value={social.url}
-                            onChange={(e) => {
-                              const updated = [...(tData.companySocials || [])];
-                              updated[idx] = { ...updated[idx], url: e.target.value };
-                              updateField("companySocials", updated);
-                            }}
-                            placeholder={getPlatform(social.platform)?.placeholder || "https://..."}
-                            className="flex-1 text-xs"
-                          />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="shrink-0"
-                            onClick={() => {
-                              const updated = (tData.companySocials || []).filter((_: any, i: number) => i !== idx);
-                              updateField("companySocials", updated);
-                            }}
-                          >
-                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              {/* Company Social Links moved to left panel */}
 
               {templateDirty && (
                 <div className="sticky bottom-4 z-10">
@@ -4859,6 +4866,18 @@ function TemplateCardPreview({ data, themeColor }: { data: TemplateData; themeCo
               </div>
             ))}
           </div>
+          {/* Company Social Icons */}
+          {data.companySocials && data.companySocials.filter(s => s.platform && s.url).length > 0 && (
+            <div className="flex items-center gap-2 pt-2">
+              {data.companySocials.filter(s => s.platform && s.url).map((social, i) => (
+                <a key={i} href={social.url} target="_blank" rel="noopener noreferrer"
+                  className="w-7 h-7 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: themeColor + "20" }}>
+                  <SocialIcon platform={social.platform} className="w-3.5 h-3.5" />
+                </a>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
