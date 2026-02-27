@@ -77,6 +77,13 @@ function StatusChip({ status }: { status: string }) {
   );
 }
 
+  // CACHE (persists while app is open)
+  let billingCache: {
+    plans?: PricingPlan[];
+    subscription?: Subscription | null;
+    history?: PaymentHistory[];
+  } = {};
+
 export function BillingSection() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -97,30 +104,68 @@ export function BillingSection() {
   const [promoValidating, setPromoValidating] = useState(false);
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPercent: number } | null>(null);
 
-  const fetchHistory = useCallback(async () => {
+  const fetchHistory = useCallback(async (force = false) => {
+
+    if (!force && billingCache.history) {
+      setHistory(billingCache.history);
+      return;
+    }
+
     setHistoryLoading(true);
     try {
       const r = await fetch("/api/payments/history");
       if (r.ok) {
         const d = await r.json();
-        setHistory(d.payments ?? []);
+
+        const payments = d.payments ?? [];
+        billingCache.history = payments;
+
+        setHistory(payments);
       }
-    } catch { /* ignore */ }
-    finally { setHistoryLoading(false); }
+    } catch (err) {
+      console.error("Failed to fetch payment history:", err);
+    } finally { setHistoryLoading(false); }
   }, []);
 
-  const fetchData = useCallback(() => {
-    setLoading(true);
-    const plansFetch = fetch("/api/pricing/plans").then((r) => r.json()).catch(() => []);
-    const subFetch = fetch("/api/payments/subscription").then((r) => r.json()).catch(() => null);
-    Promise.all([plansFetch, subFetch]).then(([plansData, subData]) => {
-      setPlans(Array.isArray(plansData) ? plansData : []);
-      setSubscription(subData ?? null);
+  const fetchData = useCallback(async (force = false) => {
+
+    if (!force && billingCache.plans && billingCache.subscription !== undefined) {
+      setPlans(billingCache.plans);
+      setSubscription(billingCache.subscription);
       setLoading(false);
-    });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+
+      const plansFetch = fetch("/api/pricing/plans").then((r) => r.json()).catch(() => []);
+      const subFetch = fetch("/api/payments/subscription").then((r) => r.json()).catch(() => null);
+
+      const [plansData, subData] = await Promise.all([
+        plansFetch,
+        subFetch
+      ]);
+
+      const finalPlans = Array.isArray(plansData) ? plansData : [];
+
+      billingCache.plans = finalPlans;
+      billingCache.subscription = subData ?? null;
+
+      setPlans(finalPlans);
+      setSubscription(subData ?? null);
+
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  useEffect(() => { fetchData(); fetchHistory(); }, [fetchData, fetchHistory]);
+  useEffect(() => {
+    fetchData();
+    fetchHistory();
+  }, []);
+
 
   const validatePromo = async () => {
     if (!promoInput.trim()) return;
@@ -201,7 +246,7 @@ export function BillingSection() {
             const vData = await verifyRes.json();
             if (!verifyRes.ok) throw new Error(vData.message);
             toast({ title: "Payment successful! 🎉", description: `You're now on the ${plan.name} plan.` });
-            fetchData(); fetchHistory();
+            fetchData(true); fetchHistory(true);
           } catch (err: any) {
             toast({ title: "Verification failed", description: err.message, variant: "destructive" });
           } finally {
@@ -342,7 +387,7 @@ export function BillingSection() {
             <Receipt className="h-5 w-5 text-primary" />
             <h3 className="text-lg font-semibold text-foreground">Transaction History</h3>
           </div>
-          <Button variant="outline" size="sm" onClick={fetchHistory} disabled={historyLoading}>
+          <Button variant="outline" size="sm" onClick={() => fetchHistory(true)} disabled={historyLoading}>
             {historyLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Refresh"}
           </Button>
         </div>
