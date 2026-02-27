@@ -336,11 +336,11 @@ function AccountTypeStep({
           <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
             accountType === "team" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
           }`}>
-            <Users className="w-6 h-6" />
+            <Building2 className="w-6 h-6" />
           </div>
           <div>
-            <p className="font-semibold text-sm">Team</p>
-            <p className="text-xs text-muted-foreground mt-1">For companies and teams who want branded link pages</p>
+            <p className="font-semibold text-sm">Business</p>
+            <p className="text-xs text-muted-foreground mt-1">For businesses and companies who want branded link pages</p>
           </div>
         </button>
       </div>
