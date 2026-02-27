@@ -1,6 +1,11 @@
 {
   "buildCommand": "npm run build",
   "framework": null,
+  "functions": {
+    "api/**": {
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" }
   ]
