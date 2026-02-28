@@ -205,7 +205,7 @@ export default function AuthPage() {
                   data-testid="button-demo-team"
                 >
                   {demoLoading === "team" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
-                  Team
+                  Business
                 </Button>
               </div>
             </div>

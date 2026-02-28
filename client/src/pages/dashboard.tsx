@@ -1021,8 +1021,8 @@ export default function Dashboard() {
 
             <div className={`${activeSection === "design" ? "hidden md:flex" : "hidden"} flex-1 bg-muted/30 items-center justify-center p-6`}>
               <div className="flex flex-col items-center gap-3">
-                {isTeamMember ? (
-                  /* Team members see their actual public profile page */
+              {isTeamAccount ? (
+                  /* Team accounts (owner & member) see their actual public profile via iframe */
                   <div className="flex flex-col items-center gap-3">
                     <div className="flex items-center gap-2">
                       <Button
@@ -1048,7 +1048,7 @@ export default function Dashboard() {
                       }`}
                     >
                       <iframe
-                        src={`${isTeamMember && teamSlug ? `/${teamSlug}/${user.username}` : `/${user.username}`}?preview=1`}
+                        src={`${isTeamOwner && teamSlug ? `/${teamSlug}` : isTeamMember && teamSlug ? `/${teamSlug}/${user.username}` : `/${user.username}`}?preview=1`}
                         className="w-full h-full border-0"
                         title="Profile Preview"
                       />
