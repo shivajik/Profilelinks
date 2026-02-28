@@ -44,7 +44,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await apiRequest("POST", "/api/auth/logout");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      // Clear ALL cached data to prevent leaking previous user's data
+      queryClient.clear();
     },
   });
 
