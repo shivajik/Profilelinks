@@ -1,33 +1,119 @@
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link as WouterLink } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { Menu, X } from "lucide-react";
+import { useAuth } from "@/lib/auth";
 
 interface LegalLayoutProps {
   children: React.ReactNode;
 }
 
 export default function LegalLayout({ children }: LegalLayoutProps) {
+  const { user } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="border-b border-border bg-background/80 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto flex items-center gap-4 px-6 py-3">
+      <header className="sticky top-0 left-0 right-0 z-[999] bg-background/80 backdrop-blur-xl border-b border-border">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 px-6 py-3">
           <WouterLink href="/">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-          </WouterLink>
-          <WouterLink href="/">
-            <span className="text-xl font-bold tracking-tight cursor-pointer">
+            <span className="text-xl font-bold tracking-tight" data-testid="text-logo">
               <span className="text-primary">Visi</span>
               <span className="text-foreground">Cardly</span>
             </span>
           </WouterLink>
+          <nav className="hidden md:flex items-center gap-6 flex-wrap">
+            <a href="/#how-it-works" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors" data-testid="link-how-it-works">
+              How it works
+            </a>
+            <a href="/#features" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors" data-testid="link-features">
+              Features
+            </a>
+            <a href="/#testimonials" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors" data-testid="link-testimonials">
+              Testimonials
+            </a>
+            <WouterLink href="/pricing">
+              <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-testid="link-pricing">
+                Pricing
+              </span>
+            </WouterLink>
+            <WouterLink href="/docs">
+              <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-testid="link-docs">
+                Docs
+              </span>
+            </WouterLink>
+          </nav>
+          <div className="hidden md:flex items-center gap-3 flex-wrap">
+            {user ? (
+              <WouterLink href="/dashboard">
+                <Button data-testid="button-dashboard">Dashboard</Button>
+              </WouterLink>
+            ) : (
+              <>
+                <WouterLink href="/auth">
+                  <Button variant="ghost" data-testid="button-login">Log in</Button>
+                </WouterLink>
+                <WouterLink href="/auth?tab=register">
+                  <Button data-testid="button-signup">Sign up free</Button>
+                </WouterLink>
+              </>
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            data-testid="button-mobile-menu"
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </Button>
         </div>
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-xl">
+            <div className="flex flex-col px-6 py-4 gap-3">
+              <a href="/#how-it-works" className="text-sm font-medium text-muted-foreground py-2" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-link-how-it-works">
+                How it works
+              </a>
+              <a href="/#features" className="text-sm font-medium text-muted-foreground py-2" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-link-features">
+                Features
+              </a>
+              <a href="/#testimonials" className="text-sm font-medium text-muted-foreground py-2" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-link-testimonials">
+                Testimonials
+              </a>
+              <WouterLink href="/pricing">
+                <span className="text-sm font-medium text-muted-foreground py-2 cursor-pointer" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-link-pricing">
+                  Pricing
+                </span>
+              </WouterLink>
+              <WouterLink href="/docs">
+                <span className="text-sm font-medium text-muted-foreground py-2 cursor-pointer" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-link-docs">
+                  Docs
+                </span>
+              </WouterLink>
+              <div className="flex items-center gap-3 pt-2 border-t border-border flex-wrap">
+                {user ? (
+                  <WouterLink href="/dashboard">
+                    <Button data-testid="mobile-button-dashboard" onClick={() => setMobileMenuOpen(false)}>Dashboard</Button>
+                  </WouterLink>
+                ) : (
+                  <>
+                    <WouterLink href="/auth">
+                      <Button variant="ghost" data-testid="mobile-button-login" onClick={() => setMobileMenuOpen(false)}>Log in</Button>
+                    </WouterLink>
+                    <WouterLink href="/auth?tab=register">
+                      <Button data-testid="mobile-button-signup" onClick={() => setMobileMenuOpen(false)}>Sign up free</Button>
+                    </WouterLink>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       <main className="flex-1">{children}</main>
