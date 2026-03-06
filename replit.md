@@ -1,4 +1,4 @@
-# Linkfolio - Link-in-Bio Application
+# VisiCardly - Link-in-Bio Application
 
 ## Overview
 A link-in-bio web application that allows users to create personalized landing pages with multiple links to their social profiles, websites, and content - all accessible through a single custom URL.
