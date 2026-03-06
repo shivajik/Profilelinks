@@ -222,7 +222,7 @@ export function BillingSection() {
         key: data.keyId,
         amount: data.amount,
         currency: data.currency,
-        name: "Linkfolio",
+        name: "VisiCardly",
         description: `${plan.name} Plan — ${billingCycle}${appliedPromo ? ` (${appliedPromo.discountPercent}% off)` : ""}`,
         order_id: data.orderId,
         handler: async (response: {
@@ -474,8 +474,8 @@ export function BillingSection() {
                 {/* Invoice header */}
                 <div className="flex items-start justify-between border-b pb-4">
                   <div>
-                    <p className="font-bold text-lg text-foreground">Linkfolio</p>
-                    <p className="text-xs text-muted-foreground">linkfolio.app</p>
+                    <p className="font-bold text-lg text-foreground">VisiCardly</p>
+                    <p className="text-xs text-muted-foreground">visicardly.com</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-semibold text-foreground">{invoiceNo}</p>

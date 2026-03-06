@@ -11,7 +11,7 @@ export default function RefundPolicyPage() {
             <Button variant="ghost" size="icon"><ArrowLeft className="w-4 h-4" /></Button>
           </WouterLink>
           <span className="text-lg font-bold tracking-tight">
-            <span className="text-primary">link</span>folio
+            <span className="text-primary">Visi</span>Cardly
           </span>
         </div>
       </header>
@@ -21,7 +21,7 @@ export default function RefundPolicyPage() {
 
         <h2>No Refund Policy</h2>
         <p>
-          All purchases made on Linkfolio are <strong>final and non-refundable</strong>. Once a subscription or plan has been purchased, we do not offer refunds under any circumstances.
+          All purchases made on VisiCardly are <strong>final and non-refundable</strong>. Once a subscription or plan has been purchased, we do not offer refunds under any circumstances.
         </p>
 
         <h2>What This Means</h2>
@@ -33,20 +33,20 @@ export default function RefundPolicyPage() {
 
         <h2>Before You Purchase</h2>
         <p>
-          We encourage you to explore our free plan and trial features before committing to a paid subscription. This allows you to evaluate whether Linkfolio meets your needs.
+          We encourage you to explore our free plan and trial features before committing to a paid subscription. This allows you to evaluate whether VisiCardly meets your needs.
         </p>
 
         <h2>Exceptions</h2>
         <p>
           In rare cases of technical errors resulting in duplicate charges, please contact our support team at{" "}
-          <a href="mailto:support@linkfolio.com" className="text-primary">support@linkfolio.com</a>{" "}
+          <a href="mailto:support@visicardly.com" className="text-primary">support@visicardly.com</a>{" "}
           and we will investigate and resolve the issue.
         </p>
 
         <h2>Contact</h2>
         <p>
           If you have questions about this policy, please reach out to{" "}
-          <a href="mailto:support@linkfolio.com" className="text-primary">support@linkfolio.com</a>.
+          <a href="mailto:support@visicardly.com" className="text-primary">support@visicardly.com</a>.
         </p>
       </main>
     </div>

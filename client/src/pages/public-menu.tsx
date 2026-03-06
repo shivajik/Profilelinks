@@ -391,7 +391,7 @@ export default function PublicMenu() {
         {/* Footer */}
         <div className={`text-center mt-10 ${template.textColor} opacity-40`}>
           <a href={`/${username}`} className="text-xs hover:opacity-60 transition-opacity">
-            Powered by <span className="font-semibold">linkfolio</span>
+            Powered by <span className="font-semibold">VisiCardly</span>
           </a>
         </div>
       </div>

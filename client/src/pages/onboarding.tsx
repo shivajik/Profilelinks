@@ -188,7 +188,7 @@ export default function Onboarding() {
       <header className="border-b bg-background/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 px-6 py-4">
           <span className="text-lg font-bold tracking-tight">
-            <span className="text-primary">link</span>folio
+            <span className="text-primary">Visi</span>Cardly
           </span>
           <StepIndicator currentStep={step} totalSteps={totalSteps} />
         </div>
@@ -303,7 +303,7 @@ function AccountTypeStep({
   return (
     <div>
       <h1 className="text-3xl font-bold mb-2" data-testid="text-step-title">Choose your account type</h1>
-      <p className="text-muted-foreground mb-8">How will you be using Linkfolio?</p>
+      <p className="text-muted-foreground mb-8">How will you be using VisiCardly?</p>
       <div className="grid grid-cols-2 gap-4">
         <button
           onClick={() => setAccountType("personal")}
@@ -900,11 +900,11 @@ function UrlStep({
   return (
     <div>
       <h1 className="text-3xl font-bold mb-2" data-testid="text-step-title">Claim a URL</h1>
-      <p className="text-muted-foreground mb-8">A unique web address for your Linkfolio profile.</p>
+      <p className="text-muted-foreground mb-8">A unique web address for your VisiCardly profile.</p>
       <div className="space-y-2">
         <div className="relative">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">
-            linkfolio/
+            visicardly.com/
           </span>
           <Input
             className="pl-[85px] text-lg py-6"
@@ -953,7 +953,7 @@ function PhonePreview({
       <div className="rounded-[2rem] border-4 border-foreground/10 overflow-hidden shadow-xl">
         <div className="bg-foreground/10 h-7 flex items-center justify-center">
           <span className="text-[10px] text-muted-foreground font-medium truncate px-4">
-            linkfolio/{username}
+            visicardly.com/{username}
           </span>
         </div>
         <div className={`min-h-[480px] ${template.bg} p-5`}>

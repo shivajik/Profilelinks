@@ -37,7 +37,7 @@ const DOC_SECTIONS = [
       {
         title: "Create Your Account",
         content:
-          "Sign up with your email and password. Choose a unique username — this becomes your public URL (e.g., linkfolio.com/yourname). Complete the onboarding wizard to set up your display name, bio, and profile picture.",
+          "Sign up with your email and password. Choose a unique username — this becomes your public URL (e.g., visicardly.com/yourname). Complete the onboarding wizard to set up your display name, bio, and profile picture.",
       },
       {
         title: "Choose Your Template",
@@ -47,7 +47,7 @@ const DOC_SECTIONS = [
       {
         title: "Share Your Page",
         content:
-          "Your public profile is live at linkfolio.com/yourname. Copy the link from the top of your dashboard and share it on your social media bios, email signatures, business cards, or anywhere you want people to find you.",
+          "Your public profile is live at visicardly.com/yourname. Copy the link from the top of your dashboard and share it on your social media bios, email signatures, business cards, or anywhere you want people to find you.",
       },
     ],
   },
@@ -137,7 +137,7 @@ const DOC_SECTIONS = [
       {
         title: "Overview",
         content:
-          "The Menu Builder lets you create a dedicated digital menu page — perfect for restaurants, cafés, bars, or any business with products to showcase. Your menu lives at linkfolio.com/yourname/menu, separate from your main profile.",
+          "The Menu Builder lets you create a dedicated digital menu page — perfect for restaurants, cafés, bars, or any business with products to showcase. Your menu lives at visicardly.com/yourname/menu, separate from your main profile.",
       },
       {
         title: "Menu Appearance",
@@ -184,7 +184,7 @@ const DOC_SECTIONS = [
       {
         title: "Usage Ideas",
         content:
-          "Print your QR code on business cards, add it to restaurant table tents, include it in email signatures, place it on product packaging, or display it at events. Anyone who scans it goes directly to your Linkfolio page.",
+          "Print your QR code on business cards, add it to restaurant table tents, include it in email signatures, place it on product packaging, or display it at events. Anyone who scans it goes directly to your VisiCardly page.",
       },
     ],
   },
@@ -275,8 +275,8 @@ export default function DocsPage() {
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 px-6 py-3">
           <WouterLink href="/">
             <span className="text-xl font-bold tracking-tight">
-              <span className="text-primary">link</span>
-              <span className="text-foreground">folio</span>
+              <span className="text-primary">Visi</span>
+              <span className="text-foreground">Cardly</span>
             </span>
           </WouterLink>
           <nav className="hidden md:flex items-center gap-6">
@@ -352,10 +352,10 @@ export default function DocsPage() {
               Documentation
             </div>
             <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-foreground mb-4">
-              How to use <span className="text-primary">link</span>folio
+              How to use <span className="text-primary">Visi</span>Cardly
             </h1>
             <p className="text-lg text-muted-foreground max-w-lg mx-auto">
-              Everything you need to know to set up and manage your Linkfolio page, menu, and more.
+              Everything you need to know to set up and manage your VisiCardly page, menu, and more.
             </p>
           </div>
 
@@ -414,7 +414,7 @@ export default function DocsPage() {
           {/* CTA */}
           <div className="mt-20 text-center">
             <h3 className="text-2xl font-bold text-foreground mb-4">Ready to get started?</h3>
-            <p className="text-muted-foreground mb-8">Create your Linkfolio page in under a minute.</p>
+            <p className="text-muted-foreground mb-8">Create your VisiCardly page in under a minute.</p>
             <div className="flex items-center justify-center gap-4 flex-wrap">
               <WouterLink href="/auth?tab=register">
                 <Button size="lg">Create your page</Button>
@@ -431,7 +431,7 @@ export default function DocsPage() {
       <footer className="border-t border-border py-8 px-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <span className="text-sm text-muted-foreground">
-            <span className="text-primary font-semibold">link</span>folio — All rights reserved.
+            <span className="text-primary font-semibold">Visi</span>Cardly — All rights reserved.
           </span>
           <div className="flex items-center gap-4">
             <WouterLink href="/terms"><span className="text-sm text-muted-foreground hover:text-foreground cursor-pointer">Terms</span></WouterLink>

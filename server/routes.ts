@@ -156,7 +156,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Invalid demo type" });
       }
 
-      const demoEmail = type === "personal" ? "demo@linkfolio.com" : "team-demo@linkfolio.com";
+      const demoEmail = type === "personal" ? "demo@visicardly.com" : "team-demo@visicardly.com";
       const demoUsername = type === "personal" ? "demo-user" : "demo-team";
       const demoPassword = "demo123456";
 
@@ -189,7 +189,7 @@ export async function registerRoutes(
 
         await storage.createBlock({ userId: user.id, pageId: homePage.id, type: "url_button", content: { title: "My Portfolio", url: "https://example.com/portfolio" }, position: 0, active: true });
         await storage.createBlock({ userId: user.id, pageId: homePage.id, type: "url_button", content: { title: "Latest Blog Post", url: "https://example.com/blog" }, position: 1, active: true });
-        await storage.createBlock({ userId: user.id, pageId: homePage.id, type: "text", content: { text: "Welcome to my Linkfolio page! Explore my links below." }, position: 2, active: true });
+        await storage.createBlock({ userId: user.id, pageId: homePage.id, type: "text", content: { text: "Welcome to my VisiCardly page! Explore my links below." }, position: 2, active: true });
 
         if (type === "team") {
           const team = await storage.createTeam({

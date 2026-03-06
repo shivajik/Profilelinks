@@ -352,7 +352,7 @@ export default function AdminDashboard() {
           </div>
           <div className="min-w-0">
             <p className="font-semibold text-sidebar-foreground text-sm truncate">Admin Panel</p>
-            <p className="text-xs text-muted-foreground truncate">Linkfolio</p>
+            <p className="text-xs text-muted-foreground truncate">VisiCardly</p>
           </div>
           <button className="ml-auto lg:hidden text-muted-foreground" onClick={() => setSidebarOpen(false)}>
             <XIcon className="h-4 w-4" />
@@ -1228,8 +1228,8 @@ export default function AdminDashboard() {
                 {/* Invoice header */}
                 <div className="flex items-start justify-between border-b pb-4">
                   <div>
-                    <p className="font-bold text-lg text-foreground">Linkfolio</p>
-                    <p className="text-xs text-muted-foreground">linkfolio.app</p>
+                    <p className="font-bold text-lg text-foreground">VisiCardly</p>
+                    <p className="text-xs text-muted-foreground">visicardly.com</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-semibold text-foreground">{invoiceNo}</p>

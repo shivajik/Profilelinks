@@ -87,7 +87,7 @@ const TESTIMONIALS = [
   {
     name: "Sarah M.",
     role: "Content Creator",
-    text: "Linkfolio made it so easy to organize all my links in one place. My followers can now find everything instantly!",
+    text: "VisiCardly made it so easy to organize all my links in one place. My followers can now find everything instantly!",
   },
   {
     name: "Jason R.",
@@ -97,7 +97,7 @@ const TESTIMONIALS = [
   {
     name: "Priya K.",
     role: "Small Business Owner",
-    text: "I switched from Linktree and haven't looked back. Linkfolio is more powerful and so much easier to use.",
+    text: "I switched from Linktree and haven't looked back. VisiCardly is more powerful and so much easier to use.",
   },
 ];
 
@@ -111,8 +111,8 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 px-6 py-3">
           <WouterLink href="/">
             <span className="text-xl font-bold tracking-tight" data-testid="text-logo">
-              <span className="text-primary">link</span>
-              <span className="text-foreground">folio</span>
+              <span className="text-primary">Visi</span>
+              <span className="text-foreground">Cardly</span>
             </span>
           </WouterLink>
           <nav className="hidden md:flex items-center gap-6 flex-wrap">
@@ -269,7 +269,7 @@ export default function Landing() {
                   <div className="absolute -inset-8 rounded-[2rem] landing-phone-glow" />
                   <img
                     src={heroPhoneImg}
-                    alt="Linkfolio profile page preview"
+                    alt="VisiCardly profile page preview"
                     className="relative w-60 md:w-72 rounded-2xl"
                     data-testid="img-hero-phone"
                   />
@@ -298,7 +298,7 @@ export default function Landing() {
                 Up and running in three steps
               </h2>
               <p className="text-muted-foreground text-lg max-w-md mx-auto">
-                No technical knowledge required. If you can type a URL, you can use Linkfolio.
+                No technical knowledge required. If you can type a URL, you can use VisiCardly.
               </p>
             </div>
             <div className="grid md:grid-cols-3 gap-8">
@@ -354,12 +354,12 @@ export default function Landing() {
           <div className="max-w-5xl mx-auto">
             <div className="grid lg:grid-cols-2 gap-16 items-center">
               <div>
-                <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-3">Why Linkfolio</p>
+                <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-3">Why VisiCardly</p>
                 <h2 className="text-3xl md:text-4xl font-extrabold text-foreground mb-6">
                   Built different, on purpose
                 </h2>
                 <p className="text-muted-foreground text-lg mb-8 leading-relaxed">
-                  We're not another cookie-cutter link tool. Linkfolio gives you real creative control without the learning curve.
+                  We're not another cookie-cutter link tool. VisiCardly gives you real creative control without the learning curve.
                 </p>
                 <div className="space-y-4">
                   {[
@@ -382,7 +382,7 @@ export default function Landing() {
                   <div className="absolute -inset-6 rounded-[2rem] landing-phone-glow opacity-60" />
                   <img
                     src={heroPhoneImg}
-                    alt="Linkfolio customization preview"
+                    alt="VisiCardly customization preview"
                     className="relative w-52 md:w-64 rounded-2xl"
                     data-testid="img-why-phone"
                   />
@@ -458,7 +458,7 @@ export default function Landing() {
               Ready to claim your page?
             </h2>
             <p className="text-muted-foreground text-lg md:text-xl mb-10 max-w-lg mx-auto leading-relaxed">
-              Join thousands of creators who use Linkfolio to share their world. Free forever, upgrade anytime.
+              Join thousands of creators who use VisiCardly to share their world. Free forever, upgrade anytime.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 flex-wrap">
               <WouterLink href="/auth?tab=register">
@@ -477,7 +477,7 @@ export default function Landing() {
           <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-10 mb-12">
             <div>
               <span className="text-xl font-bold tracking-tight text-foreground mb-4 block">
-                <span className="text-primary">link</span>folio
+                <span className="text-primary">Visi</span>Cardly
               </span>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 The simplest way to share your online presence. One link for everything.
@@ -513,7 +513,7 @@ export default function Landing() {
           </div>
           <div className="border-t border-border pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 flex-wrap">
             <span className="text-sm text-muted-foreground">
-              Linkfolio. All rights reserved.
+              VisiCardly. All rights reserved.
             </span>
             <div className="flex items-center gap-4">
               <WouterLink href="/terms"><a className="text-sm text-muted-foreground hover:text-foreground">Terms</a></WouterLink>

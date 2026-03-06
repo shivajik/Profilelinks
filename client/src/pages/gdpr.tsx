@@ -11,7 +11,7 @@ export default function GdprPage() {
             <Button variant="ghost" size="icon"><ArrowLeft className="w-4 h-4" /></Button>
           </WouterLink>
           <span className="text-lg font-bold tracking-tight">
-            <span className="text-primary">link</span>folio
+            <span className="text-primary">Visi</span>Cardly
           </span>
         </div>
       </header>
@@ -21,7 +21,7 @@ export default function GdprPage() {
 
         <h2>Our Commitment to Data Protection</h2>
         <p>
-          Linkfolio is committed to protecting your personal data in accordance with the General Data Protection Regulation (GDPR). This page explains how we collect, use, and protect your information.
+          VisiCardly is committed to protecting your personal data in accordance with the General Data Protection Regulation (GDPR). This page explains how we collect, use, and protect your information.
         </p>
 
         <h2>Data We Collect</h2>
@@ -53,7 +53,7 @@ export default function GdprPage() {
         <h2>Contact Us</h2>
         <p>
           For any GDPR-related requests or questions, please contact us at{" "}
-          <a href="mailto:privacy@linkfolio.com" className="text-primary">privacy@linkfolio.com</a>.
+          <a href="mailto:privacy@visicardly.com" className="text-primary">privacy@visicardly.com</a>.
         </p>
       </main>
     </div>

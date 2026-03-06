@@ -59,8 +59,8 @@ export default function AuthPage() {
         <div className="relative z-10 max-w-md">
           <WouterLink href="/">
             <span className="text-3xl font-bold tracking-tight mb-8 block cursor-pointer" data-testid="text-auth-logo-side">
-              <span className="text-primary-foreground/90">link</span>
-              <span className="text-primary-foreground">folio</span>
+              <span className="text-primary-foreground/90">Visi</span>
+              <span className="text-primary-foreground">Cardly</span>
             </span>
           </WouterLink>
           <h2 className="text-4xl font-extrabold text-primary-foreground leading-tight mb-4">
@@ -92,8 +92,8 @@ export default function AuthPage() {
             </Button>
           </WouterLink>
           <span className="lg:hidden text-lg font-bold tracking-tight" data-testid="text-auth-logo-mobile">
-            <span className="text-primary">link</span>
-            <span className="text-foreground">folio</span>
+            <span className="text-primary">Visi</span>
+            <span className="text-foreground">Cardly</span>
           </span>
         </div>
 
@@ -105,7 +105,7 @@ export default function AuthPage() {
               </h1>
               <p className="text-sm text-muted-foreground">
                 {tab === "login"
-                  ? "Log in to manage your Linkfolio page."
+                  ? "Log in to manage your VisiCardly page."
                   : "Get started for free. No credit card required."}
               </p>
             </div>
@@ -302,7 +302,7 @@ function RegisterForm({ onSubmit }: { onSubmit: (username: string, email: string
       <div className="space-y-1.5">
         <Label htmlFor="reg-username" className="text-sm font-medium">Username</Label>
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">linkfolio.com/</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">visicardly.com/</span>
           <Input
             id="reg-username"
             value={username}

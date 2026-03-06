@@ -618,11 +618,11 @@ export default function Dashboard() {
                   </div>
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-base">Share Linkfolio</CardTitle>
+                      <CardTitle className="text-base">Share VisiCardly</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <p className="text-sm text-muted-foreground">
-                        Love using Linkfolio? Share it with your friends and help us grow! Copy the link below and send it to anyone who might find it useful.
+                        Love using VisiCardly? Share it with your friends and help us grow! Copy the link below and send it to anyone who might find it useful.
                       </p>
                       <div className="flex gap-2">
                         <Input
@@ -2387,7 +2387,7 @@ function PhonePreview({
       <div className="rounded-[2rem] border-4 border-foreground/10 overflow-hidden shadow-xl">
         <div className="bg-foreground/10 h-7 flex items-center justify-center">
           <span className="text-[10px] text-muted-foreground font-medium truncate px-4">
-            linkfolio/{username}
+            visicardly.com/{username}
           </span>
         </div>
         <div className={`min-h-[480px] ${template.bg} p-5`}>
@@ -2443,7 +2443,7 @@ function PhonePreview({
 
             <div className="mt-6">
               <p className={`text-[10px] ${template.textColor} opacity-50`}>
-                linkfolio
+                VisiCardly
               </p>
             </div>
           </div>

@@ -100,7 +100,7 @@ export default function AdminLogin() {
             <Shield className="h-6 w-6 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-foreground">Linkfolio</h1>
+            <h1 className="text-xl font-bold text-foreground">VisiCardly</h1>
             <p className="text-xs text-muted-foreground">Super Admin Panel</p>
           </div>
         </div>

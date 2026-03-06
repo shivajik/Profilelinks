@@ -11,7 +11,7 @@ export default function ContactPage() {
             <Button variant="ghost" size="icon"><ArrowLeft className="w-4 h-4" /></Button>
           </WouterLink>
           <span className="text-lg font-bold tracking-tight">
-            <span className="text-primary">link</span>folio
+            <span className="text-primary">Visi</span>Cardly
           </span>
         </div>
       </header>
@@ -28,8 +28,8 @@ export default function ContactPage() {
             </div>
             <h3 className="font-bold text-foreground mb-2">Email Us</h3>
             <p className="text-sm text-muted-foreground mb-3">For general inquiries and support</p>
-            <a href="mailto:support@linkfolio.com" className="text-sm text-primary hover:underline">
-              support@linkfolio.com
+            <a href="mailto:support@visicardly.com" className="text-sm text-primary hover:underline">
+              support@visicardly.com
             </a>
           </div>
           <div className="bg-card border border-border rounded-xl p-6">

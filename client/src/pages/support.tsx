@@ -11,7 +11,7 @@ export default function SupportPage() {
             <Button variant="ghost" size="icon"><ArrowLeft className="w-4 h-4" /></Button>
           </WouterLink>
           <span className="text-lg font-bold tracking-tight">
-            <span className="text-primary">link</span>folio
+            <span className="text-primary">Visi</span>Cardly
           </span>
         </div>
       </header>
@@ -29,7 +29,7 @@ export default function SupportPage() {
             <div>
               <h3 className="font-bold text-foreground mb-1">Documentation</h3>
               <p className="text-sm text-muted-foreground mb-2">
-                Comprehensive guides on how to use all Linkfolio features.
+                Comprehensive guides on how to use all VisiCardly features.
               </p>
               <WouterLink href="/docs">
                 <Button variant="outline" size="sm">View Docs</Button>

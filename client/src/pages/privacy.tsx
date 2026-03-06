@@ -107,7 +107,7 @@ export default function PrivacyPage() {
             <h2 className="text-xl font-semibold mb-3">10. Contact Us</h2>
             <p className="text-muted-foreground leading-relaxed">
               If you have questions about this Privacy Policy, please contact us at{" "}
-              <a href="mailto:privacy@linkfolio.app" className="text-primary underline">privacy@linkfolio.app</a>.
+              <a href="mailto:privacy@visicardly.com" className="text-primary underline">privacy@visicardly.com</a>.
             </p>
           </section>
         </div>

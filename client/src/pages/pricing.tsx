@@ -122,7 +122,7 @@ export default function PricingPage() {
         key: data.keyId,
         amount: data.amount,
         currency: data.currency,
-        name: "Linkfolio",
+        name: "VisiCardly",
         description: `${plan.name} Plan — ${billingCycle}${appliedPromo ? ` (${appliedPromo.discountPercent}% off)` : ""}`,
         order_id: data.orderId,
         handler: async (response: {

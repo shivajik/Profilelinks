@@ -11,20 +11,20 @@ export default function AboutPage() {
             <Button variant="ghost" size="icon"><ArrowLeft className="w-4 h-4" /></Button>
           </WouterLink>
           <span className="text-lg font-bold tracking-tight">
-            <span className="text-primary">link</span>folio
+            <span className="text-primary">Visi</span>Cardly
           </span>
         </div>
       </header>
       <main className="max-w-3xl mx-auto px-6 py-16">
-        <h1 className="text-4xl font-extrabold text-foreground mb-6">About Linkfolio</h1>
+        <h1 className="text-4xl font-extrabold text-foreground mb-6">About VisiCardly</h1>
         <p className="text-lg text-muted-foreground mb-10 leading-relaxed">
-          Linkfolio is your all-in-one link-in-bio platform designed for creators, businesses, and teams who want a beautiful, customizable page to share their online presence.
+          VisiCardly is your all-in-one digital business card platform designed for creators, businesses, and teams who want a beautiful, customizable page to share their online presence.
         </p>
 
         <div className="grid md:grid-cols-3 gap-8 mb-12">
           {[
             { icon: Target, title: "Our Mission", desc: "To give every creator and business a stunning, professional page to share their world — without needing any technical skills." },
-            { icon: Users, title: "Built for Everyone", desc: "From solo creators to enterprise teams, Linkfolio scales with your needs. Individual profiles, team branding, digital menus — all in one platform." },
+            { icon: Users, title: "Built for Everyone", desc: "From solo creators to enterprise teams, VisiCardly scales with your needs. Individual profiles, team branding, digital menus — all in one platform." },
             { icon: Heart, title: "Made with Care", desc: "Every feature is designed with simplicity and elegance in mind. We obsess over the details so you can focus on what matters." },
           ].map((item, i) => (
             <div key={i} className="text-center">
@@ -39,7 +39,7 @@ export default function AboutPage() {
 
         <div className="bg-card border border-border rounded-xl p-8 text-center">
           <h2 className="text-2xl font-bold text-foreground mb-3">Ready to get started?</h2>
-          <p className="text-muted-foreground mb-6">Join thousands of creators using Linkfolio today.</p>
+          <p className="text-muted-foreground mb-6">Join thousands of creators using VisiCardly today.</p>
           <WouterLink href="/auth?tab=register">
             <Button size="lg">Create your page</Button>
           </WouterLink>
