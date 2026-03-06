@@ -3,9 +3,10 @@ import { Link as WouterLink, useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PricingCard } from "@/components/pricing-card";
-import { ArrowLeft, Loader2, Tag, Check, X } from "lucide-react";
+import { Loader2, Tag, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
+import LegalLayout from "@/components/legal-layout";
 
 interface PricingPlan {
   id: string; name: string; description?: string;
@@ -43,7 +44,6 @@ export default function PricingPage() {
   const [payingPlanId, setPayingPlanId] = useState<string | null>(null);
   const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
 
-  // Promo code state
   const [promoInput, setPromoInput] = useState("");
   const [promoValidating, setPromoValidating] = useState(false);
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPercent: number } | null>(null);
@@ -165,28 +165,7 @@ export default function PricingPage() {
   }, [user, billingCycle, currentPlanId, navigate, toast, appliedPromo]);
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Nav */}
-      <header className="border-b bg-card/80 backdrop-blur sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-          <WouterLink href="/">
-            <a className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-              <ArrowLeft className="h-4 w-4" /> Back to home
-            </a>
-          </WouterLink>
-          {user ? (
-            <WouterLink href="/dashboard">
-              <Button variant="outline" size="sm">Dashboard</Button>
-            </WouterLink>
-          ) : (
-            <WouterLink href="/auth">
-              <Button size="sm">Get started</Button>
-            </WouterLink>
-          )}
-        </div>
-      </header>
-
-      {/* Hero */}
+    <LegalLayout>
       <section className="py-16 text-center px-4">
         <h1 className="text-4xl md:text-5xl font-extrabold text-foreground mb-4">
           Simple, Transparent Pricing
@@ -195,7 +174,6 @@ export default function PricingPage() {
           Choose the plan that works for you. Upgrade, downgrade, or cancel anytime.
         </p>
 
-        {/* Billing toggle */}
         <div className="inline-flex items-center gap-1 bg-muted rounded-full p-1 text-sm">
           <button
             className={`px-4 py-1.5 rounded-full font-medium transition-all ${billingCycle === "monthly" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
@@ -213,7 +191,6 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* Promo Code Section */}
       <section className="max-w-md mx-auto px-4 pb-8">
         <div className="bg-muted/50 border rounded-lg p-4">
           <div className="flex items-center gap-2 mb-2">
@@ -248,7 +225,6 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* Plans */}
       <section className="max-w-5xl mx-auto px-4 pb-20">
         {loading ? (
           <div className="flex items-center justify-center py-20">
@@ -276,7 +252,6 @@ export default function PricingPage() {
         )}
       </section>
 
-      {/* FAQ */}
       <section className="border-t bg-muted/30 py-16 px-4">
         <div className="max-w-2xl mx-auto">
           <h2 className="text-2xl font-bold text-foreground text-center mb-8">Frequently Asked Questions</h2>
@@ -296,6 +271,6 @@ export default function PricingPage() {
           </div>
         </div>
       </section>
-    </div>
+    </LegalLayout>
   );
 }

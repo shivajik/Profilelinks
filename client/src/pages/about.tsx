@@ -1,21 +1,12 @@
 import { Link as WouterLink } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Users, Target, Heart } from "lucide-react";
+import { Users, Target, Heart } from "lucide-react";
+import LegalLayout from "@/components/legal-layout";
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-background/80 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-4xl mx-auto flex items-center gap-4 px-6 py-3">
-          <WouterLink href="/">
-            <Button variant="ghost" size="icon"><ArrowLeft className="w-4 h-4" /></Button>
-          </WouterLink>
-          <span className="text-lg font-bold tracking-tight">
-            <span className="text-primary">Visi</span>Cardly
-          </span>
-        </div>
-      </header>
-      <main className="max-w-3xl mx-auto px-6 py-16">
+    <LegalLayout>
+      <div className="max-w-3xl mx-auto px-6 py-16">
         <h1 className="text-4xl font-extrabold text-foreground mb-6">About VisiCardly</h1>
         <p className="text-lg text-muted-foreground mb-10 leading-relaxed">
           VisiCardly is your all-in-one digital business card platform designed for creators, businesses, and teams who want a beautiful, customizable page to share their online presence.
@@ -44,7 +35,7 @@ export default function AboutPage() {
             <Button size="lg">Create your page</Button>
           </WouterLink>
         </div>
-      </main>
-    </div>
+      </div>
+    </LegalLayout>
   );
 }
