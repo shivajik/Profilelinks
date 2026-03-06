@@ -1,16 +1,9 @@
-import { useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import LegalLayout from "@/components/legal-layout";
 
 export default function PrivacyPage() {
-  const [, navigate] = useLocation();
   return (
-    <div className="min-h-screen bg-background">
+    <LegalLayout>
       <div className="max-w-3xl mx-auto px-4 py-12">
-        <Button variant="ghost" size="sm" className="mb-8" onClick={() => navigate("/")}>
-          <ArrowLeft className="h-4 w-4 mr-2" /> Back to Home
-        </Button>
-
         <h1 className="text-4xl font-bold text-foreground mb-2">Privacy Policy</h1>
         <p className="text-muted-foreground mb-10">Last updated: February 19, 2026</p>
 
@@ -112,6 +105,6 @@ export default function PrivacyPage() {
           </section>
         </div>
       </div>
-    </div>
+    </LegalLayout>
   );
 }
