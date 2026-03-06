@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import bcrypt from "bcryptjs";
 import { db, storage } from "./storage";
 import { requireAdminAuth } from "./admin-auth";
+import { rateLimit } from "./rate-limit";
 import {
   adminUsers,
   users,
@@ -19,7 +20,9 @@ import { fromZodError } from "zod-validation-error";
 const router = Router();
 
 // ─── Seed first admin (only if none exists) ────────────────────────────────
-router.post("/api/admin/seed", async (req: Request, res: Response) => {
+const adminAuthLimiter = rateLimit("admin-auth", 5, 15 * 60 * 1000); // 5 attempts per 15 min
+
+router.post("/api/admin/seed", adminAuthLimiter, async (req: Request, res: Response) => {
   try {
     const result = createAdminSchema.safeParse(req.body);
     if (!result.success) {
@@ -53,7 +56,7 @@ router.get("/api/admin/exists", async (req: Request, res: Response) => {
 });
 
 // ─── Admin Login ────────────────────────────────────────────────────────────
-router.post("/api/admin/login", async (req: Request, res: Response) => {
+router.post("/api/admin/login", adminAuthLimiter, async (req: Request, res: Response) => {
   try {
     const result = adminLoginSchema.safeParse(req.body);
     if (!result.success) {
@@ -80,8 +83,10 @@ router.post("/api/admin/login", async (req: Request, res: Response) => {
 
 // ─── Admin Logout ───────────────────────────────────────────────────────────
 router.post("/api/admin/logout", (req: Request, res: Response) => {
-  (req.session as any).adminUserId = undefined;
-  res.json({ message: "Logged out" });
+  req.session.destroy((err) => {
+    res.clearCookie("connect.sid");
+    res.json({ message: "Logged out" });
+  });
 });
 
 // ─── Admin Me ───────────────────────────────────────────────────────────────

@@ -16,6 +16,7 @@ import paymentRouter from "./payment-routes";
 import affiliateRouter from "./affiliate-routes";
 import { getUserPlanLimits } from "./plan-limits";
 import { sendInviteEmail, sendCredentialsEmail } from "./email";
+import { rateLimit } from "./rate-limit";
 
 declare module "express-session" {
   interface SessionData {
@@ -96,7 +97,7 @@ export async function registerRoutes(
         pool: sessionPool,
         createTableIfMissing: true,
       }),
-      secret: process.env.SESSION_SECRET || "linkfolio-secret-key",
+      secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex"),
       resave: false,
       saveUninitialized: false,
       cookie: {
@@ -108,7 +109,11 @@ export async function registerRoutes(
     })
   );
 
-  app.post("/api/auth/register", async (req, res) => {
+  // Rate limiters
+  const authLimiter = rateLimit("auth", 10, 15 * 60 * 1000); // 10 attempts per 15 min
+  const registerLimiter = rateLimit("register", 5, 60 * 60 * 1000); // 5 per hour
+
+  app.post("/api/auth/register", registerLimiter, async (req, res) => {
     try {
       const result = registerSchema.safeParse(req.body);
       if (!result.success) {
@@ -237,6 +242,12 @@ export async function registerRoutes(
       }
 
       await storage.ensureHomePage(user.id);
+
+      // Block disabled demo users
+      if (user.isDisabled) {
+        return res.status(403).json({ message: "This demo account has been disabled." });
+      }
+
       req.session.userId = user.id;
       const { password: _, ...safeUser } = user;
       res.json(safeUser);
@@ -245,7 +256,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/auth/login", async (req, res) => {
+  app.post("/api/auth/login", authLimiter, async (req, res) => {
     try {
       const result = loginSchema.safeParse(req.body);
       if (!result.success) {
@@ -262,6 +273,11 @@ export async function registerRoutes(
       const valid = await bcrypt.compare(password, user.password);
       if (!valid) {
         return res.status(401).json({ message: "Invalid email or password" });
+      }
+
+      // Block disabled users
+      if (user.isDisabled) {
+        return res.status(403).json({ message: "Your account has been disabled. Please contact support." });
       }
 
       await storage.ensureHomePage(user.id);
@@ -289,6 +305,11 @@ export async function registerRoutes(
     const user = await storage.getUser(req.session.userId);
     if (!user) {
       return res.status(401).json({ message: "User not found" });
+    }
+    // Auto-logout disabled users
+    if (user.isDisabled) {
+      req.session.destroy(() => {});
+      return res.status(403).json({ message: "Your account has been disabled." });
     }
     const { password: _, ...safeUser } = user;
     res.json(safeUser);
@@ -1570,6 +1591,11 @@ export async function registerRoutes(
       const contactId = req.params.id as string;
       let updated = await storage.updateContact(contactId, user.id, result.data);
       if (!updated && user.teamId) {
+        // Only owners/admins can update team contacts
+        const memberRole = await getTeamMemberRole(user.teamId, user.id);
+        if (!memberRole || !["owner", "admin"].includes(memberRole)) {
+          return res.status(403).json({ message: "Only team owners/admins can edit company contacts" });
+        }
         const allContacts = await storage.getContacts({ teamId: user.teamId });
         const contact = allContacts.find(c => c.id === contactId);
         if (contact && contact.teamId === user.teamId) {
