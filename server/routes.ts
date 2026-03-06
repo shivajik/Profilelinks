@@ -333,6 +333,17 @@ export async function registerRoutes(
       if (!updated) {
         return res.status(404).json({ message: "User not found" });
       }
+
+      if (result.data.displayName !== undefined) {
+        const memberships = await storage.getTeamMembershipsByUserId(req.session.userId!);
+        const activeMembership = memberships.find(m => m.status === "activated");
+        if (activeMembership) {
+          await storage.updateTeamMember(activeMembership.id, activeMembership.teamId, {
+            businessName: result.data.displayName,
+          } as any);
+        }
+      }
+
       const { password: _, ...safeUser } = updated;
       res.json(safeUser);
     } catch (error: any) {
@@ -2200,15 +2211,20 @@ export async function registerRoutes(
     try {
       const userId = req.session.userId!;
       const memberships = await storage.getTeamMembershipsByUserId(userId);
-      if (!memberships.length) {
-        return res.status(404).json({ message: "No team membership found" });
+      const membership = memberships.find(m => m.status === "activated");
+      if (!membership) {
+        return res.status(404).json({ message: "No active team membership found" });
       }
-      const membership = memberships[0];
       const result = updateBusinessProfileSchema.safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({ message: fromZodError(result.error).message });
       }
       const updated = await storage.updateTeamMember(membership.id, membership.teamId, result.data);
+
+      if (result.data.businessName !== undefined) {
+        await storage.updateUser(userId, { displayName: result.data.businessName });
+      }
+
       res.json(updated);
     } catch (error: any) {
       console.error("Business profile update error:", error);

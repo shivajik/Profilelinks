@@ -275,6 +275,7 @@ export default function Dashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/business-profile"] });
       setHeaderDirty(false);
       toast({ title: "Profile updated!" });
     },

@@ -59,6 +59,7 @@ export function BusinessProfileSection() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/business-profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       toast({ title: "Business profile updated!" });
     },
     onError: () => {
