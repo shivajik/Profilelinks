@@ -544,8 +544,8 @@ export default function PublicProfile(props?: any) {
 
         <div className="mt-12 text-center">
           <a href="/" className="text-xs transition-opacity hover:opacity-80">
-            <span style={{ color: template.accent, opacity: 0.6 }}>link</span>
-            <span className={`${template.textColor}`} style={{ opacity: 0.4 }}>folio</span>
+            <span style={{ color: template.accent, opacity: 0.6 }}>Visi</span>
+            <span className={`${template.textColor}`} style={{ opacity: 0.4 }}>Cardly</span>
           </a>
         </div>
       </div>

@@ -456,7 +456,7 @@ export default function Dashboard() {
           <SidebarContent>
             <div className="px-4 py-4">
               <span className="text-lg font-bold tracking-tight">
-                <span className="text-primary">link</span>folio
+                <span className="text-primary">Visi</span>Cardly
               </span>
             </div>
             <SidebarGroup>
