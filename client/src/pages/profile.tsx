@@ -339,22 +339,40 @@ export default function PublicProfile(props?: any) {
                   const contactItems = [
                     { icon: Mail, value: teamBranding?.companyEmail },
                     { icon: Phone, value: teamBranding?.companyPhone },
-                    { icon: Phone, value: teamBranding?.memberPhone },
                     { icon: Phone, value: teamBranding?.companyContact },
                     { icon: Globe, value: teamBranding?.companyWebsite },
                     { icon: MapPin, value: teamBranding?.companyAddress },
                   ].filter(item => item.value);
-                  if (contactItems.length === 0) return null;
+                  const userContactItems = [
+                    ...(teamBranding?.memberPhone ? [{ icon: Phone, value: teamBranding.memberPhone }] : []),
+                  ];
+                  if (contactItems.length === 0 && userContactItems.length === 0) return null;
                   return (
-                    <div className="space-y-2 mb-4" data-testid="corporate-contact-info">
-                      {contactItems.map((item, i) => (
-                        <div key={i} className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: brandColor + "20" }}>
-                            <item.icon className="w-3.5 h-3.5" style={{ color: brandColor }} />
-                          </div>
-                          <span className="text-xs text-foreground">{item.value}</span>
+                    <div className="space-y-3 mb-4">
+                      {userContactItems.length > 0 && (
+                        <div className="space-y-2" data-testid="user-contact-info">
+                          {userContactItems.map((item, i) => (
+                            <div key={`user-${i}`} className="flex items-center gap-2.5">
+                              <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: brandColor + "20" }}>
+                                <item.icon className="w-3.5 h-3.5" style={{ color: brandColor }} />
+                              </div>
+                              <span className="text-xs text-foreground">{item.value}</span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
+                      {contactItems.length > 0 && (
+                        <div className="space-y-2" data-testid="corporate-contact-info">
+                          {contactItems.map((item, i) => (
+                            <div key={i} className="flex items-center gap-2.5">
+                              <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: brandColor + "20" }}>
+                                <item.icon className="w-3.5 h-3.5" style={{ color: brandColor }} />
+                              </div>
+                              <span className="text-xs text-foreground">{item.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
