@@ -200,7 +200,32 @@ export default function AdminDashboard() {
 
   const fetchStats      = useCallback(async () => { const r = await fetch("/api/admin/stats");    if (r.ok) setStats(await r.json()); }, []);
   const fetchPlans      = useCallback(async () => { const r = await fetch("/api/admin/plans");    if (r.ok) setPlans(await r.json()); }, []);
-  const fetchUsers      = useCallback(async () => { const r = await fetch("/api/admin/users");    if (r.ok) { const d = await r.json(); setAdminUsers(d.users ?? []); } }, []);
+  const [totalUsersCount, setTotalUsersCount] = useState(0);
+  const [totalUserPages, setTotalUserPages] = useState(1);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const fetchUsers = useCallback(async (page?: number, search?: string, filter?: string) => {
+    const p = page ?? 1;
+    const s = search ?? "";
+    const f = filter ?? "all";
+    const params = new URLSearchParams({ page: String(p), limit: String(USERS_PER_PAGE) });
+    if (s) params.set("search", s);
+    if (f && f !== "all") params.set("accountType", f);
+    setLoadingUsers(true);
+    const r = await fetch(`/api/admin/users?${params}`);
+    if (r.ok) {
+      const d = await r.json();
+      setAdminUsers(d.users ?? []);
+      setTotalUsersCount(d.total ?? 0);
+      const pages = Math.max(1, Math.ceil((d.total ?? 0) / USERS_PER_PAGE));
+      setTotalUserPages(pages);
+      if (p > pages) {
+        setUserPage(pages);
+        fetchUsers(pages, s, f);
+        return;
+      }
+    }
+    setLoadingUsers(false);
+  }, []);
   const fetchPayments   = useCallback(async () => { const r = await fetch("/api/admin/payments"); if (r.ok) { const d = await r.json(); setAdminPayments(d.payments ?? []); } }, []);
   const fetchAffiliates = useCallback(async () => { const r = await fetch("/api/admin/affiliates"); if (r.ok) setAdminAffiliates(await r.json()); }, []);
   const fetchPromoCodes = useCallback(async () => { const r = await fetch("/api/admin/promo-codes"); if (r.ok) setAdminPromoCodes(await r.json()); }, []);
@@ -225,7 +250,7 @@ export default function AdminDashboard() {
       const j = await r.json();
       if (!r.ok) throw new Error(j.message);
       toast({ title: j.message });
-      fetchUsers();
+      fetchUsers(userPage, userSearchApplied, userTypeFilter);
     } catch (err: any) {
       toast({ title: "Failed", description: err.message, variant: "destructive" });
     } finally {
@@ -241,7 +266,7 @@ export default function AdminDashboard() {
       const j = await r.json();
       if (!r.ok) throw new Error(j.message);
       toast({ title: "User deleted" });
-      fetchUsers(); fetchStats();
+      fetchUsers(userPage, userSearchApplied, userTypeFilter); fetchStats();
     } catch (err: any) {
       toast({ title: "Failed", description: err.message, variant: "destructive" });
     } finally {
@@ -323,20 +348,7 @@ export default function AdminDashboard() {
     setDownloadingReport(false);
   };
 
-  const filteredUsers = adminUsers.filter((u) => {
-    if (userTypeFilter === "team" && u.accountType !== "team") return false;
-    if (userTypeFilter === "personal" && u.accountType !== "personal") return false;
-    if (userTypeFilter === "disabled" && !u.isDisabled) return false;
-    if (userSearchApplied) {
-      const q = userSearchApplied.toLowerCase();
-      const name = (u.displayName || u.username || "").toLowerCase();
-      const email = (u.email || "").toLowerCase();
-      if (!name.includes(q) && !email.includes(q)) return false;
-    }
-    return true;
-  });
-  const totalUserPages = Math.max(1, Math.ceil(filteredUsers.length / USERS_PER_PAGE));
-  const paginatedUsers = filteredUsers.slice((userPage - 1) * USERS_PER_PAGE, userPage * USERS_PER_PAGE);
+  const paginatedUsers = adminUsers;
 
   if (!admin) {
     return <div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
@@ -483,7 +495,7 @@ export default function AdminDashboard() {
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
                 <div>
                   <h2 className="text-2xl font-bold text-foreground">Users</h2>
-                  <p className="text-muted-foreground text-sm">{filteredUsers.length} of {adminUsers.length} users</p>
+                  <p className="text-muted-foreground text-sm">{totalUsersCount} users{userSearchApplied || userTypeFilter !== "all" ? " (filtered)" : ""}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="relative">
@@ -497,11 +509,12 @@ export default function AdminDashboard() {
                         if (e.key === "Enter") {
                           setUserSearchApplied(userSearchQuery);
                           setUserPage(1);
+                          fetchUsers(1, userSearchQuery, userTypeFilter);
                         }
                       }}
                     />
                   </div>
-                  <Select value={userTypeFilter} onValueChange={(v) => { setUserTypeFilter(v); setUserPage(1); }}>
+                  <Select value={userTypeFilter} onValueChange={(v) => { setUserTypeFilter(v); setUserPage(1); fetchUsers(1, userSearchApplied, v); }}>
                     <SelectTrigger className="w-36">
                       <SelectValue placeholder="Filter by type" />
                     </SelectTrigger>
@@ -596,16 +609,16 @@ export default function AdminDashboard() {
                     Page {userPage} of {totalUserPages}
                   </p>
                   <div className="flex items-center gap-1">
-                    <Button variant="outline" size="sm" disabled={userPage <= 1} onClick={() => setUserPage(userPage - 1)}>Previous</Button>
+                    <Button variant="outline" size="sm" disabled={userPage <= 1} onClick={() => { const p = userPage - 1; setUserPage(p); fetchUsers(p); }}>Previous</Button>
                     {Array.from({ length: Math.min(totalUserPages, 5) }, (_, i) => {
                       const page = totalUserPages <= 5 ? i + 1 : Math.max(1, Math.min(userPage - 2, totalUserPages - 4)) + i;
                       return (
-                        <Button key={page} variant={page === userPage ? "default" : "outline"} size="sm" className="w-8" onClick={() => setUserPage(page)}>
+                        <Button key={page} variant={page === userPage ? "default" : "outline"} size="sm" className="w-8" onClick={() => { setUserPage(page); fetchUsers(page); }}>
                           {page}
                         </Button>
                       );
                     })}
-                    <Button variant="outline" size="sm" disabled={userPage >= totalUserPages} onClick={() => setUserPage(userPage + 1)}>Next</Button>
+                    <Button variant="outline" size="sm" disabled={userPage >= totalUserPages} onClick={() => { const p = userPage + 1; setUserPage(p); fetchUsers(p); }}>Next</Button>
                   </div>
                 </div>
               )}

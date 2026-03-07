@@ -14,7 +14,7 @@ import {
   createPricingPlanSchema,
   updatePricingPlanSchema,
 } from "@shared/schema";
-import { eq, desc, count, sql } from "drizzle-orm";
+import { eq, desc, count, sql, and, or, ilike } from "drizzle-orm";
 import { fromZodError } from "zod-validation-error";
 
 const router = Router();
@@ -213,12 +213,34 @@ router.delete("/api/admin/plans/:id", requireAdminAuth, async (req: Request, res
 // ─── Users List ─────────────────────────────────────────────────────────────
 router.get("/api/admin/users", requireAdminAuth, async (req: Request, res: Response) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.max(1, Math.min(parseInt(req.query.limit as string) || 10, 100));
     const offset = (page - 1) * limit;
     const accountType = req.query.accountType as string | undefined;
+    const search = (req.query.search as string || "").trim();
 
-    let query = db
+    const conditions = [];
+
+    if (accountType === "disabled") {
+      conditions.push(eq(users.isDisabled, true));
+    } else if (accountType && accountType !== "all") {
+      conditions.push(eq(users.accountType, accountType));
+    }
+
+    if (search) {
+      const pattern = `%${search}%`;
+      conditions.push(
+        or(
+          ilike(users.displayName, pattern),
+          ilike(users.username, pattern),
+          ilike(users.email, pattern),
+        )!
+      );
+    }
+
+    const whereCondition = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const allUsers = await db
       .select({
         id: users.id,
         username: users.username,
@@ -230,17 +252,11 @@ router.get("/api/admin/users", requireAdminAuth, async (req: Request, res: Respo
         isDisabled: users.isDisabled,
       })
       .from(users)
+      .where(whereCondition)
       .orderBy(desc(users.id))
       .limit(limit)
       .offset(offset);
 
-    if (accountType && accountType !== "all") {
-      (query as any).where(sql`${users.accountType} = ${accountType}`);
-    }
-
-    const allUsers = await query;
-
-    // Get subscription for each user in batch
     const usersWithSubs = await Promise.all(
       allUsers.map(async (u) => {
         const subs = await db
@@ -258,8 +274,10 @@ router.get("/api/admin/users", requireAdminAuth, async (req: Request, res: Respo
       })
     );
 
-    const [totalResult] = await db.select({ count: count() }).from(users);
-    res.json({ users: usersWithSubs, total: Number(totalResult?.count ?? 0), page, limit });
+    const [totalResult] = await db.select({ count: count() }).from(users).where(whereCondition);
+    const total = Number(totalResult?.count ?? 0);
+
+    res.json({ users: usersWithSubs, total, page, limit });
   } catch (error: any) {
     console.error("Users error:", error);
     res.status(500).json({ message: "Failed to fetch users" });
