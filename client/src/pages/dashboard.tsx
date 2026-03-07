@@ -153,7 +153,7 @@ function getVimeoEmbedUrl(url: string): string | null {
   return null;
 }
 
-function FeatureLockedPanel({ feature, description }: { feature: string; description: string }) {
+function FeatureLockedPanel({ feature, description, onNavigateBilling }: { feature: string; description: string; onNavigateBilling?: () => void }) {
   const [, navigate] = useLocation();
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center">
@@ -163,7 +163,7 @@ function FeatureLockedPanel({ feature, description }: { feature: string; descrip
       <h3 className="text-lg font-semibold mb-2">{feature} — Locked</h3>
       <p className="text-sm text-muted-foreground mb-4 max-w-sm">{description}</p>
       <p className="text-sm text-muted-foreground mb-4">Upgrade your plan to unlock this feature.</p>
-      <Button onClick={() => navigate("/pricing")}>View Plans</Button>
+      <Button onClick={() => onNavigateBilling ? onNavigateBilling() : navigate("/pricing")}>View Plans</Button>
     </div>
   );
 }
@@ -176,7 +176,10 @@ export default function Dashboard() {
   const [addingBlock, setAddingBlock] = useState(false);
   const [addingSocial, setAddingSocial] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [activeSection, setActiveSection] = useState<string>("design");
+  const [activeSection, setActiveSection] = useState<string>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("section") || "design";
+  });
   const [previewMode, setPreviewMode] = useState<"mobile" | "desktop">("mobile");
   const [headerName, setHeaderName] = useState("");
   const [headerBio, setHeaderBio] = useState("");
@@ -679,7 +682,7 @@ export default function Dashboard() {
                 >
                   <div className="px-4 pb-4 pt-1 space-y-4">
                     <div className="flex items-center justify-between gap-4 border rounded-md p-3">
-                      <span className="text-sm font-medium">Profile Picture <span className="text-[10px] text-muted-foreground font-normal">(Max 10MB)</span></span>
+                      <span className="text-sm font-medium">Profile Picture <span className="text-[10px] text-muted-foreground font-normal">(Max 1MB)</span></span>
                       <div className="relative group">
                         <input
                           type="file"
@@ -689,8 +692,8 @@ export default function Dashboard() {
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (!file) return;
-                            if (file.size > 10 * 1024 * 1024) {
-                              toast({ title: "File too large", description: "Maximum file size is 10MB.", variant: "destructive" });
+                            if (file.size > 1 * 1024 * 1024) {
+                              toast({ title: "File too large", description: "Maximum file size is 1MB.", variant: "destructive" });
                               return;
                             }
                             const label = document.getElementById('dash-avatar-upload-label');
@@ -706,7 +709,7 @@ export default function Dashboard() {
                                 toast({ title: "Profile picture updated!" });
                               } else {
                                 const errData = await res.json().catch(() => ({}));
-                                toast({ title: "Upload failed", description: errData.message || "Max 10MB", variant: "destructive" });
+                                toast({ title: "Upload failed", description: errData.message || "Max 1MB", variant: "destructive" });
                               }
                             } catch {
                               toast({ title: "Upload failed", variant: "destructive" });
@@ -731,7 +734,7 @@ export default function Dashboard() {
                     </div>
                     {!isTeamMember && (
                     <div className="border rounded-md p-3 space-y-2">
-                      <span className="text-sm font-medium">Cover Image <span className="text-[10px] text-muted-foreground font-normal">(Max 10MB)</span></span>
+                      <span className="text-sm font-medium">Cover Image <span className="text-[10px] text-muted-foreground font-normal">(Max 1MB)</span></span>
                        <div className="relative group w-full h-20 rounded-md overflow-hidden bg-muted" id="dash-cover-container">
                         {user.coverImage ? (
                           <>
@@ -768,8 +771,8 @@ export default function Dashboard() {
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (!file) return;
-                            if (file.size > 10 * 1024 * 1024) {
-                              toast({ title: "File too large", description: "Maximum file size is 10MB. Please choose a smaller image.", variant: "destructive" });
+                            if (file.size > 1 * 1024 * 1024) {
+                              toast({ title: "File too large", description: "Maximum file size is 1MB. Please choose a smaller image.", variant: "destructive" });
                               return;
                             }
                             const coverContainer = document.getElementById('dash-cover-container');
@@ -785,7 +788,7 @@ export default function Dashboard() {
                                 toast({ title: "Cover image updated!" });
                               } else {
                                 const errData = await res.json().catch(() => ({}));
-                                toast({ title: "Upload failed", description: errData.message || "Please try a smaller image (max 10MB)", variant: "destructive" });
+                                toast({ title: "Upload failed", description: errData.message || "Please try a smaller image (max 1MB)", variant: "destructive" });
                               }
                             } catch {
                               toast({ title: "Upload failed", description: "Please try again", variant: "destructive" });
@@ -1201,7 +1204,7 @@ export default function Dashboard() {
         open={limitDialogOpen}
         onOpenChange={setLimitDialogOpen}
         message={limitMessage}
-        onUpgrade={() => navigate("/pricing")}
+        onUpgrade={() => setActiveSection("billing")}
       />
     </SidebarProvider>
   );
@@ -1331,8 +1334,8 @@ function SettingsPanel({
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
-                  if (file.size > 10 * 1024 * 1024) {
-                    toast({ title: "File too large", description: "Maximum file size is 10MB.", variant: "destructive" });
+                  if (file.size > 1 * 1024 * 1024) {
+                    toast({ title: "File too large", description: "Maximum file size is 1MB.", variant: "destructive" });
                     return;
                   }
                   const formData = new FormData();
@@ -1343,7 +1346,7 @@ function SettingsPanel({
                       const data = await res.json();
                       profileMutation.mutate({ profileImage: data.url });
                     } else {
-                      toast({ title: "Upload failed", description: "Max 10MB", variant: "destructive" });
+                      toast({ title: "Upload failed", description: "Max 1MB", variant: "destructive" });
                     }
                   } catch {
                     toast({ title: "Upload failed", variant: "destructive" });
@@ -3288,8 +3291,8 @@ function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, isSelf, to
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
-                      if (file.size > 10 * 1024 * 1024) {
-                        toast({ title: "File too large", description: "Maximum file size is 10MB.", variant: "destructive" });
+                      if (file.size > 1 * 1024 * 1024) {
+                        toast({ title: "File too large", description: "Maximum file size is 1MB.", variant: "destructive" });
                         return;
                       }
                       setUploadingImage(true);
@@ -4066,7 +4069,7 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
         open={limitDialogOpen}
         onOpenChange={setLimitDialogOpen}
         message={limitMessage}
-        onUpgrade={() => navigate("/pricing")}
+        onUpgrade={() => navigate("/dashboard?section=billing")}
       />
     </div>
   );
@@ -4305,8 +4308,8 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
 
   const handleUpload = async (file: File, field: "coverPhoto" | "companyLogo") => {
     if (!selectedTemplate) return;
-    if (file.size > 10 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Maximum file size is 10MB. Please choose a smaller image.", variant: "destructive" });
+    if (file.size > 1 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Maximum file size is 1MB. Please choose a smaller image.", variant: "destructive" });
       return;
     }
     setUploadingField(field);
@@ -4319,7 +4322,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
         updateField(field, url);
       } else {
         const errData = await res.json().catch(() => ({}));
-        toast({ title: "Upload failed", description: errData.message || "Max 10MB", variant: "destructive" });
+        toast({ title: "Upload failed", description: errData.message || "Max 1MB", variant: "destructive" });
       }
     } catch {
       toast({ title: "Upload failed", description: "Please try again", variant: "destructive" });
@@ -4604,7 +4607,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                   <h3 className="text-sm font-medium text-muted-foreground">Branding</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                      <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Cover Image <span className="text-[10px]">(Max 10MB)</span></Label>
+                      <Label className="text-xs text-muted-foreground">Cover Image <span className="text-[10px]">(Max 1MB)</span></Label>
                       <div className="relative h-24 rounded-md border border-dashed bg-muted/30 overflow-hidden group">
                         {uploadingField === "coverPhoto" ? (
                           <div className="flex flex-col items-center justify-center h-full gap-1.5">
@@ -4640,7 +4643,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Company Logo <span className="text-[10px]">(Max 10MB)</span></Label>
+                      <Label className="text-xs text-muted-foreground">Company Logo <span className="text-[10px]">(Max 1MB)</span></Label>
                       <div className="flex items-center gap-3">
                         <div className="relative w-16 h-16 rounded-full border bg-muted/30 overflow-hidden group shrink-0">
                           {uploadingField === "companyLogo" ? (

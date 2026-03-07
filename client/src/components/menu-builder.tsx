@@ -205,7 +205,7 @@ export function MenuBuilder() {
         <p className="text-sm text-muted-foreground mb-4 max-w-sm">
           Create digital menus with sections and products. Upgrade your plan to unlock this feature.
         </p>
-        <Button onClick={() => navigate("/pricing")}>View Plans</Button>
+        <Button onClick={() => navigate("/dashboard?section=billing")}>View Plans</Button>
       </div>
     );
   }

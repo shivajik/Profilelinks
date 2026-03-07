@@ -50,7 +50,7 @@ export function PlanUsageBanner() {
             )}
           </div>
           {anyAtLimit && (
-            <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => navigate("/pricing")}>
+            <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => navigate("/dashboard?section=billing")}>
               <AlertTriangle className="w-3 h-3 mr-1" />
               Upgrade
             </Button>
