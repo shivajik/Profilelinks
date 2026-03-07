@@ -557,9 +557,7 @@ export default function PublicProfile(props?: any) {
                 </a>
               ))}
             </div>
-          ) : (
-            <p className={`text-center text-sm ${template.textColor} opacity-60`}>No content yet.</p>
-          )}
+          ) : null}
         </div>
 
         <div className="mt-12 text-center">
