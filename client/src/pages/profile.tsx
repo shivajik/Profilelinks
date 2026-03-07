@@ -97,6 +97,7 @@ type TeamBranding = {
   jobTitle?: string;
   teamName?: string;
   memberEmail?: string;
+  memberPhone?: string;
   companySocials?: Array<{ platform: string; url: string }>;
 };
 
@@ -338,6 +339,7 @@ export default function PublicProfile(props?: any) {
                   const contactItems = [
                     { icon: Mail, value: teamBranding?.companyEmail },
                     { icon: Phone, value: teamBranding?.companyPhone },
+                    { icon: Phone, value: teamBranding?.memberPhone },
                     { icon: Phone, value: teamBranding?.companyContact },
                     { icon: Globe, value: teamBranding?.companyWebsite },
                     { icon: MapPin, value: teamBranding?.companyAddress },

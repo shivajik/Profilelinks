@@ -186,7 +186,7 @@ export default function Onboarding() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b bg-background/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 px-6 py-4">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center sm:justify-between gap-2 sm:gap-4 px-6 py-4">
           <span className="text-lg font-bold tracking-tight">
             <span className="text-primary">Visi</span>Cardly
           </span>

@@ -785,6 +785,7 @@ export async function registerRoutes(
           templateData: {
             companyName: result.data.name || "",
             companyWebsite: result.data.websiteUrl || "",
+            companyLogo: result.data.logoUrl || "",
             themeColor: "#6C5CE7",
             font: "inter",
           },
@@ -1732,6 +1733,7 @@ export async function registerRoutes(
         jobTitle: member?.jobTitle || undefined,
         teamName: team.name || undefined,
         memberEmail: user.email || undefined,
+        memberPhone: member?.businessPhone || undefined,
         companySocials: tData.companySocials || undefined,
       };
 
@@ -1806,6 +1808,7 @@ export async function registerRoutes(
         font?: string;
         jobTitle?: string;
         teamName?: string;
+        memberPhone?: string;
         companySocials?: Array<{ platform: string; url: string }>;
       } | null = null;
 
@@ -1845,6 +1848,7 @@ export async function registerRoutes(
           font: tData.font || undefined,
           jobTitle: member?.jobTitle || undefined,
           teamName: team?.name || undefined,
+          memberPhone: member?.businessPhone || undefined,
           companySocials: tData.companySocials || undefined,
         };
 
