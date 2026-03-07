@@ -167,6 +167,18 @@ pool.query(`
   ALTER TABLE IF EXISTS team_members ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'activated';
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS must_change_password boolean NOT NULL DEFAULT false;
   ALTER TABLE IF EXISTS teams ADD COLUMN IF NOT EXISTS slug text;
+
+  CREATE INDEX IF NOT EXISTS idx_pages_user_id ON pages(user_id);
+  CREATE INDEX IF NOT EXISTS idx_links_page_id ON links(page_id);
+  CREATE INDEX IF NOT EXISTS idx_links_user_id ON links(user_id);
+  CREATE INDEX IF NOT EXISTS idx_socials_user_id ON socials(user_id);
+  CREATE INDEX IF NOT EXISTS idx_blocks_page_id ON blocks(page_id);
+  CREATE INDEX IF NOT EXISTS idx_blocks_user_id ON blocks(user_id);
+  CREATE INDEX IF NOT EXISTS idx_teams_slug ON teams(slug);
+  CREATE INDEX IF NOT EXISTS idx_teams_owner_id ON teams(owner_id);
+  CREATE INDEX IF NOT EXISTS idx_team_members_user_id ON team_members(user_id);
+  CREATE INDEX IF NOT EXISTS idx_team_members_team_id ON team_members(team_id);
+  CREATE INDEX IF NOT EXISTS idx_team_templates_team_id ON team_templates(team_id);
 `).then(async () => {
   // Backfill slugs for existing teams that don't have one
   try {
@@ -534,12 +546,6 @@ export class DatabaseStorage implements IStorage {
 
   async getTeam(id: string): Promise<Team | undefined> {
     const [team] = await db.select().from(teams).where(eq(teams.id, id));
-    // Auto-generate slug if missing
-    if (team && !team.slug) {
-      const slug = this.generateSlug(team.name);
-      await db.update(teams).set({ slug }).where(eq(teams.id, id));
-      team.slug = slug;
-    }
     return team;
   }
 
@@ -549,20 +555,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTeamBySlug(slug: string): Promise<Team | undefined> {
-    // First try exact slug match
     const [team] = await db.select().from(teams).where(eq(teams.slug, slug));
-    if (team) return team;
-
-    // Fallback: find team whose name generates this slug (for teams not yet backfilled)
-    const allTeams = await db.select().from(teams);
-    const match = allTeams.find(t => this.generateSlug(t.name) === slug);
-    if (match) {
-      // Backfill the slug
-      await db.update(teams).set({ slug }).where(eq(teams.id, match.id));
-      match.slug = slug;
-      return match;
-    }
-    return undefined;
+    return team;
   }
 
   async updateTeam(id: string, data: Partial<Pick<Team, "name" | "slug" | "size" | "websiteUrl" | "logoUrl">>): Promise<Team | undefined> {

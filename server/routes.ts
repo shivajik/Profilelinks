@@ -1655,12 +1655,20 @@ export async function registerRoutes(
       const companySlug = (req.params.companySlug || "").toLowerCase();
       const memberUsername = req.params.memberUsername;
 
-      const user = await storage.getUserByUsername(memberUsername);
+      const [user, teamBySlug] = await Promise.all([
+        storage.getUserByUsername(memberUsername),
+        storage.getTeamBySlug(companySlug),
+      ]);
+
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const memberships = await storage.getTeamMembershipsByUserId(user.id);
+      const [memberships, memberDirect] = await Promise.all([
+        storage.getTeamMembershipsByUserId(user.id),
+        teamBySlug ? storage.getTeamMemberByUserId(teamBySlug.id, user.id) : Promise.resolve(undefined),
+      ]);
+
       const activeMemberships = memberships.filter((m) => m.status === "activated");
       const slugifyTeamName = (name: string) =>
         name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").substring(0, 50) || "team";
@@ -1669,13 +1677,8 @@ export async function registerRoutes(
         (m) => (m.team.slug || "").toLowerCase() === companySlug || slugifyTeamName(m.team.name) === companySlug,
       );
 
-      let team = membershipBySlug?.team;
-      let member: any = membershipBySlug ?? null;
-
-      // Fallback for owner URLs or legacy data where membership join is unavailable
-      if (!team) {
-        team = await storage.getTeamBySlug(companySlug);
-      }
+      let team = membershipBySlug?.team ?? teamBySlug;
+      let member: any = membershipBySlug ?? memberDirect ?? null;
 
       if (!team) {
         return res.status(404).json({ message: "Company not found" });
@@ -1694,9 +1697,11 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Member not found in this team" });
       }
 
-      // Serve the profile with team branding
-      const userPages = await storage.getPagesByUserId(user.id);
-      const userSocials = await storage.getSocialsByUserId(user.id);
+      const [userPages, userSocials, templates] = await Promise.all([
+        storage.getPagesByUserId(user.id),
+        storage.getSocialsByUserId(user.id),
+        storage.getTeamTemplates(team.id),
+      ]);
 
       const pageSlug = req.query.page as string | undefined;
       let currentPage = userPages.find((p) => p.isHome) || userPages[0];
@@ -1705,17 +1710,13 @@ export async function registerRoutes(
         if (found) currentPage = found;
       }
 
-      const userLinks = currentPage
-        ? await storage.getLinksByPageId(currentPage.id)
-        : await storage.getLinksByUserId(user.id);
-
-      const pageBlocks = currentPage
-        ? await storage.getBlocksByPageId(currentPage.id)
-        : await storage.getBlocksByUserId(user.id);
+      const [userLinks, pageBlocks] = await Promise.all([
+        currentPage ? storage.getLinksByPageId(currentPage.id) : storage.getLinksByUserId(user.id),
+        currentPage ? storage.getBlocksByPageId(currentPage.id) : storage.getBlocksByUserId(user.id),
+      ]);
 
       const { password: _, email: __, ...publicUser } = user;
 
-      const templates = await storage.getTeamTemplates(team.id);
       const defaultTemplate = templates.find((t) => t.isDefault) || templates[0];
       const tData: any = defaultTemplate?.templateData || {};
 
@@ -1760,23 +1761,37 @@ export async function registerRoutes(
 
   app.get("/api/profile/:username", async (req, res) => {
     try {
-      // First try as username
-      let user = await storage.getUserByUsername(req.params.username);
-      
-      // If not found, check if it's a company slug (team owner profile)
-      if (!user) {
-        const team = await storage.getTeamBySlug(req.params.username);
-        if (team) {
-          user = await storage.getUser(team.ownerId);
-        }
+      const [userByName, teamBySlug] = await Promise.all([
+        storage.getUserByUsername(req.params.username),
+        storage.getTeamBySlug(req.params.username),
+      ]);
+
+      let user = userByName;
+      if (!user && teamBySlug) {
+        user = await storage.getUser(teamBySlug.ownerId);
       }
 
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const userPages = await storage.getPagesByUserId(user.id);
-      const userSocials = await storage.getSocialsByUserId(user.id);
+      let teamId = user.accountType === "team" ? user.teamId : null;
+
+      const [userPages, userSocials, memberships, memberDirect] = await Promise.all([
+        storage.getPagesByUserId(user.id),
+        storage.getSocialsByUserId(user.id),
+        teamId ? Promise.resolve([]) : storage.getTeamMembershipsByUserId(user.id),
+        teamId ? storage.getTeamMemberByUserId(teamId, user.id) : Promise.resolve(undefined),
+      ]);
+
+      let member: any = memberDirect ?? null;
+      if (!teamId) {
+        const activeMembership = memberships.find(m => m.status === "activated");
+        if (activeMembership) {
+          teamId = activeMembership.teamId;
+          member = activeMembership;
+        }
+      }
 
       const pageSlug = req.query.page as string | undefined;
       let currentPage = userPages.find((p) => p.isHome) || userPages[0];
@@ -1785,13 +1800,15 @@ export async function registerRoutes(
         if (found) currentPage = found;
       }
 
-      const userLinks = currentPage
-        ? await storage.getLinksByPageId(currentPage.id)
-        : await storage.getLinksByUserId(user.id);
+      const teamDataPromise = teamId
+        ? Promise.all([storage.getTeam(teamId), storage.getTeamTemplates(teamId)])
+        : Promise.resolve([null, []] as const);
 
-      const pageBlocks = currentPage
-        ? await storage.getBlocksByPageId(currentPage.id)
-        : await storage.getBlocksByUserId(user.id);
+      const [[teamData, templates], userLinks, pageBlocks] = await Promise.all([
+        teamDataPromise,
+        currentPage ? storage.getLinksByPageId(currentPage.id) : storage.getLinksByUserId(user.id),
+        currentPage ? storage.getBlocksByPageId(currentPage.id) : storage.getBlocksByUserId(user.id),
+      ]);
 
       const { password: _, email: __, ...publicUser } = user;
 
@@ -1812,47 +1829,27 @@ export async function registerRoutes(
         companySocials?: Array<{ platform: string; url: string }>;
       } | null = null;
 
-      // Check if user is a team owner OR a team member
-      let teamId = user.accountType === "team" ? user.teamId : null;
-      let member: any = null;
-
-      if (teamId) {
-        member = await storage.getTeamMemberByUserId(teamId, user.id);
-      } else {
-        // Check if user is a member of any team (invited member)
-        const memberships = await storage.getTeamMembershipsByUserId(user.id);
-        // Only use active memberships
-        const activeMembership = memberships.find(m => m.status === "activated");
-        if (activeMembership) {
-          teamId = activeMembership.teamId;
-          member = activeMembership;
-        }
-      }
-
-      if (teamId) {
-        const team = await storage.getTeam(teamId);
-        const templates = await storage.getTeamTemplates(teamId);
-        const defaultTemplate = templates.find((t) => t.isDefault) || templates[0];
+      if (teamId && teamData) {
+        const defaultTemplate = templates.find((t: any) => t.isDefault) || templates[0];
         const tData: any = defaultTemplate?.templateData || {};
 
         teamBranding = {
-          companyLogo: tData.companyLogo || team?.logoUrl || undefined,
+          companyLogo: tData.companyLogo || teamData?.logoUrl || undefined,
           coverPhoto: tData.coverPhoto || undefined,
-          companyName: tData.companyName || team?.name || undefined,
+          companyName: tData.companyName || teamData?.name || undefined,
           companyPhone: tData.companyPhone || undefined,
           companyEmail: tData.companyEmail || undefined,
-          companyWebsite: tData.companyWebsite || team?.websiteUrl || undefined,
+          companyWebsite: tData.companyWebsite || teamData?.websiteUrl || undefined,
           companyAddress: tData.companyAddress || undefined,
           companyContact: tData.companyContact || undefined,
           themeColor: tData.themeColor || undefined,
           font: tData.font || undefined,
           jobTitle: member?.jobTitle || undefined,
-          teamName: team?.name || undefined,
+          teamName: teamData?.name || undefined,
           memberPhone: member?.businessPhone || undefined,
           companySocials: tData.companySocials || undefined,
         };
 
-        // Override user display info with business profile data if set
         if (member?.businessName) {
           (publicUser as any).displayName = member.businessName;
         }
@@ -1863,7 +1860,6 @@ export async function registerRoutes(
           (publicUser as any).bio = member.businessBio;
         }
 
-        // Use team's default template theme if set
         if (tData.template) {
           (publicUser as any).template = tData.template;
         }

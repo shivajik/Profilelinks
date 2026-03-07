@@ -284,7 +284,7 @@ export function MenuBuilder() {
           <p className="text-xs text-muted-foreground mb-3">
             To get your public menu link and QR code, upgrade to a <strong>team account</strong>. You can still set up your menu below.
           </p>
-          <Button variant="outline" size="sm" onClick={() => navigate("/pricing")}>
+          <Button variant="outline" size="sm" onClick={() => navigate("/dashboard?section=billing")}>
             Upgrade to Team
           </Button>
         </div>

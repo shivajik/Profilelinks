@@ -316,10 +316,11 @@ router.delete("/api/admin/users/:id", requireAdminAuth, async (req: Request, res
 // ─── Payments List ──────────────────────────────────────────────────────────
 router.get("/api/admin/payments", requireAdminAuth, async (req: Request, res: Response) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.max(1, Math.min(parseInt(req.query.limit as string) || 10, 100));
     const offset = (page - 1) * limit;
     const status = req.query.status as string | undefined;
+    const search = (req.query.search as string || "").trim();
     const planId = req.query.planId as string | undefined;
     const startDate = req.query.startDate as string | undefined;
     const endDate = req.query.endDate as string | undefined;
@@ -329,21 +330,35 @@ router.get("/api/admin/payments", requireAdminAuth, async (req: Request, res: Re
     if (planId && planId !== "all") conditions.push(sql`${payments.planId} = ${planId}`);
     if (startDate) conditions.push(sql`${payments.createdAt} >= ${new Date(startDate)}`);
     if (endDate) conditions.push(sql`${payments.createdAt} <= ${new Date(endDate + "T23:59:59")}`);
+    if (search) {
+      const pattern = `%${search}%`;
+      conditions.push(
+        or(
+          ilike(users.username, pattern),
+          ilike(users.email, pattern),
+          ilike(pricingPlans.name, pattern),
+        )
+      );
+    }
+
+    const whereClause = conditions.length > 0 ? sql.join(conditions, sql` AND `) : undefined;
+
+    const selectFields = {
+      id: payments.id,
+      amount: payments.amount,
+      currency: payments.currency,
+      status: payments.status,
+      billingCycle: payments.billingCycle,
+      razorpayOrderId: payments.razorpayOrderId,
+      razorpayPaymentId: payments.razorpayPaymentId,
+      createdAt: payments.createdAt,
+      userEmail: users.email,
+      username: users.username,
+      planName: pricingPlans.name,
+    };
 
     let query = db
-      .select({
-        id: payments.id,
-        amount: payments.amount,
-        currency: payments.currency,
-        status: payments.status,
-        billingCycle: payments.billingCycle,
-        razorpayOrderId: payments.razorpayOrderId,
-        razorpayPaymentId: payments.razorpayPaymentId,
-        createdAt: payments.createdAt,
-        userEmail: users.email,
-        username: users.username,
-        planName: pricingPlans.name,
-      })
+      .select(selectFields)
       .from(payments)
       .leftJoin(users, sql`${payments.userId} = ${users.id}`)
       .leftJoin(pricingPlans, sql`${payments.planId} = ${pricingPlans.id}`)
@@ -351,13 +366,22 @@ router.get("/api/admin/payments", requireAdminAuth, async (req: Request, res: Re
       .limit(limit)
       .offset(offset);
 
-    if (conditions.length > 0) {
-      query = query.where(sql.join(conditions, sql` AND `)) as any;
+    if (whereClause) {
+      query = query.where(whereClause) as any;
     }
 
     const allPayments = await query;
 
-    const [totalResult] = await db.select({ count: count() }).from(payments);
+    let countQuery = db
+      .select({ count: count() })
+      .from(payments)
+      .leftJoin(users, sql`${payments.userId} = ${users.id}`)
+      .leftJoin(pricingPlans, sql`${payments.planId} = ${pricingPlans.id}`);
+    if (whereClause) {
+      countQuery = countQuery.where(whereClause) as any;
+    }
+    const [totalResult] = await countQuery;
+
     res.json({ payments: allPayments, total: Number(totalResult?.count ?? 0), page, limit });
   } catch (error: any) {
     console.error("Payments error:", error);
@@ -365,7 +389,7 @@ router.get("/api/admin/payments", requireAdminAuth, async (req: Request, res: Re
   }
 });
 
-// ─── User Detail with Payment History ───────────────────────────────────────
+// ─── User Detail with Payment History ──────────────────────────────H��────────
 router.get("/api/admin/users/:id", requireAdminAuth, async (req: Request, res: Response) => {
   try {
     const userId = req.params.id;

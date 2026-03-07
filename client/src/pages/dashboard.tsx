@@ -996,18 +996,18 @@ export default function Dashboard() {
               </div>
               )}
               {activeSection === "settings" && (
-                <SettingsPanel user={user} profileUrl={profileUrl} onLogout={handleLogout} />
+                <SettingsPanel user={user} profileUrl={profileUrl} onLogout={handleLogout} onNavigateBilling={() => setActiveSection("billing")} />
               )}
               {activeSection === "analytics" && (
                 planLimits?.analyticsEnabled === false ? (
-                  <FeatureLockedPanel feature="Analytics" description="Track profile views, link clicks, and visitor insights." />
+                  <FeatureLockedPanel feature="Analytics" description="Track profile views, link clicks, and visitor insights." onNavigateBilling={() => setActiveSection("billing")} />
                 ) : (
                   <AnalyticsPanel username={user.username} />
                 )
               )}
               {activeSection === "qrcodes" && (
                 planLimits?.qrCodeEnabled === false ? (
-                  <FeatureLockedPanel feature="QR Codes" description="Generate QR codes for your profile and share them anywhere." />
+                  <FeatureLockedPanel feature="QR Codes" description="Generate QR codes for your profile and share them anywhere." onNavigateBilling={() => setActiveSection("billing")} />
                 ) : (
                   <QRCodePanel profileUrl={profileUrl} username={user.username} />
                 )
@@ -1223,10 +1223,12 @@ function SettingsPanel({
   user,
   profileUrl,
   onLogout,
+  onNavigateBilling,
 }: {
   user: { id: string; username: string; email: string; displayName: string | null; bio: string | null; profileImage: string | null; template: string | null; accountType: string };
   profileUrl: string;
   onLogout: () => void;
+  onNavigateBilling?: () => void;
 }) {
   const { toast } = useToast();
   const [editUsername, setEditUsername] = useState(user.username);
@@ -1493,7 +1495,7 @@ function SettingsPanel({
             <p className="text-xs text-muted-foreground mb-3">
               Upgrade to a team account to unlock public menu links, QR codes, team member management, company branding, and shared templates.
             </p>
-            <Button size="sm" onClick={() => window.location.href = "/pricing"}>
+            <Button size="sm" onClick={() => onNavigateBilling?.()}>
               View Team Plans
             </Button>
           </div>

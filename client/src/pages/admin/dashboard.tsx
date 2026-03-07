@@ -149,6 +149,16 @@ export default function AdminDashboard() {
   const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
+  // Payment search & pagination
+  const [paymentSearchQuery, setPaymentSearchQuery] = useState("");
+  const [paymentSearchApplied, setPaymentSearchApplied] = useState("");
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState("all");
+  const [paymentPage, setPaymentPage] = useState(1);
+  const PAYMENTS_PER_PAGE = 10;
+  const [totalPaymentsCount, setTotalPaymentsCount] = useState(0);
+  const [totalPaymentPages, setTotalPaymentPages] = useState(1);
+  const [loadingPayments, setLoadingPayments] = useState(false);
+
   // Invoice dialog
   const [invoiceDialog, setInvoiceDialog] = useState<{ open: boolean; payment?: PaymentRow }>({ open: false });
 
@@ -226,7 +236,29 @@ export default function AdminDashboard() {
     }
     setLoadingUsers(false);
   }, []);
-  const fetchPayments   = useCallback(async () => { const r = await fetch("/api/admin/payments"); if (r.ok) { const d = await r.json(); setAdminPayments(d.payments ?? []); } }, []);
+  const fetchPayments = useCallback(async (page?: number, search?: string, status?: string) => {
+    const p = page ?? 1;
+    const s = search ?? "";
+    const f = status ?? "all";
+    const params = new URLSearchParams({ page: String(p), limit: String(PAYMENTS_PER_PAGE) });
+    if (s) params.set("search", s);
+    if (f && f !== "all") params.set("status", f);
+    setLoadingPayments(true);
+    const r = await fetch(`/api/admin/payments?${params}`);
+    if (r.ok) {
+      const d = await r.json();
+      setAdminPayments(d.payments ?? []);
+      setTotalPaymentsCount(d.total ?? 0);
+      const pages = Math.max(1, Math.ceil((d.total ?? 0) / PAYMENTS_PER_PAGE));
+      setTotalPaymentPages(pages);
+      if (p > pages) {
+        setPaymentPage(pages);
+        fetchPayments(pages, s, f);
+        return;
+      }
+    }
+    setLoadingPayments(false);
+  }, []);
   const fetchAffiliates = useCallback(async () => { const r = await fetch("/api/admin/affiliates"); if (r.ok) setAdminAffiliates(await r.json()); }, []);
   const fetchPromoCodes = useCallback(async () => { const r = await fetch("/api/admin/promo-codes"); if (r.ok) setAdminPromoCodes(await r.json()); }, []);
 
@@ -689,7 +721,41 @@ export default function AdminDashboard() {
             <div className="space-y-4">
               <div>
                 <h2 className="text-2xl font-bold text-foreground">Payments</h2>
-                <p className="text-muted-foreground text-sm">{adminPayments.length} transactions</p>
+                <p className="text-muted-foreground text-sm">{totalPaymentsCount} transactions</p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <form className="flex-1 flex gap-2" onSubmit={(e) => { e.preventDefault(); setPaymentSearchApplied(paymentSearchQuery); setPaymentPage(1); fetchPayments(1, paymentSearchQuery, paymentStatusFilter); }}>
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      data-testid="input-payment-search"
+                      placeholder="Search by user, email, or plan..."
+                      className="pl-9"
+                      value={paymentSearchQuery}
+                      onChange={(e) => setPaymentSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  <Button type="submit" size="sm" data-testid="button-payment-search">
+                    <Search className="h-4 w-4" />
+                  </Button>
+                  {paymentSearchApplied && (
+                    <Button type="button" variant="ghost" size="sm" data-testid="button-payment-clear-search" onClick={() => { setPaymentSearchQuery(""); setPaymentSearchApplied(""); setPaymentPage(1); fetchPayments(1, "", paymentStatusFilter); }}>
+                      <XIcon className="h-4 w-4" />
+                    </Button>
+                  )}
+                </form>
+                <Select value={paymentStatusFilter} onValueChange={(v) => { setPaymentStatusFilter(v); setPaymentPage(1); fetchPayments(1, paymentSearchApplied, v); }}>
+                  <SelectTrigger className="w-[160px]" data-testid="select-payment-status">
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="success">Success</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="failed">Failed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <Card>
                 <div className="overflow-x-auto">
@@ -706,10 +772,12 @@ export default function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {adminPayments.length === 0 ? (
-                        <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">No payments yet</td></tr>
+                      {loadingPayments ? (
+                        <tr><td colSpan={7} className="p-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" /></td></tr>
+                      ) : adminPayments.length === 0 ? (
+                        <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">{paymentSearchApplied || paymentStatusFilter !== "all" ? "No matching payments" : "No payments yet"}</td></tr>
                       ) : adminPayments.map((p) => (
-                        <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
+                        <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30" data-testid={`row-payment-${p.id}`}>
                           <td className="p-3"><div className="font-medium text-foreground">{p.username}</div><div className="text-xs text-muted-foreground">{p.userEmail}</div></td>
                           <td className="p-3 text-muted-foreground">{p.planName ?? "—"}</td>
                           <td className="p-3 font-medium text-foreground">₹{parseFloat(p.amount).toLocaleString()}</td>
@@ -721,6 +789,7 @@ export default function AdminDashboard() {
                               variant="outline" size="sm"
                               onClick={() => setInvoiceDialog({ open: true, payment: p })}
                               title="View Invoice"
+                              data-testid={`button-invoice-${p.id}`}
                             >
                               <FileText className="h-3.5 w-3.5 mr-1" /> Invoice
                             </Button>
@@ -731,6 +800,15 @@ export default function AdminDashboard() {
                   </table>
                 </div>
               </Card>
+              {totalPaymentPages > 1 && (
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">Page {paymentPage} of {totalPaymentPages} ({totalPaymentsCount} total)</p>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" disabled={paymentPage <= 1} data-testid="button-payment-prev" onClick={() => { const np = paymentPage - 1; setPaymentPage(np); fetchPayments(np, paymentSearchApplied, paymentStatusFilter); }}>Previous</Button>
+                    <Button variant="outline" size="sm" disabled={paymentPage >= totalPaymentPages} data-testid="button-payment-next" onClick={() => { const np = paymentPage + 1; setPaymentPage(np); fetchPayments(np, paymentSearchApplied, paymentStatusFilter); }}>Next</Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
