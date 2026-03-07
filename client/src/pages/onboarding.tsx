@@ -627,13 +627,19 @@ function InviteMembersStep({
   );
 }
 
+const TEMPLATES_PER_PAGE = 6;
+
 function TemplateStep({ selected, onSelect }: { selected: string; onSelect: (id: string) => void }) {
+  const [page, setPage] = useState(0);
+  const totalPages = Math.ceil(TEMPLATES.length / TEMPLATES_PER_PAGE);
+  const visibleTemplates = TEMPLATES.slice(page * TEMPLATES_PER_PAGE, (page + 1) * TEMPLATES_PER_PAGE);
+
   return (
     <div>
       <h1 className="text-3xl font-bold mb-2" data-testid="text-step-title">Pick a Template</h1>
       <p className="text-muted-foreground mb-8">You'll be able to change styles and content later!</p>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        {TEMPLATES.map((t) => (
+        {visibleTemplates.map((t) => (
           <button
             key={t.id}
             onClick={() => onSelect(t.id)}
@@ -657,6 +663,13 @@ function TemplateStep({ selected, onSelect }: { selected: string; onSelect: (id:
           </button>
         ))}
       </div>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 mt-6">
+          <Button variant="outline" size="sm" disabled={page <= 0} onClick={() => setPage(page - 1)}>Previous</Button>
+          <span className="text-sm text-muted-foreground">{page + 1} / {totalPages}</span>
+          <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>Next</Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -903,11 +916,11 @@ function UrlStep({
       <p className="text-muted-foreground mb-8">A unique web address for your VisiCardly profile.</p>
       <div className="space-y-2">
         <div className="relative">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium pointer-events-none whitespace-nowrap">
             visicardly.com/
           </span>
           <Input
-            className="pl-[85px] text-lg py-6"
+            className="pl-[120px] text-lg py-6"
             value={username}
             onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
             placeholder="yourname"

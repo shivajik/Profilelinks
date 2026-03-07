@@ -140,8 +140,12 @@ export default function AdminDashboard() {
   const [assignNotes, setAssignNotes] = useState("");
   const [assigningPlan, setAssigningPlan] = useState(false);
 
-  // User filter
+  // User filter & search
   const [userTypeFilter, setUserTypeFilter] = useState("all");
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [userSearchApplied, setUserSearchApplied] = useState("");
+  const [userPage, setUserPage] = useState(1);
+  const USERS_PER_PAGE = 10;
   const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
@@ -320,12 +324,19 @@ export default function AdminDashboard() {
   };
 
   const filteredUsers = adminUsers.filter((u) => {
-    if (userTypeFilter === "all") return true;
-    if (userTypeFilter === "team") return u.accountType === "team";
-    if (userTypeFilter === "personal") return u.accountType === "personal";
-    if (userTypeFilter === "disabled") return u.isDisabled;
+    if (userTypeFilter === "team" && u.accountType !== "team") return false;
+    if (userTypeFilter === "personal" && u.accountType !== "personal") return false;
+    if (userTypeFilter === "disabled" && !u.isDisabled) return false;
+    if (userSearchApplied) {
+      const q = userSearchApplied.toLowerCase();
+      const name = (u.displayName || u.username || "").toLowerCase();
+      const email = (u.email || "").toLowerCase();
+      if (!name.includes(q) && !email.includes(q)) return false;
+    }
     return true;
   });
+  const totalUserPages = Math.max(1, Math.ceil(filteredUsers.length / USERS_PER_PAGE));
+  const paginatedUsers = filteredUsers.slice((userPage - 1) * USERS_PER_PAGE, userPage * USERS_PER_PAGE);
 
   if (!admin) {
     return <div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
@@ -472,19 +483,36 @@ export default function AdminDashboard() {
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
                 <div>
                   <h2 className="text-2xl font-bold text-foreground">Users</h2>
-                  <p className="text-muted-foreground text-sm">{adminUsers.length} registered users</p>
+                  <p className="text-muted-foreground text-sm">{filteredUsers.length} of {adminUsers.length} users</p>
                 </div>
-                <Select value={userTypeFilter} onValueChange={setUserTypeFilter}>
-                  <SelectTrigger className="w-44">
-                    <SelectValue placeholder="Filter by type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Users</SelectItem>
-                    <SelectItem value="personal">Personal</SelectItem>
-                    <SelectItem value="team">Team</SelectItem>
-                    <SelectItem value="disabled">Disabled</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      className="pl-8 w-56"
+                      placeholder="Search name or email…"
+                      value={userSearchQuery}
+                      onChange={(e) => setUserSearchQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          setUserSearchApplied(userSearchQuery);
+                          setUserPage(1);
+                        }
+                      }}
+                    />
+                  </div>
+                  <Select value={userTypeFilter} onValueChange={(v) => { setUserTypeFilter(v); setUserPage(1); }}>
+                    <SelectTrigger className="w-36">
+                      <SelectValue placeholder="Filter by type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Users</SelectItem>
+                      <SelectItem value="personal">Personal</SelectItem>
+                      <SelectItem value="team">Team</SelectItem>
+                      <SelectItem value="disabled">Disabled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <Card>
@@ -500,9 +528,9 @@ export default function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredUsers.length === 0 ? (
+                      {paginatedUsers.length === 0 ? (
                         <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No users found</td></tr>
-                      ) : filteredUsers.map((u) => (
+                      ) : paginatedUsers.map((u) => (
                         <tr key={u.id} className={`border-b last:border-0 hover:bg-muted/30 transition-colors ${u.isDisabled ? "opacity-60" : ""}`}>
                           <td className="p-3">
                             <button
@@ -561,6 +589,26 @@ export default function AdminDashboard() {
                   </table>
                 </div>
               </Card>
+              {/* Pagination */}
+              {totalUserPages > 1 && (
+                <div className="flex items-center justify-between pt-2">
+                  <p className="text-sm text-muted-foreground">
+                    Page {userPage} of {totalUserPages}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <Button variant="outline" size="sm" disabled={userPage <= 1} onClick={() => setUserPage(userPage - 1)}>Previous</Button>
+                    {Array.from({ length: Math.min(totalUserPages, 5) }, (_, i) => {
+                      const page = totalUserPages <= 5 ? i + 1 : Math.max(1, Math.min(userPage - 2, totalUserPages - 4)) + i;
+                      return (
+                        <Button key={page} variant={page === userPage ? "default" : "outline"} size="sm" className="w-8" onClick={() => setUserPage(page)}>
+                          {page}
+                        </Button>
+                      );
+                    })}
+                    <Button variant="outline" size="sm" disabled={userPage >= totalUserPages} onClick={() => setUserPage(userPage + 1)}>Next</Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
