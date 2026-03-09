@@ -1967,11 +1967,16 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
     const img = new Image();
     img.onload = () => {
       canvas.width = 1024;
-      canvas.height = 1024;
+      canvas.height = 1100;
       if (ctx) {
         ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, 1024, 1024);
+        ctx.fillRect(0, 0, 1024, 1100);
         ctx.drawImage(img, 0, 0, 1024, 1024);
+        // Add VisiCardly branding
+        ctx.fillStyle = "#888888";
+        ctx.font = "bold 28px Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("Powered by VisiCardly", 512, 1070);
       }
       const pngUrl = canvas.toDataURL("image/png");
       const a = document.createElement("a");
