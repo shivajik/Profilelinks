@@ -2031,23 +2031,66 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
   const downloadQR = (elementId: string, filename: string) => {
     const svg = document.getElementById(elementId);
     if (!svg) return;
+    
+    // Get the parent container to capture styling
+    const container = svg.closest('[data-qr-container]') as HTMLElement | null;
+    const containerStyles = container ? getComputedStyle(container) : null;
+    
     const svgData = new XMLSerializer().serializeToString(svg);
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     const img = new Image();
+    
     img.onload = () => {
-      canvas.width = 1024;
-      canvas.height = 1100;
+      const padding = 48; // Padding inside the QR container
+      const brandingHeight = 60; // Space for branding text
+      const borderWidth = container ? parseInt(containerStyles?.borderWidth || '4') : 4;
+      const borderRadius = container ? parseInt(containerStyles?.borderRadius || '12') : 12;
+      const borderColor = container ? containerStyles?.borderColor || '#7c3aed' : '#7c3aed';
+      
+      const qrSize = 800;
+      const totalWidth = qrSize + (padding * 2) + (borderWidth * 2);
+      const totalHeight = qrSize + (padding * 2) + (borderWidth * 2) + brandingHeight;
+      
+      canvas.width = totalWidth;
+      canvas.height = totalHeight;
+      
       if (ctx) {
+        // White background
         ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, 1024, 1100);
-        ctx.drawImage(img, 0, 0, 1024, 1024);
-        // Add VisiCardly branding
-        ctx.fillStyle = "#888888";
-        ctx.font = "bold 28px Arial, sans-serif";
+        ctx.fillRect(0, 0, totalWidth, totalHeight);
+        
+        // Draw border (rounded rectangle)
+        const boxX = 0;
+        const boxY = 0;
+        const boxW = totalWidth;
+        const boxH = totalHeight - brandingHeight;
+        
+        // Draw the border
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = borderWidth;
+        ctx.beginPath();
+        ctx.roundRect(boxX + borderWidth / 2, boxY + borderWidth / 2, boxW - borderWidth, boxH - borderWidth, borderRadius);
+        ctx.stroke();
+        
+        // Fill inside with white
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.roundRect(boxX + borderWidth, boxY + borderWidth, boxW - borderWidth * 2, boxH - borderWidth * 2, Math.max(0, borderRadius - borderWidth / 2));
+        ctx.fill();
+        
+        // Draw QR code
+        const qrX = borderWidth + padding;
+        const qrY = borderWidth + padding;
+        ctx.drawImage(img, qrX, qrY, qrSize, qrSize);
+        
+        // Add VisiCardly branding at bottom
+        ctx.fillStyle = "#9ca3af";
+        ctx.font = "500 22px Arial, sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText("Powered by VisiCardly", 512, 1070);
+        ctx.fillText("Powered by VisiCardly", totalWidth / 2, totalHeight - 20);
       }
+      
       const pngUrl = canvas.toDataURL("image/png");
       const a = document.createElement("a");
       a.href = pngUrl;
@@ -2160,7 +2203,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
                   </Button>
                 </div>
               </div>
-              <div style={getContainerStyle(qr)} className="shrink-0">
+              <div style={getContainerStyle(qr)} className="shrink-0" data-qr-container>
                 <QRCodeSVG
                   id={`qr-saved-${qr.id}`}
                   {...getQRProps(qr)}
