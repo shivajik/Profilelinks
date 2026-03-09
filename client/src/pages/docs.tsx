@@ -432,7 +432,7 @@ export default function DocsPage() {
       <footer className="border-t border-border py-8 px-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <span className="text-sm text-muted-foreground">
-            <span className="text-primary font-semibold">Visi</span>Cardly — All rights reserved.
+            <span className="inline-flex items-center gap-1.5"><img src={logoPath} alt="" className="w-9 h-7 object-contain inline" /><span className="text-primary font-semibold">Visi</span>Cardly</span> — All rights reserved.
           </span>
           <div className="flex items-center gap-4">
             <WouterLink href="/terms"><span className="text-sm text-muted-foreground hover:text-foreground cursor-pointer">Terms</span></WouterLink>
