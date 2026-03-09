@@ -250,11 +250,10 @@ router.get("/api/admin/users", requireAdminAuth, async (req: Request, res: Respo
         onboardingCompleted: users.onboardingCompleted,
         template: users.template,
         isDisabled: users.isDisabled,
-        createdAt: users.createdAt,
       })
       .from(users)
       .where(whereCondition)
-      .orderBy(desc(users.createdAt))
+      .orderBy(desc(users.id))
       .limit(limit)
       .offset(offset);
 
