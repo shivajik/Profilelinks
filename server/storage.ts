@@ -619,6 +619,7 @@ export class DatabaseStorage implements IStorage {
         businessPhone: teamMembers.businessPhone,
         businessProfileImage: teamMembers.businessProfileImage,
         businessBio: teamMembers.businessBio,
+        branchId: teamMembers.branchId,
         user: {
           id: users.id,
           username: users.username,

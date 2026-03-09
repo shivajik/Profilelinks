@@ -690,17 +690,6 @@ export default function Dashboard() {
                         </div>
                         <ChevronDown className="w-4 h-4 text-muted-foreground -rotate-90" />
                       </button>
-                      <button 
-                        onClick={() => setActiveSection("team-templates")}
-                        className="flex items-center gap-2 w-full p-2.5 rounded-md border bg-background hover:bg-muted/50 transition-colors text-left"
-                      >
-                        <LayoutTemplate className="w-4 h-4 text-primary shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium">Company Branding</p>
-                          <p className="text-xs text-muted-foreground">Logo, colors & company info are managed here</p>
-                        </div>
-                        <ChevronDown className="w-4 h-4 text-muted-foreground -rotate-90" />
-                      </button>
                     </div>
                   </div>
                 )}
@@ -1079,7 +1068,7 @@ export default function Dashboard() {
               {activeSection === "team-members" && isTeamAccount && (
                 <TeamMembersPanel teamId={user.teamId!} currentUserId={user.id} teamSlug={teamSlug} />
               )}
-              {activeSection === "team-templates" && isTeamAccount && (
+              {activeSection === "team-templates" && isTeamAccount && isTeamOwner && (
                 <TeamTemplatesPanel teamId={user.teamId!} />
               )}
               {activeSection === "contacts" && isTeamAccount && (

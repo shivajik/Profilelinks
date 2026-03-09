@@ -1406,7 +1406,7 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Not authorized" });
       }
       let templates = await storage.getTeamTemplates(req.params.teamId as string);
-      if (templates.length === 0) {
+      if (templates.length === 0 && ["owner", "admin"].includes(role)) {
         try {
           const team = await storage.getTeam(req.params.teamId as string);
           const created = await storage.createTeamTemplate({
@@ -1512,7 +1512,7 @@ export async function registerRoutes(
   app.post("/api/teams/:teamId/templates/:id/duplicate", requireAuth, async (req, res) => {
     try {
       const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
-      if (!role) {
+      if (!role || !["owner", "admin"].includes(role)) {
         return res.status(403).json({ message: "Not authorized" });
       }
       const duplicated = await storage.duplicateTeamTemplate(req.params.id as string, req.params.teamId as string);
