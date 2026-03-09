@@ -919,7 +919,11 @@ export async function registerRoutes(
         if (!targetMember || targetMember.userId !== req.session.userId) {
           return res.status(403).json({ message: "You can only edit your own profile" });
         }
-        const allowedFields = { jobTitle: result.data.jobTitle };
+        const allowedFields: Record<string, any> = { jobTitle: result.data.jobTitle };
+        if (result.data.businessName !== undefined) allowedFields.businessName = result.data.businessName;
+        if (result.data.businessPhone !== undefined) allowedFields.businessPhone = result.data.businessPhone;
+        if (result.data.businessBio !== undefined) allowedFields.businessBio = result.data.businessBio;
+        if (result.data.businessProfileImage !== undefined) allowedFields.businessProfileImage = result.data.businessProfileImage;
         if (result.data.role) {
           return res.status(403).json({ message: "Only admins can change roles" });
         }

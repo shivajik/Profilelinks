@@ -399,6 +399,10 @@ export const updateTeamMemberSchema = z.object({
   role: z.enum(TEAM_ROLES).optional(),
   jobTitle: z.string().max(100).optional().nullable(),
   status: z.enum(MEMBER_STATUSES).optional(),
+  businessName: z.string().max(100).optional().nullable(),
+  businessPhone: z.string().max(50).optional().nullable(),
+  businessProfileImage: z.string().optional().nullable(),
+  businessBio: z.string().max(500).optional().nullable(),
 });
 
 export const updateBusinessProfileSchema = z.object({
