@@ -29,6 +29,7 @@ export const users = pgTable("users", {
   menuGoogleMapsUrl: text("menu_google_maps_url"),
   menuWhatsapp: text("menu_whatsapp"),
   menuWebsite: text("menu_website"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // ── Menu Social Links ──────────────────────────────────────────────────────
