@@ -1524,6 +1524,165 @@ export async function registerRoutes(
     }
   });
 
+  // ── Team Branches ──────────────────────────────────────────────────────
+  app.get("/api/teams/:teamId/branches", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role) return res.status(403).json({ message: "Not authorized" });
+      const branches = await storage.getTeamBranches(req.params.teamId as string);
+      res.json(branches);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to get branches" });
+    }
+  });
+
+  app.post("/api/teams/:teamId/branches", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role || !["owner", "admin"].includes(role)) return res.status(403).json({ message: "Not authorized" });
+      const result = createBranchSchema.safeParse(req.body);
+      if (!result.success) return res.status(400).json({ message: fromZodError(result.error).message });
+      const branch = await storage.createTeamBranch({ ...result.data, teamId: req.params.teamId as string });
+      res.status(201).json(branch);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to create branch" });
+    }
+  });
+
+  app.patch("/api/teams/:teamId/branches/:id", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role || !["owner", "admin"].includes(role)) return res.status(403).json({ message: "Not authorized" });
+      const result = updateBranchSchema.safeParse(req.body);
+      if (!result.success) return res.status(400).json({ message: fromZodError(result.error).message });
+      const updated = await storage.updateTeamBranch(req.params.id as string, req.params.teamId as string, result.data);
+      if (!updated) return res.status(404).json({ message: "Branch not found" });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to update branch" });
+    }
+  });
+
+  app.delete("/api/teams/:teamId/branches/:id", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role || !["owner", "admin"].includes(role)) return res.status(403).json({ message: "Not authorized" });
+      const deleted = await storage.deleteTeamBranch(req.params.id as string, req.params.teamId as string);
+      if (!deleted) return res.status(404).json({ message: "Branch not found" });
+      res.json({ message: "Branch deleted" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to delete branch" });
+    }
+  });
+
+  // ── CSV Bulk Invite ──────────────────────────────────────────────────────
+  app.post("/api/teams/:teamId/members/bulk-invite", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role || !["owner", "admin"].includes(role)) return res.status(403).json({ message: "Not authorized" });
+      const { members: csvMembers } = req.body;
+      if (!Array.isArray(csvMembers) || csvMembers.length === 0) {
+        return res.status(400).json({ message: "No members data provided" });
+      }
+      const results: { email: string; status: string; error?: string }[] = [];
+      const existingMembers = await storage.getTeamMembers(req.params.teamId as string);
+      const existingInvites = await storage.getTeamInvites(req.params.teamId as string);
+      const team = await storage.getTeam(req.params.teamId as string);
+      const inviter = await storage.getUser(req.session.userId!);
+
+      for (const entry of csvMembers.slice(0, 50)) { // limit to 50
+        const email = (entry.email || "").toLowerCase().trim();
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          results.push({ email: email || "unknown", status: "skipped", error: "Invalid email" });
+          continue;
+        }
+        const existingUser = await storage.getUserByEmail(email);
+        if (existingUser) {
+          const isMember = existingMembers.some(m => m.userId === existingUser.id);
+          if (isMember) {
+            results.push({ email, status: "skipped", error: "Already a team member" });
+            continue;
+          }
+        }
+        const hasPending = existingInvites.some(inv => inv.email.toLowerCase() === email && inv.status === "pending");
+        if (hasPending) {
+          results.push({ email, status: "skipped", error: "Already has pending invite" });
+          continue;
+        }
+        try {
+          const displayName = entry.name || email.split("@")[0];
+          const jobTitle = entry.jobTitle || entry.job_title || "";
+          const phone = entry.phone || entry.mobile || "";
+          const branchId = entry.branchId || entry.branch_id || undefined;
+
+          if (existingUser) {
+            const member = await storage.addTeamMember({
+              teamId: req.params.teamId as string,
+              userId: existingUser.id,
+              role: "member",
+              jobTitle: jobTitle || null,
+              status: "activated",
+              branchId: branchId || null,
+            });
+            await storage.updateUser(existingUser.id, { teamId: req.params.teamId as string, accountType: "team" });
+            if (phone) await storage.updateTeamMember(member.id, req.params.teamId as string, { businessPhone: phone });
+            results.push({ email, status: "added" });
+          } else {
+            const username = email.split("@")[0] + "_" + Date.now().toString(36);
+            const tempPassword = crypto.randomUUID().slice(0, 12);
+            const hashedPassword = await bcrypt.hash(tempPassword, 10);
+            const newUser = await storage.createUser({
+              username,
+              email,
+              password: hashedPassword,
+              displayName,
+              accountType: "team",
+              teamId: req.params.teamId as string,
+            });
+            await storage.updateUser(newUser.id, { mustChangePassword: true, onboardingCompleted: true } as any);
+            const member = await storage.addTeamMember({
+              teamId: req.params.teamId as string,
+              userId: newUser.id,
+              role: "member",
+              jobTitle: jobTitle || null,
+              status: "activated",
+              branchId: branchId || null,
+            });
+            if (phone) await storage.updateTeamMember(member.id, req.params.teamId as string, { businessPhone: phone, businessName: displayName });
+            await storage.createPage({ userId: newUser.id, title: "Home", slug: "home", position: 0, isHome: true });
+            // Send credentials email
+            try {
+              await sendCredentialsEmail({
+                to: email,
+                teamName: team?.name || "Team",
+                loginUrl: `${req.protocol}://${req.get("host")}/auth`,
+                tempPassword,
+              });
+            } catch (_) {}
+            results.push({ email, status: "created" });
+          }
+          // Auto-create contact
+          try {
+            await storage.createContact({
+              teamId: req.params.teamId as string,
+              name: entry.name || email.split("@")[0],
+              email,
+              phone: phone || null,
+              company: team?.name || "",
+              jobTitle: jobTitle || null,
+              type: "company",
+            });
+          } catch (_) {}
+        } catch (err: any) {
+          results.push({ email, status: "error", error: err.message });
+        }
+      }
+      res.json({ results });
+    } catch (error: any) {
+      res.status(500).json({ message: "Bulk invite failed" });
+    }
+  });
+
   // Contacts
   app.get("/api/contacts", requireAuth, async (req, res) => {
     try {
