@@ -4785,6 +4785,9 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                 )}
               </CardContent>
             </Card>
+
+            {/* Branch Manager */}
+            <BranchManager teamId={teamId} />
           </div>
 
           {selectedTemplate && (
