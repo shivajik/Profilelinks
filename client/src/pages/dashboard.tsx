@@ -720,7 +720,16 @@ export default function Dashboard() {
                 >
                   <div className="px-4 pb-4 pt-1 space-y-4">
                     <div className="flex items-center justify-between gap-4 border rounded-md p-3">
-                      <span className="text-sm font-medium">Profile Picture <span className="text-[10px] text-muted-foreground font-normal">(Max 1MB)</span></span>
+                      <div>
+                        <span className="text-sm font-medium">Profile Picture <span className="text-[10px] text-muted-foreground font-normal">(Max 1MB)</span></span>
+                        {isTeamOwner && (
+                          <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3 shrink-0" />
+                            For your business card, update photo in{" "}
+                            <button type="button" className="underline font-medium hover:text-amber-700" onClick={() => setActiveSection("business-profile")}>Business Profile</button>
+                          </p>
+                        )}
+                      </div>
                       <div className="relative group">
                         <input
                           type="file"
