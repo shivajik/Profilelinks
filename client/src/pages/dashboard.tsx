@@ -2203,7 +2203,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
                   </Button>
                 </div>
               </div>
-              <div style={getContainerStyle(qr)} className="shrink-0">
+              <div style={getContainerStyle(qr)} className="shrink-0" data-qr-container>
                 <QRCodeSVG
                   id={`qr-saved-${qr.id}`}
                   {...getQRProps(qr)}
