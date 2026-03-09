@@ -265,6 +265,7 @@ router.get("/api/payments/history", requireAuth as any, async (req: Request, res
     const history = await db
       .select({
         id: payments.id,
+        planId: payments.planId,
         amount: payments.amount,
         currency: payments.currency,
         status: payments.status,
