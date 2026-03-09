@@ -143,6 +143,17 @@ export const teams = pgTable("teams", {
   ownerId: varchar("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
 });
 
+export const teamBranches = pgTable("team_branches", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  teamId: varchar("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  address: text("address").notNull(),
+  phone: text("phone"),
+  email: text("email"),
+  isHeadBranch: boolean("is_head_branch").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const teamMembers = pgTable("team_members", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   teamId: varchar("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
@@ -154,6 +165,7 @@ export const teamMembers = pgTable("team_members", {
   businessPhone: text("business_phone"),
   businessProfileImage: text("business_profile_image"),
   businessBio: text("business_bio"),
+  branchId: varchar("branch_id"),
 });
 
 export const teamInvites = pgTable("team_invites", {
@@ -164,6 +176,7 @@ export const teamInvites = pgTable("team_invites", {
   invitedById: varchar("invited_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   status: text("status").notNull().default("pending"),
   token: text("token").notNull(),
+  branchId: varchar("branch_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
