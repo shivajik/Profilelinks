@@ -1183,6 +1183,7 @@ export async function registerRoutes(
         role: result.data.role || "member",
         invitedById: req.session.userId!,
         token: crypto.randomUUID(),
+        branchId: result.data.branchId || undefined,
       }));
       const created = await storage.createTeamInvites(invites);
 
