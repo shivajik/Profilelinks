@@ -3645,6 +3645,15 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
     },
   });
 
+  const { data: branches = [] } = useQuery<any[]>({
+    queryKey: ["/api/teams", teamId, "branches"],
+    queryFn: async () => {
+      const res = await fetch(`/api/teams/${teamId}/branches`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
   const { data: invitations = [] } = useQuery<any[]>({
     queryKey: ["/api/teams", teamId, "invites"],
     queryFn: async () => {
