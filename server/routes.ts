@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import session from "express-session";
 import { storage } from "./storage";
 import bcrypt from "bcryptjs";
-import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema, createPageSchema, updatePageSchema, createBlockSchema, updateBlockSchema, changePasswordSchema, deleteAccountSchema, createTeamSchema, updateTeamSchema, updateTeamMemberSchema, createTeamInviteSchema, createTeamMemberSchema, createTeamTemplateSchema, updateTeamTemplateSchema, createContactSchema, updateContactSchema, createMenuSectionSchema, updateMenuSectionSchema, createMenuProductSchema, updateMenuProductSchema, updateMenuSettingsSchema, upsertOpeningHoursSchema, createMenuSocialSchema, updateMenuSocialSchema, updateBusinessProfileSchema } from "@shared/schema";
+import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema, createPageSchema, updatePageSchema, createBlockSchema, updateBlockSchema, changePasswordSchema, deleteAccountSchema, createTeamSchema, updateTeamSchema, updateTeamMemberSchema, createTeamInviteSchema, createTeamMemberSchema, createTeamTemplateSchema, updateTeamTemplateSchema, createContactSchema, updateContactSchema, createMenuSectionSchema, updateMenuSectionSchema, createMenuProductSchema, updateMenuProductSchema, updateMenuSettingsSchema, upsertOpeningHoursSchema, createMenuSocialSchema, updateMenuSocialSchema, updateBusinessProfileSchema, createBranchSchema, updateBranchSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import connectPgSimple from "connect-pg-simple";
 import pg from "pg";
