@@ -501,13 +501,20 @@ function WorkspaceStep({
         </div>
         <div className="space-y-2">
           <Label htmlFor="onb-company-url">Company URL</Label>
-          <Input
-            id="onb-company-url"
-            placeholder="https://example.com"
-            value={companyUrl}
-            onChange={(e) => setCompanyUrl(e.target.value)}
-            data-testid="input-workspace-company-url"
-          />
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none">https://</span>
+            <Input
+              id="onb-company-url"
+              className="pl-[65px]"
+              placeholder="example.com"
+              value={companyUrl.replace(/^https?:\/\//, "")}
+              onChange={(e) => {
+                const val = e.target.value.replace(/^https?:\/\//, "");
+                setCompanyUrl(val ? `https://${val}` : "");
+              }}
+              data-testid="input-workspace-company-url"
+            />
+          </div>
           {companyUrl && !/^https?:\/\/.+\..+/.test(companyUrl) && (
             <p className="text-xs text-destructive">Enter a valid URL (e.g. https://example.com)</p>
           )}
