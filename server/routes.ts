@@ -2010,6 +2010,17 @@ export async function registerRoutes(
         const defaultTemplate = templates.find((t: any) => t.isDefault) || templates[0];
         const tData: any = defaultTemplate?.templateData || {};
 
+        // Fetch branch data
+        let memberBranchData: any = null;
+        let headBranchData: any = null;
+        try {
+          const branches = await storage.getTeamBranches(teamId);
+          headBranchData = branches.find((b: any) => b.isHeadBranch) || null;
+          if (member?.branchId) {
+            memberBranchData = branches.find((b: any) => b.id === member.branchId) || null;
+          }
+        } catch (_) {}
+
         teamBranding = {
           companyLogo: tData.companyLogo || teamData?.logoUrl || undefined,
           coverPhoto: tData.coverPhoto || undefined,
@@ -2025,6 +2036,8 @@ export async function registerRoutes(
           teamName: teamData?.name || undefined,
           memberPhone: member?.businessPhone || undefined,
           companySocials: tData.companySocials || undefined,
+          headBranch: headBranchData ? { name: headBranchData.name, address: headBranchData.address, phone: headBranchData.phone, email: headBranchData.email } : undefined,
+          memberBranch: memberBranchData ? { name: memberBranchData.name, address: memberBranchData.address, phone: memberBranchData.phone, email: memberBranchData.email } : undefined,
         };
 
         if (member?.businessName) {
