@@ -418,41 +418,74 @@ export default function PublicProfile(props?: any) {
                     ))}
                   </div>
                 )}
+                {/* Page nav inside card */}
+                {hasMultiplePages && (
+                  <div className="mt-4 flex flex-col items-center">
+                    <div className="hidden sm:flex items-center gap-2 flex-wrap justify-center" data-testid="page-nav">
+                      {pages.map((page) => {
+                        const isActive = currentPage?.slug === page.slug;
+                        return (
+                          <Button
+                            key={page.id}
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setActivePageSlug(page.isHome ? null : page.slug)}
+                            className={`rounded-full px-4 ${
+                              isActive
+                                ? `${template.cardBg} ${template.cardTextColor}`
+                                : `${template.textColor} opacity-60 hover:opacity-100`
+                            }`}
+                            data-testid={`page-tab-${page.slug}`}
+                          >
+                            {page.title}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    <div className="sm:hidden" data-testid="page-nav-mobile">
+                      <MobilePageNav
+                        pages={pages}
+                        currentPage={currentPage}
+                        onSelectPage={(slug) => setActivePageSlug(slug)}
+                        template={template}
+                      />
+                    </div>
+                  </div>
+                )}
+                {/* Blocks/content inside card */}
+                <div
+                  className="transition-opacity duration-300 ease-in-out"
+                  style={{ opacity: isFetching && !isLoading ? 0.5 : 1 }}
+                >
+                  {hasBlocks ? (
+                    <div className="space-y-3 mt-4">
+                      {activeBlocks.map((block) => (
+                        <PublicBlock key={block.id} block={block} template={template} onClickTrack={trackClick} />
+                      ))}
+                    </div>
+                  ) : activeLinks.length > 0 ? (
+                    <div className="space-y-3 mt-4">
+                      {activeLinks.map((link) => (
+                        <a
+                          key={link.id}
+                          href={normalizeUrl(link.url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => trackClick(link.id)}
+                          className={`block w-full rounded-xl ${template.cardBg} p-4 text-center font-medium transition-all hover:scale-[1.02] hover:shadow-md group backdrop-blur-sm`}
+                          data-testid={`link-card-${link.id}`}
+                        >
+                          <div className="flex items-center justify-center gap-2">
+                            <span className={`truncate ${template.cardTextColor}`}>{link.title}</span>
+                            <ExternalLink className={`w-3.5 h-3.5 ${template.cardTextColor} opacity-0 group-hover:opacity-100 transition-opacity shrink-0`} />
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </div>
-            {hasMultiplePages && (
-              <div className="mt-4 flex flex-col items-center">
-                <div className="hidden sm:flex items-center gap-2 flex-wrap justify-center" data-testid="page-nav">
-                  {pages.map((page) => {
-                    const isActive = currentPage?.slug === page.slug;
-                    return (
-                      <Button
-                        key={page.id}
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setActivePageSlug(page.isHome ? null : page.slug)}
-                        className={`rounded-full px-4 ${
-                          isActive
-                            ? `${template.cardBg} ${template.cardTextColor}`
-                            : `${template.textColor} opacity-60 hover:opacity-100`
-                        }`}
-                        data-testid={`page-tab-${page.slug}`}
-                      >
-                        {page.title}
-                      </Button>
-                    );
-                  })}
-                </div>
-                <div className="sm:hidden" data-testid="page-nav-mobile">
-                  <MobilePageNav
-                    pages={pages}
-                    currentPage={currentPage}
-                    onSelectPage={(slug) => setActivePageSlug(slug)}
-                    template={template}
-                  />
-                </div>
-              </div>
-            )}
           </div>
         ) : (
           <div className="flex flex-col items-center text-center mb-10">
@@ -535,37 +568,40 @@ export default function PublicProfile(props?: any) {
           </div>
         )}
 
-        <div
-          className="transition-opacity duration-300 ease-in-out"
-          style={{ opacity: isFetching && !isLoading ? 0.5 : 1 }}
-        >
-          {hasBlocks ? (
-            <div className="space-y-3">
-              {activeBlocks.map((block) => (
-                <PublicBlock key={block.id} block={block} template={template} onClickTrack={trackClick} />
-              ))}
-            </div>
-          ) : activeLinks.length > 0 ? (
-            <div className="space-y-3">
-              {activeLinks.map((link) => (
-                <a
-                  key={link.id}
-                  href={normalizeUrl(link.url)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => trackClick(link.id)}
-                  className={`block w-full rounded-xl ${template.cardBg} p-4 text-center font-medium transition-all hover:scale-[1.02] hover:shadow-md group backdrop-blur-sm`}
-                  data-testid={`link-card-${link.id}`}
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <span className={`truncate ${template.cardTextColor}`}>{link.title}</span>
-                    <ExternalLink className={`w-3.5 h-3.5 ${template.cardTextColor} opacity-0 group-hover:opacity-100 transition-opacity shrink-0`} />
-                  </div>
-                </a>
-              ))}
-            </div>
-          ) : null}
-        </div>
+        {/* Blocks for non-team profiles remain outside */}
+        {!isTeamProfile && (
+          <div
+            className="transition-opacity duration-300 ease-in-out"
+            style={{ opacity: isFetching && !isLoading ? 0.5 : 1 }}
+          >
+            {hasBlocks ? (
+              <div className="space-y-3">
+                {activeBlocks.map((block) => (
+                  <PublicBlock key={block.id} block={block} template={template} onClickTrack={trackClick} />
+                ))}
+              </div>
+            ) : activeLinks.length > 0 ? (
+              <div className="space-y-3">
+                {activeLinks.map((link) => (
+                  <a
+                    key={link.id}
+                    href={normalizeUrl(link.url)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => trackClick(link.id)}
+                    className={`block w-full rounded-xl ${template.cardBg} p-4 text-center font-medium transition-all hover:scale-[1.02] hover:shadow-md group backdrop-blur-sm`}
+                    data-testid={`link-card-${link.id}`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <span className={`truncate ${template.cardTextColor}`}>{link.title}</span>
+                      <ExternalLink className={`w-3.5 h-3.5 ${template.cardTextColor} opacity-0 group-hover:opacity-100 transition-opacity shrink-0`} />
+                    </div>
+                  </a>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        )}
 
         <div className="mt-12 text-center">
           <a href="/" className="text-xs transition-opacity hover:opacity-80">
