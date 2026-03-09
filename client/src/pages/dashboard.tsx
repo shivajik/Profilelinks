@@ -4292,6 +4292,7 @@ function MemberCardPreview({ member, templateData, themeColor }: { member: any; 
   const memberName = member.businessName || member.user?.displayName || member.user?.username || "Team Member";
   const memberEmail = member.user?.email || "";
   const memberJobTitle = member.jobTitle || "";
+  const memberPhone = member.businessPhone || "";
   const companyName = templateData.companyName || "";
   const companyPhone = templateData.companyPhone || "";
   const companyWebsite = templateData.companyWebsite || "";
@@ -4313,8 +4314,8 @@ function MemberCardPreview({ member, templateData, themeColor }: { member: any; 
         <div className="-mt-8 mb-3 flex items-end gap-3">
           <div className="relative shrink-0">
             <div className="w-16 h-16 rounded-full bg-muted border-4 border-card flex items-center justify-center overflow-hidden">
-              {member.user?.profileImage ? (
-                <img src={member.user.profileImage} alt={memberName} className="w-full h-full object-cover" />
+              {(member.businessProfileImage || member.user?.profileImage) ? (
+                <img src={member.businessProfileImage || member.user.profileImage} alt={memberName} className="w-full h-full object-cover" />
               ) : (
                 <span className="text-lg font-bold text-muted-foreground">{memberName.charAt(0).toUpperCase()}</span>
               )}
@@ -4339,6 +4340,7 @@ function MemberCardPreview({ member, templateData, themeColor }: { member: any; 
           <div className="space-y-1.5">
             {[
               { icon: Mail, value: memberEmail, placeholder: "" },
+              { icon: Phone, value: memberPhone, placeholder: "" },
               { icon: Phone, value: companyPhone, placeholder: "" },
               { icon: Phone, value: companyContact, placeholder: "" },
               { icon: Globe, value: companyWebsite, placeholder: "" },
