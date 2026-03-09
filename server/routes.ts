@@ -1884,6 +1884,17 @@ export async function registerRoutes(
       const defaultTemplate = templates.find((t) => t.isDefault) || templates[0];
       const tData: any = defaultTemplate?.templateData || {};
 
+      // Fetch branch data for member
+      let memberBranch: any = null;
+      let headBranch: any = null;
+      try {
+        const branches = await storage.getTeamBranches(team.id);
+        headBranch = branches.find((b: any) => b.isHeadBranch) || null;
+        if (member?.branchId) {
+          memberBranch = branches.find((b: any) => b.id === member.branchId) || null;
+        }
+      } catch (_) {}
+
       const teamBranding = {
         companyLogo: tData.companyLogo || team.logoUrl || undefined,
         coverPhoto: tData.coverPhoto || undefined,
@@ -1900,6 +1911,8 @@ export async function registerRoutes(
         memberEmail: user.email || undefined,
         memberPhone: member?.businessPhone || undefined,
         companySocials: tData.companySocials || undefined,
+        headBranch: headBranch ? { name: headBranch.name, address: headBranch.address, phone: headBranch.phone, email: headBranch.email } : undefined,
+        memberBranch: memberBranch ? { name: memberBranch.name, address: memberBranch.address, phone: memberBranch.phone, email: memberBranch.email } : undefined,
       };
 
       if (member?.businessName) (publicUser as any).displayName = member.businessName;
