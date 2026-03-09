@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Eye, EyeOff, ArrowLeft, Loader2, Sparkles, Link2, Palette, Globe, User, Users } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, Loader2, Sparkles, Link2, Palette, Globe, User, Users, CheckCircle2, XCircle } from "lucide-react";
 import { Link as WouterLink } from "wouter";
 
 const FEATURES = [
