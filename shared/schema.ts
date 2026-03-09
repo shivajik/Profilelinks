@@ -497,10 +497,14 @@ export type InsertTeam = z.infer<typeof insertTeamSchema>;
 export type TeamMember = typeof teamMembers.$inferSelect;
 export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
 export type TeamInvite = typeof teamInvites.$inferSelect;
+export type TeamBranch = typeof teamBranches.$inferSelect;
+export type InsertTeamBranch = z.infer<typeof insertTeamBranchSchema>;
 export type TeamTemplate = typeof teamTemplates.$inferSelect;
 export type InsertTeamTemplate = z.infer<typeof insertTeamTemplateSchema>;
 export type Contact = typeof contacts.$inferSelect;
 export type InsertContact = z.infer<typeof insertContactSchema>;
+
+export const insertTeamBranchSchema = createInsertSchema(teamBranches).omit({ id: true, createdAt: true });
 
 // ── Menu Builder Schemas ──────────────────────────────────────────────────────
 export const insertMenuSectionSchema = createInsertSchema(menuSections).omit({ id: true, createdAt: true });
