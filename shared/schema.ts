@@ -416,6 +416,7 @@ export const updateTeamMemberSchema = z.object({
   businessPhone: z.string().max(50).optional().nullable(),
   businessProfileImage: z.string().optional().nullable(),
   businessBio: z.string().max(500).optional().nullable(),
+  branchId: z.string().optional().nullable(),
 });
 
 export const updateBusinessProfileSchema = z.object({
@@ -429,6 +430,7 @@ export const updateBusinessProfileSchema = z.object({
 export const createTeamInviteSchema = z.object({
   emails: z.array(z.string().email()).min(1).max(10),
   role: z.enum(TEAM_ROLES).optional().default("member"),
+  branchId: z.string().optional(),
 });
 
 export const createTeamMemberSchema = z.object({
@@ -436,6 +438,24 @@ export const createTeamMemberSchema = z.object({
   email: z.string().email("Valid email is required"),
   jobTitle: z.string().max(100).optional().or(z.literal("")),
   memberRole: z.enum(["admin", "member"]).optional().default("member"),
+  branchId: z.string().optional(),
+});
+
+// Branch schemas
+export const createBranchSchema = z.object({
+  name: z.string().min(1, "Branch name is required").max(100),
+  address: z.string().min(1, "Address is required").max(500),
+  phone: z.string().max(50).optional().or(z.literal("")),
+  email: z.string().email().optional().or(z.literal("")),
+  isHeadBranch: z.boolean().optional().default(false),
+});
+
+export const updateBranchSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  address: z.string().min(1).max(500).optional(),
+  phone: z.string().max(50).optional().nullable(),
+  email: z.string().email().optional().or(z.literal("")).nullable(),
+  isHeadBranch: z.boolean().optional(),
 });
 
 export const insertTeamTemplateSchema = createInsertSchema(teamTemplates).omit({ id: true });
