@@ -83,6 +83,13 @@ function MobilePageNav({
   );
 }
 
+type BranchInfo = {
+  name: string;
+  address: string;
+  phone?: string | null;
+  email?: string | null;
+};
+
 type TeamBranding = {
   companyLogo?: string;
   coverPhoto?: string;
@@ -99,6 +106,8 @@ type TeamBranding = {
   memberEmail?: string;
   memberPhone?: string;
   companySocials?: Array<{ platform: string; url: string }>;
+  headBranch?: BranchInfo;
+  memberBranch?: BranchInfo;
 };
 
 type PublicProfile = {
