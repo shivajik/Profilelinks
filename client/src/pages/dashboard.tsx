@@ -912,17 +912,20 @@ export default function Dashboard() {
                               </span>
                             </DropdownMenuItem>
                           ))}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => {
-                            const check = canPerformAction(planLimits, "addPage");
-                            if (!check.allowed) { setLimitMessage(check.message || ""); setLimitDialogOpen(true); return; }
-                            setAddingPage(true);
-                          }} data-testid="button-add-new-page">
-                            <Plus className="w-3.5 h-3.5" />
-                            Add New Page +
-                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          const check = canPerformAction(planLimits, "addPage");
+                          if (!check.allowed) { setLimitMessage(check.message || ""); setLimitDialogOpen(true); return; }
+                          setAddingPage(true);
+                        }}
+                        data-testid="button-add-new-page"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Add Page
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => setManagingPages(true)} data-testid="button-manage-pages">
                         Manage
                       </Button>
@@ -934,6 +937,11 @@ export default function Dashboard() {
                       Editing: <span className="font-medium">{currentPage?.title || "Home"}</span>
                       {currentPage?.isHome && <span className="text-xs ml-1 text-muted-foreground">(Home page)</span>}
                     </p>
+                    {userPages.length > 1 && (
+                      <p className="text-xs text-muted-foreground mt-2 bg-muted/50 p-2 rounded-md">
+                        💡 Each page has its own blocks. Blogs you add will appear on the page you're currently editing.
+                      </p>
+                    )}
                   </div>
                 </CategorySection>
 
