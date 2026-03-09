@@ -12,6 +12,7 @@ import {
   teamMembers,
   teamInvites,
   teamTemplates,
+  teamBranches,
   contacts,
   menuSections,
   menuProducts,
@@ -33,6 +34,8 @@ import {
   type TeamMember,
   type InsertTeamMember,
   type TeamInvite,
+  type TeamBranch,
+  type InsertTeamBranch,
   type TeamTemplate,
   type InsertTeamTemplate,
   type Contact,
@@ -168,6 +171,19 @@ pool.query(`
   ALTER TABLE IF EXISTS team_members ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'activated';
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS must_change_password boolean NOT NULL DEFAULT false;
   ALTER TABLE IF EXISTS teams ADD COLUMN IF NOT EXISTS slug text;
+  ALTER TABLE IF EXISTS team_members ADD COLUMN IF NOT EXISTS branch_id varchar;
+  ALTER TABLE IF EXISTS team_invites ADD COLUMN IF NOT EXISTS branch_id varchar;
+
+  CREATE TABLE IF NOT EXISTS team_branches (
+    id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+    team_id varchar NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    name text NOT NULL,
+    address text NOT NULL,
+    phone text,
+    email text,
+    is_head_branch boolean NOT NULL DEFAULT false,
+    created_at timestamp NOT NULL DEFAULT now()
+  );
 
   CREATE INDEX IF NOT EXISTS idx_pages_user_id ON pages(user_id);
   CREATE INDEX IF NOT EXISTS idx_links_page_id ON links(page_id);
@@ -180,6 +196,7 @@ pool.query(`
   CREATE INDEX IF NOT EXISTS idx_team_members_user_id ON team_members(user_id);
   CREATE INDEX IF NOT EXISTS idx_team_members_team_id ON team_members(team_id);
   CREATE INDEX IF NOT EXISTS idx_team_templates_team_id ON team_templates(team_id);
+  CREATE INDEX IF NOT EXISTS idx_team_branches_team_id ON team_branches(team_id);
 `).then(async () => {
   // Backfill slugs for existing teams that don't have one
   try {
@@ -241,16 +258,22 @@ export interface IStorage {
 
   getTeamMembers(teamId: string): Promise<(TeamMember & { user: Pick<User, "id" | "username" | "email" | "displayName" | "profileImage"> })[]>;
   addTeamMember(member: InsertTeamMember): Promise<TeamMember>;
-  updateTeamMember(id: string, teamId: string, data: Partial<Pick<TeamMember, "role" | "jobTitle" | "status" | "businessName" | "businessPhone" | "businessProfileImage" | "businessBio">>): Promise<TeamMember | undefined>;
+  updateTeamMember(id: string, teamId: string, data: Partial<Pick<TeamMember, "role" | "jobTitle" | "status" | "businessName" | "businessPhone" | "businessProfileImage" | "businessBio" | "branchId">>): Promise<TeamMember | undefined>;
   removeTeamMember(id: string, teamId: string): Promise<boolean>;
   getTeamMemberByUserId(teamId: string, userId: string): Promise<TeamMember | undefined>;
   getTeamMembershipsByUserId(userId: string): Promise<(TeamMember & { team: Team })[]>;
 
-  createTeamInvites(invites: { teamId: string; email: string; role: string; invitedById: string; token: string }[]): Promise<TeamInvite[]>;
+  createTeamInvites(invites: { teamId: string; email: string; role: string; invitedById: string; token: string; branchId?: string }[]): Promise<TeamInvite[]>;
   getTeamInvites(teamId: string): Promise<TeamInvite[]>;
   getTeamInviteByToken(token: string): Promise<TeamInvite | undefined>;
   updateTeamInviteStatus(id: string, status: string): Promise<TeamInvite | undefined>;
   deleteTeamInvite(id: string, teamId: string): Promise<boolean>;
+
+  // Branches
+  getTeamBranches(teamId: string): Promise<TeamBranch[]>;
+  createTeamBranch(branch: InsertTeamBranch): Promise<TeamBranch>;
+  updateTeamBranch(id: string, teamId: string, data: Partial<Pick<TeamBranch, "name" | "address" | "phone" | "email" | "isHeadBranch">>): Promise<TeamBranch | undefined>;
+  deleteTeamBranch(id: string, teamId: string): Promise<boolean>;
 
   getTeamTemplates(teamId: string): Promise<TeamTemplate[]>;
   createTeamTemplate(template: InsertTeamTemplate): Promise<TeamTemplate>;
@@ -615,7 +638,7 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateTeamMember(id: string, teamId: string, data: Partial<Pick<TeamMember, "role" | "jobTitle" | "status">>): Promise<TeamMember | undefined> {
+  async updateTeamMember(id: string, teamId: string, data: Partial<Pick<TeamMember, "role" | "jobTitle" | "status" | "businessName" | "businessPhone" | "businessProfileImage" | "businessBio" | "branchId">>): Promise<TeamMember | undefined> {
     const [updated] = await db
       .update(teamMembers)
       .set(data)
@@ -673,6 +696,35 @@ export class DatabaseStorage implements IStorage {
       .delete(teamInvites)
       .where(and(eq(teamInvites.id, id), eq(teamInvites.teamId, teamId)))
       .returning();
+    return result.length > 0;
+  }
+
+  // ── Branches ──────────────────────────────────────────────────────────
+  async getTeamBranches(teamId: string): Promise<TeamBranch[]> {
+    return db.select().from(teamBranches).where(eq(teamBranches.teamId, teamId)).orderBy(asc(teamBranches.createdAt));
+  }
+
+  async createTeamBranch(branch: InsertTeamBranch): Promise<TeamBranch> {
+    if (branch.isHeadBranch) {
+      // Unset existing head branch
+      await db.update(teamBranches).set({ isHeadBranch: false }).where(eq(teamBranches.teamId, branch.teamId));
+    }
+    const [created] = await db.insert(teamBranches).values(branch).returning();
+    return created;
+  }
+
+  async updateTeamBranch(id: string, teamId: string, data: Partial<Pick<TeamBranch, "name" | "address" | "phone" | "email" | "isHeadBranch">>): Promise<TeamBranch | undefined> {
+    if (data.isHeadBranch) {
+      await db.update(teamBranches).set({ isHeadBranch: false }).where(eq(teamBranches.teamId, teamId));
+    }
+    const [updated] = await db.update(teamBranches).set(data).where(and(eq(teamBranches.id, id), eq(teamBranches.teamId, teamId))).returning();
+    return updated;
+  }
+
+  async deleteTeamBranch(id: string, teamId: string): Promise<boolean> {
+    // Unset branchId from members assigned to this branch
+    await db.update(teamMembers).set({ branchId: null }).where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.branchId, id)));
+    const result = await db.delete(teamBranches).where(and(eq(teamBranches.id, id), eq(teamBranches.teamId, teamId))).returning();
     return result.length > 0;
   }
 

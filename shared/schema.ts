@@ -143,6 +143,17 @@ export const teams = pgTable("teams", {
   ownerId: varchar("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
 });
 
+export const teamBranches = pgTable("team_branches", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  teamId: varchar("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  address: text("address").notNull(),
+  phone: text("phone"),
+  email: text("email"),
+  isHeadBranch: boolean("is_head_branch").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const teamMembers = pgTable("team_members", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   teamId: varchar("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
@@ -154,6 +165,7 @@ export const teamMembers = pgTable("team_members", {
   businessPhone: text("business_phone"),
   businessProfileImage: text("business_profile_image"),
   businessBio: text("business_bio"),
+  branchId: varchar("branch_id"),
 });
 
 export const teamInvites = pgTable("team_invites", {
@@ -164,6 +176,7 @@ export const teamInvites = pgTable("team_invites", {
   invitedById: varchar("invited_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   status: text("status").notNull().default("pending"),
   token: text("token").notNull(),
+  branchId: varchar("branch_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -403,6 +416,7 @@ export const updateTeamMemberSchema = z.object({
   businessPhone: z.string().max(50).optional().nullable(),
   businessProfileImage: z.string().optional().nullable(),
   businessBio: z.string().max(500).optional().nullable(),
+  branchId: z.string().optional().nullable(),
 });
 
 export const updateBusinessProfileSchema = z.object({
@@ -416,6 +430,7 @@ export const updateBusinessProfileSchema = z.object({
 export const createTeamInviteSchema = z.object({
   emails: z.array(z.string().email()).min(1).max(10),
   role: z.enum(TEAM_ROLES).optional().default("member"),
+  branchId: z.string().optional(),
 });
 
 export const createTeamMemberSchema = z.object({
@@ -423,6 +438,24 @@ export const createTeamMemberSchema = z.object({
   email: z.string().email("Valid email is required"),
   jobTitle: z.string().max(100).optional().or(z.literal("")),
   memberRole: z.enum(["admin", "member"]).optional().default("member"),
+  branchId: z.string().optional(),
+});
+
+// Branch schemas
+export const createBranchSchema = z.object({
+  name: z.string().min(1, "Branch name is required").max(100),
+  address: z.string().min(1, "Address is required").max(500),
+  phone: z.string().max(50).optional().or(z.literal("")),
+  email: z.string().email().optional().or(z.literal("")),
+  isHeadBranch: z.boolean().optional().default(false),
+});
+
+export const updateBranchSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  address: z.string().min(1).max(500).optional(),
+  phone: z.string().max(50).optional().nullable(),
+  email: z.string().email().optional().or(z.literal("")).nullable(),
+  isHeadBranch: z.boolean().optional(),
 });
 
 export const insertTeamTemplateSchema = createInsertSchema(teamTemplates).omit({ id: true });
@@ -464,10 +497,14 @@ export type InsertTeam = z.infer<typeof insertTeamSchema>;
 export type TeamMember = typeof teamMembers.$inferSelect;
 export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
 export type TeamInvite = typeof teamInvites.$inferSelect;
+export type TeamBranch = typeof teamBranches.$inferSelect;
+export type InsertTeamBranch = z.infer<typeof insertTeamBranchSchema>;
 export type TeamTemplate = typeof teamTemplates.$inferSelect;
 export type InsertTeamTemplate = z.infer<typeof insertTeamTemplateSchema>;
 export type Contact = typeof contacts.$inferSelect;
 export type InsertContact = z.infer<typeof insertContactSchema>;
+
+export const insertTeamBranchSchema = createInsertSchema(teamBranches).omit({ id: true, createdAt: true });
 
 // ── Menu Builder Schemas ──────────────────────────────────────────────────────
 export const insertMenuSectionSchema = createInsertSchema(menuSections).omit({ id: true, createdAt: true });
