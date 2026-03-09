@@ -1884,6 +1884,17 @@ export async function registerRoutes(
       const defaultTemplate = templates.find((t) => t.isDefault) || templates[0];
       const tData: any = defaultTemplate?.templateData || {};
 
+      // Fetch branch data for member
+      let memberBranch: any = null;
+      let headBranch: any = null;
+      try {
+        const branches = await storage.getTeamBranches(team.id);
+        headBranch = branches.find((b: any) => b.isHeadBranch) || null;
+        if (member?.branchId) {
+          memberBranch = branches.find((b: any) => b.id === member.branchId) || null;
+        }
+      } catch (_) {}
+
       const teamBranding = {
         companyLogo: tData.companyLogo || team.logoUrl || undefined,
         coverPhoto: tData.coverPhoto || undefined,
@@ -1900,6 +1911,8 @@ export async function registerRoutes(
         memberEmail: user.email || undefined,
         memberPhone: member?.businessPhone || undefined,
         companySocials: tData.companySocials || undefined,
+        headBranch: headBranch ? { name: headBranch.name, address: headBranch.address, phone: headBranch.phone, email: headBranch.email } : undefined,
+        memberBranch: memberBranch ? { name: memberBranch.name, address: memberBranch.address, phone: memberBranch.phone, email: memberBranch.email } : undefined,
       };
 
       if (member?.businessName) (publicUser as any).displayName = member.businessName;
@@ -1991,11 +2004,24 @@ export async function registerRoutes(
         teamName?: string;
         memberPhone?: string;
         companySocials?: Array<{ platform: string; url: string }>;
+        headBranch?: { name: string; address: string; phone?: string | null; email?: string | null };
+        memberBranch?: { name: string; address: string; phone?: string | null; email?: string | null };
       } | null = null;
 
       if (teamId && teamData) {
         const defaultTemplate = templates.find((t: any) => t.isDefault) || templates[0];
         const tData: any = defaultTemplate?.templateData || {};
+
+        // Fetch branch data
+        let memberBranchData: any = null;
+        let headBranchData: any = null;
+        try {
+          const branches = await storage.getTeamBranches(teamId);
+          headBranchData = branches.find((b: any) => b.isHeadBranch) || null;
+          if (member?.branchId) {
+            memberBranchData = branches.find((b: any) => b.id === member.branchId) || null;
+          }
+        } catch (_) {}
 
         teamBranding = {
           companyLogo: tData.companyLogo || teamData?.logoUrl || undefined,
@@ -2012,6 +2038,8 @@ export async function registerRoutes(
           teamName: teamData?.name || undefined,
           memberPhone: member?.businessPhone || undefined,
           companySocials: tData.companySocials || undefined,
+          headBranch: headBranchData ? { name: headBranchData.name, address: headBranchData.address, phone: headBranchData.phone, email: headBranchData.email } : undefined,
+          memberBranch: memberBranchData ? { name: memberBranchData.name, address: memberBranchData.address, phone: memberBranchData.phone, email: memberBranchData.email } : undefined,
         };
 
         if (member?.businessName) {

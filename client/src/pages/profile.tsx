@@ -83,6 +83,13 @@ function MobilePageNav({
   );
 }
 
+type BranchInfo = {
+  name: string;
+  address: string;
+  phone?: string | null;
+  email?: string | null;
+};
+
 type TeamBranding = {
   companyLogo?: string;
   coverPhoto?: string;
@@ -99,6 +106,8 @@ type TeamBranding = {
   memberEmail?: string;
   memberPhone?: string;
   companySocials?: Array<{ platform: string; url: string }>;
+  headBranch?: BranchInfo;
+  memberBranch?: BranchInfo;
 };
 
 type PublicProfile = {
@@ -346,7 +355,8 @@ export default function PublicProfile(props?: any) {
                   const userContactItems = [
                     ...(teamBranding?.memberPhone ? [{ icon: Phone, value: teamBranding.memberPhone }] : []),
                   ];
-                  if (contactItems.length === 0 && userContactItems.length === 0) return null;
+                  const hasBranches = !!(teamBranding?.headBranch || teamBranding?.memberBranch);
+                  if (contactItems.length === 0 && userContactItems.length === 0 && !hasBranches) return null;
                   return (
                     <div className="space-y-3 mb-4">
                       {userContactItems.length > 0 && (
@@ -377,6 +387,55 @@ export default function PublicProfile(props?: any) {
                                 <span className="text-xs text-foreground">{item.value}</span>
                               </div>
                             ))}
+                          </div>
+                        </>
+                      )}
+                      {hasBranches && (
+                        <>
+                          <div className="border-t border-border my-3" />
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <MapPin className="w-3 h-3 text-muted-foreground" />
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Locations</span>
+                          </div>
+                          <div className="space-y-2.5" data-testid="branch-addresses">
+                            {teamBranding?.headBranch && (
+                              <div className="rounded-md border border-border/50 p-2.5 space-y-1">
+                                <div className="flex items-center gap-1.5">
+                                  <Building2 className="w-3 h-3" style={{ color: brandColor }} />
+                                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Head Office</span>
+                                </div>
+                                <p className="text-xs font-medium">{teamBranding.headBranch.name}</p>
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                  <MapPin className="w-3 h-3 shrink-0" style={{ color: brandColor }} />
+                                  {teamBranding.headBranch.address}
+                                </div>
+                                {teamBranding.headBranch.phone && (
+                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                    <Phone className="w-3 h-3 shrink-0" style={{ color: brandColor }} />
+                                    {teamBranding.headBranch.phone}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {teamBranding?.memberBranch && teamBranding.memberBranch.name !== teamBranding?.headBranch?.name && (
+                              <div className="rounded-md border border-border/50 p-2.5 space-y-1">
+                                <div className="flex items-center gap-1.5">
+                                  <MapPin className="w-3 h-3" style={{ color: brandColor }} />
+                                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Branch Office</span>
+                                </div>
+                                <p className="text-xs font-medium">{teamBranding.memberBranch.name}</p>
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                  <MapPin className="w-3 h-3 shrink-0" style={{ color: brandColor }} />
+                                  {teamBranding.memberBranch.address}
+                                </div>
+                                {teamBranding.memberBranch.phone && (
+                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                    <Phone className="w-3 h-3 shrink-0" style={{ color: brandColor }} />
+                                    {teamBranding.memberBranch.phone}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </>
                       )}

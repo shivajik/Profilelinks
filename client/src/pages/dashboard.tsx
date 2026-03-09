@@ -113,6 +113,8 @@ import { SocialIcon } from "@/components/social-icon";
 import type { Link, Social, Page, Block, BlockContent, BlockType } from "@shared/schema";
 import { BLOCK_TYPES } from "@shared/schema";
 import { BillingSection } from "@/components/billing-section";
+import { BranchManager } from "@/components/branch-manager";
+import { CsvImportExport } from "@/components/csv-import-export";
 import { PlanUsageBanner, canPerformAction, LimitReachedDialog } from "@/components/plan-usage-banner";
 import { usePlanLimits, type PlanLimits } from "@/hooks/use-plan-limits";
 import { MenuBuilder } from "@/components/menu-builder";
@@ -3413,7 +3415,18 @@ function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, isSelf, to
   const [editPhone, setEditPhone] = useState(member?.businessPhone || "");
   const [editBio, setEditBio] = useState(member?.businessBio || "");
   const [editProfileImage, setEditProfileImage] = useState(member?.businessProfileImage || member?.user?.profileImage || "");
+  const [editBranchId, setEditBranchId] = useState(member?.branchId || "");
   const [uploadingImage, setUploadingImage] = useState(false);
+
+  const { data: editBranches = [] } = useQuery<any[]>({
+    queryKey: ["/api/teams", teamId, "branches"],
+    queryFn: async () => {
+      const res = await fetch(`/api/teams/${teamId}/branches`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: isOpen,
+  });
 
   useEffect(() => {
     if (member) {
@@ -3423,6 +3436,7 @@ function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, isSelf, to
       setEditPhone(member.businessPhone || "");
       setEditBio(member.businessBio || "");
       setEditProfileImage(member.businessProfileImage || member.user?.profileImage || "");
+      setEditBranchId(member.branchId || "");
     }
   }, [member]);
 
@@ -3557,6 +3571,30 @@ function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, isSelf, to
             </div>
           )}
 
+          {/* Branch Assignment */}
+          {isAdmin && editBranches.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5" />
+                Branch Assignment
+              </h4>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-branch" className="text-xs">Branch</Label>
+                <Select value={editBranchId || "none"} onValueChange={(v) => setEditBranchId(v === "none" ? "" : v)}>
+                  <SelectTrigger className="h-9"><SelectValue placeholder="Select branch" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No branch assigned</SelectItem>
+                    {editBranches.map((b: any) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.name} {b.isHeadBranch ? "(Head Office)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
           {/* Profile URL */}
           {member.user?.username && (
             <div className="space-y-1.5">
@@ -3583,6 +3621,7 @@ function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, isSelf, to
                   businessName: editDisplayName || null,
                   businessPhone: editPhone || null,
                   businessBio: editBio || null,
+                  branchId: editBranchId || null,
                 };
                 await updateMemberMut.mutateAsync({ memberId: member.id, payload });
                 if (editRole !== member.role && isAdmin && member.role !== "owner") {
@@ -3611,11 +3650,13 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
   const [cardPreviewMember, setCardPreviewMember] = useState<any>(null);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("member");
+  const [inviteBranchId, setInviteBranchId] = useState("");
   const [createName, setCreateName] = useState("");
   const [createEmail, setCreateEmail] = useState("");
   const [createJobTitle, setCreateJobTitle] = useState("");
   const [createRole, setCreateRole] = useState("member");
   const [createTemplateId, setCreateTemplateId] = useState<string>("");
+  const [createBranchId, setCreateBranchId] = useState("");
   const [removeConfirmMember, setRemoveConfirmMember] = useState<any>(null);
   const [editMember, setEditMember] = useState<any>(null);
   const [createdCredentials, setCreatedCredentials] = useState<{ email: string; password: string; username: string } | null>(null);
@@ -3636,6 +3677,15 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
     queryKey: ["/api/teams", teamId, "templates"],
     queryFn: async () => {
       const res = await fetch(`/api/teams/${teamId}/templates`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  const { data: branches = [] } = useQuery<any[]>({
+    queryKey: ["/api/teams", teamId, "branches"],
+    queryFn: async () => {
+      const res = await fetch(`/api/teams/${teamId}/branches`, { credentials: "include" });
       if (!res.ok) return [];
       return res.json();
     },
@@ -3780,7 +3830,8 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
           <h2 className="text-base font-semibold">Team Members</h2>
         </div>
         {isAdmin && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <CsvImportExport teamId={teamId} />
             <Button variant="outline" size="sm" onClick={() => setInviteOpen(true)} data-testid="button-invite-member">
               <Send className="w-4 h-4" />
               Invite
@@ -4081,10 +4132,28 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
                   </SelectContent>
                 </Select>
               </div>
+              {branches.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="invite-branch">Branch</Label>
+                  <Select value={inviteBranchId || "none"} onValueChange={(v) => setInviteBranchId(v === "none" ? "" : v)}>
+                    <SelectTrigger data-testid="select-invite-branch">
+                      <SelectValue placeholder="Select branch" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No branch</SelectItem>
+                      {branches.map((b: any) => (
+                        <SelectItem key={b.id} value={b.id}>
+                          {b.name} {b.isHeadBranch ? "(Head Office)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <Button
                 className="w-full"
                 disabled={!inviteEmail || inviteMutation.isPending}
-                onClick={() => inviteMutation.mutate({ emails: [inviteEmail], role: inviteRole })}
+                onClick={() => inviteMutation.mutate({ emails: [inviteEmail], role: inviteRole, ...(inviteBranchId ? { branchId: inviteBranchId } : {}) })}
                 data-testid="button-send-invite"
               >
                 {inviteMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -4163,10 +4232,28 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
                 <p className="text-xs text-muted-foreground">Choose which business card template to assign to this member.</p>
               </div>
             )}
+            {branches.length > 0 && (
+              <div className="space-y-1.5">
+                <Label htmlFor="create-branch">Branch</Label>
+                <Select value={createBranchId || "none"} onValueChange={(v) => setCreateBranchId(v === "none" ? "" : v)}>
+                  <SelectTrigger data-testid="select-create-branch">
+                    <SelectValue placeholder="Select branch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No branch</SelectItem>
+                    {branches.map((b: any) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.name} {b.isHeadBranch ? "(Head Office)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <Button
               className="w-full"
               disabled={!createName || !createEmail || createMemberMutation.isPending}
-              onClick={() => createMemberMutation.mutate({ displayName: createName, email: createEmail, jobTitle: createJobTitle || undefined, memberRole: createRole })}
+              onClick={() => createMemberMutation.mutate({ displayName: createName, email: createEmail, jobTitle: createJobTitle || undefined, memberRole: createRole, ...(createBranchId ? { branchId: createBranchId } : {}) })}
               data-testid="button-submit-create-member"
             >
               {createMemberMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -4698,6 +4785,9 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                 )}
               </CardContent>
             </Card>
+
+            {/* Branch Manager */}
+            <BranchManager teamId={teamId} />
           </div>
 
           {selectedTemplate && (
