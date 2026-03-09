@@ -3408,21 +3408,27 @@ function AddSocialDialog({
 
 function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, isSelf, toast }: { member: any; isOpen: boolean; onClose: () => void; teamId: string; isAdmin: boolean; isSelf: boolean; toast: any }) {
   const [editJobTitle, setEditJobTitle] = useState(member?.jobTitle || "");
-  const [editDisplayName, setEditDisplayName] = useState(member?.user?.displayName || "");
+  const [editDisplayName, setEditDisplayName] = useState(member?.businessName || member?.user?.displayName || "");
   const [editRole, setEditRole] = useState(member?.role || "member");
+  const [editPhone, setEditPhone] = useState(member?.businessPhone || "");
+  const [editBio, setEditBio] = useState(member?.businessBio || "");
+  const [editProfileImage, setEditProfileImage] = useState(member?.businessProfileImage || member?.user?.profileImage || "");
   const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     if (member) {
       setEditJobTitle(member.jobTitle || "");
-      setEditDisplayName(member.user?.displayName || "");
+      setEditDisplayName(member.businessName || member.user?.displayName || "");
       setEditRole(member.role || "member");
+      setEditPhone(member.businessPhone || "");
+      setEditBio(member.businessBio || "");
+      setEditProfileImage(member.businessProfileImage || member.user?.profileImage || "");
     }
   }, [member]);
 
   const updateMemberMut = useMutation({
-    mutationFn: async ({ memberId, jobTitle }: { memberId: string; jobTitle: string }) => {
-      await apiRequest("PATCH", `/api/teams/${teamId}/members/${memberId}`, { jobTitle: jobTitle || null });
+    mutationFn: async (data: Record<string, any>) => {
+      await apiRequest("PATCH", `/api/teams/${teamId}/members/${data.memberId}`, data.payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "members"] });
@@ -3438,133 +3444,157 @@ function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, isSelf, to
     },
   });
 
-  // For non-admin self-edit: only name and profile image
-  const isMemberSelfEdit = isSelf && !isAdmin;
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 1 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Maximum file size is 1MB.", variant: "destructive" });
+      return;
+    }
+    setUploadingImage(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+      if (res.ok) {
+        const { url } = await res.json();
+        setEditProfileImage(url);
+        await apiRequest("PATCH", `/api/teams/${teamId}/members/${member.id}`, { businessProfileImage: url });
+        queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "members"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/business-profile"] });
+        toast({ title: "Profile image updated!" });
+      }
+    } catch {} finally { setUploadingImage(false); }
+  };
 
   if (!member) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="sm:max-w-md" aria-describedby="edit-member-desc">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto" aria-describedby="edit-member-desc">
         <DialogHeader>
-          <DialogTitle>Edit Member</DialogTitle>
-          <DialogDescription id="edit-member-desc">Update team member details.</DialogDescription>
+          <DialogTitle className="flex items-center gap-2">
+            <Pencil className="w-4 h-4" />
+            Edit Member
+          </DialogTitle>
+          <DialogDescription id="edit-member-desc">
+            {isAdmin ? "Edit this member's business card information. Changes will reflect on their public profile." : "Update your business card details."}
+          </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
+        <div className="space-y-5">
+          {/* Profile Image - editable */}
+          <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
             <div className="relative group">
-              {isMemberSelfEdit ? (
-                <>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/gif,image/webp"
-                    className="hidden"
-                    id="edit-member-avatar"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      if (file.size > 1 * 1024 * 1024) {
-                        toast({ title: "File too large", description: "Maximum file size is 1MB.", variant: "destructive" });
-                        return;
-                      }
-                      setUploadingImage(true);
-                      try {
-                        const fd = new FormData();
-                        fd.append("file", file);
-                        const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
-                        if (res.ok) {
-                          const { url } = await res.json();
-                          await apiRequest("PATCH", `/api/teams/${teamId}/members/${member.id}/profile`, { profileImage: url });
-                          queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "members"] });
-                          queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-                          toast({ title: "Profile image updated!" });
-                        }
-                      } catch {} finally { setUploadingImage(false); }
-                    }}
-                  />
-                  <label htmlFor="edit-member-avatar" className="cursor-pointer block">
-                    <Avatar className="w-14 h-14 border border-border">
-                      <AvatarImage src={member.user?.profileImage || undefined} />
-                      <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                        {(member.user?.displayName || member.user?.username || "?").charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      {uploadingImage ? <Loader2 className="w-4 h-4 text-white animate-spin" /> : <Camera className="w-4 h-4 text-white" />}
-                    </div>
-                  </label>
-                </>
-              ) : (
-                <Avatar className="w-10 h-10 border border-border">
-                  <AvatarImage src={member.businessProfileImage || member.user?.profileImage || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                    {(member.businessName || member.user?.displayName || member.user?.username || "?").charAt(0).toUpperCase()}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                className="hidden"
+                id="edit-member-avatar"
+                onChange={handleImageUpload}
+              />
+              <label htmlFor="edit-member-avatar" className="cursor-pointer block">
+                <Avatar className="w-16 h-16 border-2 border-border">
+                  <AvatarImage src={editProfileImage || undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-lg">
+                    {(editDisplayName || "?").charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-              )}
+                <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  {uploadingImage ? <Loader2 className="w-4 h-4 text-white animate-spin" /> : <Camera className="w-4 h-4 text-white" />}
+                </div>
+              </label>
             </div>
-            <div>
-              <div className="text-sm font-medium">{member.businessName || member.user?.displayName || member.user?.username || "Unknown"}</div>
-              <div className="text-xs text-muted-foreground">{member.user?.email || ""}</div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{member.businessName || member.user?.displayName || "Unknown"}</p>
+              <p className="text-xs text-muted-foreground truncate">{member.user?.email || ""}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Click photo to change</p>
             </div>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-display-name">Display Name</Label>
-            <Input id="edit-display-name" value={editDisplayName} onChange={(e) => setEditDisplayName(e.target.value)} placeholder="Full Name" />
-          </div>
-          {!isMemberSelfEdit && (
+
+          {/* Business Details */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Briefcase className="w-3.5 h-3.5" />
+              Business Card Details
+            </h4>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-display-name" className="text-xs">Display Name</Label>
+                <Input id="edit-display-name" value={editDisplayName} onChange={(e) => setEditDisplayName(e.target.value)} placeholder="Full Name" className="h-9" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-job-title" className="text-xs">Job Title</Label>
+                <Input id="edit-job-title" value={editJobTitle} onChange={(e) => setEditJobTitle(e.target.value)} placeholder="e.g. Software Engineer" className="h-9" />
+              </div>
+            </div>
             <div className="space-y-1.5">
-              <Label htmlFor="edit-job-title">Job Title</Label>
-              <Input id="edit-job-title" value={editJobTitle} onChange={(e) => setEditJobTitle(e.target.value)} placeholder="e.g. Software Engineer" />
+              <Label htmlFor="edit-phone" className="text-xs">Phone Number</Label>
+              <Input id="edit-phone" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="Business phone number" className="h-9" />
             </div>
-          )}
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-bio" className="text-xs">Bio</Label>
+              <Textarea id="edit-bio" value={editBio} onChange={(e) => setEditBio(e.target.value)} placeholder="Short bio for business card..." rows={2} className="resize-none" />
+            </div>
+          </div>
+
+          {/* Admin-only: Role */}
           {isAdmin && member.role !== "owner" && (
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-role">Role</Label>
-              <Select value={editRole} onValueChange={setEditRole}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="member">Member</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="space-y-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Shield className="w-3.5 h-3.5" />
+                Permissions
+              </h4>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-role" className="text-xs">Role</Label>
+                <Select value={editRole} onValueChange={setEditRole}>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="member">Member</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           )}
+
+          {/* Profile URL */}
           {member.user?.username && (
             <div className="space-y-1.5">
-              <Label>Profile URL</Label>
+              <Label className="text-xs">Public Profile URL</Label>
               <div className="flex items-center gap-2">
-                <Input readOnly value={`${window.location.origin}/${member.user.username}`} className="text-xs" />
-                <Button variant="outline" size="icon" onClick={() => {
+                <Input readOnly value={`${window.location.origin}/${member.user.username}`} className="text-xs h-9 bg-muted/50" />
+                <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => {
                   navigator.clipboard.writeText(`${window.location.origin}/${member.user.username}`);
                   toast({ title: "Profile URL copied" });
                 }}>
-                  <Copy className="w-4 h-4" />
+                  <Copy className="w-3.5 h-3.5" />
                 </Button>
               </div>
             </div>
           )}
-          <div className="flex justify-end gap-2 pt-2">
+
+          <div className="flex justify-end gap-2 pt-2 border-t">
             <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
             <Button
               size="sm"
               onClick={async () => {
-                await updateMemberMut.mutateAsync({ memberId: member.id, jobTitle: editJobTitle });
+                const payload: Record<string, any> = {
+                  jobTitle: editJobTitle || null,
+                  businessName: editDisplayName || null,
+                  businessPhone: editPhone || null,
+                  businessBio: editBio || null,
+                };
+                await updateMemberMut.mutateAsync({ memberId: member.id, payload });
                 if (editRole !== member.role && isAdmin && member.role !== "owner") {
                   await updateRoleMut.mutateAsync({ memberId: member.id, role: editRole });
                 }
-                if (editDisplayName !== (member.user?.displayName || "")) {
-                  try {
-                    await apiRequest("PATCH", `/api/teams/${teamId}/members/${member.id}/profile`, { displayName: editDisplayName });
-                    queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "members"] });
-                  } catch {}
-                }
+                queryClient.invalidateQueries({ queryKey: ["/api/auth/business-profile"] });
                 onClose();
                 toast({ title: "Member updated" });
               }}
               disabled={updateMemberMut.isPending}
             >
-              {updateMemberMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
+              {updateMemberMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Changes"}
             </Button>
           </div>
         </div>
