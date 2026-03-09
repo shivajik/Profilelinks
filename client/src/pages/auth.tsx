@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Eye, EyeOff, ArrowLeft, Loader2, Sparkles, Link2, Palette, Globe, User, Users } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, Loader2, Sparkles, Link2, Palette, Globe, User, Users, CheckCircle2, XCircle } from "lucide-react";
 import { Link as WouterLink } from "wouter";
 
 const FEATURES = [
@@ -175,40 +175,7 @@ export default function AuthPage() {
               }} />
             )}
 
-            <div className="mt-6">
-              <div className="relative mb-4">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="bg-background px-2 text-muted-foreground">Quick Demo</span>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  disabled={demoLoading !== null}
-                  onClick={() => handleDemoLogin("personal")}
-                  data-testid="button-demo-personal"
-                >
-                  {demoLoading === "personal" ? <Loader2 className="w-4 h-4 animate-spin" /> : <User className="w-4 h-4" />}
-                  Individual
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  disabled={demoLoading !== null}
-                  onClick={() => handleDemoLogin("team")}
-                  data-testid="button-demo-team"
-                >
-                  {demoLoading === "team" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
-                  Business
-                </Button>
-              </div>
-            </div>
+            {/* Demo login buttons removed */}
 
             <p className="text-xs text-muted-foreground text-center mt-8">
               By continuing, you agree to our Terms of Service and Privacy Policy.
@@ -286,6 +253,26 @@ function RegisterForm({ onSubmit }: { onSubmit: (username: string, email: string
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [available, setAvailable] = useState<boolean | null>(null);
+  const [debounceTimer, setDebounceTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+
+  const checkUsername = (val: string) => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    if (val.length < 3) { setAvailable(null); return; }
+    setChecking(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/auth/username-available?username=${encodeURIComponent(val)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setAvailable(data.available);
+        }
+      } catch { /* ignore */ }
+      setChecking(false);
+    }, 500);
+    setDebounceTimer(timer);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -306,7 +293,12 @@ function RegisterForm({ onSubmit }: { onSubmit: (username: string, email: string
           <Input
             id="reg-username"
             value={username}
-            onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+            onChange={(e) => {
+              const val = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, "");
+              setUsername(val);
+              setAvailable(null);
+              checkUsername(val);
+            }}
             className="pl-[115px]"
             placeholder="yourname"
             required
@@ -314,7 +306,28 @@ function RegisterForm({ onSubmit }: { onSubmit: (username: string, email: string
             maxLength={30}
             data-testid="input-register-username"
           />
+          {checking && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+            </div>
+          )}
+          {!checking && available === true && username.length >= 3 && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <CheckCircle2 className="w-4 h-4 text-green-500" />
+            </div>
+          )}
+          {!checking && available === false && username.length >= 3 && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <XCircle className="w-4 h-4 text-destructive" />
+            </div>
+          )}
         </div>
+        {!checking && available === true && username.length >= 3 && (
+          <p className="text-xs text-green-600">✓ Username is available</p>
+        )}
+        {!checking && available === false && username.length >= 3 && (
+          <p className="text-xs text-destructive">Username is already taken</p>
+        )}
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="reg-email" className="text-sm font-medium">Email</Label>
@@ -352,7 +365,7 @@ function RegisterForm({ onSubmit }: { onSubmit: (username: string, email: string
         </div>
         <p className="text-xs text-muted-foreground mt-1">Must be at least 6 characters</p>
       </div>
-      <Button type="submit" className="w-full" disabled={loading} data-testid="button-submit-register">
+      <Button type="submit" className="w-full" disabled={loading || available === false} data-testid="button-submit-register">
         {loading && <Loader2 className="w-4 h-4 animate-spin" />}
         Create account
       </Button>

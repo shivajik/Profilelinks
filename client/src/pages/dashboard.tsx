@@ -665,6 +665,19 @@ export default function Dashboard() {
                   </div>
                 </div>
 
+                {isTeamMember && (
+                  <div className="bg-muted/60 border rounded-md p-3 space-y-1">
+                    <p className="text-sm font-medium flex items-center gap-1.5">
+                      <UserIcon className="w-3.5 h-3.5 text-primary" />
+                      Team Member
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Update your profile from <button className="text-primary font-medium underline" onClick={() => setActiveSection("business-profile")}>Business Profile</button>. 
+                      Company branding is managed in <button className="text-primary font-medium underline" onClick={() => setActiveSection("team-templates")}>Team Templates</button>.
+                    </p>
+                  </div>
+                )}
+
                 <CategorySection
                   id="header"
                   label="Header"
@@ -912,17 +925,20 @@ export default function Dashboard() {
                               </span>
                             </DropdownMenuItem>
                           ))}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => {
-                            const check = canPerformAction(planLimits, "addPage");
-                            if (!check.allowed) { setLimitMessage(check.message || ""); setLimitDialogOpen(true); return; }
-                            setAddingPage(true);
-                          }} data-testid="button-add-new-page">
-                            <Plus className="w-3.5 h-3.5" />
-                            Add New Page +
-                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          const check = canPerformAction(planLimits, "addPage");
+                          if (!check.allowed) { setLimitMessage(check.message || ""); setLimitDialogOpen(true); return; }
+                          setAddingPage(true);
+                        }}
+                        data-testid="button-add-new-page"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Add Page
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => setManagingPages(true)} data-testid="button-manage-pages">
                         Manage
                       </Button>
@@ -934,6 +950,11 @@ export default function Dashboard() {
                       Editing: <span className="font-medium">{currentPage?.title || "Home"}</span>
                       {currentPage?.isHome && <span className="text-xs ml-1 text-muted-foreground">(Home page)</span>}
                     </p>
+                    {userPages.length > 1 && (
+                      <p className="text-xs text-muted-foreground mt-2 bg-muted/50 p-2 rounded-md">
+                        💡 Each page has its own blocks. Blogs you add will appear on the page you're currently editing.
+                      </p>
+                    )}
                   </div>
                 </CategorySection>
 
@@ -1959,11 +1980,16 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
     const img = new Image();
     img.onload = () => {
       canvas.width = 1024;
-      canvas.height = 1024;
+      canvas.height = 1100;
       if (ctx) {
         ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, 1024, 1024);
+        ctx.fillRect(0, 0, 1024, 1100);
         ctx.drawImage(img, 0, 0, 1024, 1024);
+        // Add VisiCardly branding
+        ctx.fillStyle = "#888888";
+        ctx.font = "bold 28px Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("Powered by VisiCardly", 512, 1070);
       }
       const pngUrl = canvas.toDataURL("image/png");
       const a = document.createElement("a");
@@ -3158,10 +3184,12 @@ function SocialLinkRow({
   onDelete: () => void;
 }) {
   const [url, setUrl] = useState(social.url);
+  const [saving, setSaving] = useState(false);
   const platform = getPlatform(social.platform);
 
   useEffect(() => {
     setUrl(social.url);
+    setSaving(false);
   }, [social.url]);
 
   return (
@@ -3171,13 +3199,20 @@ function SocialLinkRow({
         value={url}
         onChange={(e) => setUrl(e.target.value)}
         onBlur={() => {
-          if (url !== social.url) onUpdate(url);
+          if (url !== social.url) {
+            setSaving(true);
+            onUpdate(url);
+          }
         }}
         placeholder={platform?.placeholder || "Enter URL"}
         className="flex-1 border-0 shadow-none focus-visible:ring-0 text-sm"
         data-testid={`input-social-url-${social.id}`}
       />
-      <SocialIcon platform={social.platform} className="w-5 h-5 text-muted-foreground shrink-0" />
+      {saving ? (
+        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground shrink-0" />
+      ) : (
+        <SocialIcon platform={social.platform} className="w-5 h-5 text-muted-foreground shrink-0" />
+      )}
       <Button
         variant="ghost"
         size="icon"

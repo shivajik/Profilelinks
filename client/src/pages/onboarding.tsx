@@ -501,13 +501,20 @@ function WorkspaceStep({
         </div>
         <div className="space-y-2">
           <Label htmlFor="onb-company-url">Company URL</Label>
-          <Input
-            id="onb-company-url"
-            placeholder="https://example.com"
-            value={companyUrl}
-            onChange={(e) => setCompanyUrl(e.target.value)}
-            data-testid="input-workspace-company-url"
-          />
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none">https://</span>
+            <Input
+              id="onb-company-url"
+              className="pl-[65px]"
+              placeholder="example.com"
+              value={companyUrl.replace(/^https?:\/\//, "")}
+              onChange={(e) => {
+                const val = e.target.value.replace(/^https?:\/\//, "");
+                setCompanyUrl(val ? `https://${val}` : "");
+              }}
+              data-testid="input-workspace-company-url"
+            />
+          </div>
           {companyUrl && !/^https?:\/\/.+\..+/.test(companyUrl) && (
             <p className="text-xs text-destructive">Enter a valid URL (e.g. https://example.com)</p>
           )}
@@ -910,6 +917,27 @@ function UrlStep({
   username: string;
   setUsername: (v: string) => void;
 }) {
+  const [checking, setChecking] = useState(false);
+  const [available, setAvailable] = useState<boolean | null>(null);
+  const [debounceTimer, setDebounceTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+
+  const checkUsername = (val: string) => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    if (val.length < 3) { setAvailable(null); return; }
+    setChecking(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/auth/username-available?username=${encodeURIComponent(val)}`, { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          setAvailable(data.available);
+        }
+      } catch { /* ignore */ }
+      setChecking(false);
+    }, 500);
+    setDebounceTimer(timer);
+  };
+
   return (
     <div>
       <h1 className="text-3xl font-bold mb-2" data-testid="text-step-title">Claim a URL</h1>
@@ -922,15 +950,41 @@ function UrlStep({
           <Input
             className="pl-[120px] text-lg py-6"
             value={username}
-            onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+            onChange={(e) => {
+              const val = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, "");
+              setUsername(val);
+              setAvailable(null);
+              checkUsername(val);
+            }}
             placeholder="yourname"
             minLength={3}
             maxLength={30}
             data-testid="input-onboarding-username"
           />
+          {checking && (
+            <div className="absolute right-4 top-1/2 -translate-y-1/2">
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+            </div>
+          )}
+          {!checking && available === true && username.length >= 3 && (
+            <div className="absolute right-4 top-1/2 -translate-y-1/2">
+              <Check className="w-4 h-4 text-green-500" />
+            </div>
+          )}
+          {!checking && available === false && username.length >= 3 && (
+            <div className="absolute right-4 top-1/2 -translate-y-1/2">
+              <X className="w-4 h-4 text-destructive" />
+            </div>
+          )}
         </div>
         {username.length > 0 && username.length < 3 && (
           <p className="text-sm text-destructive" data-testid="text-username-error">Username must be at least 3 characters</p>
+        )}
+        {!checking && available === true && username.length >= 3 && (
+          <p className="text-sm text-green-600" data-testid="text-username-available">✓ Username is available!</p>
+        )}
+        {!checking && available === false && username.length >= 3 && (
+          <p className="text-sm text-destructive" data-testid="text-username-taken">Username is already taken</p>
         )}
       </div>
     </div>
