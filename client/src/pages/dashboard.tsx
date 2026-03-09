@@ -3567,6 +3567,7 @@ function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, isSelf, to
                     <SelectItem value="admin">Admin</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
             </div>
           )}
 
@@ -3591,7 +3592,6 @@ function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, isSelf, to
                   </SelectContent>
                 </Select>
               </div>
-            </div>
             </div>
           )}
 
