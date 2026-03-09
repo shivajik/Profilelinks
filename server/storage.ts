@@ -699,6 +699,35 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
+  // ── Branches ──────────────────────────────────────────────────────────
+  async getTeamBranches(teamId: string): Promise<TeamBranch[]> {
+    return db.select().from(teamBranches).where(eq(teamBranches.teamId, teamId)).orderBy(asc(teamBranches.createdAt));
+  }
+
+  async createTeamBranch(branch: InsertTeamBranch): Promise<TeamBranch> {
+    if (branch.isHeadBranch) {
+      // Unset existing head branch
+      await db.update(teamBranches).set({ isHeadBranch: false }).where(eq(teamBranches.teamId, branch.teamId));
+    }
+    const [created] = await db.insert(teamBranches).values(branch).returning();
+    return created;
+  }
+
+  async updateTeamBranch(id: string, teamId: string, data: Partial<Pick<TeamBranch, "name" | "address" | "phone" | "email" | "isHeadBranch">>): Promise<TeamBranch | undefined> {
+    if (data.isHeadBranch) {
+      await db.update(teamBranches).set({ isHeadBranch: false }).where(eq(teamBranches.teamId, teamId));
+    }
+    const [updated] = await db.update(teamBranches).set(data).where(and(eq(teamBranches.id, id), eq(teamBranches.teamId, teamId))).returning();
+    return updated;
+  }
+
+  async deleteTeamBranch(id: string, teamId: string): Promise<boolean> {
+    // Unset branchId from members assigned to this branch
+    await db.update(teamMembers).set({ branchId: null }).where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.branchId, id)));
+    const result = await db.delete(teamBranches).where(and(eq(teamBranches.id, id), eq(teamBranches.teamId, teamId))).returning();
+    return result.length > 0;
+  }
+
   async getTeamTemplates(teamId: string): Promise<TeamTemplate[]> {
     return db.select().from(teamTemplates).where(eq(teamTemplates.teamId, teamId));
   }
