@@ -258,16 +258,22 @@ export interface IStorage {
 
   getTeamMembers(teamId: string): Promise<(TeamMember & { user: Pick<User, "id" | "username" | "email" | "displayName" | "profileImage"> })[]>;
   addTeamMember(member: InsertTeamMember): Promise<TeamMember>;
-  updateTeamMember(id: string, teamId: string, data: Partial<Pick<TeamMember, "role" | "jobTitle" | "status" | "businessName" | "businessPhone" | "businessProfileImage" | "businessBio">>): Promise<TeamMember | undefined>;
+  updateTeamMember(id: string, teamId: string, data: Partial<Pick<TeamMember, "role" | "jobTitle" | "status" | "businessName" | "businessPhone" | "businessProfileImage" | "businessBio" | "branchId">>): Promise<TeamMember | undefined>;
   removeTeamMember(id: string, teamId: string): Promise<boolean>;
   getTeamMemberByUserId(teamId: string, userId: string): Promise<TeamMember | undefined>;
   getTeamMembershipsByUserId(userId: string): Promise<(TeamMember & { team: Team })[]>;
 
-  createTeamInvites(invites: { teamId: string; email: string; role: string; invitedById: string; token: string }[]): Promise<TeamInvite[]>;
+  createTeamInvites(invites: { teamId: string; email: string; role: string; invitedById: string; token: string; branchId?: string }[]): Promise<TeamInvite[]>;
   getTeamInvites(teamId: string): Promise<TeamInvite[]>;
   getTeamInviteByToken(token: string): Promise<TeamInvite | undefined>;
   updateTeamInviteStatus(id: string, status: string): Promise<TeamInvite | undefined>;
   deleteTeamInvite(id: string, teamId: string): Promise<boolean>;
+
+  // Branches
+  getTeamBranches(teamId: string): Promise<TeamBranch[]>;
+  createTeamBranch(branch: InsertTeamBranch): Promise<TeamBranch>;
+  updateTeamBranch(id: string, teamId: string, data: Partial<Pick<TeamBranch, "name" | "address" | "phone" | "email" | "isHeadBranch">>): Promise<TeamBranch | undefined>;
+  deleteTeamBranch(id: string, teamId: string): Promise<boolean>;
 
   getTeamTemplates(teamId: string): Promise<TeamTemplate[]>;
   createTeamTemplate(template: InsertTeamTemplate): Promise<TeamTemplate>;
