@@ -34,6 +34,7 @@ interface Subscription {
 
 interface PaymentHistory {
   id: string;
+  planId?: string;
   amount: string;
   currency: string;
   status: string;
@@ -103,6 +104,9 @@ export function BillingSection() {
   const [promoInput, setPromoInput] = useState("");
   const [promoValidating, setPromoValidating] = useState(false);
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPercent: number } | null>(null);
+
+  // Retry pending payment
+  const [retryingPaymentId, setRetryingPaymentId] = useState<string | null>(null);
 
   const fetchHistory = useCallback(async (force = false) => {
 
@@ -193,6 +197,68 @@ export function BillingSection() {
     setPromoInput("");
   };
 
+  const retryPendingPayment = useCallback(async (payment: PaymentHistory) => {
+    if (!user || !payment.razorpayOrderId || !payment.planId) return;
+    
+    setRetryingPaymentId(payment.id);
+    try {
+      // Fetch order details to resume payment
+      const res = await fetch("/api/payments/resume-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentId: payment.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+
+      const loaded = await loadRazorpayScript();
+      if (!loaded) throw new Error("Razorpay failed to load. Please refresh and try again.");
+
+      const rzp = new window.Razorpay({
+        key: data.keyId,
+        amount: data.amount,
+        currency: data.currency,
+        name: "VisiCardly",
+        description: `${payment.planName ?? "Plan"} — ${payment.billingCycle}`,
+        order_id: data.orderId,
+        handler: async (response: {
+          razorpay_payment_id: string;
+          razorpay_order_id: string;
+          razorpay_signature: string;
+        }) => {
+          try {
+            const verifyRes = await fetch("/api/payments/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+                planId: payment.planId,
+                billingCycle: payment.billingCycle ?? "monthly",
+              }),
+            });
+            const vData = await verifyRes.json();
+            if (!verifyRes.ok) throw new Error(vData.message);
+            toast({ title: "Payment successful! 🎉", description: `You're now subscribed!` });
+            fetchData(true); fetchHistory(true);
+          } catch (err: any) {
+            toast({ title: "Verification failed", description: err.message, variant: "destructive" });
+          } finally {
+            setRetryingPaymentId(null);
+          }
+        },
+        prefill: { email: user.email },
+        theme: { color: "hsl(var(--primary))" },
+        modal: { ondismiss: () => setRetryingPaymentId(null) },
+      });
+      rzp.open();
+    } catch (err: any) {
+      toast({ title: "Payment failed", description: err.message, variant: "destructive" });
+      setRetryingPaymentId(null);
+    }
+  }, [user, fetchData, fetchHistory, toast]);
+
 
   const handleSelectPlan = useCallback(async (plan: PricingPlan) => {
     if (!user) return;
@@ -255,7 +321,7 @@ export function BillingSection() {
         },
         prefill: { email: user.email },
         theme: { color: "hsl(var(--primary))" },
-        modal: { ondismiss: () => setPayingPlanId(null) },
+        modal: { ondismiss: () => { setPayingPlanId(null); fetchHistory(true); } },
       });
       rzp.open();
     } catch (err: any) {
@@ -412,7 +478,7 @@ export function BillingSection() {
                   <th className="text-left p-3 font-medium text-muted-foreground">Cycle</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">Date</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Invoice</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -425,14 +491,26 @@ export function BillingSection() {
                     <td className="p-3 text-muted-foreground text-xs">
                       {new Date(tx.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
                     </td>
-                    <td className="p-3">
-                      <Button
-                        variant="ghost" size="sm"
-                        onClick={() => setInvoiceDialog({ open: true, payment: tx })}
-                        className="text-primary hover:text-primary"
-                      >
-                        <FileText className="h-4 w-4 mr-1" /> View
-                      </Button>
+                    <td className="p-3 flex gap-1.5">
+                      {tx.status === "pending" && tx.razorpayOrderId && tx.planId ? (
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={() => retryPendingPayment(tx)}
+                          disabled={!!retryingPaymentId}
+                          className="text-xs"
+                        >
+                          {retryingPaymentId === tx.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Complete Payment"}
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost" size="sm"
+                          onClick={() => setInvoiceDialog({ open: true, payment: tx })}
+                          className="text-primary hover:text-primary text-xs"
+                        >
+                          <FileText className="h-4 w-4 mr-1" /> Invoice
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}

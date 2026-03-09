@@ -68,6 +68,7 @@ export const db = drizzle(pool);
 // ── Auto-migrate: add missing columns ─────────────────────────────────────
 pool.query(`
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS is_disabled boolean NOT NULL DEFAULT false;
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS created_at timestamp DEFAULT now();
   ALTER TABLE IF EXISTS pricing_plans ADD COLUMN IF NOT EXISTS max_blocks integer NOT NULL DEFAULT 20;
   ALTER TABLE IF EXISTS pricing_plans ADD COLUMN IF NOT EXISTS max_socials integer NOT NULL DEFAULT 5;
   ALTER TABLE IF EXISTS pricing_plans ADD COLUMN IF NOT EXISTS qr_code_enabled boolean NOT NULL DEFAULT false;

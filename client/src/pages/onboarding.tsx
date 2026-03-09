@@ -475,14 +475,18 @@ function WorkspaceStep({
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="onb-company-name">Company Name</Label>
+          <Label htmlFor="onb-company-name">Company Name <span className="text-destructive">*</span></Label>
           <Input
             id="onb-company-name"
             placeholder="Acme Inc."
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
             data-testid="input-workspace-company-name"
+            className={!companyName.trim() ? "border-destructive/50 focus-visible:ring-destructive/30" : ""}
           />
+          {!companyName.trim() && (
+            <p className="text-xs text-destructive">Company name is required to proceed.</p>
+          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="onb-company-size">Company Size</Label>
