@@ -4231,10 +4231,28 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
                 <p className="text-xs text-muted-foreground">Choose which business card template to assign to this member.</p>
               </div>
             )}
+            {branches.length > 0 && (
+              <div className="space-y-1.5">
+                <Label htmlFor="create-branch">Branch</Label>
+                <Select value={createBranchId || "none"} onValueChange={(v) => setCreateBranchId(v === "none" ? "" : v)}>
+                  <SelectTrigger data-testid="select-create-branch">
+                    <SelectValue placeholder="Select branch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No branch</SelectItem>
+                    {branches.map((b: any) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.name} {b.isHeadBranch ? "(Head Office)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <Button
               className="w-full"
               disabled={!createName || !createEmail || createMemberMutation.isPending}
-              onClick={() => createMemberMutation.mutate({ displayName: createName, email: createEmail, jobTitle: createJobTitle || undefined, memberRole: createRole })}
+              onClick={() => createMemberMutation.mutate({ displayName: createName, email: createEmail, jobTitle: createJobTitle || undefined, memberRole: createRole, ...(createBranchId ? { branchId: createBranchId } : {}) })}
               data-testid="button-submit-create-member"
             >
               {createMemberMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
