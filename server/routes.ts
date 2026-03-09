@@ -351,14 +351,14 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/auth/username-available", requireAuth, async (req, res) => {
+  app.get("/api/auth/username-available", async (req, res) => {
     try {
       const username = req.query.username as string;
       if (!username || username.length < 3 || username.length > 30 || !/^[a-zA-Z0-9_-]+$/.test(username)) {
         return res.json({ available: false });
       }
       const existing = await storage.getUserByUsername(username.toLowerCase());
-      const available = !existing || existing.id === req.session.userId;
+      const available = !existing || (req.session?.userId ? existing.id === req.session.userId : false);
       res.json({ available });
     } catch {
       res.status(500).json({ message: "Check failed" });
