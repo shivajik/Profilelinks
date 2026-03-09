@@ -1411,17 +1411,19 @@ function SettingsPanel({
   };
 
   return (
-    <div className="p-4 space-y-6 overflow-y-auto">
+    <div className="p-4 space-y-5 overflow-y-auto max-w-2xl mx-auto">
       <SectionHeader title="Settings" />
 
-      <div>
-        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-          <UserIcon className="w-4 h-4" />
-          Profile
-        </h3>
-        <div className="space-y-4">
-          <div className="flex items-center gap-4 p-3 rounded-md border">
-            <div className="relative group">
+      {/* Profile Card */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <UserIcon className="w-4 h-4" /> Profile
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="relative group shrink-0">
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/gif,image/webp"
@@ -1451,14 +1453,14 @@ function SettingsPanel({
                 data-testid="input-settings-avatar-upload"
               />
               <label htmlFor="settings-avatar-upload" className="cursor-pointer block">
-                <Avatar className="w-16 h-16 border-2 border-border">
+                <Avatar className="w-12 h-12 border border-border">
                   <AvatarImage src={user.profileImage || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-lg">
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm">
                     {(user.displayName || user.username).charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Camera className="w-4 h-4 text-white" />
+                  <Camera className="w-3.5 h-3.5 text-white" />
                 </div>
               </label>
             </div>
@@ -1468,23 +1470,80 @@ function SettingsPanel({
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="settings-name" className="text-xs text-muted-foreground">Display Name</Label>
-            <Input
-              id="settings-name"
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              onBlur={() => {
-                if (editName !== (user.displayName || "")) {
-                  profileMutation.mutate({ displayName: editName || null });
-                }
-              }}
-              placeholder="Your name"
-              data-testid="input-settings-name"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="settings-name" className="text-xs text-muted-foreground">Display Name</Label>
+              <Input
+                id="settings-name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onBlur={() => {
+                  if (editName !== (user.displayName || "")) {
+                    profileMutation.mutate({ displayName: editName || null });
+                  }
+                }}
+                placeholder="Your name"
+                className="h-9 text-sm"
+                data-testid="input-settings-name"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="settings-username" className="text-xs text-muted-foreground">Username</Label>
+              <div className="relative">
+                <Input
+                  id="settings-username"
+                  value={editUsername}
+                  onChange={(e) => {
+                    const val = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, "");
+                    setEditUsername(val);
+                    setUsernameAvailable(null);
+                  }}
+                  onBlur={() => {
+                    if (editUsername !== user.username && editUsername.length >= 3) {
+                      checkUsername(editUsername);
+                    }
+                  }}
+                  placeholder="username"
+                  className="h-9 text-sm"
+                  data-testid="input-settings-username"
+                />
+                {checkingUsername && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+                {!checkingUsername && usernameAvailable === true && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                  </div>
+                )}
+                {!checkingUsername && usernameAvailable === false && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <XCircle className="w-3.5 h-3.5 text-destructive" />
+                  </div>
+                )}
+              </div>
+              {usernameAvailable === false && (
+                <p className="text-[11px] text-destructive">Username not available</p>
+              )}
+              {usernameAvailable === true && editUsername !== user.username && (
+                <Button
+                  size="sm"
+                  className="h-7 text-xs mt-1"
+                  onClick={() => {
+                    profileMutation.mutate({ username: editUsername });
+                    setUsernameAvailable(null);
+                  }}
+                  disabled={profileMutation.isPending}
+                  data-testid="button-save-username"
+                >
+                  Save Username
+                </Button>
+              )}
+            </div>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <Label htmlFor="settings-bio" className="text-xs text-muted-foreground">Bio</Label>
             <Textarea
               id="settings-bio"
@@ -1497,168 +1556,126 @@ function SettingsPanel({
               }}
               placeholder="Tell the world about yourself..."
               maxLength={500}
-              rows={3}
+              rows={2}
+              className="text-sm resize-none"
               data-testid="input-settings-bio"
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="settings-username" className="text-xs text-muted-foreground">Username</Label>
-            <div className="relative">
-              <Input
-                id="settings-username"
-                value={editUsername}
-                onChange={(e) => {
-                  const val = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, "");
-                  setEditUsername(val);
-                  setUsernameAvailable(null);
-                }}
-                onBlur={() => {
-                  if (editUsername !== user.username && editUsername.length >= 3) {
-                    checkUsername(editUsername);
-                  }
-                }}
-                placeholder="username"
-                data-testid="input-settings-username"
-              />
-              {checkingUsername && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                </div>
-              )}
-              {!checkingUsername && usernameAvailable === true && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <CheckCircle2 className="w-4 h-4 text-green-500" />
-                </div>
-              )}
-              {!checkingUsername && usernameAvailable === false && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <XCircle className="w-4 h-4 text-destructive" />
-                </div>
-              )}
-            </div>
-            {usernameAvailable === false && (
-              <p className="text-xs text-destructive">Username is not available or invalid</p>
-            )}
-            {usernameAvailable === true && editUsername !== user.username && (
-              <Button
-                size="sm"
-                onClick={() => {
-                  profileMutation.mutate({ username: editUsername });
-                  setUsernameAvailable(null);
-                }}
-                disabled={profileMutation.isPending}
-                data-testid="button-save-username"
-              >
-                Save Username
-              </Button>
-            )}
+          {/* Public URL inline */}
+          <div className="flex items-center gap-2 p-2.5 rounded-md bg-muted/50 border">
+            <Globe className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            <p className="text-xs font-medium truncate flex-1" data-testid="text-settings-url">{profileUrl}</p>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0"
+              onClick={() => window.open(`/${user.username}`, "_blank")}
+              data-testid="button-settings-visit"
+            >
+              <ExternalLink className="w-3 h-3" />
+            </Button>
           </div>
-        </div>
-      </div>
-
-      <div>
-        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-          <Globe className="w-4 h-4" />
-          Public URL
-        </h3>
-        <div className="flex items-center gap-3 p-3 rounded-md border">
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium truncate" data-testid="text-settings-url">{profileUrl}</p>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => window.open(`/${user.username}`, "_blank")}
-            data-testid="button-settings-visit"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-          </Button>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Upgrade to Team - only show for individual users */}
       {user.accountType !== "team" && (
-        <div>
-          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            Upgrade to Team
-          </h3>
-          <div className="p-4 rounded-md border border-primary/20 bg-primary/5">
-            <p className="text-sm text-foreground mb-2 font-medium">Want team features?</p>
-            <p className="text-xs text-muted-foreground mb-3">
-              Upgrade to a team account to unlock public menu links, QR codes, team member management, company branding, and shared templates.
-            </p>
-            <Button size="sm" onClick={() => onNavigateBilling?.()}>
-              View Team Plans
-            </Button>
-          </div>
-        </div>
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-md bg-primary/10 shrink-0">
+                <Users className="w-4 h-4 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium">Upgrade to Team</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Unlock public menu links, QR codes, team members, company branding & shared templates.
+                </p>
+                <Button size="sm" className="h-7 text-xs mt-2" onClick={() => onNavigateBilling?.()}>
+                  View Team Plans
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      <div>
-        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-          <Palette className="w-4 h-4" />
-          Theme
-        </h3>
-        <div className="grid grid-cols-3 gap-2">
-          {TEMPLATES.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => {
-                setSelectedTemplate(t.id);
-                profileMutation.mutate({ template: t.id });
-              }}
-              className={`relative rounded-md border-2 p-2 text-center transition-colors ${
-                selectedTemplate === t.id ? "border-primary" : "border-border"
-              }`}
-              data-testid={`template-${t.id}`}
-            >
-              <div className={`w-full h-8 rounded-sm mb-1.5 ${t.bg}`} />
-              <p className="text-xs font-medium">{t.name}</p>
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Theme Card */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Palette className="w-4 h-4" /> Theme
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+            {TEMPLATES.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => {
+                  setSelectedTemplate(t.id);
+                  profileMutation.mutate({ template: t.id });
+                }}
+                className={`relative rounded-lg border-2 p-1.5 text-center transition-all hover:scale-105 ${
+                  selectedTemplate === t.id ? "border-primary ring-1 ring-primary/30" : "border-border"
+                }`}
+                title={t.name}
+                data-testid={`template-${t.id}`}
+              >
+                <div className={`w-full aspect-[3/2] rounded-sm ${t.bg}`} />
+                <p className="text-[10px] font-medium mt-1 truncate">{t.name}</p>
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
-      <div>
-        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-          <KeyRound className="w-4 h-4" />
-          Change Password
-        </h3>
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="current-password" className="text-xs text-muted-foreground">Current Password</Label>
-            <Input
-              id="current-password"
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="Enter current password"
-              data-testid="input-current-password"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="new-password" className="text-xs text-muted-foreground">New Password</Label>
-            <Input
-              id="new-password"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Enter new password"
-              data-testid="input-new-password"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="confirm-password" className="text-xs text-muted-foreground">Confirm New Password</Label>
-            <Input
-              id="confirm-password"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm new password"
-              data-testid="input-confirm-password"
-            />
+      {/* Security Card */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <KeyRound className="w-4 h-4" /> Change Password
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="current-password" className="text-xs text-muted-foreground">Current</Label>
+              <Input
+                id="current-password"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Current password"
+                className="h-9 text-sm"
+                data-testid="input-current-password"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="new-password" className="text-xs text-muted-foreground">New</Label>
+              <Input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="New password"
+                className="h-9 text-sm"
+                data-testid="input-new-password"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="confirm-password" className="text-xs text-muted-foreground">Confirm</Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm password"
+                className="h-9 text-sm"
+                data-testid="input-confirm-password"
+              />
+            </div>
           </div>
           {newPassword && confirmPassword && newPassword !== confirmPassword && (
             <p className="text-xs text-destructive">Passwords do not match</p>
@@ -1668,26 +1685,28 @@ function SettingsPanel({
               passwordMutation.mutate({ currentPassword, newPassword, confirmPassword });
             }}
             disabled={!currentPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword || passwordMutation.isPending}
-            className="w-full"
+            size="sm"
+            className="w-full sm:w-auto"
             data-testid="button-change-password"
           >
             {passwordMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Change Password"}
           </Button>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <div className="pt-2 space-y-3">
-        <Button variant="outline" className="w-full gap-2" onClick={onLogout} data-testid="button-settings-logout">
-          <LogOut className="w-4 h-4" />
+      {/* Account Actions */}
+      <div className="flex flex-col sm:flex-row gap-2 pt-1 pb-4">
+        <Button variant="outline" className="flex-1 gap-2 h-9 text-sm" onClick={onLogout} data-testid="button-settings-logout">
+          <LogOut className="w-3.5 h-3.5" />
           Sign Out
         </Button>
         <Button
           variant="outline"
-          className="w-full gap-2 text-destructive border-destructive/30"
+          className="flex-1 gap-2 h-9 text-sm text-destructive border-destructive/30 hover:bg-destructive/5"
           onClick={() => setShowDeleteDialog(true)}
           data-testid="button-delete-account"
         >
-          <AlertTriangle className="w-4 h-4" />
+          <AlertTriangle className="w-3.5 h-3.5" />
           Delete Account
         </Button>
       </div>
