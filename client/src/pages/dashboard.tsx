@@ -4292,6 +4292,7 @@ function MemberCardPreview({ member, templateData, themeColor }: { member: any; 
   const memberName = member.businessName || member.user?.displayName || member.user?.username || "Team Member";
   const memberEmail = member.user?.email || "";
   const memberJobTitle = member.jobTitle || "";
+  const memberPhone = member.businessPhone || "";
   const companyName = templateData.companyName || "";
   const companyPhone = templateData.companyPhone || "";
   const companyWebsite = templateData.companyWebsite || "";
