@@ -255,7 +255,7 @@ export function BillingSection() {
         },
         prefill: { email: user.email },
         theme: { color: "hsl(var(--primary))" },
-        modal: { ondismiss: () => setPayingPlanId(null) },
+        modal: { ondismiss: () => { setPayingPlanId(null); fetchHistory(true); } },
       });
       rzp.open();
     } catch (err: any) {
