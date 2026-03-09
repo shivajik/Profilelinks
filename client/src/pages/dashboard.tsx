@@ -4131,10 +4131,28 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
                   </SelectContent>
                 </Select>
               </div>
+              {branches.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="invite-branch">Branch</Label>
+                  <Select value={inviteBranchId || "none"} onValueChange={(v) => setInviteBranchId(v === "none" ? "" : v)}>
+                    <SelectTrigger data-testid="select-invite-branch">
+                      <SelectValue placeholder="Select branch" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No branch</SelectItem>
+                      {branches.map((b: any) => (
+                        <SelectItem key={b.id} value={b.id}>
+                          {b.name} {b.isHeadBranch ? "(Head Office)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <Button
                 className="w-full"
                 disabled={!inviteEmail || inviteMutation.isPending}
-                onClick={() => inviteMutation.mutate({ emails: [inviteEmail], role: inviteRole })}
+                onClick={() => inviteMutation.mutate({ emails: [inviteEmail], role: inviteRole, ...(inviteBranchId ? { branchId: inviteBranchId } : {}) })}
                 data-testid="button-send-invite"
               >
                 {inviteMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
