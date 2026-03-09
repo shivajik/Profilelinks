@@ -254,7 +254,7 @@ router.get("/api/admin/users", requireAdminAuth, async (req: Request, res: Respo
       })
       .from(users)
       .where(whereCondition)
-      .orderBy(desc(users.createdAt), desc(users.id))
+      .orderBy(sql`${users.createdAt} DESC NULLS LAST`, desc(users.id))
       .limit(limit)
       .offset(offset);
 
