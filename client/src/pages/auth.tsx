@@ -253,6 +253,26 @@ function RegisterForm({ onSubmit }: { onSubmit: (username: string, email: string
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [available, setAvailable] = useState<boolean | null>(null);
+  const [debounceTimer, setDebounceTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+
+  const checkUsername = (val: string) => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    if (val.length < 3) { setAvailable(null); return; }
+    setChecking(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/auth/username-available?username=${encodeURIComponent(val)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setAvailable(data.available);
+        }
+      } catch { /* ignore */ }
+      setChecking(false);
+    }, 500);
+    setDebounceTimer(timer);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -273,7 +293,12 @@ function RegisterForm({ onSubmit }: { onSubmit: (username: string, email: string
           <Input
             id="reg-username"
             value={username}
-            onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+            onChange={(e) => {
+              const val = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, "");
+              setUsername(val);
+              setAvailable(null);
+              checkUsername(val);
+            }}
             className="pl-[115px]"
             placeholder="yourname"
             required
@@ -281,7 +306,28 @@ function RegisterForm({ onSubmit }: { onSubmit: (username: string, email: string
             maxLength={30}
             data-testid="input-register-username"
           />
+          {checking && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+            </div>
+          )}
+          {!checking && available === true && username.length >= 3 && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <CheckCircle2 className="w-4 h-4 text-green-500" />
+            </div>
+          )}
+          {!checking && available === false && username.length >= 3 && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <XCircle className="w-4 h-4 text-destructive" />
+            </div>
+          )}
         </div>
+        {!checking && available === true && username.length >= 3 && (
+          <p className="text-xs text-green-600">✓ Username is available</p>
+        )}
+        {!checking && available === false && username.length >= 3 && (
+          <p className="text-xs text-destructive">Username is already taken</p>
+        )}
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="reg-email" className="text-sm font-medium">Email</Label>
@@ -319,7 +365,7 @@ function RegisterForm({ onSubmit }: { onSubmit: (username: string, email: string
         </div>
         <p className="text-xs text-muted-foreground mt-1">Must be at least 6 characters</p>
       </div>
-      <Button type="submit" className="w-full" disabled={loading} data-testid="button-submit-register">
+      <Button type="submit" className="w-full" disabled={loading || available === false} data-testid="button-submit-register">
         {loading && <Loader2 className="w-4 h-4 animate-spin" />}
         Create account
       </Button>
