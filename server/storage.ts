@@ -171,6 +171,19 @@ pool.query(`
   ALTER TABLE IF EXISTS team_members ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'activated';
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS must_change_password boolean NOT NULL DEFAULT false;
   ALTER TABLE IF EXISTS teams ADD COLUMN IF NOT EXISTS slug text;
+  ALTER TABLE IF EXISTS team_members ADD COLUMN IF NOT EXISTS branch_id varchar;
+  ALTER TABLE IF EXISTS team_invites ADD COLUMN IF NOT EXISTS branch_id varchar;
+
+  CREATE TABLE IF NOT EXISTS team_branches (
+    id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+    team_id varchar NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    name text NOT NULL,
+    address text NOT NULL,
+    phone text,
+    email text,
+    is_head_branch boolean NOT NULL DEFAULT false,
+    created_at timestamp NOT NULL DEFAULT now()
+  );
 
   CREATE INDEX IF NOT EXISTS idx_pages_user_id ON pages(user_id);
   CREATE INDEX IF NOT EXISTS idx_links_page_id ON links(page_id);
@@ -183,6 +196,7 @@ pool.query(`
   CREATE INDEX IF NOT EXISTS idx_team_members_user_id ON team_members(user_id);
   CREATE INDEX IF NOT EXISTS idx_team_members_team_id ON team_members(team_id);
   CREATE INDEX IF NOT EXISTS idx_team_templates_team_id ON team_templates(team_id);
+  CREATE INDEX IF NOT EXISTS idx_team_branches_team_id ON team_branches(team_id);
 `).then(async () => {
   // Backfill slugs for existing teams that don't have one
   try {
