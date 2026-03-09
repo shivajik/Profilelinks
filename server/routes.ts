@@ -2004,6 +2004,8 @@ export async function registerRoutes(
         teamName?: string;
         memberPhone?: string;
         companySocials?: Array<{ platform: string; url: string }>;
+        headBranch?: { name: string; address: string; phone?: string | null; email?: string | null };
+        memberBranch?: { name: string; address: string; phone?: string | null; email?: string | null };
       } | null = null;
 
       if (teamId && teamData) {
