@@ -294,7 +294,7 @@ export default function PublicProfile(props?: any) {
               </div>
               <div className="relative px-5 pb-5">
                 <div className="-mt-10 mb-4 flex items-end gap-3">
-                  <div className="relative shrink-0">
+                  <div className="shrink-0">
                     <Avatar className="w-20 h-20 border-4 border-card shadow-md">
                       <AvatarImage src={user.profileImage || undefined} alt={displayName} />
                       <AvatarFallback
@@ -304,18 +304,21 @@ export default function PublicProfile(props?: any) {
                         {displayName.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    {teamBranding?.companyLogo && (
-                      <div
-                        className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full border-2 border-card bg-white shadow-sm flex items-center justify-center overflow-hidden"
-                        data-testid="img-company-logo-badge"
-                      >
-                        <img src={teamBranding.companyLogo} alt="Company" className="w-full h-full object-cover" />
-                      </div>
-                    )}
                   </div>
                   {teamBranding?.companyLogo && (
-                    <div className="mb-1 opacity-70" data-testid="text-team-brand">
-                      <span className="text-xs font-medium text-muted-foreground">{teamBranding.companyName}</span>
+                    <div
+                      className="mb-1 flex items-center gap-3 px-4 py-2 rounded-full bg-background/90 backdrop-blur-sm border shadow-md"
+                      data-testid="text-team-brand"
+                    >
+                      <div className="w-11 h-11 rounded-lg overflow-hidden bg-white flex items-center justify-center shrink-0 border shadow-sm" data-testid="img-company-logo-badge">
+                        <img src={teamBranding.companyLogo} alt="Company" className="w-9 h-9 object-contain" />
+                      </div>
+                      <span className="text-sm font-bold text-foreground/90">{teamBranding.companyName}</span>
+                    </div>
+                  )}
+                  {!teamBranding?.companyLogo && teamBranding?.companyName && (
+                    <div className="mb-1 px-4 py-2 rounded-full bg-background/90 backdrop-blur-sm border shadow-md" data-testid="text-team-brand">
+                      <span className="text-sm font-bold text-foreground/90">{teamBranding.companyName}</span>
                     </div>
                   )}
                 </div>

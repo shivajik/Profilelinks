@@ -4388,7 +4388,7 @@ function MemberCardPreview({ member, templateData, themeColor }: { member: any; 
       </div>
       <div className="relative px-4 pb-4">
         <div className="-mt-8 mb-3 flex items-end gap-3">
-          <div className="relative shrink-0">
+          <div className="shrink-0">
             <div className="w-16 h-16 rounded-full bg-muted border-4 border-card flex items-center justify-center overflow-hidden">
               {(member.businessProfileImage || member.user?.profileImage) ? (
                 <img src={member.businessProfileImage || member.user.profileImage} alt={memberName} className="w-full h-full object-cover" />
@@ -4396,12 +4396,15 @@ function MemberCardPreview({ member, templateData, themeColor }: { member: any; 
                 <span className="text-lg font-bold text-muted-foreground">{memberName.charAt(0).toUpperCase()}</span>
               )}
             </div>
-            {templateData.companyLogo && (
-              <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full border-2 border-card bg-white shadow-sm flex items-center justify-center overflow-hidden" data-testid="preview-member-logo-badge">
-                <img src={templateData.companyLogo} alt="Company" className="w-full h-full object-cover" />
-              </div>
-            )}
           </div>
+          {templateData.companyLogo && companyName && (
+            <div className="mb-1 flex items-center gap-1.5 px-2 py-1 rounded-full bg-background/80 backdrop-blur-sm border shadow-sm" data-testid="preview-member-logo-badge">
+              <div className="w-4 h-4 rounded-sm overflow-hidden bg-white flex items-center justify-center shrink-0 border">
+                <img src={templateData.companyLogo} alt="Company" className="w-5 h-5 object-contain" />
+              </div>
+              <span className="text-[10px] font-semibold text-foreground/70 truncate max-w-[80px]">{companyName}</span>
+            </div>
+          )}
         </div>
         <div className="space-y-2.5">
           <div>
@@ -4939,14 +4942,14 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                     <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">Company Logo <span className="text-[10px]">(Max 1MB)</span></Label>
                       <div className="flex items-center gap-3">
-                        <div className="relative w-16 h-16 rounded-full border bg-muted/30 overflow-hidden group shrink-0">
+                        <div className="relative w-16 h-16 rounded-lg border bg-muted/30 overflow-hidden group shrink-0">
                           {uploadingField === "companyLogo" ? (
                             <div className="flex items-center justify-center w-full h-full">
                               <Loader2 className="w-4 h-4 animate-spin text-primary" />
                             </div>
                           ) : tData.companyLogo ? (
                             <>
-                              <img src={tData.companyLogo} alt="Logo" className="w-full h-full object-cover" />
+                              <img src={tData.companyLogo} alt="Logo" className="w-full h-full object-contain p-1" />
                               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
                                 <label className="cursor-pointer">
                                   <input type="file" accept="image/*" className="hidden" onChange={(e) => {
@@ -5129,12 +5132,16 @@ function TemplateCardPreview({ data, themeColor }: { data: TemplateData; themeCo
       <div className="relative px-4 pb-4">
         <div className="-mt-8 mb-3 flex items-end gap-3">
           <div className="w-16 h-16 rounded-full bg-muted border-4 border-card flex items-center justify-center overflow-hidden shrink-0">
-            {data.companyLogo ? (
-              <img src={data.companyLogo} alt="Logo" className="w-full h-full object-cover" />
-            ) : (
-              <UserIcon className="w-6 h-6 text-muted-foreground/50" />
-            )}
+            <UserIcon className="w-6 h-6 text-muted-foreground/50" />
           </div>
+          {data.companyLogo && (
+            <div className="mb-1 flex items-center gap-1.5 px-2 py-1 rounded-full bg-background/80 backdrop-blur-sm border shadow-sm">
+              <div className="w-4 h-4 rounded-sm overflow-hidden bg-white flex items-center justify-center shrink-0 border">
+                <img src={data.companyLogo} alt="Logo" className="w-3.5 h-3.5 object-contain" />
+              </div>
+              {data.companyName && <span className="text-[10px] font-semibold text-foreground/70 truncate max-w-[80px]">{data.companyName}</span>}
+            </div>
+          )}
         </div>
         <div className="space-y-2.5">
           <div>
