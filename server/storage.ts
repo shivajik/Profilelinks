@@ -638,7 +638,7 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateTeamMember(id: string, teamId: string, data: Partial<Pick<TeamMember, "role" | "jobTitle" | "status">>): Promise<TeamMember | undefined> {
+  async updateTeamMember(id: string, teamId: string, data: Partial<Pick<TeamMember, "role" | "jobTitle" | "status" | "businessName" | "businessPhone" | "businessProfileImage" | "businessBio" | "branchId">>): Promise<TeamMember | undefined> {
     const [updated] = await db
       .update(teamMembers)
       .set(data)
