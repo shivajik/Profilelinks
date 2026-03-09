@@ -4340,6 +4340,7 @@ function MemberCardPreview({ member, templateData, themeColor }: { member: any; 
           <div className="space-y-1.5">
             {[
               { icon: Mail, value: memberEmail, placeholder: "" },
+              { icon: Phone, value: memberPhone, placeholder: "" },
               { icon: Phone, value: companyPhone, placeholder: "" },
               { icon: Phone, value: companyContact, placeholder: "" },
               { icon: Globe, value: companyWebsite, placeholder: "" },
