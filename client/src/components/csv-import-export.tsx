@@ -7,11 +7,33 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Download, Loader2, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { Upload, Download, FileDown, Loader2, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 
 type CsvEntry = { name: string; email: string; phone?: string; jobTitle?: string; branchId?: string };
 
-export function CsvImportExport({ teamId }: { teamId: string }) {
+type MemberData = {
+  id: string;
+  role: string;
+  jobTitle?: string;
+  status: string;
+  businessName?: string;
+  businessPhone?: string;
+  branchId?: string;
+  user: {
+    id: string;
+    username: string;
+    email: string;
+    displayName?: string;
+    profileImage?: string;
+  };
+};
+
+export function CsvImportExport({ teamId, teamSlug, members, branches: externalBranches }: {
+  teamId: string;
+  teamSlug?: string;
+  members?: MemberData[];
+  branches?: any[];
+}) {
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [importOpen, setImportOpen] = useState(false);
@@ -92,6 +114,59 @@ export function CsvImportExport({ teamId }: { teamId: string }) {
     URL.revokeObjectURL(url);
   };
 
+  const escapeCsvField = (value: string): string => {
+    if (!value) return "";
+    let safe = value;
+    if (/^[=+\-@\t\r]/.test(safe)) {
+      safe = "'" + safe;
+    }
+    if (safe.includes(",") || safe.includes('"') || safe.includes("\n")) {
+      return `"${safe.replace(/"/g, '""')}"`;
+    }
+    return safe;
+  };
+
+  const exportMembers = () => {
+    if (!members || members.length === 0) {
+      toast({ title: "No members to export", variant: "destructive" });
+      return;
+    }
+
+    const allBranches = externalBranches || branches || [];
+    const branchMap = new Map(allBranches.map((b: any) => [b.id, b.name]));
+    const origin = window.location.origin;
+
+    const headers = ["Name", "Username", "Email", "Phone", "Job Title", "Role", "Status", "Branch", "Profile URL"];
+    const rows = members.map((m) => {
+      const name = m.businessName || m.user.displayName || m.user.username || "";
+      const username = m.user.username || "";
+      const email = m.user.email || "";
+      const phone = m.businessPhone || "";
+      const jobTitle = m.jobTitle || "";
+      const role = m.role || "";
+      const status = m.status || "";
+      const branch = m.branchId ? (branchMap.get(m.branchId) || "") : "";
+      const profileUrl = teamSlug
+        ? `${origin}/${teamSlug}/${m.user.username}`
+        : `${origin}/${m.user.username}`;
+
+      return [name, username, email, phone, jobTitle, role, status, branch, profileUrl]
+        .map(escapeCsvField)
+        .join(",");
+    });
+
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `team-members-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    toast({ title: `Exported ${members.length} members` });
+  };
+
   const updateBranch = (idx: number, branchId: string) => {
     const updated = [...parsed];
     updated[idx] = { ...updated[idx], branchId: branchId === "none" ? undefined : branchId };
@@ -102,11 +177,14 @@ export function CsvImportExport({ teamId }: { teamId: string }) {
     <>
       <input type="file" accept=".csv" ref={fileRef} className="hidden" onChange={handleFile} />
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+        <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} data-testid="button-import-csv">
           <Upload className="w-4 h-4" /> Import CSV
         </Button>
         <Button variant="ghost" size="sm" onClick={downloadTemplate}>
           <Download className="w-4 h-4" /> Template
+        </Button>
+        <Button variant="outline" size="sm" onClick={exportMembers} data-testid="button-export-csv">
+          <FileDown className="w-4 h-4" /> Export CSV
         </Button>
       </div>
 
