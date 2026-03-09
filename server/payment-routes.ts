@@ -210,8 +210,52 @@ router.post("/api/payments/create-order", requireAuth as any, async (req: Reques
   }
 });
 
+// ─── Resume Pending Payment ───────────────────────────────────────────────
+router.post("/api/payments/resume-order", requireAuth as any, async (req: Request, res: Response) => {
+  try {
+    const { paymentId } = req.body;
+    if (!paymentId) {
+      return res.status(400).json({ message: "Payment ID is required" });
+    }
+
+    // Find the pending payment
+    const paymentRecords = await db.select().from(payments).where(sql`${payments.id} = ${paymentId} AND ${payments.userId} = ${req.session.userId}`);
+    const payment = paymentRecords[0];
+    
+    if (!payment) {
+      return res.status(404).json({ message: "Payment not found" });
+    }
+    
+    if (payment.status !== "pending") {
+      return res.status(400).json({ message: "This payment is no longer pending" });
+    }
+    
+    if (!payment.razorpayOrderId) {
+      return res.status(400).json({ message: "Invalid payment record — no order ID" });
+    }
+
+    // Get Razorpay keys
+    const keyIdFromDb = await getAppSettingValue("razorpay_key_id");
+    const keyId = keyIdFromDb ?? process.env.RAZORPAY_KEY_ID;
+    
+    if (!keyId) {
+      return res.status(500).json({ message: "Payment gateway not configured" });
+    }
+
+    // Return order details for the frontend to resume payment
+    res.json({
+      orderId: payment.razorpayOrderId,
+      amount: Math.round(parseFloat(payment.amount) * 100), // Convert back to paise
+      currency: payment.currency,
+      keyId,
+    });
+  } catch (error: any) {
+    console.error("Resume order error:", error);
+    res.status(500).json({ message: "Failed to resume payment" });
+  }
+});
+
 // ─── Verify Payment ────────────────────────────────────────────────────────
-// ─── Get user's payment / transaction history ──────────────────────────────
 router.get("/api/payments/history", requireAuth as any, async (req: Request, res: Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1;

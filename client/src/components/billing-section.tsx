@@ -197,6 +197,68 @@ export function BillingSection() {
     setPromoInput("");
   };
 
+  const retryPendingPayment = useCallback(async (payment: PaymentHistory) => {
+    if (!user || !payment.razorpayOrderId || !payment.planId) return;
+    
+    setRetryingPaymentId(payment.id);
+    try {
+      // Fetch order details to resume payment
+      const res = await fetch("/api/payments/resume-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentId: payment.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+
+      const loaded = await loadRazorpayScript();
+      if (!loaded) throw new Error("Razorpay failed to load. Please refresh and try again.");
+
+      const rzp = new window.Razorpay({
+        key: data.keyId,
+        amount: data.amount,
+        currency: data.currency,
+        name: "VisiCardly",
+        description: `${payment.planName ?? "Plan"} — ${payment.billingCycle}`,
+        order_id: data.orderId,
+        handler: async (response: {
+          razorpay_payment_id: string;
+          razorpay_order_id: string;
+          razorpay_signature: string;
+        }) => {
+          try {
+            const verifyRes = await fetch("/api/payments/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+                planId: payment.planId,
+                billingCycle: payment.billingCycle ?? "monthly",
+              }),
+            });
+            const vData = await verifyRes.json();
+            if (!verifyRes.ok) throw new Error(vData.message);
+            toast({ title: "Payment successful! 🎉", description: `You're now subscribed!` });
+            fetchData(true); fetchHistory(true);
+          } catch (err: any) {
+            toast({ title: "Verification failed", description: err.message, variant: "destructive" });
+          } finally {
+            setRetryingPaymentId(null);
+          }
+        },
+        prefill: { email: user.email },
+        theme: { color: "hsl(var(--primary))" },
+        modal: { ondismiss: () => setRetryingPaymentId(null) },
+      });
+      rzp.open();
+    } catch (err: any) {
+      toast({ title: "Payment failed", description: err.message, variant: "destructive" });
+      setRetryingPaymentId(null);
+    }
+  }, [user, fetchData, fetchHistory, toast]);
+
 
   const handleSelectPlan = useCallback(async (plan: PricingPlan) => {
     if (!user) return;
