@@ -3415,7 +3415,18 @@ function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, isSelf, to
   const [editPhone, setEditPhone] = useState(member?.businessPhone || "");
   const [editBio, setEditBio] = useState(member?.businessBio || "");
   const [editProfileImage, setEditProfileImage] = useState(member?.businessProfileImage || member?.user?.profileImage || "");
+  const [editBranchId, setEditBranchId] = useState(member?.branchId || "");
   const [uploadingImage, setUploadingImage] = useState(false);
+
+  const { data: editBranches = [] } = useQuery<any[]>({
+    queryKey: ["/api/teams", teamId, "branches"],
+    queryFn: async () => {
+      const res = await fetch(`/api/teams/${teamId}/branches`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: isOpen,
+  });
 
   useEffect(() => {
     if (member) {
