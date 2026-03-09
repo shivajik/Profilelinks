@@ -413,7 +413,7 @@ export function BillingSection() {
                   <th className="text-left p-3 font-medium text-muted-foreground">Cycle</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">Date</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Invoice</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -426,14 +426,26 @@ export function BillingSection() {
                     <td className="p-3 text-muted-foreground text-xs">
                       {new Date(tx.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
                     </td>
-                    <td className="p-3">
-                      <Button
-                        variant="ghost" size="sm"
-                        onClick={() => setInvoiceDialog({ open: true, payment: tx })}
-                        className="text-primary hover:text-primary"
-                      >
-                        <FileText className="h-4 w-4 mr-1" /> View
-                      </Button>
+                    <td className="p-3 flex gap-1.5">
+                      {tx.status === "pending" && tx.razorpayOrderId && tx.planId ? (
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={() => retryPendingPayment(tx)}
+                          disabled={!!retryingPaymentId}
+                          className="text-xs"
+                        >
+                          {retryingPaymentId === tx.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Complete Payment"}
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost" size="sm"
+                          onClick={() => setInvoiceDialog({ open: true, payment: tx })}
+                          className="text-primary hover:text-primary text-xs"
+                        >
+                          <FileText className="h-4 w-4 mr-1" /> Invoice
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}
