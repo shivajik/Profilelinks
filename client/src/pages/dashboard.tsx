@@ -3567,7 +3567,31 @@ function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, isSelf, to
                     <SelectItem value="admin">Admin</SelectItem>
                   </SelectContent>
                 </Select>
+            </div>
+          )}
+
+          {/* Branch Assignment */}
+          {isAdmin && editBranches.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5" />
+                Branch Assignment
+              </h4>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-branch" className="text-xs">Branch</Label>
+                <Select value={editBranchId || "none"} onValueChange={(v) => setEditBranchId(v === "none" ? "" : v)}>
+                  <SelectTrigger className="h-9"><SelectValue placeholder="Select branch" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No branch assigned</SelectItem>
+                    {editBranches.map((b: any) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.name} {b.isHeadBranch ? "(Head Office)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+            </div>
             </div>
           )}
 
