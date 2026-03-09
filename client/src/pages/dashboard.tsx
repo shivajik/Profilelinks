@@ -3158,10 +3158,12 @@ function SocialLinkRow({
   onDelete: () => void;
 }) {
   const [url, setUrl] = useState(social.url);
+  const [saving, setSaving] = useState(false);
   const platform = getPlatform(social.platform);
 
   useEffect(() => {
     setUrl(social.url);
+    setSaving(false);
   }, [social.url]);
 
   return (
@@ -3171,13 +3173,20 @@ function SocialLinkRow({
         value={url}
         onChange={(e) => setUrl(e.target.value)}
         onBlur={() => {
-          if (url !== social.url) onUpdate(url);
+          if (url !== social.url) {
+            setSaving(true);
+            onUpdate(url);
+          }
         }}
         placeholder={platform?.placeholder || "Enter URL"}
         className="flex-1 border-0 shadow-none focus-visible:ring-0 text-sm"
         data-testid={`input-social-url-${social.id}`}
       />
-      <SocialIcon platform={social.platform} className="w-5 h-5 text-muted-foreground shrink-0" />
+      {saving ? (
+        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground shrink-0" />
+      ) : (
+        <SocialIcon platform={social.platform} className="w-5 h-5 text-muted-foreground shrink-0" />
+      )}
       <Button
         variant="ghost"
         size="icon"
