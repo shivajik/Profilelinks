@@ -3621,6 +3621,7 @@ function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, isSelf, to
                   businessName: editDisplayName || null,
                   businessPhone: editPhone || null,
                   businessBio: editBio || null,
+                  branchId: editBranchId || null,
                 };
                 await updateMemberMut.mutateAsync({ memberId: member.id, payload });
                 if (editRole !== member.role && isAdmin && member.role !== "owner") {
