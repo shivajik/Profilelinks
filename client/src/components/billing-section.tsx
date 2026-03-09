@@ -105,6 +105,9 @@ export function BillingSection() {
   const [promoValidating, setPromoValidating] = useState(false);
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPercent: number } | null>(null);
 
+  // Retry pending payment
+  const [retryingPaymentId, setRetryingPaymentId] = useState<string | null>(null);
+
   const fetchHistory = useCallback(async (force = false) => {
 
     if (!force && billingCache.history) {
