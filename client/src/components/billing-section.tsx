@@ -34,6 +34,7 @@ interface Subscription {
 
 interface PaymentHistory {
   id: string;
+  planId?: string;
   amount: string;
   currency: string;
   status: string;
