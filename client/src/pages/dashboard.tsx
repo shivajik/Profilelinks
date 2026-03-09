@@ -665,6 +665,19 @@ export default function Dashboard() {
                   </div>
                 </div>
 
+                {isTeamMember && (
+                  <div className="bg-muted/60 border rounded-md p-3 space-y-1">
+                    <p className="text-sm font-medium flex items-center gap-1.5">
+                      <UserIcon className="w-3.5 h-3.5 text-primary" />
+                      Team Member
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Update your profile from <button className="text-primary font-medium underline" onClick={() => setActiveSection("business-profile")}>Business Profile</button>. 
+                      Company branding is managed in <button className="text-primary font-medium underline" onClick={() => setActiveSection("team-templates")}>Team Templates</button>.
+                    </p>
+                  </div>
+                )}
+
                 <CategorySection
                   id="header"
                   label="Header"

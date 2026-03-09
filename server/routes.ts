@@ -1908,12 +1908,9 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/analytics", async (req, res) => {
-    if (!req.session?.userId) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
+  app.get("/api/analytics", requireAuth, async (req, res) => {
     try {
-      const summary = await storage.getAnalyticsSummary(req.session.userId);
+      const summary = await storage.getAnalyticsSummary(req.session.userId!);
       res.json(summary);
     } catch (error: any) {
       console.error("Analytics fetch error:", error);
