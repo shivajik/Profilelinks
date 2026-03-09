@@ -175,40 +175,7 @@ export default function AuthPage() {
               }} />
             )}
 
-            <div className="mt-6">
-              <div className="relative mb-4">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="bg-background px-2 text-muted-foreground">Quick Demo</span>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  disabled={demoLoading !== null}
-                  onClick={() => handleDemoLogin("personal")}
-                  data-testid="button-demo-personal"
-                >
-                  {demoLoading === "personal" ? <Loader2 className="w-4 h-4 animate-spin" /> : <User className="w-4 h-4" />}
-                  Individual
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  disabled={demoLoading !== null}
-                  onClick={() => handleDemoLogin("team")}
-                  data-testid="button-demo-team"
-                >
-                  {demoLoading === "team" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
-                  Business
-                </Button>
-              </div>
-            </div>
+            {/* Demo login buttons removed */}
 
             <p className="text-xs text-muted-foreground text-center mt-8">
               By continuing, you agree to our Terms of Service and Privacy Policy.
