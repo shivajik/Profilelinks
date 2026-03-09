@@ -666,15 +666,40 @@ export default function Dashboard() {
                 </div>
 
                 {isTeamMember && (
-                  <div className="bg-muted/60 border rounded-md p-3 space-y-1">
-                    <p className="text-sm font-medium flex items-center gap-1.5">
-                      <UserIcon className="w-3.5 h-3.5 text-primary" />
-                      Team Member
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Update your profile from <button className="text-primary font-medium underline" onClick={() => setActiveSection("business-profile")}>Business Profile</button>. 
-                      Company branding is managed in <button className="text-primary font-medium underline" onClick={() => setActiveSection("team-templates")}>Team Templates</button>.
-                    </p>
+                  <div className="bg-primary/5 border-2 border-primary/20 rounded-lg p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                        <UserIcon className="w-4 h-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Team Member Profile</p>
+                        <p className="text-xs text-muted-foreground">Some settings are managed by your organization</p>
+                      </div>
+                    </div>
+                    <div className="grid gap-2">
+                      <button 
+                        onClick={() => setActiveSection("business-profile")}
+                        className="flex items-center gap-2 w-full p-2.5 rounded-md border bg-background hover:bg-muted/50 transition-colors text-left"
+                      >
+                        <Briefcase className="w-4 h-4 text-primary shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">Edit Your Profile</p>
+                          <p className="text-xs text-muted-foreground">Update your name, bio, phone & profile picture</p>
+                        </div>
+                        <ChevronDown className="w-4 h-4 text-muted-foreground -rotate-90" />
+                      </button>
+                      <button 
+                        onClick={() => setActiveSection("team-templates")}
+                        className="flex items-center gap-2 w-full p-2.5 rounded-md border bg-background hover:bg-muted/50 transition-colors text-left"
+                      >
+                        <LayoutTemplate className="w-4 h-4 text-primary shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">Company Branding</p>
+                          <p className="text-xs text-muted-foreground">Logo, colors & company info are managed here</p>
+                        </div>
+                        <ChevronDown className="w-4 h-4 text-muted-foreground -rotate-90" />
+                      </button>
+                    </div>
                   </div>
                 )}
 
