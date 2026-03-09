@@ -3436,6 +3436,7 @@ function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, isSelf, to
       setEditPhone(member.businessPhone || "");
       setEditBio(member.businessBio || "");
       setEditProfileImage(member.businessProfileImage || member.user?.profileImage || "");
+      setEditBranchId(member.branchId || "");
     }
   }, [member]);
 
