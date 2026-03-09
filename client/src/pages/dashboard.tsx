@@ -3820,7 +3820,7 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
         </div>
         {isAdmin && (
           <div className="flex items-center gap-2 flex-wrap">
-            <CsvImportExport teamId={teamId} />
+            <CsvImportExport teamId={teamId} teamSlug={teamSlug} members={members} branches={branches} />
             <Button variant="outline" size="sm" onClick={() => setInviteOpen(true)} data-testid="button-invite-member">
               <Send className="w-4 h-4" />
               Invite
