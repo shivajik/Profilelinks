@@ -3,6 +3,7 @@ import { useLocation, Redirect } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
+import logoPath from "/logo.png";
 import { TEMPLATES } from "@/lib/templates";
 import { TEAM_SIZES, BUSINESS_TYPES } from "@shared/schema";
 import { Button } from "@/components/ui/button";
@@ -187,8 +188,9 @@ export default function Onboarding() {
     <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b bg-background/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center sm:justify-between gap-2 sm:gap-4 px-6 py-4">
-          <span className="text-lg font-bold tracking-tight">
-            <span className="text-primary">Visi</span>Cardly
+          <span className="text-lg font-bold tracking-tight flex items-center gap-2">
+            <img src={logoPath} alt="VisiCardly" className="w-12 h-10 object-contain" />
+            <span><span className="text-primary">Visi</span>Cardly</span>
           </span>
           <StepIndicator currentStep={step} totalSteps={totalSteps} />
         </div>

@@ -3,6 +3,7 @@ import { useLocation, Redirect } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
+import logoPath from "/logo.png";
 import { TEMPLATES, getTemplate } from "@/lib/templates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -460,7 +461,8 @@ export default function Dashboard() {
       <div className="flex h-screen w-full">
         <Sidebar>
           <SidebarContent>
-            <div className="px-4 py-4">
+            <div className="px-4 py-4 flex items-center gap-2">
+              <img src={logoPath} alt="VisiCardly" className="w-10 h-8 object-contain" />
               <span className="text-lg font-bold tracking-tight">
                 <span className="text-primary">Visi</span>Cardly
               </span>

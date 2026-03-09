@@ -1,6 +1,7 @@
 import { Link as WouterLink } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import logoPath from "/logo.png";
 import {
   ArrowLeft,
   Link2,
@@ -274,9 +275,9 @@ export default function DocsPage() {
       <header className="fixed top-0 left-0 right-0 z-[999] bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 px-6 py-3">
           <WouterLink href="/">
-            <span className="text-xl font-bold tracking-tight">
-              <span className="text-primary">Visi</span>
-              <span className="text-foreground">Cardly</span>
+            <span className="text-xl font-bold tracking-tight flex items-center gap-2">
+              <img src={logoPath} alt="VisiCardly" className="w-12 h-10 object-contain" />
+              <span><span className="text-primary">Visi</span><span className="text-foreground">Cardly</span></span>
             </span>
           </WouterLink>
           <nav className="hidden md:flex items-center gap-6">

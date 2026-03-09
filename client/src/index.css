@@ -18,30 +18,30 @@
   --sidebar: 240 5% 96%;
   --sidebar-foreground: 240 6% 12%;
   --sidebar-border: 240 5% 92%;
-  --sidebar-primary: 263 62% 66%;
+  --sidebar-primary: 243 75% 59%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 263 18% 88%;
+  --sidebar-accent: 243 18% 88%;
   --sidebar-accent-foreground: 240 6% 12%;
-  --sidebar-ring: 263 62% 66%;
+  --sidebar-ring: 243 75% 59%;
   --popover: 240 5% 94%;
   --popover-foreground: 240 6% 12%;
   --popover-border: 240 5% 90%;
-  --primary: 263 62% 66%;
+  --primary: 243 75% 59%;
   --primary-foreground: 0 0% 100%;
   --secondary: 240 8% 88%;
   --secondary-foreground: 240 6% 12%;
   --muted: 240 8% 92%;
   --muted-foreground: 240 5% 35%;
-  --accent: 263 15% 90%;
+  --accent: 243 15% 90%;
   --accent-foreground: 240 6% 12%;
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
   --input: 240 6% 75%;
-  --ring: 263 62% 66%;
-  --chart-1: 263 62% 50%;
+  --ring: 243 75% 59%;
+  --chart-1: 243 75% 50%;
   --chart-2: 168 76% 42%;
   --chart-3: 240 6% 25%;
-  --chart-4: 263 30% 40%;
+  --chart-4: 243 30% 40%;
   --chart-5: 168 50% 30%;
   --font-sans: Inter, DM Sans, sans-serif;
   --font-serif: Georgia, serif;
@@ -102,30 +102,30 @@
   --sidebar: 240 5% 12%;
   --sidebar-foreground: 0 0% 95%;
   --sidebar-border: 240 5% 15%;
-  --sidebar-primary: 263 62% 66%;
+  --sidebar-primary: 243 75% 67%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 263 18% 18%;
+  --sidebar-accent: 243 18% 18%;
   --sidebar-accent-foreground: 0 0% 95%;
-  --sidebar-ring: 263 62% 66%;
+  --sidebar-ring: 243 75% 67%;
   --popover: 240 5% 14%;
   --popover-foreground: 0 0% 95%;
   --popover-border: 240 5% 17%;
-  --primary: 263 62% 66%;
+  --primary: 243 75% 67%;
   --primary-foreground: 0 0% 100%;
   --secondary: 240 8% 18%;
   --secondary-foreground: 0 0% 95%;
   --muted: 240 8% 16%;
   --muted-foreground: 240 5% 65%;
-  --accent: 263 15% 20%;
+  --accent: 243 15% 20%;
   --accent-foreground: 0 0% 95%;
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
   --input: 240 6% 30%;
-  --ring: 263 62% 66%;
-  --chart-1: 263 62% 75%;
+  --ring: 243 75% 67%;
+  --chart-1: 243 75% 75%;
   --chart-2: 168 76% 65%;
   --chart-3: 240 6% 80%;
-  --chart-4: 263 40% 70%;
+  --chart-4: 243 40% 70%;
   --chart-5: 168 50% 60%;
   --shadow-2xs: 0px 2px 0px 0px hsl(0 0% 100% / 0.00);
   --shadow-xs: 0px 2px 0px 0px hsl(0 0% 100% / 0.00);
@@ -255,7 +255,7 @@
 }
 
 .auth-left-panel {
-  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(263 62% 50%) 50%, hsl(263 70% 40%) 100%);
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(243 75% 50%) 50%, hsl(243 80% 40%) 100%);
 }
 
 /**
