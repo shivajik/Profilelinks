@@ -10,13 +10,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Loader2, ExternalLink, Mail, Play, Music, UserPlus, Share2, QrCode, Copy, Check, ChevronDown, Phone, Globe, Building2, ImageIcon, MapPin, FileText, Download } from "lucide-react";
+import { Loader2, ExternalLink, Mail, Play, Music, UserPlus, Share2, QrCode, Copy, Check } from "lucide-react";
 import { SiFacebook, SiX, SiPinterest, SiReddit, SiLinkedin } from "react-icons/si";
 import { QRCodeSVG } from "qrcode.react";
 import { getTemplate } from "@/lib/templates";
-import { SocialIcon } from "@/components/social-icon";
-import { getPlatform } from "@/lib/social-platforms";
 import { PersonalProfileLayout } from "@/components/profile-layouts";
+import { TeamProfileLayout } from "@/components/team-profile-layouts";
 import type { Link, User, Social, Block, BlockContent } from "@shared/schema";
 
 function normalizeUrl(url: string, platform?: string): string {
@@ -34,55 +33,6 @@ function normalizeUrl(url: string, platform?: string): string {
 
 type PageInfo = { id: string; title: string; slug: string; isHome: boolean };
 
-function MobilePageNav({
-  pages,
-  currentPage,
-  onSelectPage,
-  template,
-}: {
-  pages: PageInfo[];
-  currentPage: PageInfo | null;
-  onSelectPage: (slug: string | null) => void;
-  template: ReturnType<typeof getTemplate>;
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="relative inline-block">
-      <button
-        onClick={() => setOpen(!open)}
-        className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium ${template.cardBg} ${template.cardTextColor}`}
-        data-testid="button-page-nav-toggle"
-      >
-        {currentPage?.title || "Home"}
-        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
-      {open && (
-        <div className={`absolute top-full mt-2 left-1/2 -translate-x-1/2 min-w-[140px] rounded-xl ${template.cardBg} backdrop-blur-md py-1 z-50 shadow-lg`}>
-          {pages.map((page) => {
-            const isActive = currentPage?.slug === page.slug;
-            return (
-              <button
-                key={page.id}
-                onClick={() => {
-                  onSelectPage(page.isHome ? null : page.slug);
-                  setOpen(false);
-                }}
-                className={`block w-full text-left px-4 py-2 text-sm ${
-                  isActive
-                    ? `${template.cardTextColor} font-medium`
-                    : `${template.cardTextColor} opacity-60`
-                }`}
-                data-testid={`mobile-page-tab-${page.slug}`}
-              >
-                {page.title}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
 
 type BranchInfo = {
   name: string;
@@ -285,328 +235,25 @@ export default function PublicProfile(props?: any) {
         </div>
 
         {isTeamProfile ? (
-          <div className="mb-10">
-            <div className="rounded-md overflow-hidden bg-card/80 backdrop-blur-sm shadow-lg" data-testid="corporate-profile-card">
-              <div className="h-28 relative" style={{ backgroundColor: brandColor + "22" }}>
-                {teamBranding?.coverPhoto ? (
-                  <img src={teamBranding.coverPhoto} alt="Cover" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <ImageIcon className="w-8 h-8 text-muted-foreground/30" />
-                  </div>
-                )}
-              </div>
-              <div className="relative px-5 pb-5">
-                <div className="-mt-10 mb-4 flex items-end gap-3">
-                  <div className="shrink-0">
-                    <Avatar className="w-20 h-20 border-4 border-card shadow-md">
-                      <AvatarImage src={user.profileImage || undefined} alt={displayName} />
-                      <AvatarFallback
-                        className="text-xl"
-                        style={{ backgroundColor: brandColor + "30", color: brandColor }}
-                      >
-                        {displayName.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                  </div>
-                  {teamBranding?.companyLogo && (
-                    <div
-                      className="mb-1 flex items-center gap-3 px-4 py-2 rounded-full bg-background/90 backdrop-blur-sm border shadow-md"
-                      data-testid="text-team-brand"
-                    >
-                      <div className="w-11 h-11 rounded-lg overflow-hidden bg-white flex items-center justify-center shrink-0 border shadow-sm" data-testid="img-company-logo-badge">
-                        <img src={teamBranding.companyLogo} alt="Company" className="w-9 h-9 object-contain" />
-                      </div>
-                      <span className="text-sm font-bold text-foreground/90">{teamBranding.companyName}</span>
-                    </div>
-                  )}
-                  {!teamBranding?.companyLogo && teamBranding?.companyName && (
-                    <div className="mb-1 px-4 py-2 rounded-full bg-background/90 backdrop-blur-sm border shadow-md" data-testid="text-team-brand">
-                      <span className="text-sm font-bold text-foreground/90">{teamBranding.companyName}</span>
-                    </div>
-                  )}
-                </div>
-                <div className="space-y-1 mb-4">
-                  <h1 className="text-xl font-bold text-foreground" data-testid="text-profile-name">
-                    {displayName}
-                  </h1>
-                  {teamBranding?.jobTitle && (
-                    <p className="text-sm text-muted-foreground" data-testid="text-profile-jobtitle">{teamBranding.jobTitle}</p>
-                  )}
-                   {teamBranding?.memberEmail ? (
-                     <p className="text-sm font-medium" style={{ color: brandColor }} data-testid="text-profile-company">
-                       {teamBranding.memberEmail}
-                     </p>
-                   ) : teamBranding?.companyName && (
-                     <p className="text-sm font-medium" style={{ color: brandColor }} data-testid="text-profile-company">
-                       {teamBranding.companyName}
-                     </p>
-                   )}
-                  <p className="text-xs text-muted-foreground" data-testid="text-profile-username">
-                    @{user.username}
-                  </p>
-                </div>
-                {user.bio && (
-                  <p className="text-sm text-muted-foreground leading-relaxed mb-4" data-testid="text-profile-bio">
-                    {user.bio}
-                  </p>
-                )}
-                {(() => {
-                  const contactItems = [
-                    { icon: Phone, value: teamBranding?.companyPhone },
-                    { icon: Phone, value: teamBranding?.companyContact },
-                    { icon: Mail, value: teamBranding?.companyEmail },
-                    { icon: Globe, value: teamBranding?.companyWebsite },
-                    { icon: MapPin, value: teamBranding?.companyAddress },
-                  ].filter(item => item.value);
-                  const userContactItems = [
-                    ...(teamBranding?.memberPhone ? [{ icon: Phone, value: teamBranding.memberPhone }] : []),
-                  ];
-                  const hasBranches = !!(teamBranding?.headBranch || teamBranding?.memberBranch);
-                  if (contactItems.length === 0 && userContactItems.length === 0 && !hasBranches) return null;
-                  return (
-                    <div className="space-y-3 mb-4">
-                      {userContactItems.length > 0 && (
-                        <div className="space-y-2" data-testid="user-contact-info">
-                          {userContactItems.map((item, i) => (
-                            <div key={`user-${i}`} className="flex items-center gap-2.5">
-                              <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: brandColor + "20" }}>
-                                <item.icon className="w-3.5 h-3.5" style={{ color: brandColor }} />
-                              </div>
-                              <span className="text-xs text-foreground">{item.value}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {contactItems.length > 0 && (
-                        <>
-                          <div className="border-t border-border my-3" />
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <Building2 className="w-3 h-3 text-muted-foreground" />
-                            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Company Info</span>
-                          </div>
-                          <div className="space-y-2" data-testid="corporate-contact-info">
-                            {contactItems.map((item, i) => (
-                              <div key={i} className="flex items-center gap-2.5">
-                                <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: brandColor + "20" }}>
-                                  <item.icon className="w-3.5 h-3.5" style={{ color: brandColor }} />
-                                </div>
-                                <span className="text-xs text-foreground">{item.value}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </>
-                      )}
-                      {hasBranches && (
-                        <>
-                          <div className="border-t border-border my-3" />
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <MapPin className="w-3 h-3 text-muted-foreground" />
-                            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Locations</span>
-                          </div>
-                          <div className="space-y-2.5" data-testid="branch-addresses">
-                            {teamBranding?.headBranch && (
-                              <div className="rounded-md border border-border/50 p-2.5 space-y-1">
-                                <div className="flex items-center gap-1.5">
-                                  <Building2 className="w-3 h-3" style={{ color: brandColor }} />
-                                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Head Office</span>
-                                </div>
-                                <p className="text-xs font-medium">{teamBranding.headBranch.name}</p>
-                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                  <MapPin className="w-3 h-3 shrink-0" style={{ color: brandColor }} />
-                                  {teamBranding.headBranch.address}
-                                </div>
-                                {teamBranding.headBranch.phone && (
-                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                    <Phone className="w-3 h-3 shrink-0" style={{ color: brandColor }} />
-                                    {teamBranding.headBranch.phone}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                            {teamBranding?.memberBranch && teamBranding.memberBranch.name !== teamBranding?.headBranch?.name && (
-                              <div className="rounded-md border border-border/50 p-2.5 space-y-1">
-                                <div className="flex items-center gap-1.5">
-                                  <MapPin className="w-3 h-3" style={{ color: brandColor }} />
-                                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Branch Office</span>
-                                </div>
-                                <p className="text-xs font-medium">{teamBranding.memberBranch.name}</p>
-                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                  <MapPin className="w-3 h-3 shrink-0" style={{ color: brandColor }} />
-                                  {teamBranding.memberBranch.address}
-                                </div>
-                                {teamBranding.memberBranch.phone && (
-                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                    <Phone className="w-3 h-3 shrink-0" style={{ color: brandColor }} />
-                                    {teamBranding.memberBranch.phone}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </>
-                      )}
-                      {/* Company Documents */}
-                      {(teamBranding?.companyProfileUrl || teamBranding?.productProfileUrl || teamBranding?.companyBrochureUrl) && (
-                        <>
-                          <div className="border-t border-border my-3" />
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <FileText className="w-3 h-3 text-muted-foreground" />
-                            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Documents</span>
-                          </div>
-                          <div className="space-y-2" data-testid="company-documents">
-                            {teamBranding.companyProfileUrl && (
-                              <a
-                                href={normalizeUrl(teamBranding.companyProfileUrl)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2.5 p-2 rounded-md border border-border/50 hover:bg-muted/50 transition-colors"
-                              >
-                                <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: brandColor + "20" }}>
-                                  <Building2 className="w-3.5 h-3.5" style={{ color: brandColor }} />
-                                </div>
-                                <span className="text-xs font-medium flex-1">Company Profile</span>
-                                <Download className="w-3.5 h-3.5 text-muted-foreground" />
-                              </a>
-                            )}
-                            {teamBranding.productProfileUrl && (
-                              <a
-                                href={normalizeUrl(teamBranding.productProfileUrl)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2.5 p-2 rounded-md border border-border/50 hover:bg-muted/50 transition-colors"
-                              >
-                                <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: brandColor + "20" }}>
-                                  <FileText className="w-3.5 h-3.5" style={{ color: brandColor }} />
-                                </div>
-                                <span className="text-xs font-medium flex-1">Product Profile</span>
-                                <Download className="w-3.5 h-3.5 text-muted-foreground" />
-                              </a>
-                            )}
-                            {teamBranding.companyBrochureUrl && (
-                              <a
-                                href={normalizeUrl(teamBranding.companyBrochureUrl)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2.5 p-2 rounded-md border border-border/50 hover:bg-muted/50 transition-colors"
-                              >
-                                <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: brandColor + "20" }}>
-                                  <Download className="w-3.5 h-3.5" style={{ color: brandColor }} />
-                                </div>
-                                <span className="text-xs font-medium flex-1">Company Brochure</span>
-                                <Download className="w-3.5 h-3.5 text-muted-foreground" />
-                              </a>
-                            )}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  );
-                })()}
-                {activeSocials.length > 0 && (
-                  <div className="flex items-center gap-2 flex-wrap mb-2" data-testid="social-icons-row">
-                    {activeSocials.map((social) => (
-                      <a
-                        key={social.id}
-                        href={normalizeUrl(social.url, social.platform)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-1.5 rounded-full text-muted-foreground hover-elevate active-elevate-2"
-                        title={getPlatform(social.platform)?.name || social.platform}
-                        data-testid={`social-icon-${social.platform}`}
-                      >
-                        <SocialIcon platform={social.platform} className="w-4 h-4" />
-                      </a>
-                    ))}
-                  </div>
-                )}
-                {teamBranding?.companySocials && teamBranding.companySocials.length > 0 && (
-                  <div className="flex items-center gap-2 flex-wrap" data-testid="company-social-icons-row">
-                    {teamBranding.companySocials.filter((s: any) => s.platform && s.url).map((social: any, idx: number) => (
-                      <a
-                        key={`company-social-${idx}`}
-                        href={normalizeUrl(social.url, social.platform)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-1.5 rounded-full hover-elevate active-elevate-2"
-                        style={{ color: brandColor }}
-                        title={getPlatform(social.platform)?.name || social.platform}
-                        data-testid={`company-social-icon-${social.platform}`}
-                      >
-                        <SocialIcon platform={social.platform} className="w-4 h-4" />
-                      </a>
-                    ))}
-                  </div>
-                )}
-                {/* Page nav inside card */}
-                {hasMultiplePages && (
-                  <div className="mt-4 flex flex-col items-center">
-                    <div className="hidden sm:flex items-center gap-2 flex-wrap justify-center" data-testid="page-nav">
-                      {pages.map((page) => {
-                        const isActive = currentPage?.slug === page.slug;
-                        return (
-                          <Button
-                            key={page.id}
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setActivePageSlug(page.isHome ? null : page.slug)}
-                            className={`rounded-full px-4 ${
-                              isActive
-                                ? `${template.cardBg} ${template.cardTextColor}`
-                                : `${template.textColor} opacity-60 hover:opacity-100`
-                            }`}
-                            data-testid={`page-tab-${page.slug}`}
-                          >
-                            {page.title}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                    <div className="sm:hidden" data-testid="page-nav-mobile">
-                      <MobilePageNav
-                        pages={pages}
-                        currentPage={currentPage}
-                        onSelectPage={(slug) => setActivePageSlug(slug)}
-                        template={template}
-                      />
-                    </div>
-                  </div>
-                )}
-                {/* Blocks/content inside card */}
-                <div
-                  className="transition-opacity duration-300 ease-in-out"
-                  style={{ opacity: isFetching && !isLoading ? 0.5 : 1 }}
-                >
-                  {hasBlocks ? (
-                    <div className="space-y-3 mt-4">
-                      {activeBlocks.map((block) => (
-                        <PublicBlock key={block.id} block={block} template={template} onClickTrack={trackClick} />
-                      ))}
-                    </div>
-                  ) : activeLinks.length > 0 ? (
-                    <div className="space-y-3 mt-4">
-                      {activeLinks.map((link) => (
-                        <a
-                          key={link.id}
-                          href={normalizeUrl(link.url)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={() => trackClick(link.id)}
-                          className={`block w-full rounded-xl ${template.cardBg} p-4 text-center font-medium transition-all hover:scale-[1.02] hover:shadow-md group backdrop-blur-sm`}
-                          data-testid={`link-card-${link.id}`}
-                        >
-                          <div className="flex items-center justify-center gap-2">
-                            <span className={`truncate ${template.cardTextColor}`}>{link.title}</span>
-                            <ExternalLink className={`w-3.5 h-3.5 ${template.cardTextColor} opacity-0 group-hover:opacity-100 transition-opacity shrink-0`} />
-                          </div>
-                        </a>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          </div>
+          <TeamProfileLayout
+            user={user}
+            template={template}
+            teamBranding={teamBranding!}
+            brandColor={brandColor}
+            activeSocials={activeSocials}
+            activeLinks={activeLinks}
+            activeBlocks={activeBlocks}
+            hasBlocks={hasBlocks}
+            pages={pages}
+            hasMultiplePages={hasMultiplePages}
+            currentPage={currentPage}
+            setActivePageSlug={setActivePageSlug}
+            isFetching={isFetching}
+            isLoading={isLoading}
+            normalizeUrl={normalizeUrl}
+            trackClick={trackClick}
+            PublicBlock={PublicBlock}
+          />
         ) : (
           <PersonalProfileLayout
             user={user}
