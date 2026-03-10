@@ -716,8 +716,10 @@ export default function Dashboard() {
                         {isTeamOwner && (
                           <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
                             <AlertTriangle className="w-3 h-3 shrink-0" />
+                            <span>
                             For your business card, update photo in{" "}
-                            <button type="button" className="underline font-medium hover:text-amber-700" onClick={() => setActiveSection("business-profile")}>Business Profile</button>
+                            <button type="button" onClick={() => setActiveSection("business-profile")} className="underline font-medium hover:text-amber-700">Business Profile</button>
+                            </span>
                           </p>
                         )}
                       </div>
