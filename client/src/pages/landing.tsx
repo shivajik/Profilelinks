@@ -121,10 +121,7 @@ export default function Landing() {
       <header className="fixed top-0 left-0 right-0 z-[999] bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 px-6 py-3">
           <WouterLink href="/">
-            <span className="text-xl font-bold tracking-tight flex items-center gap-2" data-testid="text-logo">
-              <img src={logoPath} alt="VisiCardly" className="w-12 h-10 object-contain" />
-              <span><span className="text-primary">Visi</span><span className="text-foreground">Cardly</span></span>
-            </span>
+              <img src={logoPath} alt="VisiCardly" className="w-16 h-12 object-contain" data-testid="text-logo" />
           </WouterLink>
           <nav className="hidden md:flex items-center gap-6 flex-wrap">
             <a href="#how-it-works" className="text-sm font-medium text-muted-foreground" data-testid="link-how-it-works">
@@ -488,8 +485,7 @@ export default function Landing() {
           <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-10 mb-12">
             <div>
               <span className="text-xl font-bold tracking-tight text-foreground mb-4 flex items-center gap-2">
-                <img src={logoPath} alt="VisiCardly" className="w-12 h-10 object-contain" />
-                <span><span className="text-primary">Visi</span>Cardly</span>
+                <img src={logoPath} alt="VisiCardly" className="w-16 h-12 object-contain" />
               </span>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 The simplest way to share your online presence. One link for everything.

@@ -462,10 +462,7 @@ export default function Dashboard() {
         <Sidebar>
           <SidebarContent>
             <div className="px-4 py-4 flex items-center gap-2">
-              <img src={logoPath} alt="VisiCardly" className="w-10 h-8 object-contain" />
-              <span className="text-lg font-bold tracking-tight">
-                <span className="text-primary">Visi</span>Cardly
-              </span>
+              <img src={logoPath} alt="VisiCardly" className="w-14 h-10 object-contain" />
             </div>
             <SidebarGroup>
               <SidebarGroupContent>

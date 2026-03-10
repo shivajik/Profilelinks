@@ -59,10 +59,7 @@ export default function AuthPage() {
         <div className="landing-orb landing-orb-2" />
         <div className="relative z-10 max-w-md">
           <WouterLink href="/">
-            <span className="text-3xl font-bold tracking-tight mb-8 flex items-center gap-3 cursor-pointer" data-testid="text-auth-logo-side">
-              <img src={logoPath} alt="VisiCardly" className="w-14 h-12 object-contain brightness-0 invert" />
-              <span><span className="text-primary-foreground/90">Visi</span><span className="text-primary-foreground">Cardly</span></span>
-            </span>
+            <img src={logoPath} alt="VisiCardly" className="w-16 h-12 object-contain brightness-0 invert cursor-pointer" data-testid="text-auth-logo-side" />
           </WouterLink>
           <h2 className="text-4xl font-extrabold text-primary-foreground leading-tight mb-4">
             Your online presence,{" "}
@@ -92,10 +89,7 @@ export default function AuthPage() {
               Back
             </Button>
           </WouterLink>
-          <span className="lg:hidden text-lg font-bold tracking-tight flex items-center gap-2" data-testid="text-auth-logo-mobile">
-            <img src={logoPath} alt="VisiCardly" className="w-12 h-10 object-contain" />
-            <span><span className="text-primary">Visi</span><span className="text-foreground">Cardly</span></span>
-          </span>
+            <img src={logoPath} alt="VisiCardly" className="lg:hidden w-16 h-12 object-contain" data-testid="text-auth-logo-mobile" />
         </div>
 
         <div className="flex-1 flex items-center justify-center px-6 pb-16">

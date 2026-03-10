@@ -291,10 +291,7 @@ export default function DocsPage() {
       <header className="fixed top-0 left-0 right-0 z-[999] bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 px-6 py-3">
           <WouterLink href="/">
-            <span className="text-xl font-bold tracking-tight flex items-center gap-2">
-              <img src={logoPath} alt="VisiCardly" className="w-12 h-10 object-contain" />
-              <span><span className="text-primary">Visi</span><span className="text-foreground">Cardly</span></span>
-            </span>
+              <img src={logoPath} alt="VisiCardly" className="w-16 h-12 object-contain" />
           </WouterLink>
           <nav className="hidden md:flex items-center gap-6">
             <WouterLink href="/">
@@ -448,8 +445,7 @@ export default function DocsPage() {
       <footer className="border-t border-border py-8 px-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <img src={logoPath} alt="VisiCardly" className="w-10 h-8 object-contain" />
-            <span><span className="text-primary font-semibold">Visi</span>Cardly</span>
+            <img src={logoPath} alt="VisiCardly" className="w-14 h-10 object-contain" />
             <span>— All rights reserved.</span>
           </div>
           <div className="flex items-center gap-4">
