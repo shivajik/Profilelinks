@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { DEFAULT_MENU_CATEGORIES, type DefaultMenuCategory } from "@/lib/default-menu-items";
 import { useAuth } from "@/lib/auth";
 import { usePlanLimits } from "@/hooks/use-plan-limits";
 import { Button } from "@/components/ui/button";
@@ -93,6 +94,8 @@ export function MenuBuilder() {
   const [sectionDialog, setSectionDialog] = useState<{ open: boolean; section?: MenuSection }>({ open: false });
   const [productDialog, setProductDialog] = useState<{ open: boolean; sectionId?: string; product?: MenuProduct }>({ open: false });
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [selectedImportCategories, setSelectedImportCategories] = useState<string[]>([]);
 
   // Form state
   const [sectionName, setSectionName] = useState("");
@@ -295,14 +298,19 @@ export function MenuBuilder() {
       {/* Menu Appearance Panel */}
       <MenuAppearancePanel />
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h2 className="text-lg font-semibold">Menu Builder</h2>
           <p className="text-sm text-muted-foreground">Create sections and add products to your digital menu</p>
         </div>
-        <Button onClick={openNewSection} size="sm">
-          <Plus className="w-4 h-4 mr-1" /> Add Section
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => { setSelectedImportCategories([]); setImportDialogOpen(true); }} size="sm" variant="outline">
+            <BookOpen className="w-4 h-4 mr-1" /> Import Defaults
+          </Button>
+          <Button onClick={openNewSection} size="sm">
+            <Plus className="w-4 h-4 mr-1" /> Add Section
+          </Button>
+        </div>
       </div>
 
       {sections.length === 0 ? (
@@ -494,6 +502,89 @@ export function MenuBuilder() {
             <Button onClick={submitProduct} disabled={!productName.trim() || createProductMutation.isPending || updateProductMutation.isPending}>
               {(createProductMutation.isPending || updateProductMutation.isPending) && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
               {productDialog.product ? "Update" : "Add"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import Default Menu Items Dialog */}
+      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Import Default Menu Items</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">Select categories to import. Each category will create a section with pre-filled items that you can customize.</p>
+          <div className="space-y-2 mt-2">
+            {DEFAULT_MENU_CATEGORIES.map((cat) => {
+              const isSelected = selectedImportCategories.includes(cat.name);
+              return (
+                <button
+                  key={cat.name}
+                  type="button"
+                  onClick={() => {
+                    setSelectedImportCategories(prev =>
+                      isSelected ? prev.filter(n => n !== cat.name) : [...prev, cat.name]
+                    );
+                  }}
+                  className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all text-left ${
+                    isSelected ? "border-primary bg-primary/5" : "border-border"
+                  }`}
+                >
+                  <div className={`w-5 h-5 rounded flex items-center justify-center shrink-0 ${isSelected ? "bg-primary text-primary-foreground" : "border border-muted-foreground/30"}`}>
+                    {isSelected && <Check className="w-3 h-3" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{cat.name}</p>
+                    <p className="text-xs text-muted-foreground">{cat.items.length} items — {cat.description}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-2 mt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedImportCategories(DEFAULT_MENU_CATEGORIES.map(c => c.name))}
+            >
+              Select All
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedImportCategories([])}
+            >
+              Clear
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setImportDialogOpen(false)}>Cancel</Button>
+            <Button
+              disabled={selectedImportCategories.length === 0}
+              onClick={async () => {
+                const categoriesToImport = DEFAULT_MENU_CATEGORIES.filter(c => selectedImportCategories.includes(c.name));
+                try {
+                  for (const cat of categoriesToImport) {
+                    const sectionRes = await apiRequest("POST", "/api/menu/sections", { name: cat.name, description: cat.description });
+                    const section = await sectionRes.json();
+                    for (const item of cat.items) {
+                      await apiRequest("POST", "/api/menu/products", {
+                        sectionId: section.id,
+                        name: item.name,
+                        description: item.description,
+                        price: item.price,
+                      });
+                    }
+                  }
+                  invalidateMenu();
+                  setImportDialogOpen(false);
+                  toast({ title: `Imported ${categoriesToImport.length} categories!` });
+                } catch (err: any) {
+                  toast({ title: "Import failed", description: err.message, variant: "destructive" });
+                }
+              }}
+            >
+              Import {selectedImportCategories.length} {selectedImportCategories.length === 1 ? "Category" : "Categories"}
             </Button>
           </DialogFooter>
         </DialogContent>

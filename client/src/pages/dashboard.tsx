@@ -4476,6 +4476,9 @@ interface TemplateData {
   themeColor?: string;
   font?: string;
   companySocials?: Array<{ platform: string; url: string }>;
+  companyProfileUrl?: string;
+  productProfileUrl?: string;
+  companyBrochureUrl?: string;
 }
 
 function TeamTemplatesPanel({ teamId }: { teamId: string }) {
@@ -4587,6 +4590,9 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
       font: localFont,
       themeColor: localThemeColor,
       companySocials: localSocials.filter(s => s.platform && s.url),
+      companyProfileUrl: localCompanyProfileUrl || undefined,
+      productProfileUrl: localProductProfileUrl || undefined,
+      companyBrochureUrl: localBrochureUrl || undefined,
     };
     const metaUpdates: Record<string, any> = { templateData: newTemplateData };
     if (localName.trim() && localName !== selectedTemplate.name) metaUpdates.name = localName;
@@ -4635,6 +4641,9 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
   const [localAddress, setLocalAddress] = useState("");
   const [localContact, setLocalContact] = useState("");
   const [localSocials, setLocalSocials] = useState<Array<{ platform: string; url: string }>>([]);
+  const [localCompanyProfileUrl, setLocalCompanyProfileUrl] = useState("");
+  const [localProductProfileUrl, setLocalProductProfileUrl] = useState("");
+  const [localBrochureUrl, setLocalBrochureUrl] = useState("");
 
   useEffect(() => {
     if (selectedTemplate) {
@@ -4647,8 +4656,11 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
       setLocalAddress(tData.companyAddress || "");
       setLocalContact(tData.companyContact || "");
       setLocalSocials(tData.companySocials || []);
+      setLocalCompanyProfileUrl(tData.companyProfileUrl || "");
+      setLocalProductProfileUrl(tData.productProfileUrl || "");
+      setLocalBrochureUrl(tData.companyBrochureUrl || "");
     }
-  }, [selectedTemplate?.id, selectedTemplate?.name, selectedTemplate?.description, tData.companyName, tData.companyPhone, tData.companyEmail, tData.companyWebsite, tData.companyAddress, tData.companyContact, JSON.stringify(tData.companySocials)]);
+  }, [selectedTemplate?.id, selectedTemplate?.name, selectedTemplate?.description, tData.companyName, tData.companyPhone, tData.companyEmail, tData.companyWebsite, tData.companyAddress, tData.companyContact, JSON.stringify(tData.companySocials), tData.companyProfileUrl, tData.productProfileUrl, tData.companyBrochureUrl]);
 
   return (
     <div className="p-4 space-y-4">
@@ -4898,6 +4910,50 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                 </CardContent>
               </Card>
 
+              {/* Document Links */}
+              <Card>
+                <CardContent className="pt-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-medium text-muted-foreground">Document Links</h3>
+                    <div className="group relative inline-block">
+                      <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-[250px] rounded-md border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity z-50">
+                        Add links to your company profile, product catalog, or brochure. These will be visible on your team members' public profiles as downloadable/viewable documents.
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Company Profile URL</Label>
+                      <Input
+                        value={localCompanyProfileUrl}
+                        onChange={(e) => { setLocalCompanyProfileUrl(e.target.value); markDirty(); }}
+                        placeholder="https://drive.google.com/file/..."
+                        data-testid="input-tpl-company-profile-url"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Product Profile URL</Label>
+                      <Input
+                        value={localProductProfileUrl}
+                        onChange={(e) => { setLocalProductProfileUrl(e.target.value); markDirty(); }}
+                        placeholder="https://drive.google.com/file/..."
+                        data-testid="input-tpl-product-profile-url"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Company Brochure URL</Label>
+                      <Input
+                        value={localBrochureUrl}
+                        onChange={(e) => { setLocalBrochureUrl(e.target.value); markDirty(); }}
+                        placeholder="https://drive.google.com/file/..."
+                        data-testid="input-tpl-brochure-url"
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Paste links to hosted documents (Google Drive, Dropbox, etc.). These will appear on public profiles.</p>
+                  </div>
+                </CardContent>
+              </Card>
               <Card>
                 <CardContent className="pt-4 space-y-3">
                   <h3 className="text-sm font-medium text-muted-foreground">Branding</h3>
