@@ -96,6 +96,7 @@ export function MenuBuilder() {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [selectedImportCategories, setSelectedImportCategories] = useState<string[]>([]);
+  const [importLoading, setImportLoading] = useState(false);
 
   // Form state
   const [sectionName, setSectionName] = useState("");
@@ -560,8 +561,9 @@ export function MenuBuilder() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setImportDialogOpen(false)}>Cancel</Button>
             <Button
-              disabled={selectedImportCategories.length === 0}
+              disabled={selectedImportCategories.length === 0 || importLoading}
               onClick={async () => {
+                setImportLoading(true);
                 const categoriesToImport = DEFAULT_MENU_CATEGORIES.filter(c => selectedImportCategories.includes(c.name));
                 try {
                   for (const cat of categoriesToImport) {
@@ -581,10 +583,13 @@ export function MenuBuilder() {
                   toast({ title: `Imported ${categoriesToImport.length} categories!` });
                 } catch (err: any) {
                   toast({ title: "Import failed", description: err.message, variant: "destructive" });
+                } finally {
+                  setImportLoading(false);
                 }
               }}
             >
-              Import {selectedImportCategories.length} {selectedImportCategories.length === 1 ? "Category" : "Categories"}
+              {importLoading && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+              {importLoading ? "Importing..." : `Import ${selectedImportCategories.length} ${selectedImportCategories.length === 1 ? "Category" : "Categories"}`}
             </Button>
           </DialogFooter>
         </DialogContent>

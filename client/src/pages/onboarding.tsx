@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Check, ArrowRight, Loader2, X, GripVertical, Camera, Upload, User, Users, Building2 } from "lucide-react";
+import { Check, ArrowRight, Loader2, X, GripVertical, Camera, Upload, User, Users, Building2, ChevronDown } from "lucide-react";
 import {
   SiInstagram,
   SiX,
@@ -524,18 +524,7 @@ function WorkspaceStep({
         </div>
         <div className="space-y-2">
           <Label htmlFor="onb-business-type">Business Type</Label>
-          <Select value={businessType} onValueChange={setBusinessType}>
-            <SelectTrigger data-testid="select-workspace-business-type">
-              <SelectValue placeholder="Select business type" />
-            </SelectTrigger>
-            <SelectContent>
-              {BUSINESS_TYPES.map((type) => (
-                <SelectItem key={type} value={type} data-testid={`select-item-type-${type}`}>
-                  {type}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <BusinessTypeCombobox value={businessType} onChange={setBusinessType} />
           {businessType === "Other" && (
             <Input
               placeholder="Enter your business type"
@@ -1093,6 +1082,66 @@ function PhonePreview({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function BusinessTypeCombobox({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+  const filtered = BUSINESS_TYPES.filter((t) =>
+    t.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="relative">
+      <div
+        className="flex items-center border rounded-md px-3 py-2 cursor-pointer bg-background"
+        onClick={() => setOpen(!open)}
+        data-testid="select-workspace-business-type"
+      >
+        <span className={`text-sm flex-1 ${value ? "text-foreground" : "text-muted-foreground"}`}>
+          {value || "Select business type"}
+        </span>
+        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+      </div>
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-popover border rounded-md shadow-lg max-h-[250px] overflow-hidden flex flex-col">
+          <div className="p-2 border-b">
+            <Input
+              placeholder="Search business type..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-8 text-sm"
+              autoFocus
+              data-testid="input-search-business-type"
+            />
+          </div>
+          <div className="overflow-y-auto flex-1">
+            {filtered.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">No results found</p>
+            ) : (
+              filtered.map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => {
+                    onChange(type);
+                    setOpen(false);
+                    setSearch("");
+                  }}
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-muted/50 transition-colors ${
+                    value === type ? "bg-primary/10 text-primary font-medium" : ""
+                  }`}
+                  data-testid={`select-item-type-${type}`}
+                >
+                  {type}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

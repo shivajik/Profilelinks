@@ -1913,6 +1913,9 @@ export async function registerRoutes(
         companySocials: tData.companySocials || undefined,
         headBranch: headBranch ? { name: headBranch.name, address: headBranch.address, phone: headBranch.phone, email: headBranch.email } : undefined,
         memberBranch: memberBranch ? { name: memberBranch.name, address: memberBranch.address, phone: memberBranch.phone, email: memberBranch.email } : undefined,
+        companyProfileUrl: tData.companyProfileUrl || undefined,
+        productProfileUrl: tData.productProfileUrl || undefined,
+        companyBrochureUrl: tData.companyBrochureUrl || undefined,
       };
 
       if (member?.businessName) (publicUser as any).displayName = member.businessName;
@@ -2006,6 +2009,9 @@ export async function registerRoutes(
         companySocials?: Array<{ platform: string; url: string }>;
         headBranch?: { name: string; address: string; phone?: string | null; email?: string | null };
         memberBranch?: { name: string; address: string; phone?: string | null; email?: string | null };
+        companyProfileUrl?: string;
+        productProfileUrl?: string;
+        companyBrochureUrl?: string;
       } | null = null;
 
       if (teamId && teamData) {
@@ -2040,6 +2046,9 @@ export async function registerRoutes(
           companySocials: tData.companySocials || undefined,
           headBranch: headBranchData ? { name: headBranchData.name, address: headBranchData.address, phone: headBranchData.phone, email: headBranchData.email } : undefined,
           memberBranch: memberBranchData ? { name: memberBranchData.name, address: memberBranchData.address, phone: memberBranchData.phone, email: memberBranchData.email } : undefined,
+          companyProfileUrl: tData.companyProfileUrl || undefined,
+          productProfileUrl: tData.productProfileUrl || undefined,
+          companyBrochureUrl: tData.companyBrochureUrl || undefined,
         };
 
         if (member?.businessName) {

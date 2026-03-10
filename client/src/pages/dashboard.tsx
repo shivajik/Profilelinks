@@ -438,6 +438,7 @@ export default function Dashboard() {
     ...(isTeamAccount && isRestaurant ? [{ id: "menu-setup", label: "Menu Setup", icon: UtensilsCrossed }] : []),
     { id: "settings", label: "Settings", icon: Settings },
     { id: "qrcodes", label: "QR Codes", icon: QrCode },
+    { id: "qr-generator", label: "QR Generator", icon: Link2 },
     { id: "analytics", label: "Analytics", icon: BarChart3 },
     ...(!isTeamMember ? [{ id: "billing", label: "Billing", icon: CreditCard }] : []),
     ...(!isTeamMember ? [{ id: "usage", label: "Usage", icon: Eye }] : []),
@@ -1063,6 +1064,9 @@ export default function Dashboard() {
                 ) : (
                   <QRCodePanel profileUrl={profileUrl} username={user.username} />
                 )
+              )}
+              {activeSection === "qr-generator" && (
+                <URLQRGeneratorPanel username={user.username} />
               )}
               {activeSection === "team-members" && isTeamAccount && (
                 <TeamMembersPanel teamId={user.teamId!} currentUserId={user.id} teamSlug={teamSlug} />
@@ -5244,6 +5248,179 @@ function TemplateCardPreview({ data, themeColor }: { data: TemplateData; themeCo
   );
 }
 
+function URLQRGeneratorPanel({ username }: { username: string }) {
+  const { toast } = useToast();
+  const [url, setUrl] = useState("");
+  const [qrStyle, setQrStyle] = useState<"circle" | "square" | "stripe" | "full">("square");
+  const [qrColor, setQrColor] = useState("#6C5CE7");
+  const [borderRadius, setBorderRadius] = useState(8);
+  const [borderWidth, setBorderWidth] = useState(3);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [generated, setGenerated] = useState(false);
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setLogoPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const getContainerStyle = (): React.CSSProperties => {
+    const style: React.CSSProperties = { overflow: "hidden", padding: "16px", background: "white" };
+    switch (qrStyle) {
+      case "circle": style.borderRadius = "50%"; style.border = `${borderWidth}px solid ${qrColor}`; break;
+      case "square": style.borderRadius = `${borderRadius}px`; style.border = `${borderWidth}px solid ${qrColor}`; break;
+      case "stripe": style.borderRadius = `${borderRadius}px`; style.borderTop = `${Math.max(borderWidth, 3)}px solid ${qrColor}`; style.borderBottom = `${Math.max(borderWidth, 3)}px solid ${qrColor}`; break;
+      case "full": style.borderRadius = `${borderRadius}px`; style.background = qrColor; style.padding = "20px"; break;
+    }
+    return style;
+  };
+
+  const downloadQR = () => {
+    const svg = document.getElementById("url-qr-code");
+    if (!svg) return;
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    img.onload = () => {
+      const padding = 48;
+      const brandingHeight = 60;
+      const qrSize = 800;
+      const totalWidth = qrSize + padding * 2;
+      const totalHeight = qrSize + padding * 2 + brandingHeight;
+      canvas.width = totalWidth;
+      canvas.height = totalHeight;
+      if (ctx) {
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, totalWidth, totalHeight);
+        ctx.strokeStyle = qrColor;
+        ctx.lineWidth = borderWidth;
+        ctx.beginPath();
+        ctx.roundRect(borderWidth / 2, borderWidth / 2, totalWidth - borderWidth, totalHeight - brandingHeight - borderWidth, borderRadius);
+        ctx.stroke();
+        ctx.drawImage(img, padding, padding, qrSize, qrSize);
+        ctx.fillStyle = "#9ca3af";
+        ctx.font = "500 22px Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("Powered by VisiCardly", totalWidth / 2, totalHeight - 20);
+      }
+      const pngUrl = canvas.toDataURL("image/png");
+      const a = document.createElement("a");
+      a.href = pngUrl;
+      a.download = `qrcode-${Date.now()}.png`;
+      a.click();
+      toast({ title: "QR code downloaded!" });
+    };
+    img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
+  };
+
+  const isValidUrl = url.trim().length > 0;
+
+  return (
+    <div className="p-4 space-y-6 max-w-2xl mx-auto">
+      <SectionHeader title="QR Generator" />
+      <div className="text-center space-y-1">
+        <h2 className="text-lg font-bold">URL QR Code Generator</h2>
+        <p className="text-sm text-muted-foreground">Enter any website link and generate a branded QR code instantly.</p>
+      </div>
+
+      <Card>
+        <CardContent className="p-4 space-y-4">
+          <div className="space-y-2">
+            <Label>Website URL</Label>
+            <Input
+              value={url}
+              onChange={(e) => { setUrl(e.target.value); setGenerated(false); }}
+              placeholder="https://example.com"
+              data-testid="input-qr-url"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-xs">Style</Label>
+              <Select value={qrStyle} onValueChange={(v: any) => setQrStyle(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="circle">Circle</SelectItem>
+                  <SelectItem value="square">Square</SelectItem>
+                  <SelectItem value="stripe">Stripe</SelectItem>
+                  <SelectItem value="full">Full</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Color</Label>
+              <div className="flex items-center gap-2">
+                <input type="color" value={qrColor} onChange={(e) => setQrColor(e.target.value)} className="w-8 h-8 rounded cursor-pointer border-0" />
+                <Input value={qrColor} onChange={(e) => setQrColor(e.target.value)} className="font-mono text-xs flex-1" />
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-xs">Border Radius: {borderRadius}px</Label>
+              <Slider value={[borderRadius]} onValueChange={([v]) => setBorderRadius(v)} min={0} max={30} step={1} />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Border Width: {borderWidth}px</Label>
+              <Slider value={[borderWidth]} onValueChange={([v]) => setBorderWidth(v)} min={0} max={8} step={1} />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs">Logo (optional)</Label>
+            <div className="flex items-center gap-3">
+              {logoPreview ? (
+                <img src={logoPreview} alt="Logo" className="w-10 h-10 rounded object-cover border" />
+              ) : (
+                <div className="w-10 h-10 rounded bg-muted flex items-center justify-center border">
+                  <ImageIcon className="w-4 h-4 text-muted-foreground" />
+                </div>
+              )}
+              <input type="file" accept="image/*" className="hidden" id="url-qr-logo" onChange={handleLogoUpload} />
+              <Button variant="outline" size="sm" onClick={() => document.getElementById("url-qr-logo")?.click()}>
+                <Upload className="w-3.5 h-3.5 mr-1" /> Upload
+              </Button>
+              {logoPreview && <Button variant="ghost" size="sm" onClick={() => setLogoPreview(null)}>Remove</Button>}
+            </div>
+          </div>
+          <Button className="w-full" disabled={!isValidUrl} onClick={() => setGenerated(true)}>
+            Generate QR Code
+          </Button>
+        </CardContent>
+      </Card>
+
+      {generated && isValidUrl && (
+        <Card>
+          <CardContent className="p-6 flex flex-col items-center gap-4">
+            <div style={getContainerStyle()} data-qr-container>
+              <QRCodeSVG
+                id="url-qr-code"
+                value={url.startsWith("http") ? url : `https://${url}`}
+                size={180}
+                level="H"
+                fgColor={qrStyle === "full" ? "#ffffff" : qrColor}
+                bgColor="transparent"
+                imageSettings={logoPreview ? { src: logoPreview, height: 30, width: 30, excavate: true } : undefined}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground text-center">Powered by VisiCardly</p>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={downloadQR}>
+                <Download className="w-4 h-4 mr-1" /> Download
+              </Button>
+              <Button variant="outline" onClick={() => { navigator.clipboard.writeText(url); toast({ title: "URL copied!" }); }}>
+                <Copy className="w-4 h-4 mr-1" /> Copy URL
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 function ContactsPanel({ teamId, userId, isTeamMember = false }: { teamId: string; userId: string; isTeamMember?: boolean }) {
   const { toast } = useToast();
   const [contactType, setContactType] = useState<"company" | "personal">("company");
@@ -5324,10 +5501,77 @@ function ContactsPanel({ teamId, userId, isTeamMember = false }: { teamId: strin
           <SidebarTrigger data-testid="button-sidebar-toggle" />
           <h2 className="text-base font-semibold">Contacts</h2>
         </div>
-        <Button variant="default" size="sm" onClick={() => setCreateOpen(true)} data-testid="button-create-contact">
-          <Plus className="w-4 h-4 mr-1" />
-          Create new contact
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={() => {
+            const csvContent = "Name,Email,Phone,Company,Job Title,Notes,Type\n";
+            const rows = contacts.map((c: any) => [c.name, c.email || "", c.phone || "", c.company || "", c.jobTitle || "", (c.notes || "").replace(/,/g, ";"), c.type || "personal"].join(","));
+            const blob = new Blob([csvContent + rows.join("\n")], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `contacts-${contactType}-${new Date().toISOString().split("T")[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            toast({ title: "Contacts exported!" });
+          }}>
+            <Download className="w-4 h-4 mr-1" /> Export
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => {
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = ".csv";
+            input.onchange = async (e: any) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const text = await file.text();
+              const lines = text.split("\n").filter((l: string) => l.trim());
+              if (lines.length < 2) { toast({ title: "Empty CSV", variant: "destructive" }); return; }
+              const headers = lines[0].toLowerCase().split(",").map((h: string) => h.trim());
+              let imported = 0;
+              for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(",").map((v: string) => v.trim());
+                const row: any = {};
+                headers.forEach((h: string, idx: number) => { row[h] = values[idx] || ""; });
+                const name = row.name || row["full name"] || row["contact name"];
+                if (!name) continue;
+                try {
+                  await apiRequest("POST", "/api/contacts", {
+                    name,
+                    email: row.email || undefined,
+                    phone: row.phone || row.mobile || row["phone number"] || undefined,
+                    company: row.company || row.organization || undefined,
+                    jobTitle: row["job title"] || row.title || row.designation || undefined,
+                    notes: row.notes || undefined,
+                    type: row.type === "company" ? "company" : "personal",
+                  });
+                  imported++;
+                } catch {}
+              }
+              queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+              toast({ title: `Imported ${imported} contacts!` });
+            };
+            input.click();
+          }}>
+            <Upload className="w-4 h-4 mr-1" /> Import CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => {
+            const template = "Name,Email,Phone,Company,Job Title,Notes,Type\nJohn Doe,john@example.com,+1234567890,Acme Inc,Manager,Sample note,personal";
+            const blob = new Blob([template], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "contacts-template.csv";
+            a.click();
+            URL.revokeObjectURL(url);
+            toast({ title: "Template downloaded!" });
+          }}>
+            <FileText className="w-4 h-4 mr-1" /> Template
+          </Button>
+          <Button variant="default" size="sm" onClick={() => setCreateOpen(true)} data-testid="button-create-contact">
+            <Plus className="w-4 h-4 mr-1" />
+            Add
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">

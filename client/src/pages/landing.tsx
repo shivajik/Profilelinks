@@ -133,6 +133,11 @@ export default function Landing() {
             <a href="#testimonials" className="text-sm font-medium text-muted-foreground" data-testid="link-testimonials">
               Testimonials
             </a>
+            <WouterLink href="/restaurant">
+              <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-testid="link-restaurant">
+                Restaurants
+              </span>
+            </WouterLink>
             <WouterLink href="/pricing">
               <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-testid="link-pricing">
                 Pricing
@@ -204,6 +209,15 @@ export default function Landing() {
                   data-testid="mobile-link-pricing"
                 >
                   Pricing
+                </span>
+              </WouterLink>
+              <WouterLink href="/restaurant">
+                <span
+                  className="text-sm font-medium text-muted-foreground py-2 cursor-pointer"
+                  onClick={() => setMobileMenuOpen(false)}
+                  data-testid="mobile-link-restaurant"
+                >
+                  Restaurants
                 </span>
               </WouterLink>
               <WouterLink href="/docs">

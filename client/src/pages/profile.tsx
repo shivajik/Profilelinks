@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Loader2, ExternalLink, Mail, Play, Music, UserPlus, Share2, QrCode, Copy, Check, ChevronDown, Phone, Globe, Building2, ImageIcon, MapPin } from "lucide-react";
+import { Loader2, ExternalLink, Mail, Play, Music, UserPlus, Share2, QrCode, Copy, Check, ChevronDown, Phone, Globe, Building2, ImageIcon, MapPin, FileText, Download } from "lucide-react";
 import { SiFacebook, SiX, SiPinterest, SiReddit, SiLinkedin } from "react-icons/si";
 import { QRCodeSVG } from "qrcode.react";
 import { getTemplate } from "@/lib/templates";
@@ -108,6 +108,9 @@ type TeamBranding = {
   companySocials?: Array<{ platform: string; url: string }>;
   headBranch?: BranchInfo;
   memberBranch?: BranchInfo;
+  companyProfileUrl?: string;
+  productProfileUrl?: string;
+  companyBrochureUrl?: string;
 };
 
 type PublicProfile = {
@@ -438,6 +441,60 @@ export default function PublicProfile(props?: any) {
                                   </div>
                                 )}
                               </div>
+                            )}
+                          </div>
+                        </>
+                      )}
+                      {/* Company Documents */}
+                      {(teamBranding?.companyProfileUrl || teamBranding?.productProfileUrl || teamBranding?.companyBrochureUrl) && (
+                        <>
+                          <div className="border-t border-border my-3" />
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <FileText className="w-3 h-3 text-muted-foreground" />
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Documents</span>
+                          </div>
+                          <div className="space-y-2" data-testid="company-documents">
+                            {teamBranding.companyProfileUrl && (
+                              <a
+                                href={teamBranding.companyProfileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2.5 p-2 rounded-md border border-border/50 hover:bg-muted/50 transition-colors"
+                              >
+                                <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: brandColor + "20" }}>
+                                  <Building2 className="w-3.5 h-3.5" style={{ color: brandColor }} />
+                                </div>
+                                <span className="text-xs font-medium flex-1">Company Profile</span>
+                                <Download className="w-3.5 h-3.5 text-muted-foreground" />
+                              </a>
+                            )}
+                            {teamBranding.productProfileUrl && (
+                              <a
+                                href={teamBranding.productProfileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2.5 p-2 rounded-md border border-border/50 hover:bg-muted/50 transition-colors"
+                              >
+                                <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: brandColor + "20" }}>
+                                  <FileText className="w-3.5 h-3.5" style={{ color: brandColor }} />
+                                </div>
+                                <span className="text-xs font-medium flex-1">Product Profile</span>
+                                <Download className="w-3.5 h-3.5 text-muted-foreground" />
+                              </a>
+                            )}
+                            {teamBranding.companyBrochureUrl && (
+                              <a
+                                href={teamBranding.companyBrochureUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2.5 p-2 rounded-md border border-border/50 hover:bg-muted/50 transition-colors"
+                              >
+                                <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: brandColor + "20" }}>
+                                  <Download className="w-3.5 h-3.5" style={{ color: brandColor }} />
+                                </div>
+                                <span className="text-xs font-medium flex-1">Company Brochure</span>
+                                <Download className="w-3.5 h-3.5 text-muted-foreground" />
+                              </a>
                             )}
                           </div>
                         </>
