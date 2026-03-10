@@ -5449,10 +5449,17 @@ function ContactsPanel({ teamId, userId, isTeamMember = false }: { teamId: strin
 
   const createMutation = useMutation({
     mutationFn: async (data: { name: string; email?: string; phone?: string; company?: string; jobTitle?: string; notes?: string; type?: string }) => {
-      await apiRequest("POST", "/api/contacts", data);
+      const res = await apiRequest("POST", "/api/contacts", data);
+      return await res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+    onSuccess: (newContact: any) => {
+      // Optimistically add to cache instead of refetching
+      queryClient.setQueryData(["/api/contacts", { type: contactType }], (old: any[] | undefined) => {
+        return old ? [...old, newContact] : [newContact];
+      });
+      // Also invalidate the other tab's cache so it refreshes when switched
+      const otherType = contactType === "company" ? "personal" : "company";
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts", { type: otherType }] });
       closeCreateDialog();
       toast({ title: "Contact created!" });
     },
@@ -5504,7 +5511,7 @@ function ContactsPanel({ teamId, userId, isTeamMember = false }: { teamId: strin
           <h2 className="text-base font-semibold">Contacts</h2>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={() => {
+          <Button variant="outline" size="sm" disabled={contacts.length === 0} onClick={() => {
             const csvContent = "Name,Email,Phone,Company,Job Title,Notes,Type\n";
             const rows = contacts.map((c: any) => [c.name, c.email || "", c.phone || "", c.company || "", c.jobTitle || "", (c.notes || "").replace(/,/g, ";"), c.type || "personal"].join(","));
             const blob = new Blob([csvContent + rows.join("\n")], { type: "text/csv" });
@@ -5557,7 +5564,7 @@ function ContactsPanel({ teamId, userId, isTeamMember = false }: { teamId: strin
             <Upload className="w-4 h-4 mr-1" /> Import CSV
           </Button>
           <Button variant="outline" size="sm" onClick={() => {
-            const template = "Name,Email,Phone,Company,Job Title,Notes,Type\nJohn Doe,john@example.com,+1234567890,Acme Inc,Manager,Sample note,personal";
+            const template = "Name,Email,Phone,Company,Job Title,Notes,Type\nJohn Doe,john@example.com,+1234567890,Acme Inc,Manager,Sample note,personal\nJane Smith,jane@company.com,+0987654321,Global Corp,Director,Company contact example,company";
             const blob = new Blob([template], { type: "text/csv" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
@@ -5686,7 +5693,7 @@ function ContactsPanel({ teamId, userId, isTeamMember = false }: { teamId: strin
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="contact-name">Name</Label>
+              <Label htmlFor="contact-name">Name <span className="text-destructive">*</span></Label>
               <Input
                 id="contact-name"
                 value={newName}
@@ -5696,7 +5703,7 @@ function ContactsPanel({ teamId, userId, isTeamMember = false }: { teamId: strin
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="contact-email">Email</Label>
+              <Label htmlFor="contact-email">Email <span className="text-destructive">*</span></Label>
               <Input
                 id="contact-email"
                 type="email"
@@ -5707,7 +5714,7 @@ function ContactsPanel({ teamId, userId, isTeamMember = false }: { teamId: strin
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="contact-phone">Phone</Label>
+              <Label htmlFor="contact-phone">Phone <span className="text-destructive">*</span></Label>
               <Input
                 id="contact-phone"
                 value={newPhone}
@@ -5727,7 +5734,7 @@ function ContactsPanel({ teamId, userId, isTeamMember = false }: { teamId: strin
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="contact-jobtitle">Job Title</Label>
+              <Label htmlFor="contact-jobtitle">Job Title <span className="text-destructive">*</span></Label>
               <Input
                 id="contact-jobtitle"
                 value={newJobTitle}
@@ -5776,7 +5783,7 @@ function ContactsPanel({ teamId, userId, isTeamMember = false }: { teamId: strin
             </div>
             <Button
               className="w-full"
-              disabled={!newName || createMutation.isPending}
+              disabled={!newName || !newEmail || !newPhone || !newJobTitle || createMutation.isPending}
               onClick={() => createMutation.mutate({
                 name: newName,
                 email: newEmail || undefined,
