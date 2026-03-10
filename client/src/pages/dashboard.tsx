@@ -4,7 +4,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
 import logoPath from "/logo.png";
-import { TEMPLATES, getTemplate } from "@/lib/templates";
+import { TEMPLATES, getTemplate, LAYOUT_LABELS } from "@/lib/templates";
+import type { LayoutType } from "@/lib/templates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -193,6 +194,7 @@ export default function Dashboard() {
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
   const [limitMessage, setLimitMessage] = useState("");
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
+    theme: true,
     page: true,
     header: true,
     socials: true,
@@ -1606,23 +1608,28 @@ function SettingsPanel({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-            {TEMPLATES.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => {
-                  setSelectedTemplate(t.id);
-                  profileMutation.mutate({ template: t.id });
-                }}
-                className={`relative rounded-lg border-2 p-1.5 text-center transition-all hover:scale-105 ${
-                  selectedTemplate === t.id ? "border-primary ring-1 ring-primary/30" : "border-border"
-                }`}
-                title={t.name}
-                data-testid={`template-${t.id}`}
-              >
-                <div className={`w-full aspect-[3/2] rounded-sm ${t.bg}`} />
-                <p className="text-[10px] font-medium mt-1 truncate">{t.name}</p>
-              </button>
-            ))}
+            {TEMPLATES.map((t) => {
+              const layoutLabel = LAYOUT_LABELS[t.layout as LayoutType] || "Classic";
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => {
+                    setSelectedTemplate(t.id);
+                    profileMutation.mutate({ template: t.id });
+                  }}
+                  className={`relative rounded-lg border-2 p-1.5 text-center transition-all hover:scale-105 ${
+                    selectedTemplate === t.id ? "border-primary ring-1 ring-primary/30" : "border-border"
+                  }`}
+                  title={`${t.name} - ${layoutLabel} layout`}
+                  data-testid={`template-${t.id}`}
+                >
+                  <div className={`w-full aspect-[3/2] rounded-sm ${t.bg} relative`}>
+                    <span className="absolute bottom-0.5 left-0.5 text-[6px] font-bold px-1 py-px rounded-full bg-black/30 text-white backdrop-blur-sm">{layoutLabel}</span>
+                  </div>
+                  <p className="text-[10px] font-medium mt-1 truncate">{t.name}</p>
+                </button>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
@@ -1963,15 +1970,17 @@ function AnalyticsPanel({ username }: { username: string }) {
   );
 }
 
-type QRStyle = "circle" | "square" | "stripe" | "full";
+type QRStyle = "circle" | "square" | "stripe" | "full" | "gradient" | "elegant" | "badge" | "modern" | "ticket";
 
 interface SavedQRCode {
   id: string;
   style: QRStyle;
   color: string;
+  color2: string;
   borderRadius: number;
   borderWidth: number;
   logoUrl: string | null;
+  scanText: boolean;
 }
 
 function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: string }) {
@@ -1988,9 +1997,11 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
 
   const [qrStyle, setQrStyle] = useState<QRStyle>("circle");
   const [qrColor, setQrColor] = useState("#6C5CE7");
+  const [qrColor2, setQrColor2] = useState("#FF6B6B");
   const [borderRadius, setBorderRadius] = useState(0);
   const [borderWidth, setBorderWidth] = useState(2);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [scanText, setScanText] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(`qrcodes-${username}`, JSON.stringify(savedQRCodes));
@@ -1999,9 +2010,11 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
   const resetForm = () => {
     setQrStyle("circle");
     setQrColor("#6C5CE7");
+    setQrColor2("#FF6B6B");
     setBorderRadius(0);
     setBorderWidth(2);
     setLogoPreview(null);
+    setScanText(false);
     setEditingId(null);
   };
 
@@ -2013,9 +2026,11 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
   const openEdit = (qr: SavedQRCode) => {
     setQrStyle(qr.style);
     setQrColor(qr.color);
+    setQrColor2(qr.color2 || "#FF6B6B");
     setBorderRadius(qr.borderRadius);
     setBorderWidth(qr.borderWidth);
     setLogoPreview(qr.logoUrl);
+    setScanText(qr.scanText || false);
     setEditingId(qr.id);
     setShowCreateDialog(true);
   };
@@ -2033,7 +2048,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
       setSavedQRCodes((prev) =>
         prev.map((qr) =>
           qr.id === editingId
-            ? { ...qr, style: qrStyle, color: qrColor, borderRadius, borderWidth, logoUrl: logoPreview }
+            ? { ...qr, style: qrStyle, color: qrColor, color2: qrColor2, borderRadius, borderWidth, logoUrl: logoPreview, scanText }
             : qr
         )
       );
@@ -2043,9 +2058,11 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
         id: Date.now().toString(),
         style: qrStyle,
         color: qrColor,
+        color2: qrColor2,
         borderRadius,
         borderWidth,
         logoUrl: logoPreview,
+        scanText,
       };
       setSavedQRCodes((prev) => [...prev, newQR]);
       toast({ title: "QR code created!" });
@@ -2059,13 +2076,9 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
     toast({ title: "QR code deleted" });
   };
 
-  const downloadQR = (elementId: string, filename: string) => {
+  const downloadQR = (elementId: string, filename: string, qrConfig?: SavedQRCode) => {
     const svg = document.getElementById(elementId);
     if (!svg) return;
-    
-    // Get the parent container to capture styling
-    const container = svg.closest('[data-qr-container]') as HTMLElement | null;
-    const containerStyles = container ? getComputedStyle(container) : null;
     
     const svgData = new XMLSerializer().serializeToString(svg);
     const canvas = document.createElement("canvas");
@@ -2073,49 +2086,140 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
     const img = new Image();
     
     img.onload = () => {
-      const padding = 48; // Padding inside the QR container
-      const brandingHeight = 60; // Space for branding text
-      const borderWidth = container ? parseInt(containerStyles?.borderWidth || '4') : 4;
-      const borderRadius = container ? parseInt(containerStyles?.borderRadius || '12') : 12;
-      const borderColor = container ? containerStyles?.borderColor || '#7c3aed' : '#7c3aed';
+      const padding = 48;
+      const brandingHeight = 60;
+      const scanTextHeight = (qrConfig?.scanText || (qrConfig && ["badge", "modern", "ticket"].includes(qrConfig.style))) ? 50 : 0;
+      const bw = qrConfig?.borderWidth || 4;
+      const br = qrConfig?.borderRadius || 12;
+      const color1 = qrConfig?.color || "#7c3aed";
+      const color2 = qrConfig?.color2 || "#FF6B6B";
+      const style = qrConfig?.style || "square";
       
       const qrSize = 800;
-      const totalWidth = qrSize + (padding * 2) + (borderWidth * 2);
-      const totalHeight = qrSize + (padding * 2) + (borderWidth * 2) + brandingHeight;
+      const totalWidth = qrSize + (padding * 2) + (bw * 2);
+      const totalHeight = qrSize + (padding * 2) + (bw * 2) + brandingHeight + scanTextHeight;
       
       canvas.width = totalWidth;
       canvas.height = totalHeight;
       
       if (ctx) {
-        // White background
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, totalWidth, totalHeight);
         
-        // Draw border (rounded rectangle)
-        const boxX = 0;
-        const boxY = 0;
         const boxW = totalWidth;
-        const boxH = totalHeight - brandingHeight;
+        const boxH = totalHeight - brandingHeight - scanTextHeight;
         
-        // Draw the border
-        ctx.strokeStyle = borderColor;
-        ctx.lineWidth = borderWidth;
-        ctx.beginPath();
-        ctx.roundRect(boxX + borderWidth / 2, boxY + borderWidth / 2, boxW - borderWidth, boxH - borderWidth, borderRadius);
-        ctx.stroke();
+        if (style === "circle") {
+          const cx = boxW / 2;
+          const cy = boxH / 2;
+          const r = Math.min(boxW, boxH) / 2;
+          ctx.beginPath();
+          ctx.arc(cx, cy, r - bw / 2, 0, Math.PI * 2);
+          ctx.strokeStyle = color1;
+          ctx.lineWidth = bw;
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(cx, cy, r - bw, 0, Math.PI * 2);
+          ctx.fillStyle = "#ffffff";
+          ctx.fill();
+        } else if (style === "gradient") {
+          const grad = ctx.createLinearGradient(0, 0, boxW, boxH);
+          grad.addColorStop(0, color1);
+          grad.addColorStop(1, color2);
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.roundRect(0, 0, boxW, boxH, br || 16);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.roundRect(Math.max(bw, 3), Math.max(bw, 3), boxW - Math.max(bw, 3) * 2, boxH - Math.max(bw, 3) * 2, Math.max(0, (br || 16) - Math.max(bw, 3)));
+          ctx.fill();
+        } else if (style === "elegant") {
+          ctx.strokeStyle = color1;
+          ctx.lineWidth = Math.max(bw, 2);
+          ctx.beginPath();
+          ctx.roundRect(Math.max(bw, 2) / 2, Math.max(bw, 2) / 2, boxW - Math.max(bw, 2), boxH - Math.max(bw, 2), br || 12);
+          ctx.stroke();
+          const outerGap = Math.max(bw, 2) + 5;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.roundRect(outerGap + 1, outerGap + 1, boxW - (outerGap + 1) * 2, boxH - (outerGap + 1) * 2, Math.max(0, (br || 12) - outerGap));
+          ctx.stroke();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.roundRect(Math.max(bw, 2), Math.max(bw, 2), boxW - Math.max(bw, 2) * 2, boxH - Math.max(bw, 2) * 2, Math.max(0, (br || 12) - Math.max(bw, 2) / 2));
+          ctx.fill();
+        } else if (style === "full") {
+          ctx.fillStyle = color1;
+          ctx.beginPath();
+          ctx.roundRect(0, 0, boxW, boxH, br);
+          ctx.fill();
+        } else if (style === "stripe") {
+          ctx.fillStyle = color1;
+          ctx.fillRect(0, 0, boxW, Math.max(bw, 3));
+          ctx.fillRect(0, boxH - Math.max(bw, 3), boxW, Math.max(bw, 3));
+        } else if (style === "ticket") {
+          ctx.setLineDash([12, 8]);
+          ctx.strokeStyle = color1;
+          ctx.lineWidth = Math.max(bw, 2);
+          ctx.beginPath();
+          ctx.roundRect(Math.max(bw, 2) / 2, Math.max(bw, 2) / 2, boxW - Math.max(bw, 2), boxH - Math.max(bw, 2), br || 16);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.roundRect(Math.max(bw, 2), Math.max(bw, 2), boxW - Math.max(bw, 2) * 2, boxH - Math.max(bw, 2) * 2, Math.max(0, (br || 16) - Math.max(bw, 2) / 2));
+          ctx.fill();
+        } else if (style === "modern") {
+          ctx.shadowColor = color1 + "30";
+          ctx.shadowBlur = 32;
+          ctx.shadowOffsetY = 8;
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.roundRect(1, 1, boxW - 2, boxH - 2, br || 20);
+          ctx.fill();
+          ctx.shadowColor = "transparent";
+          ctx.shadowBlur = 0;
+          ctx.shadowOffsetY = 0;
+          ctx.strokeStyle = color1 + "30";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.roundRect(0.5, 0.5, boxW - 1, boxH - 1, br || 20);
+          ctx.stroke();
+        } else if (style === "badge") {
+          ctx.strokeStyle = color1;
+          ctx.lineWidth = Math.max(bw, 3);
+          ctx.beginPath();
+          ctx.roundRect(Math.max(bw, 3) / 2, Math.max(bw, 3) / 2, boxW - Math.max(bw, 3), boxH - Math.max(bw, 3), br || 20);
+          ctx.stroke();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.roundRect(Math.max(bw, 3), Math.max(bw, 3), boxW - Math.max(bw, 3) * 2, boxH - Math.max(bw, 3) * 2, Math.max(0, (br || 20) - Math.max(bw, 3) / 2));
+          ctx.fill();
+        } else {
+          ctx.strokeStyle = color1;
+          ctx.lineWidth = bw;
+          ctx.beginPath();
+          ctx.roundRect(bw / 2, bw / 2, boxW - bw, boxH - bw, br);
+          ctx.stroke();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.roundRect(bw, bw, boxW - bw * 2, boxH - bw * 2, Math.max(0, br - bw / 2));
+          ctx.fill();
+        }
         
-        // Fill inside with white
-        ctx.fillStyle = "#ffffff";
-        ctx.beginPath();
-        ctx.roundRect(boxX + borderWidth, boxY + borderWidth, boxW - borderWidth * 2, boxH - borderWidth * 2, Math.max(0, borderRadius - borderWidth / 2));
-        ctx.fill();
-        
-        // Draw QR code
-        const qrX = borderWidth + padding;
-        const qrY = borderWidth + padding;
+        const qrX = bw + padding;
+        const qrY = bw + padding;
         ctx.drawImage(img, qrX, qrY, qrSize, qrSize);
         
-        // Add VisiCardly branding at bottom
+        if (scanTextHeight > 0) {
+          ctx.fillStyle = color1;
+          ctx.font = "bold 32px Arial, sans-serif";
+          ctx.textAlign = "center";
+          ctx.letterSpacing = "4px";
+          ctx.fillText("SCAN ME", totalWidth / 2, boxH + 38);
+        }
+        
         ctx.fillStyle = "#9ca3af";
         ctx.font = "500 22px Arial, sans-serif";
         ctx.textAlign = "center";
@@ -2150,16 +2254,18 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
     return base;
   };
 
-  const getContainerStyle = (qr: { style: QRStyle; borderRadius: number; borderWidth: number; color: string }) => {
+  const getContainerStyle = (qr: { style: QRStyle; borderRadius: number; borderWidth: number; color: string; color2?: string; scanText?: boolean }) => {
     const style: React.CSSProperties = {
-      overflow: "hidden",
+      overflow: "visible",
       padding: "12px",
       background: "white",
+      position: "relative",
     };
     switch (qr.style) {
       case "circle":
         style.borderRadius = "50%";
         style.border = `${qr.borderWidth}px solid ${qr.color}`;
+        style.overflow = "hidden";
         break;
       case "square":
         style.borderRadius = `${qr.borderRadius}px`;
@@ -2175,15 +2281,63 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
         style.background = qr.color;
         style.padding = "16px";
         break;
+      case "gradient":
+        style.borderRadius = `${qr.borderRadius || 16}px`;
+        style.border = `${Math.max(qr.borderWidth, 3)}px solid transparent`;
+        style.backgroundImage = `linear-gradient(white, white), linear-gradient(135deg, ${qr.color}, ${qr.color2 || "#FF6B6B"})`;
+        style.backgroundOrigin = "border-box";
+        style.backgroundClip = "padding-box, border-box";
+        break;
+      case "elegant":
+        style.borderRadius = `${qr.borderRadius || 12}px`;
+        style.border = `${Math.max(qr.borderWidth, 2)}px solid ${qr.color}`;
+        style.boxShadow = `0 0 0 ${Math.max(qr.borderWidth, 2) + 3}px white, 0 0 0 ${Math.max(qr.borderWidth, 2) + 5}px ${qr.color}`;
+        break;
+      case "badge":
+        style.borderRadius = `${qr.borderRadius || 20}px`;
+        style.border = `${Math.max(qr.borderWidth, 3)}px solid ${qr.color}`;
+        style.padding = "16px 12px 24px 12px";
+        break;
+      case "modern":
+        style.borderRadius = `${qr.borderRadius || 20}px`;
+        style.boxShadow = `0 8px 32px ${qr.color}30, 0 2px 8px rgba(0,0,0,0.08)`;
+        style.border = `1px solid ${qr.color}20`;
+        style.padding = "16px 12px 24px 12px";
+        break;
+      case "ticket":
+        style.borderRadius = `${qr.borderRadius || 16}px`;
+        style.border = `${Math.max(qr.borderWidth, 2)}px dashed ${qr.color}`;
+        style.padding = "16px 12px 24px 12px";
+        break;
     }
     return style;
   };
 
-  const styleOptions: { value: QRStyle; label: string }[] = [
-    { value: "circle", label: "Circle" },
-    { value: "square", label: "Square" },
-    { value: "stripe", label: "Stripe" },
-    { value: "full", label: "Full" },
+  const renderScanText = (qr: { style: QRStyle; color: string; scanText?: boolean }, size: number) => {
+    const showText = qr.scanText || ["badge", "modern", "ticket"].includes(qr.style);
+    if (!showText) return null;
+    const fontSize = Math.max(size * 0.08, 8);
+    return (
+      <div
+        className="text-center font-bold tracking-wider uppercase mt-1"
+        style={{ color: qr.color, fontSize: `${fontSize}px`, letterSpacing: "0.1em" }}
+        data-testid="text-scan-me"
+      >
+        SCAN ME
+      </div>
+    );
+  };
+
+  const styleOptions: { value: QRStyle; label: string; icon: string }[] = [
+    { value: "circle", label: "Circle", icon: "○" },
+    { value: "square", label: "Square", icon: "□" },
+    { value: "stripe", label: "Stripe", icon: "≡" },
+    { value: "full", label: "Solid", icon: "■" },
+    { value: "gradient", label: "Gradient", icon: "◈" },
+    { value: "elegant", label: "Elegant", icon: "◇" },
+    { value: "badge", label: "Badge", icon: "⬡" },
+    { value: "modern", label: "Modern", icon: "◉" },
+    { value: "ticket", label: "Ticket", icon: "⎕" },
   ];
 
   return (
@@ -2224,7 +2378,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
                   <Button
                     size="icon"
                     variant="outline"
-                    onClick={() => downloadQR(`qr-saved-${qr.id}`, `${username}-qrcode-${qr.id}.png`)}
+                    onClick={() => downloadQR(`qr-saved-${qr.id}`, `${username}-qrcode-${qr.id}.png`, qr)}
                     data-testid={`button-download-qr-${qr.id}`}
                   >
                     <Download className="w-4 h-4" />
@@ -2241,6 +2395,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
                   size={100}
                   data-testid={`display-qr-${qr.id}`}
                 />
+                {renderScanText(qr, 100)}
               </div>
             </CardContent>
           </Card>
@@ -2254,27 +2409,31 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
             <p className="text-sm text-muted-foreground">Create a dynamic QR Code and track its usage over time.</p>
           </DialogHeader>
           <div className="flex flex-col sm:flex-row gap-6 mt-4">
-            <div className="flex-1 space-y-5">
-              <div className="flex gap-1 rounded-md border p-1" data-testid="tabs-qr-style">
-                {styleOptions.map((opt) => (
-                  <button
-                    type="button"
-                    key={opt.value}
-                    onClick={() => setQrStyle(opt.value)}
-                    className={`flex-1 text-sm py-1.5 px-2 rounded transition-colors ${
-                      qrStyle === opt.value
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover-elevate"
-                    }`}
-                    data-testid={`button-qr-style-${opt.value}`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+            <div className="flex-1 space-y-5 max-h-[60vh] overflow-y-auto pr-1">
+              <div>
+                <span className="text-xs font-medium text-muted-foreground mb-2 block">Frame Style</span>
+                <div className="grid grid-cols-3 gap-1.5" data-testid="tabs-qr-style">
+                  {styleOptions.map((opt) => (
+                    <button
+                      type="button"
+                      key={opt.value}
+                      onClick={() => setQrStyle(opt.value)}
+                      className={`flex flex-col items-center gap-0.5 text-xs py-2 px-1 rounded-lg transition-all border-2 ${
+                        qrStyle === opt.value
+                          ? "bg-primary/10 border-primary text-primary"
+                          : "border-transparent text-muted-foreground hover:bg-muted"
+                      }`}
+                      data-testid={`button-qr-style-${opt.value}`}
+                    >
+                      <span className="text-base leading-none">{opt.icon}</span>
+                      <span className="font-medium">{opt.label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="flex items-center gap-3 p-3 rounded-md border">
-                <span className="text-sm flex-1">Color</span>
+                <span className="text-sm flex-1">Primary Color</span>
                 <input
                   type="color"
                   value={qrColor}
@@ -2284,6 +2443,20 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
                   data-testid="input-qr-color"
                 />
               </div>
+
+              {qrStyle === "gradient" && (
+                <div className="flex items-center gap-3 p-3 rounded-md border">
+                  <span className="text-sm flex-1">Secondary Color</span>
+                  <input
+                    type="color"
+                    value={qrColor2}
+                    onChange={(e) => setQrColor2(e.target.value)}
+                    className="w-8 h-8 rounded-full border-0 cursor-pointer"
+                    style={{ padding: 0, background: "transparent" }}
+                    data-testid="input-qr-color2"
+                  />
+                </div>
+              )}
 
               <div className="flex items-center gap-3 p-3 rounded-md border">
                 <span className="text-sm shrink-0 w-28">Border Radius</span>
@@ -2309,6 +2482,11 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
                   className="flex-1"
                   data-testid="slider-border-width"
                 />
+              </div>
+
+              <div className="flex items-center gap-3 p-3 rounded-md border">
+                <span className="text-sm flex-1">Scan Me Text</span>
+                <Switch checked={scanText} onCheckedChange={setScanText} data-testid="switch-scan-text" />
               </div>
 
               <div className="flex items-center gap-3 p-3 rounded-md border">
@@ -2343,7 +2521,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
 
             <div className="flex items-center justify-center sm:w-[200px]">
               <div
-                style={getContainerStyle({ style: qrStyle, borderRadius, borderWidth, color: qrColor })}
+                style={getContainerStyle({ style: qrStyle, borderRadius, borderWidth, color: qrColor, color2: qrColor2, scanText })}
                 data-testid="preview-qr-container"
               >
                 <QRCodeSVG
@@ -2352,6 +2530,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
                   size={160}
                   data-testid="preview-qr-code"
                 />
+                {renderScanText({ style: qrStyle, color: qrColor, scanText }, 160)}
               </div>
             </div>
           </div>
@@ -2408,29 +2587,93 @@ function DesignPanel({
       <div className="border-t pt-4">
         <h3 className="text-sm font-semibold mb-3">Theme</h3>
         <div className="grid grid-cols-3 gap-2">
-          {TEMPLATES.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => onSelectTemplate(t.id)}
-              disabled={saving || disabled}
-              className={`relative rounded-md overflow-hidden aspect-[3/4] p-2 flex flex-col items-center justify-center text-center transition-all border-2 ${
-                currentTemplateId === t.id ? "border-primary ring-1 ring-primary/20" : "border-transparent"
-              } ${t.bg}`}
-              data-testid={`theme-${t.id}`}
-            >
-              {currentTemplateId === t.id && (
-                <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
-                  <Check className="w-2.5 h-2.5" />
+          {TEMPLATES.map((t) => {
+            const layoutLabel = LAYOUT_LABELS[t.layout as LayoutType] || "Classic";
+            const avatarShape = t.avatarStyle === "circle" ? "rounded-full" : t.avatarStyle === "rounded" ? "rounded-md" : "rounded-sm";
+            const btnShape = t.buttonStyle === "rounded" ? "rounded-full" : t.buttonStyle === "sharp" ? "rounded-none" : t.buttonStyle === "outline" ? "rounded-md border border-current/20 bg-transparent" : "rounded-lg";
+            return (
+              <button
+                key={t.id}
+                onClick={() => onSelectTemplate(t.id)}
+                disabled={saving || disabled}
+                className={`relative rounded-md overflow-hidden aspect-[3/4] p-2 flex flex-col items-center justify-center text-center transition-all border-2 ${
+                  currentTemplateId === t.id ? "border-primary ring-1 ring-primary/20" : "border-transparent"
+                } ${t.bg}`}
+                data-testid={`theme-${t.id}`}
+              >
+                {currentTemplateId === t.id && (
+                  <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                    <Check className="w-2.5 h-2.5" />
+                  </div>
+                )}
+                <div className="absolute top-1 left-1">
+                  <span className="text-[7px] font-bold px-1.5 py-0.5 rounded-full bg-black/30 text-white backdrop-blur-sm">{layoutLabel}</span>
                 </div>
-              )}
-              <div className="w-5 h-5 rounded-full bg-white/20 mb-1.5" />
-              <span className={`text-[10px] font-semibold ${t.textColor}`}>{t.name}</span>
-              <div className="mt-1.5 space-y-1 w-full">
-                <div className={`h-3 rounded-sm ${t.cardBg} w-full`} />
-                <div className={`h-3 rounded-sm ${t.cardBg} w-full`} />
-              </div>
-            </button>
-          ))}
+                {t.layout === "bold" ? (
+                  <>
+                    <div className="w-full h-4 rounded-sm mb-1" style={{ backgroundColor: t.accent + "30" }} />
+                    <div className={`w-5 h-5 ${avatarShape} bg-white/30 -mt-3 mb-1 relative z-10 border border-white/30`} />
+                    <span className={`text-[9px] font-semibold ${t.textColor}`}>{t.name}</span>
+                    <div className="mt-1 space-y-0.5 w-full">
+                      <div className={`h-2.5 ${btnShape} ${t.buttonStyle === "outline" ? "" : t.cardBg} w-full`} />
+                      <div className={`h-2.5 ${btnShape} ${t.buttonStyle === "outline" ? "" : t.cardBg} w-full`} />
+                    </div>
+                  </>
+                ) : t.layout === "modern" ? (
+                  <>
+                    <div className={`w-full ${t.cardBg} rounded-md p-1.5 mb-1`}>
+                      <div className="flex items-center gap-1.5">
+                        <div className={`w-5 h-5 ${avatarShape} bg-white/30 shrink-0`} />
+                        <div className="flex-1">
+                          <div className={`h-1 w-8 rounded-full ${t.cardTextColor} opacity-40 bg-current mb-0.5`} />
+                          <div className={`h-1 w-5 rounded-full ${t.cardTextColor} opacity-20 bg-current`} />
+                        </div>
+                      </div>
+                    </div>
+                    <span className={`text-[9px] font-semibold ${t.textColor}`}>{t.name}</span>
+                    <div className="mt-1 space-y-0.5 w-full">
+                      <div className={`h-2.5 ${btnShape} ${t.buttonStyle === "outline" ? "" : t.cardBg} w-full`} />
+                      <div className={`h-2.5 ${btnShape} ${t.buttonStyle === "outline" ? "" : t.cardBg} w-full`} />
+                    </div>
+                  </>
+                ) : t.layout === "elegant" ? (
+                  <>
+                    <div className="w-full h-0.5 rounded-full mb-1.5" style={{ backgroundColor: t.accent }} />
+                    <div className={`w-full ${t.cardBg} rounded-md p-1.5 mb-1`}>
+                      <div className={`w-5 h-5 ${avatarShape} bg-white/30 mx-auto mb-1`} />
+                      <div className={`h-1 w-8 rounded-full ${t.cardTextColor} opacity-40 bg-current mx-auto mb-0.5`} />
+                      <div className="w-4 h-px mx-auto my-1" style={{ backgroundColor: t.accent + "60" }} />
+                    </div>
+                    <span className={`text-[9px] font-semibold ${t.textColor}`}>{t.name}</span>
+                    <div className="mt-1 space-y-0.5 w-full">
+                      <div className={`h-2.5 ${btnShape} ${t.buttonStyle === "outline" ? "" : t.cardBg} w-full`} />
+                    </div>
+                  </>
+                ) : t.layout === "hero" ? (
+                  <>
+                    <div className="w-full h-5 rounded-sm mb-1 relative" style={{ background: `linear-gradient(180deg, ${t.accent}30, transparent)` }}>
+                      <div className={`w-5 h-5 ${avatarShape} bg-white/30 absolute -bottom-2 left-1/2 -translate-x-1/2 border border-white/30`} />
+                    </div>
+                    <div className={`w-full ${t.cardBg} rounded-md p-1 mt-2`}>
+                      <span className={`text-[8px] font-semibold ${t.cardTextColor} block`}>{t.name}</span>
+                      <div className="mt-0.5 space-y-0.5">
+                        <div className={`h-2 ${btnShape} ${t.buttonStyle === "outline" ? "" : t.cardBg} w-full`} style={t.buttonStyle === "outline" ? { border: `1px solid ${t.accent}40` } : undefined} />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className={`w-5 h-5 ${avatarShape} bg-white/20 mb-1.5`} />
+                    <span className={`text-[9px] font-semibold ${t.textColor}`}>{t.name}</span>
+                    <div className="mt-1.5 space-y-0.5 w-full">
+                      <div className={`h-2.5 ${btnShape} ${t.buttonStyle === "outline" ? "" : t.cardBg} w-full`} />
+                      <div className={`h-2.5 ${btnShape} ${t.buttonStyle === "outline" ? "" : t.cardBg} w-full`} />
+                    </div>
+                  </>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -2539,6 +2782,174 @@ function PhonePreview({
 }) {
   const activeBlocks = blocks.filter((b) => b.active);
   const activeSocials = socials.filter((s) => s.url);
+  const layout = template.layout || "classic";
+  const avatarCls = template.avatarStyle === "circle" ? "rounded-full" : template.avatarStyle === "rounded" ? "rounded-xl" : "rounded-md";
+  const btnCls = template.buttonStyle === "rounded" ? "rounded-full" : template.buttonStyle === "sharp" ? "rounded-none" : template.buttonStyle === "outline" ? "rounded-xl border-2" : "rounded-xl";
+  const isOutline = template.buttonStyle === "outline";
+  const name = displayName || "Your Name";
+  const shortBio = bio && bio.length > 100 ? bio.slice(0, 100) + "..." : bio;
+
+  const socialIcons = activeSocials.length > 0 ? (
+    <div className="flex items-center gap-2 flex-wrap">
+      {activeSocials.map((social) => (
+        <div key={social.id} className={`${template.textColor} opacity-70`}>
+          <SocialIcon platform={social.platform} className="w-3.5 h-3.5" />
+        </div>
+      ))}
+    </div>
+  ) : null;
+
+  const blocksList = (
+    <div className="w-full space-y-2">
+      {activeBlocks.length > 0 ? (
+        activeBlocks.map((block) => (
+          <PreviewBlock key={block.id} block={block} template={template} btnCls={btnCls} isOutline={isOutline} />
+        ))
+      ) : (
+        <>
+          <div className={`${isOutline ? "bg-transparent" : template.cardBg} ${btnCls} py-2.5 px-4 text-center backdrop-blur-sm`} style={isOutline ? { borderColor: template.accent + "40" } : undefined}>
+            <span className={`text-xs font-medium ${isOutline ? template.textColor : template.cardTextColor}`}>Block 1</span>
+          </div>
+          <div className={`${isOutline ? "bg-transparent" : template.cardBg} ${btnCls} py-2.5 px-4 text-center backdrop-blur-sm`} style={isOutline ? { borderColor: template.accent + "40" } : undefined}>
+            <span className={`text-xs font-medium ${isOutline ? template.textColor : template.cardTextColor}`}>Block 2</span>
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  const pageNav = pages.length > 1 ? (
+    <PreviewPageNav pages={pages} currentPage={currentPage} template={template} />
+  ) : null;
+
+  const renderClassic = () => (
+    <div className="flex flex-col items-center text-center">
+      {coverImage && (
+        <div className="w-full h-16 rounded-md overflow-hidden mb-[-1.5rem] shadow-sm">
+          <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
+        </div>
+      )}
+      <Avatar className={`w-16 h-16 border-2 border-white/30 mb-3 ${avatarCls} ${coverImage ? "relative z-10" : ""}`}>
+        <AvatarImage src={profileImage || undefined} />
+        <AvatarFallback className="bg-white/20 text-lg" style={{ color: template.accent }}>
+          {name.charAt(0).toUpperCase()}
+        </AvatarFallback>
+      </Avatar>
+      <p className={`font-bold text-sm ${template.textColor}`}>{name}</p>
+      {shortBio && <p className={`text-[11px] mt-1 ${template.textColor} opacity-80 leading-relaxed max-w-[200px]`}>{shortBio}</p>}
+      <div className="justify-center mt-3">{socialIcons}</div>
+      {pageNav && <div className="mt-3">{pageNav}</div>}
+      <div className="w-full mt-5">{blocksList}</div>
+    </div>
+  );
+
+  const renderModern = () => (
+    <div className="flex flex-col">
+      <div className={`${template.cardBg} backdrop-blur-md rounded-xl p-4 shadow-md`}>
+        <div className="flex items-start gap-3">
+          <Avatar className={`w-12 h-12 border-2 shadow-md shrink-0 ${avatarCls}`} style={{ borderColor: template.accent + "40" }}>
+            <AvatarImage src={profileImage || undefined} />
+            <AvatarFallback className="text-sm" style={{ backgroundColor: template.accent + "30", color: template.accent }}>
+              {name.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <p className={`font-bold text-sm ${template.cardTextColor}`}>{name}</p>
+            <p className={`text-[9px] ${template.cardTextColor} opacity-50`}>@{username}</p>
+            {shortBio && <p className={`text-[10px] mt-1 ${template.cardTextColor} opacity-75 leading-relaxed`}>{shortBio}</p>}
+            <div className="mt-2">{socialIcons}</div>
+          </div>
+        </div>
+        {pageNav && <div className="flex justify-center mt-3 pt-3 border-t border-white/10">{pageNav}</div>}
+      </div>
+      <div className="mt-4">{blocksList}</div>
+    </div>
+  );
+
+  const renderBold = () => (
+    <div className="flex flex-col">
+      <div className="relative mb-10">
+        <div className="h-24 rounded-xl overflow-hidden shadow-md" style={{ backgroundColor: template.accent + "25" }}>
+          {coverImage ? (
+            <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${template.accent}40 0%, ${template.accent}10 100%)` }} />
+          )}
+        </div>
+        <div className="absolute -bottom-8 left-1/2 -translate-x-1/2">
+          <Avatar className={`w-16 h-16 border-[3px] shadow-lg ${avatarCls}`} style={{ borderColor: template.accent }}>
+            <AvatarImage src={profileImage || undefined} />
+            <AvatarFallback className="text-lg font-bold" style={{ backgroundColor: template.accent + "30", color: template.accent }}>
+              {name.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+        </div>
+      </div>
+      <div className="text-center">
+        <p className={`text-lg font-extrabold tracking-tight ${template.textColor}`}>{name}</p>
+        <p className={`text-[9px] ${template.textColor} opacity-50`}>@{username}</p>
+        {shortBio && <p className={`text-[10px] mt-1 max-w-[200px] mx-auto leading-relaxed ${template.textColor} opacity-70`}>{shortBio}</p>}
+        <div className="flex justify-center mt-2">{socialIcons}</div>
+        {pageNav && <div className="mt-2">{pageNav}</div>}
+      </div>
+      <div className="mt-4">{blocksList}</div>
+    </div>
+  );
+
+  const renderElegant = () => (
+    <div className="flex flex-col">
+      <div className="h-1 rounded-full mb-4 shadow-sm" style={{ backgroundColor: template.accent }} />
+      <div className={`${template.cardBg} backdrop-blur-md rounded-xl overflow-hidden shadow-md`}>
+        <div className="h-0.5" style={{ backgroundColor: template.accent }} />
+        <div className="p-4 flex flex-col items-center text-center">
+          <Avatar className={`w-14 h-14 border-2 shadow-md mb-3 ${avatarCls}`} style={{ borderColor: template.accent + "50" }}>
+            <AvatarImage src={profileImage || undefined} />
+            <AvatarFallback className="text-sm" style={{ backgroundColor: template.accent + "20", color: template.accent }}>
+              {name.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <p className={`font-semibold text-sm tracking-wide ${template.cardTextColor}`}>{name}</p>
+          <p className={`text-[8px] ${template.cardTextColor} opacity-50 tracking-widest uppercase`}>@{username}</p>
+          {shortBio && <p className={`text-[10px] mt-2 leading-relaxed ${template.cardTextColor} opacity-70 max-w-[180px]`}>{shortBio}</p>}
+          <div className="w-8 h-px my-3" style={{ backgroundColor: template.accent + "40" }} />
+          <div className="justify-center">{socialIcons}</div>
+        </div>
+      </div>
+      {pageNav && <div className="flex justify-center mt-3">{pageNav}</div>}
+      <div className="mt-4">{blocksList}</div>
+    </div>
+  );
+
+  const renderHero = () => (
+    <div className="flex flex-col -mx-5 -mt-5">
+      <div className="relative h-32 overflow-hidden">
+        {coverImage ? (
+          <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full" style={{ background: `linear-gradient(180deg, ${template.accent}30 0%, transparent 100%)` }} />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+      </div>
+      <div className="px-4 -mt-10 relative z-10">
+        <div className={`${template.cardBg} backdrop-blur-xl rounded-xl p-4 shadow-lg border border-white/10`}>
+          <div className="flex flex-col items-center text-center -mt-10 mb-2">
+            <Avatar className={`w-14 h-14 border-[3px] shadow-lg mb-2 ${avatarCls}`} style={{ borderColor: template.accent }}>
+              <AvatarImage src={profileImage || undefined} />
+              <AvatarFallback className="text-lg font-bold" style={{ backgroundColor: template.accent + "30", color: template.accent }}>
+                {name.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <p className={`font-bold text-sm ${template.cardTextColor}`}>{name}</p>
+            <p className={`text-[9px] ${template.cardTextColor} opacity-50`}>@{username}</p>
+            {shortBio && <p className={`text-[10px] mt-1 max-w-[180px] leading-relaxed ${template.cardTextColor} opacity-75`}>{shortBio}</p>}
+            <div className="justify-center mt-2">{socialIcons}</div>
+          </div>
+          {pageNav && <div className="flex justify-center pt-2 border-t border-white/10">{pageNav}</div>}
+          <div className="mt-3">{blocksList}</div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div
@@ -2554,61 +2965,13 @@ function PhonePreview({
           </span>
         </div>
         <div className={`min-h-[480px] ${template.bg} p-5`}>
-          <div className="flex flex-col items-center text-center">
-            {coverImage && (
-              <div className="w-full h-16 rounded-md overflow-hidden mb-[-1.5rem] shadow-sm">
-                <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
-              </div>
-            )}
-            <Avatar className={`w-16 h-16 border-2 border-white/30 mb-3 ${coverImage ? "relative z-10" : ""}`}>
-              <AvatarImage src={profileImage || undefined} />
-              <AvatarFallback className="bg-white/20 text-lg" style={{ color: template.accent }}>
-                {displayName ? displayName.charAt(0).toUpperCase() : "?"}
-              </AvatarFallback>
-            </Avatar>
-            <p className={`font-bold text-sm ${template.textColor}`}>{displayName || "Your Name"}</p>
-            {bio && (
-              <p className={`text-[11px] mt-1 ${template.textColor} opacity-80 leading-relaxed max-w-[200px]`}>
-                {bio.length > 100 ? bio.slice(0, 100) + "..." : bio}
-              </p>
-            )}
-
-            {activeSocials.length > 0 && (
-              <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
-                {activeSocials.map((social) => (
-                  <div key={social.id} className={`${template.textColor} opacity-70`}>
-                    <SocialIcon platform={social.platform} className="w-3.5 h-3.5" />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {pages.length > 1 && (
-              <PreviewPageNav pages={pages} currentPage={currentPage} template={template} />
-            )}
-
-            <div className="w-full mt-5 space-y-2">
-              {activeBlocks.length > 0 ? (
-                activeBlocks.map((block) => (
-                  <PreviewBlock key={block.id} block={block} template={template} />
-                ))
-              ) : (
-                <>
-                  <div className={`${template.cardBg} rounded-lg py-2.5 px-4 text-center`}>
-                    <span className={`text-xs font-medium ${template.cardTextColor}`}>Block 1</span>
-                  </div>
-                  <div className={`${template.cardBg} rounded-lg py-2.5 px-4 text-center`}>
-                    <span className={`text-xs font-medium ${template.cardTextColor}`}>Block 2</span>
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div className="mt-6">
-              <p className={`text-[10px] ${template.textColor} opacity-50`}>
-                VisiCardly
-              </p>
-            </div>
+          {layout === "modern" ? renderModern()
+           : layout === "bold" ? renderBold()
+           : layout === "elegant" ? renderElegant()
+           : layout === "hero" ? renderHero()
+           : renderClassic()}
+          <div className="mt-6 text-center">
+            <p className={`text-[10px] ${template.textColor} opacity-50`}>VisiCardly</p>
           </div>
         </div>
       </div>
@@ -2616,21 +2979,24 @@ function PhonePreview({
   );
 }
 
-function PreviewBlock({ block, template }: { block: Block; template: (typeof TEMPLATES)[0] }) {
+function PreviewBlock({ block, template, btnCls = "rounded-lg", isOutline = false }: { block: Block; template: (typeof TEMPLATES)[0]; btnCls?: string; isOutline?: boolean }) {
   const content = block.content as BlockContent;
+  const blockBg = isOutline ? "bg-transparent" : template.cardBg;
+  const blockText = isOutline ? template.textColor : template.cardTextColor;
+  const outlineStyle = isOutline ? { borderColor: template.accent + "40" } : undefined;
   switch (block.type) {
     case "url_button":
       return (
-        <div className={`${template.cardBg} rounded-lg py-2.5 px-4 text-center backdrop-blur-sm`}>
-          <span className={`text-xs font-medium ${template.cardTextColor}`}>
+        <div className={`${blockBg} ${btnCls} py-2.5 px-4 text-center backdrop-blur-sm`} style={outlineStyle}>
+          <span className={`text-xs font-medium ${blockText}`}>
             {content.title || "Untitled Link"}
           </span>
         </div>
       );
     case "email_button":
       return (
-        <div className={`${template.cardBg} rounded-lg py-2.5 px-4 text-center backdrop-blur-sm`}>
-          <span className={`text-xs font-medium ${template.cardTextColor}`}>
+        <div className={`${blockBg} ${btnCls} py-2.5 px-4 text-center backdrop-blur-sm`} style={outlineStyle}>
+          <span className={`text-xs font-medium ${blockText}`}>
             {content.title || "Email"}
           </span>
         </div>
@@ -2687,8 +3053,8 @@ function PreviewBlock({ block, template }: { block: Block; template: (typeof TEM
         );
       }
       return (
-        <div className={`${template.cardBg} rounded-lg py-2.5 px-4 text-center backdrop-blur-sm`}>
-          <span className={`text-xs font-medium ${template.cardTextColor}`}>
+        <div className={`${blockBg} ${btnCls} py-2.5 px-4 text-center backdrop-blur-sm`} style={outlineStyle}>
+          <span className={`text-xs font-medium ${blockText}`}>
             {content.title || "Video"}
           </span>
         </div>
@@ -2696,8 +3062,8 @@ function PreviewBlock({ block, template }: { block: Block; template: (typeof TEM
     }
     case "audio":
       return (
-        <div className={`${template.cardBg} rounded-lg py-2.5 px-4 text-center backdrop-blur-sm`}>
-          <span className={`text-xs font-medium ${template.cardTextColor}`}>
+        <div className={`${blockBg} ${btnCls} py-2.5 px-4 text-center backdrop-blur-sm`} style={outlineStyle}>
+          <span className={`text-xs font-medium ${blockText}`}>
             {content.title || "Audio"}
           </span>
         </div>
@@ -2705,14 +3071,14 @@ function PreviewBlock({ block, template }: { block: Block; template: (typeof TEM
     case "image":
       if (content.imageUrl) {
         return (
-          <div className="rounded-lg overflow-hidden">
+          <div className={`${btnCls} overflow-hidden`}>
             <img src={content.imageUrl} alt={content.title || ""} className="w-full h-auto" />
           </div>
         );
       }
       return (
-        <div className={`${template.cardBg} rounded-lg py-4 px-4 text-center backdrop-blur-sm`}>
-          <span className={`text-xs ${template.cardTextColor} opacity-60`}>Image</span>
+        <div className={`${blockBg} ${btnCls} py-4 px-4 text-center backdrop-blur-sm`} style={outlineStyle}>
+          <span className={`text-xs ${blockText} opacity-60`}>Image</span>
         </div>
       );
     default:
@@ -5253,11 +5619,13 @@ function TemplateCardPreview({ data, themeColor }: { data: TemplateData; themeCo
 function URLQRGeneratorPanel({ username }: { username: string }) {
   const { toast } = useToast();
   const [url, setUrl] = useState("");
-  const [qrStyle, setQrStyle] = useState<"circle" | "square" | "stripe" | "full">("square");
+  const [qrStyle, setQrStyle] = useState<QRStyle>("square");
   const [qrColor, setQrColor] = useState("#6C5CE7");
+  const [qrColor2, setQrColor2] = useState("#FF6B6B");
   const [borderRadius, setBorderRadius] = useState(8);
   const [borderWidth, setBorderWidth] = useState(3);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [scanText, setScanText] = useState(false);
   const [generated, setGenerated] = useState(false);
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -5268,16 +5636,58 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
     reader.readAsDataURL(file);
   };
 
+  const urlStyleOptions: { value: QRStyle; label: string }[] = [
+    { value: "circle", label: "Circle" },
+    { value: "square", label: "Square" },
+    { value: "stripe", label: "Stripe" },
+    { value: "full", label: "Solid" },
+    { value: "gradient", label: "Gradient" },
+    { value: "elegant", label: "Elegant" },
+    { value: "badge", label: "Badge" },
+    { value: "modern", label: "Modern" },
+    { value: "ticket", label: "Ticket" },
+  ];
+
   const getContainerStyle = (): React.CSSProperties => {
-    const style: React.CSSProperties = { overflow: "hidden", padding: "16px", background: "white" };
+    const style: React.CSSProperties = { overflow: "visible", padding: "16px", background: "white", position: "relative" };
     switch (qrStyle) {
-      case "circle": style.borderRadius = "50%"; style.border = `${borderWidth}px solid ${qrColor}`; break;
+      case "circle": style.borderRadius = "50%"; style.border = `${borderWidth}px solid ${qrColor}`; style.overflow = "hidden"; break;
       case "square": style.borderRadius = `${borderRadius}px`; style.border = `${borderWidth}px solid ${qrColor}`; break;
       case "stripe": style.borderRadius = `${borderRadius}px`; style.borderTop = `${Math.max(borderWidth, 3)}px solid ${qrColor}`; style.borderBottom = `${Math.max(borderWidth, 3)}px solid ${qrColor}`; break;
       case "full": style.borderRadius = `${borderRadius}px`; style.background = qrColor; style.padding = "20px"; break;
+      case "gradient":
+        style.borderRadius = `${borderRadius || 16}px`;
+        style.border = `${Math.max(borderWidth, 3)}px solid transparent`;
+        style.backgroundImage = `linear-gradient(white, white), linear-gradient(135deg, ${qrColor}, ${qrColor2})`;
+        style.backgroundOrigin = "border-box";
+        style.backgroundClip = "padding-box, border-box";
+        break;
+      case "elegant":
+        style.borderRadius = `${borderRadius || 12}px`;
+        style.border = `${Math.max(borderWidth, 2)}px solid ${qrColor}`;
+        style.boxShadow = `0 0 0 ${Math.max(borderWidth, 2) + 3}px white, 0 0 0 ${Math.max(borderWidth, 2) + 5}px ${qrColor}`;
+        break;
+      case "badge":
+        style.borderRadius = `${borderRadius || 20}px`;
+        style.border = `${Math.max(borderWidth, 3)}px solid ${qrColor}`;
+        style.padding = "20px 16px 28px 16px";
+        break;
+      case "modern":
+        style.borderRadius = `${borderRadius || 20}px`;
+        style.boxShadow = `0 8px 32px ${qrColor}30, 0 2px 8px rgba(0,0,0,0.08)`;
+        style.border = `1px solid ${qrColor}20`;
+        style.padding = "20px 16px 28px 16px";
+        break;
+      case "ticket":
+        style.borderRadius = `${borderRadius || 16}px`;
+        style.border = `${Math.max(borderWidth, 2)}px dashed ${qrColor}`;
+        style.padding = "20px 16px 28px 16px";
+        break;
     }
     return style;
   };
+
+  const showScanText = scanText || ["badge", "modern", "ticket"].includes(qrStyle);
 
   const downloadQR = () => {
     const svg = document.getElementById("url-qr-code");
@@ -5289,20 +5699,129 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
     img.onload = () => {
       const padding = 48;
       const brandingHeight = 60;
+      const scanH = showScanText ? 50 : 0;
+      const bw = borderWidth;
+      const br = borderRadius;
       const qrSize = 800;
-      const totalWidth = qrSize + padding * 2;
-      const totalHeight = qrSize + padding * 2 + brandingHeight;
+      const totalWidth = qrSize + (padding * 2) + (bw * 2);
+      const totalHeight = qrSize + (padding * 2) + (bw * 2) + brandingHeight + scanH;
       canvas.width = totalWidth;
       canvas.height = totalHeight;
       if (ctx) {
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, totalWidth, totalHeight);
-        ctx.strokeStyle = qrColor;
-        ctx.lineWidth = borderWidth;
-        ctx.beginPath();
-        ctx.roundRect(borderWidth / 2, borderWidth / 2, totalWidth - borderWidth, totalHeight - brandingHeight - borderWidth, borderRadius);
-        ctx.stroke();
-        ctx.drawImage(img, padding, padding, qrSize, qrSize);
+
+        const boxW = totalWidth;
+        const boxH = totalHeight - brandingHeight - scanH;
+
+        if (qrStyle === "circle") {
+          const cx = boxW / 2;
+          const cy = boxH / 2;
+          const r = Math.min(boxW, boxH) / 2;
+          ctx.beginPath();
+          ctx.arc(cx, cy, r - bw / 2, 0, Math.PI * 2);
+          ctx.strokeStyle = qrColor;
+          ctx.lineWidth = bw;
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(cx, cy, r - bw, 0, Math.PI * 2);
+          ctx.fillStyle = "#ffffff";
+          ctx.fill();
+        } else if (qrStyle === "gradient") {
+          const grad = ctx.createLinearGradient(0, 0, boxW, boxH);
+          grad.addColorStop(0, qrColor);
+          grad.addColorStop(1, qrColor2);
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.roundRect(0, 0, boxW, boxH, br || 16);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.roundRect(Math.max(bw, 3), Math.max(bw, 3), boxW - Math.max(bw, 3) * 2, boxH - Math.max(bw, 3) * 2, Math.max(0, (br || 16) - Math.max(bw, 3)));
+          ctx.fill();
+        } else if (qrStyle === "elegant") {
+          ctx.strokeStyle = qrColor;
+          ctx.lineWidth = Math.max(bw, 2);
+          ctx.beginPath();
+          ctx.roundRect(Math.max(bw, 2) / 2, Math.max(bw, 2) / 2, boxW - Math.max(bw, 2), boxH - Math.max(bw, 2), br || 12);
+          ctx.stroke();
+          const outerGap = Math.max(bw, 2) + 5;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.roundRect(outerGap + 1, outerGap + 1, boxW - (outerGap + 1) * 2, boxH - (outerGap + 1) * 2, Math.max(0, (br || 12) - outerGap));
+          ctx.stroke();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.roundRect(Math.max(bw, 2), Math.max(bw, 2), boxW - Math.max(bw, 2) * 2, boxH - Math.max(bw, 2) * 2, Math.max(0, (br || 12) - Math.max(bw, 2) / 2));
+          ctx.fill();
+        } else if (qrStyle === "full") {
+          ctx.fillStyle = qrColor;
+          ctx.beginPath();
+          ctx.roundRect(0, 0, boxW, boxH, br);
+          ctx.fill();
+        } else if (qrStyle === "stripe") {
+          ctx.fillStyle = qrColor;
+          ctx.fillRect(0, 0, boxW, Math.max(bw, 3));
+          ctx.fillRect(0, boxH - Math.max(bw, 3), boxW, Math.max(bw, 3));
+        } else if (qrStyle === "ticket") {
+          ctx.setLineDash([12, 8]);
+          ctx.strokeStyle = qrColor;
+          ctx.lineWidth = Math.max(bw, 2);
+          ctx.beginPath();
+          ctx.roundRect(Math.max(bw, 2) / 2, Math.max(bw, 2) / 2, boxW - Math.max(bw, 2), boxH - Math.max(bw, 2), br || 16);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.roundRect(Math.max(bw, 2), Math.max(bw, 2), boxW - Math.max(bw, 2) * 2, boxH - Math.max(bw, 2) * 2, Math.max(0, (br || 16) - Math.max(bw, 2) / 2));
+          ctx.fill();
+        } else if (qrStyle === "modern") {
+          ctx.shadowColor = qrColor + "30";
+          ctx.shadowBlur = 32;
+          ctx.shadowOffsetY = 8;
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.roundRect(1, 1, boxW - 2, boxH - 2, br || 20);
+          ctx.fill();
+          ctx.shadowColor = "transparent";
+          ctx.shadowBlur = 0;
+          ctx.shadowOffsetY = 0;
+          ctx.strokeStyle = qrColor + "30";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.roundRect(0.5, 0.5, boxW - 1, boxH - 1, br || 20);
+          ctx.stroke();
+        } else if (qrStyle === "badge") {
+          ctx.strokeStyle = qrColor;
+          ctx.lineWidth = Math.max(bw, 3);
+          ctx.beginPath();
+          ctx.roundRect(Math.max(bw, 3) / 2, Math.max(bw, 3) / 2, boxW - Math.max(bw, 3), boxH - Math.max(bw, 3), br || 20);
+          ctx.stroke();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.roundRect(Math.max(bw, 3), Math.max(bw, 3), boxW - Math.max(bw, 3) * 2, boxH - Math.max(bw, 3) * 2, Math.max(0, (br || 20) - Math.max(bw, 3) / 2));
+          ctx.fill();
+        } else {
+          ctx.strokeStyle = qrColor;
+          ctx.lineWidth = bw;
+          ctx.beginPath();
+          ctx.roundRect(bw / 2, bw / 2, boxW - bw, boxH - bw, br);
+          ctx.stroke();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.roundRect(bw, bw, boxW - bw * 2, boxH - bw * 2, Math.max(0, br - bw / 2));
+          ctx.fill();
+        }
+
+        ctx.drawImage(img, bw + padding, bw + padding, qrSize, qrSize);
+
+        if (scanH > 0) {
+          ctx.fillStyle = qrColor;
+          ctx.font = "bold 32px Arial, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("SCAN ME", totalWidth / 2, boxH + 38);
+        }
+
         ctx.fillStyle = "#9ca3af";
         ctx.font = "500 22px Arial, sans-serif";
         ctx.textAlign = "center";
@@ -5339,35 +5858,48 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
               data-testid="input-qr-url"
             />
           </div>
+          <div className="space-y-2">
+            <Label className="text-xs">Frame Style</Label>
+            <Select value={qrStyle} onValueChange={(v: any) => setQrStyle(v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {urlStyleOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-xs">Style</Label>
-              <Select value={qrStyle} onValueChange={(v: any) => setQrStyle(v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="circle">Circle</SelectItem>
-                  <SelectItem value="square">Square</SelectItem>
-                  <SelectItem value="stripe">Stripe</SelectItem>
-                  <SelectItem value="full">Full</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs">Color</Label>
+              <Label className="text-xs">Primary Color</Label>
               <div className="flex items-center gap-2">
                 <input type="color" value={qrColor} onChange={(e) => setQrColor(e.target.value)} className="w-8 h-8 rounded cursor-pointer border-0" />
                 <Input value={qrColor} onChange={(e) => setQrColor(e.target.value)} className="font-mono text-xs flex-1" />
               </div>
             </div>
+            {qrStyle === "gradient" ? (
+              <div className="space-y-2">
+                <Label className="text-xs">Secondary Color</Label>
+                <div className="flex items-center gap-2">
+                  <input type="color" value={qrColor2} onChange={(e) => setQrColor2(e.target.value)} className="w-8 h-8 rounded cursor-pointer border-0" />
+                  <Input value={qrColor2} onChange={(e) => setQrColor2(e.target.value)} className="font-mono text-xs flex-1" />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label className="text-xs">Border Width: {borderWidth}px</Label>
+                <Slider value={[borderWidth]} onValueChange={([v]) => setBorderWidth(v)} min={0} max={8} step={1} />
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="text-xs">Border Radius: {borderRadius}px</Label>
               <Slider value={[borderRadius]} onValueChange={([v]) => setBorderRadius(v)} min={0} max={30} step={1} />
             </div>
-            <div className="space-y-2">
-              <Label className="text-xs">Border Width: {borderWidth}px</Label>
-              <Slider value={[borderWidth]} onValueChange={([v]) => setBorderWidth(v)} min={0} max={8} step={1} />
+            <div className="flex items-center gap-2 pt-5">
+              <Switch checked={scanText} onCheckedChange={setScanText} data-testid="switch-url-scan-text" />
+              <Label className="text-xs">Scan Me Text</Label>
             </div>
           </div>
           <div className="space-y-2">
@@ -5406,6 +5938,11 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
                 bgColor="transparent"
                 imageSettings={logoPreview ? { src: logoPreview, height: 30, width: 30, excavate: true } : undefined}
               />
+              {showScanText && (
+                <div className="text-center font-bold tracking-wider uppercase mt-1" style={{ color: qrColor, fontSize: "12px", letterSpacing: "0.1em" }}>
+                  SCAN ME
+                </div>
+              )}
             </div>
             <p className="text-xs text-muted-foreground text-center">Powered by VisiCardly</p>
             <div className="flex items-center gap-2">

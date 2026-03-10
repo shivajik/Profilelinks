@@ -1,3 +1,7 @@
+export type LayoutType = "classic" | "modern" | "bold" | "elegant" | "hero";
+export type ButtonStyle = "rounded" | "sharp" | "soft" | "outline";
+export type AvatarStyle = "circle" | "rounded" | "square";
+
 export const TEMPLATES = [
   {
     id: "minimal",
@@ -8,6 +12,9 @@ export const TEMPLATES = [
     cardTextColor: "text-[#4a3f35]",
     accent: "#8b7355",
     description: "Clean and simple",
+    layout: "classic" as LayoutType,
+    buttonStyle: "rounded" as ButtonStyle,
+    avatarStyle: "circle" as AvatarStyle,
   },
   {
     id: "ocean",
@@ -18,6 +25,9 @@ export const TEMPLATES = [
     cardTextColor: "text-white",
     accent: "#64ffda",
     description: "Deep blue vibes",
+    layout: "hero" as LayoutType,
+    buttonStyle: "soft" as ButtonStyle,
+    avatarStyle: "circle" as AvatarStyle,
   },
   {
     id: "sunset",
@@ -28,6 +38,9 @@ export const TEMPLATES = [
     cardTextColor: "text-white",
     accent: "#fff",
     description: "Warm gradients",
+    layout: "bold" as LayoutType,
+    buttonStyle: "rounded" as ButtonStyle,
+    avatarStyle: "circle" as AvatarStyle,
   },
   {
     id: "dark",
@@ -38,6 +51,9 @@ export const TEMPLATES = [
     cardTextColor: "text-gray-200",
     accent: "#6C5CE7",
     description: "Sleek dark mode",
+    layout: "modern" as LayoutType,
+    buttonStyle: "soft" as ButtonStyle,
+    avatarStyle: "rounded" as AvatarStyle,
   },
   {
     id: "forest",
@@ -48,6 +64,9 @@ export const TEMPLATES = [
     cardTextColor: "text-white",
     accent: "#4ade80",
     description: "Nature inspired",
+    layout: "elegant" as LayoutType,
+    buttonStyle: "soft" as ButtonStyle,
+    avatarStyle: "circle" as AvatarStyle,
   },
   {
     id: "lavender",
@@ -58,6 +77,9 @@ export const TEMPLATES = [
     cardTextColor: "text-[#4a3068]",
     accent: "#7c3aed",
     description: "Soft purple tones",
+    layout: "elegant" as LayoutType,
+    buttonStyle: "rounded" as ButtonStyle,
+    avatarStyle: "circle" as AvatarStyle,
   },
   {
     id: "executive",
@@ -68,6 +90,9 @@ export const TEMPLATES = [
     cardTextColor: "text-white",
     accent: "#e8a838",
     description: "Bold corporate style",
+    layout: "modern" as LayoutType,
+    buttonStyle: "sharp" as ButtonStyle,
+    avatarStyle: "square" as AvatarStyle,
   },
   {
     id: "crimson",
@@ -78,6 +103,9 @@ export const TEMPLATES = [
     cardTextColor: "text-white",
     accent: "#ff5252",
     description: "Bold red professional",
+    layout: "bold" as LayoutType,
+    buttonStyle: "sharp" as ButtonStyle,
+    avatarStyle: "rounded" as AvatarStyle,
   },
   {
     id: "amber",
@@ -88,6 +116,9 @@ export const TEMPLATES = [
     cardTextColor: "text-[#3e2723]",
     accent: "#e65100",
     description: "Warm golden tones",
+    layout: "classic" as LayoutType,
+    buttonStyle: "soft" as ButtonStyle,
+    avatarStyle: "rounded" as AvatarStyle,
   },
   {
     id: "slate",
@@ -98,6 +129,9 @@ export const TEMPLATES = [
     cardTextColor: "text-white",
     accent: "#1abc9c",
     description: "Modern professional",
+    layout: "hero" as LayoutType,
+    buttonStyle: "soft" as ButtonStyle,
+    avatarStyle: "rounded" as AvatarStyle,
   },
   {
     id: "noir",
@@ -108,6 +142,9 @@ export const TEMPLATES = [
     cardTextColor: "text-gray-200",
     accent: "#ffffff",
     description: "Classic monochrome",
+    layout: "elegant" as LayoutType,
+    buttonStyle: "outline" as ButtonStyle,
+    avatarStyle: "square" as AvatarStyle,
   },
   {
     id: "coral",
@@ -118,6 +155,9 @@ export const TEMPLATES = [
     cardTextColor: "text-white",
     accent: "#fff",
     description: "Vibrant and playful",
+    layout: "bold" as LayoutType,
+    buttonStyle: "rounded" as ButtonStyle,
+    avatarStyle: "circle" as AvatarStyle,
   },
   {
     id: "arctic",
@@ -128,6 +168,9 @@ export const TEMPLATES = [
     cardTextColor: "text-[#1a237e]",
     accent: "#1565c0",
     description: "Cool and clean",
+    layout: "classic" as LayoutType,
+    buttonStyle: "soft" as ButtonStyle,
+    avatarStyle: "circle" as AvatarStyle,
   },
   {
     id: "neon",
@@ -138,6 +181,9 @@ export const TEMPLATES = [
     cardTextColor: "text-white",
     accent: "#00ff88",
     description: "Electric nightlife",
+    layout: "hero" as LayoutType,
+    buttonStyle: "outline" as ButtonStyle,
+    avatarStyle: "rounded" as AvatarStyle,
   },
   {
     id: "terracotta",
@@ -148,6 +194,9 @@ export const TEMPLATES = [
     cardTextColor: "text-white",
     accent: "#fefae0",
     description: "Earthy warmth",
+    layout: "modern" as LayoutType,
+    buttonStyle: "soft" as ButtonStyle,
+    avatarStyle: "circle" as AvatarStyle,
   },
   {
     id: "sapphire",
@@ -158,6 +207,9 @@ export const TEMPLATES = [
     cardTextColor: "text-white",
     accent: "#5dade2",
     description: "Deep blue elegance",
+    layout: "elegant" as LayoutType,
+    buttonStyle: "sharp" as ButtonStyle,
+    avatarStyle: "square" as AvatarStyle,
   },
   {
     id: "rose",
@@ -168,6 +220,9 @@ export const TEMPLATES = [
     cardTextColor: "text-[#5d3a3a]",
     accent: "#b76e79",
     description: "Elegant and warm",
+    layout: "hero" as LayoutType,
+    buttonStyle: "rounded" as ButtonStyle,
+    avatarStyle: "circle" as AvatarStyle,
   },
   {
     id: "lime",
@@ -178,6 +233,9 @@ export const TEMPLATES = [
     cardTextColor: "text-white",
     accent: "#cddc39",
     description: "Fresh and energetic",
+    layout: "bold" as LayoutType,
+    buttonStyle: "soft" as ButtonStyle,
+    avatarStyle: "rounded" as AvatarStyle,
   },
 ];
 
@@ -186,3 +244,30 @@ export type Template = (typeof TEMPLATES)[0];
 export function getTemplate(id: string | null | undefined): Template {
   return TEMPLATES.find((t) => t.id === id) || TEMPLATES[0];
 }
+
+export function getAvatarClass(style: AvatarStyle): string {
+  switch (style) {
+    case "circle": return "rounded-full";
+    case "rounded": return "rounded-xl";
+    case "square": return "rounded-md";
+    default: return "rounded-full";
+  }
+}
+
+export function getButtonClass(style: ButtonStyle): string {
+  switch (style) {
+    case "rounded": return "rounded-full";
+    case "sharp": return "rounded-none";
+    case "soft": return "rounded-xl";
+    case "outline": return "rounded-xl border-2";
+    default: return "rounded-xl";
+  }
+}
+
+export const LAYOUT_LABELS: Record<LayoutType, string> = {
+  classic: "Classic",
+  modern: "Modern",
+  bold: "Bold",
+  elegant: "Elegant",
+  hero: "Hero",
+};

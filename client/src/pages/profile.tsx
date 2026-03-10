@@ -16,6 +16,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { getTemplate } from "@/lib/templates";
 import { SocialIcon } from "@/components/social-icon";
 import { getPlatform } from "@/lib/social-platforms";
+import { PersonalProfileLayout } from "@/components/profile-layouts";
 import type { Link, User, Social, Block, BlockContent } from "@shared/schema";
 
 function normalizeUrl(url: string, platform?: string): string {
@@ -607,119 +608,23 @@ export default function PublicProfile(props?: any) {
             </div>
           </div>
         ) : (
-          <div className="flex flex-col items-center text-center mb-10">
-            {user.coverImage && (
-              <div className="w-full h-32 rounded-md overflow-hidden mb-[-2.5rem] shadow-md" data-testid="personal-cover-image">
-                <img src={user.coverImage} alt="Cover" className="w-full h-full object-cover" />
-              </div>
-            )}
-            <Avatar className={`w-24 h-24 border-4 border-white/20 shadow-lg ${user.coverImage ? "mb-5 relative z-10" : "mb-5"}`}>
-              <AvatarImage src={user.profileImage || undefined} alt={user.displayName || user.username} />
-              <AvatarFallback
-                className="text-2xl"
-                style={{ backgroundColor: template.accent + "30", color: template.accent }}
-              >
-                {(user.displayName || user.username).charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <h1 className={`text-2xl font-bold mb-1 ${template.textColor}`} data-testid="text-profile-name">
-              {user.displayName || user.username}
-            </h1>
-            <p className={`text-sm mb-2 ${template.textColor} opacity-70`} data-testid="text-profile-username">
-              @{user.username}
-            </p>
-            {user.bio && (
-              <p className={`text-sm max-w-sm leading-relaxed ${template.textColor} opacity-80`} data-testid="text-profile-bio">
-                {user.bio}
-              </p>
-            )}
-            {activeSocials.length > 0 && (
-              <div className="flex items-center justify-center gap-3 mt-4 flex-wrap" data-testid="social-icons-row">
-                {activeSocials.map((social) => (
-                  <a
-                    key={social.id}
-                    href={normalizeUrl(social.url, social.platform)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`p-2 rounded-full ${template.textColor} opacity-70 hover-elevate active-elevate-2`}
-                    title={getPlatform(social.platform)?.name || social.platform}
-                    data-testid={`social-icon-${social.platform}`}
-                  >
-                    <SocialIcon platform={social.platform} className="w-5 h-5" />
-                  </a>
-                ))}
-              </div>
-            )}
-
-            {hasMultiplePages && (
-              <>
-                <div className="hidden sm:flex items-center gap-2 mt-5 flex-wrap justify-center" data-testid="page-nav">
-                  {pages.map((page) => {
-                    const isActive = currentPage?.slug === page.slug;
-                    return (
-                      <Button
-                        key={page.id}
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setActivePageSlug(page.isHome ? null : page.slug)}
-                        className={`rounded-full px-4 ${
-                          isActive
-                            ? `${template.cardBg} ${template.cardTextColor}`
-                            : `${template.textColor} opacity-60 hover:opacity-100`
-                        }`}
-                        data-testid={`page-tab-${page.slug}`}
-                      >
-                        {page.title}
-                      </Button>
-                    );
-                  })}
-                </div>
-                <div className="sm:hidden mt-5" data-testid="page-nav-mobile">
-                  <MobilePageNav
-                    pages={pages}
-                    currentPage={currentPage}
-                    onSelectPage={(slug) => setActivePageSlug(slug)}
-                    template={template}
-                  />
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Blocks for non-team profiles remain outside */}
-        {!isTeamProfile && (
-          <div
-            className="transition-opacity duration-300 ease-in-out"
-            style={{ opacity: isFetching && !isLoading ? 0.5 : 1 }}
-          >
-            {hasBlocks ? (
-              <div className="space-y-3">
-                {activeBlocks.map((block) => (
-                  <PublicBlock key={block.id} block={block} template={template} onClickTrack={trackClick} />
-                ))}
-              </div>
-            ) : activeLinks.length > 0 ? (
-              <div className="space-y-3">
-                {activeLinks.map((link) => (
-                  <a
-                    key={link.id}
-                    href={normalizeUrl(link.url)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => trackClick(link.id)}
-                    className={`block w-full rounded-xl ${template.cardBg} p-4 text-center font-medium transition-all hover:scale-[1.02] hover:shadow-md group backdrop-blur-sm`}
-                    data-testid={`link-card-${link.id}`}
-                  >
-                    <div className="flex items-center justify-center gap-2">
-                      <span className={`truncate ${template.cardTextColor}`}>{link.title}</span>
-                      <ExternalLink className={`w-3.5 h-3.5 ${template.cardTextColor} opacity-0 group-hover:opacity-100 transition-opacity shrink-0`} />
-                    </div>
-                  </a>
-                ))}
-              </div>
-            ) : null}
-          </div>
+          <PersonalProfileLayout
+            user={user}
+            template={template}
+            activeSocials={activeSocials}
+            activeLinks={activeLinks}
+            activeBlocks={activeBlocks}
+            hasBlocks={hasBlocks}
+            pages={pages}
+            hasMultiplePages={hasMultiplePages}
+            currentPage={currentPage}
+            setActivePageSlug={setActivePageSlug}
+            isFetching={isFetching}
+            isLoading={isLoading}
+            normalizeUrl={normalizeUrl}
+            trackClick={trackClick}
+            PublicBlock={PublicBlock}
+          />
         )}
 
         <div className="mt-12 text-center">
