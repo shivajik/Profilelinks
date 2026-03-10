@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useState } from "react";
+import { SiFacebook, SiX, SiInstagram, SiPinterest, SiTumblr } from "react-icons/si";
 
 const DOC_SECTIONS = [
   {
@@ -203,23 +204,38 @@ const DOC_SECTIONS = [
   },
   {
     id: "team",
-    title: "Teams",
+    title: "Teams & Digital Business Cards",
     icon: Users,
     items: [
       {
         title: "Team Accounts",
         content:
-          "Upgrade to a team account to collaborate with others. Invite team members via email, manage roles and permissions, and share templates across your team. Team features are available on plans that support multiple team members.",
+          "Create a team account to manage your organization's digital presence. Invite team members via email or CSV bulk import, assign roles (Owner, Admin, Member), and organize members into branches.",
       },
       {
-        title: "Team Templates",
+        title: "Digital Business Cards",
         content:
-          "Create and share custom templates across your team for consistent branding. Team templates ensure everyone's page follows the same style guidelines.",
+          "Each team member gets a professional digital business card with company branding, logo, job title, and contact details. Visitors can download a vCard with one tap. Company branding is applied consistently across all member profiles.",
+      },
+      {
+        title: "Team Templates & Branding",
+        content:
+          "Create branded templates with your company logo, cover photo, colors, and fonts. Templates are automatically applied to all team members for consistent branding. Only team owners and admins can manage templates.",
+      },
+      {
+        title: "Branches",
+        content:
+          "Organize team members into branches (e.g., offices, departments, locations). Each branch has its own name, address, and contact details. Assign members to branches for location-based organization.",
+      },
+      {
+        title: "CSV Import & Export",
+        content:
+          "Bulk import team members using a CSV file with name, email, phone, and job title columns. Export your entire team directory as a CSV including profile URLs, roles, branches, and status.",
       },
       {
         title: "Contacts",
         content:
-          "Manage a shared contact directory within your team. Keep track of important contacts and share them with team members.",
+          "Manage a shared contact directory within your team. Contacts are collected from profile visitors who use the 'Add to Contact' feature.",
       },
     ],
   },
@@ -431,9 +447,18 @@ export default function DocsPage() {
       {/* Footer */}
       <footer className="border-t border-border py-8 px-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <span className="text-sm text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5"><img src={logoPath} alt="" className="w-9 h-7 object-contain inline" /><span className="text-primary font-semibold">Visi</span>Cardly</span> — All rights reserved.
-          </span>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <img src={logoPath} alt="VisiCardly" className="w-10 h-8 object-contain" />
+            <span><span className="text-primary font-semibold">Visi</span>Cardly</span>
+            <span>— All rights reserved.</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <a href="https://www.facebook.com/visicardly/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="link-social-facebook"><SiFacebook className="w-4 h-4" /></a>
+            <a href="https://x.com/visicardly" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="link-social-x"><SiX className="w-4 h-4" /></a>
+            <a href="https://www.instagram.com/visicardly/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="link-social-instagram"><SiInstagram className="w-4 h-4" /></a>
+            <a href="https://in.pinterest.com/visicardly/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="link-social-pinterest"><SiPinterest className="w-4 h-4" /></a>
+            <a href="https://www.tumblr.com/visicardly" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="link-social-tumblr"><SiTumblr className="w-4 h-4" /></a>
+          </div>
           <div className="flex items-center gap-4">
             <WouterLink href="/terms"><span className="text-sm text-muted-foreground hover:text-foreground cursor-pointer">Terms</span></WouterLink>
             <WouterLink href="/privacy"><span className="text-sm text-muted-foreground hover:text-foreground cursor-pointer">Privacy</span></WouterLink>

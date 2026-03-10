@@ -19,7 +19,11 @@ import {
   ChevronRight,
   Menu,
   X,
+  CreditCard,
+  QrCode,
+  UtensilsCrossed,
 } from "lucide-react";
+import { SiFacebook, SiX, SiInstagram, SiPinterest, SiTumblr } from "react-icons/si";
 import { useAuth } from "@/lib/auth";
 import heroPhoneImg from "@/assets/images/hero-phone.png";
 
@@ -53,33 +57,39 @@ const STEPS = [
 
 const BENTO_FEATURES = [
   {
-    title: "Unlimited Links",
-    description: "Add as many links as you need. Organize them your way with drag-and-drop.",
-    icon: Link2,
+    title: "Digital Business Cards",
+    description: "Create professional digital business cards with contact info, company branding, and one-tap vCard sharing.",
+    icon: CreditCard,
     span: "sm:col-span-2",
   },
   {
-    title: "50+ Platforms",
-    description: "Connect Instagram, TikTok, YouTube, Twitter, and dozens more.",
+    title: "Team Management",
+    description: "Manage team members with roles, branches, branded templates, and bulk CSV import/export.",
+    icon: Users,
+    span: "",
+  },
+  {
+    title: "QR Code Generator",
+    description: "Generate customizable QR codes for your profile, menu, or business card — ready for print.",
+    icon: QrCode,
+    span: "",
+  },
+  {
+    title: "Menu Builder",
+    description: "Build beautiful digital menus for restaurants and cafés with sections, products, hours, and contact info.",
+    icon: UtensilsCrossed,
+    span: "",
+  },
+  {
+    title: "50+ Social Platforms",
+    description: "Connect Instagram, TikTok, YouTube, LinkedIn, X, and dozens more — displayed as sleek icons.",
     icon: LayoutGrid,
     span: "",
   },
   {
-    title: "Custom Themes",
-    description: "Make it yours with colors, fonts, and layout options.",
+    title: "Custom Themes & Branding",
+    description: "Choose from professionally designed templates with custom colors, fonts, cover images, and company logos.",
     icon: Palette,
-    span: "",
-  },
-  {
-    title: "Mobile First",
-    description: "Looks perfect on every screen size, from phones to desktops.",
-    icon: Globe,
-    span: "",
-  },
-  {
-    title: "Lightning Fast",
-    description: "Optimized for speed. Your page loads instantly, every time.",
-    icon: Zap,
     span: "sm:col-span-2",
   },
 ];
@@ -364,10 +374,10 @@ export default function Landing() {
                 </p>
                 <div className="space-y-4">
                   {[
-                    { icon: Palette, text: "Full design control with themes, colors, and fonts" },
-                    { icon: MousePointerClick, text: "Drag-and-drop simplicity for organizing links" },
-                    { icon: Users, text: "50+ social platform integrations" },
-                    { icon: Star, text: "Premium features at zero cost" },
+                    { icon: CreditCard, text: "Digital business cards with company branding and vCard sharing" },
+                    { icon: Users, text: "Team management with roles, branches, and branded templates" },
+                    { icon: UtensilsCrossed, text: "Menu builder for restaurants with QR code integration" },
+                    { icon: QrCode, text: "Custom QR codes for profiles, menus, and business cards" },
                   ].map((item, i) => (
                     <div key={i} className="flex items-start gap-3 flex-wrap">
                       <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
@@ -517,6 +527,13 @@ export default function Landing() {
             <span className="text-sm text-muted-foreground">
               VisiCardly. All rights reserved.
             </span>
+            <div className="flex items-center gap-4">
+              <a href="https://www.facebook.com/visicardly/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="link-footer-facebook"><SiFacebook className="w-4 h-4" /></a>
+              <a href="https://x.com/visicardly" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="link-footer-x"><SiX className="w-4 h-4" /></a>
+              <a href="https://www.instagram.com/visicardly/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="link-footer-instagram"><SiInstagram className="w-4 h-4" /></a>
+              <a href="https://in.pinterest.com/visicardly/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="link-footer-pinterest"><SiPinterest className="w-4 h-4" /></a>
+              <a href="https://www.tumblr.com/visicardly" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="link-footer-tumblr"><SiTumblr className="w-4 h-4" /></a>
+            </div>
             <div className="flex items-center gap-4">
               <WouterLink href="/terms"><a className="text-sm text-muted-foreground hover:text-foreground">Terms</a></WouterLink>
               <WouterLink href="/privacy"><a className="text-sm text-muted-foreground hover:text-foreground">Privacy</a></WouterLink>

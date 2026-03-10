@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link as WouterLink } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
+import { SiFacebook, SiX, SiInstagram, SiPinterest, SiTumblr } from "react-icons/si";
 import { useAuth } from "@/lib/auth";
 import logoPath from "/logo.png";
 
@@ -160,6 +161,13 @@ export default function LegalLayout({ children }: LegalLayoutProps) {
             <span className="text-sm text-muted-foreground">
               VisiCardly. All rights reserved.
             </span>
+            <div className="flex items-center gap-4">
+              <a href="https://www.facebook.com/visicardly/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors"><SiFacebook className="w-4 h-4" /></a>
+              <a href="https://x.com/visicardly" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors"><SiX className="w-4 h-4" /></a>
+              <a href="https://www.instagram.com/visicardly/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors"><SiInstagram className="w-4 h-4" /></a>
+              <a href="https://in.pinterest.com/visicardly/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors"><SiPinterest className="w-4 h-4" /></a>
+              <a href="https://www.tumblr.com/visicardly" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors"><SiTumblr className="w-4 h-4" /></a>
+            </div>
             <div className="flex items-center gap-4">
               <WouterLink href="/terms" className="text-sm text-muted-foreground hover:text-foreground">Terms</WouterLink>
               <WouterLink href="/privacy" className="text-sm text-muted-foreground hover:text-foreground">Privacy</WouterLink>
