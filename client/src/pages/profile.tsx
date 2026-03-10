@@ -456,7 +456,7 @@ export default function PublicProfile(props?: any) {
                           <div className="space-y-2" data-testid="company-documents">
                             {teamBranding.companyProfileUrl && (
                               <a
-                                href={teamBranding.companyProfileUrl}
+                                href={normalizeUrl(teamBranding.companyProfileUrl)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="flex items-center gap-2.5 p-2 rounded-md border border-border/50 hover:bg-muted/50 transition-colors"
@@ -470,7 +470,7 @@ export default function PublicProfile(props?: any) {
                             )}
                             {teamBranding.productProfileUrl && (
                               <a
-                                href={teamBranding.productProfileUrl}
+                                href={normalizeUrl(teamBranding.productProfileUrl)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="flex items-center gap-2.5 p-2 rounded-md border border-border/50 hover:bg-muted/50 transition-colors"
@@ -484,7 +484,7 @@ export default function PublicProfile(props?: any) {
                             )}
                             {teamBranding.companyBrochureUrl && (
                               <a
-                                href={teamBranding.companyBrochureUrl}
+                                href={normalizeUrl(teamBranding.companyBrochureUrl)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="flex items-center gap-2.5 p-2 rounded-md border border-border/50 hover:bg-muted/50 transition-colors"
