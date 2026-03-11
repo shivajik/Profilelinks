@@ -138,38 +138,57 @@ function ContactSection({ teamBranding, brandColor, normalizeUrl, cardStyle = "d
           <div className="space-y-2.5" data-testid="branch-addresses">
             {teamBranding.headBranch && (
               <div className={`rounded-md ${cardStyle === "bordered" ? "border-2" : "border"} border-border/50 p-2.5 space-y-1`}>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2 w-full">
                   <Building2 className="w-3 h-3 shrink-0" style={{ color: brandColor }} />
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Head Office</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Head Office:
+                  </span>
+          
+                  <span className="text-xs font-medium flex-1 truncate">
+                    {teamBranding.headBranch.name}
+                  </span>
                 </div>
-                <p className="text-xs font-medium truncate">{teamBranding.headBranch.name}</p>
+          
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <MapPin className="w-3 h-3 shrink-0" style={{ color: brandColor }} />
-                  {teamBranding.headBranch.address}
+                  <span className="truncate">
+                    {teamBranding.headBranch.address}
+                  </span>
                 </div>
                 {teamBranding.headBranch.phone && (
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Phone className="w-3 h-3 shrink-0" style={{ color: brandColor }} />
-                    {teamBranding.headBranch.phone}
+                    <span className="truncate">
+                      {teamBranding.headBranch.phone}
+                    </span>
                   </div>
                 )}
               </div>
             )}
-            {teamBranding.memberBranch && teamBranding.memberBranch.name !== teamBranding.headBranch?.name && (
-              <div className={`rounded-md ${cardStyle === "bordered" ? "border-2" : "border"} border-border/50 p-2.5 space-y-1`}>
-                <div className="flex items-center gap-1.5">
-                  <MapPin className="w-3 h-3 shrink-0" style={{ color: brandColor }} />
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Branch Office</span>
-                </div>
-                <p className="text-xs font-medium truncate">{teamBranding.memberBranch.name}</p>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <MapPin className="w-3 h-3 shrink-0" style={{ color: brandColor }} />
-                  {teamBranding.memberBranch.address}
-                </div>
-                {teamBranding.memberBranch.phone && (
+                {teamBranding.memberBranch && teamBranding.memberBranch.name !== teamBranding.headBranch?.name && (
+                <div className={`rounded-md ${cardStyle === "bordered" ? "border-2" : "border"
+                  } border-border/50 p-2.5 space-y-1`}
+                >
+                  <div className="flex items-center gap-2 w-full">
+                    <MapPin className="w-3 h-3 shrink-0" style={{ color: brandColor }} />
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Branch Office:
+                    </span> 
+                    <span className="text-xs font-medium flex-1 truncate">
+                      {teamBranding.memberBranch.name}
+                    </span>
+                  </div>
+              
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Phone className="w-3 h-3 shrink-0" style={{ color: brandColor }} />
-                    {teamBranding.memberBranch.phone}
+                    <MapPin className="w-3 h-3 shrink-0" style={{ color: brandColor }} />
+                    <span className="truncate">
+                      {teamBranding.memberBranch.address}
+                    </span>
+                  </div>
+                  {teamBranding.memberBranch.phone && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Phone className="w-3 h-3 shrink-0" style={{ color: brandColor }} />
+                      <span className="truncate">
+                        {teamBranding.memberBranch.phone}
+                      </span>
                   </div>
                 )}
               </div>
