@@ -2227,7 +2227,107 @@ export async function registerRoutes(
     }
   });
 
-  // ── Check white-label status for public pages ──────────────────────
+  // ── QR Code CRUD (server-side persistence) ──────────────────────────
+  app.get("/api/qrcodes", requireAuth, async (req, res) => {
+    try {
+      const qrType = (req.query.type as string) || undefined;
+      let codes = await storage.getQrCodesByUserId(req.session.userId!);
+      if (qrType) codes = codes.filter((c: any) => c.qrType === qrType);
+      res.json(codes);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to fetch QR codes" });
+    }
+  });
+
+  app.post("/api/qrcodes", requireAuth, async (req, res) => {
+    try {
+      const { label, targetUrl, style, color, color2, borderRadius, borderWidth, logoUrl, scanText, qrType } = req.body;
+      const code = await storage.createQrCode({
+        userId: req.session.userId!,
+        label: label || "QR Code",
+        targetUrl: targetUrl || null,
+        style: style || "square",
+        color: color || "#6C5CE7",
+        color2: color2 || "#FF6B6B",
+        borderRadius: borderRadius ?? 8,
+        borderWidth: borderWidth ?? 3,
+        logoUrl: logoUrl || null,
+        scanText: scanText ?? false,
+        qrType: qrType || "profile",
+      });
+      res.status(201).json(code);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to create QR code" });
+    }
+  });
+
+  app.patch("/api/qrcodes/:id", requireAuth, async (req, res) => {
+    try {
+      const { label, targetUrl, style, color, color2, borderRadius, borderWidth, logoUrl, scanText } = req.body;
+      const updated = await storage.updateQrCode(req.params.id as string, req.session.userId!, {
+        ...(label !== undefined && { label }),
+        ...(targetUrl !== undefined && { targetUrl }),
+        ...(style !== undefined && { style }),
+        ...(color !== undefined && { color }),
+        ...(color2 !== undefined && { color2 }),
+        ...(borderRadius !== undefined && { borderRadius }),
+        ...(borderWidth !== undefined && { borderWidth }),
+        ...(logoUrl !== undefined && { logoUrl }),
+        ...(scanText !== undefined && { scanText }),
+      });
+      if (!updated) return res.status(404).json({ message: "QR code not found" });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to update QR code" });
+    }
+  });
+
+  app.delete("/api/qrcodes/:id", requireAuth, async (req, res) => {
+    try {
+      const deleted = await storage.deleteQrCode(req.params.id as string, req.session.userId!);
+      if (!deleted) return res.status(404).json({ message: "QR code not found" });
+      res.json({ message: "Deleted" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to delete QR code" });
+    }
+  });
+
+  // ── Contact Update (company contacts only by owner) ─────────────────
+  app.patch("/api/contacts/:id", requireAuth, async (req, res) => {
+    try {
+      const result = updateContactSchema.safeParse(req.body);
+      if (!result.success) return res.status(400).json({ message: fromZodError(result.error).message });
+
+      // First try personal contact owned by user
+      let updated = await storage.updateContact(req.params.id as string, req.session.userId!, result.data);
+      if (updated) return res.json(updated);
+
+      // Check if it's a company contact
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.teamId) {
+        // Verify user is team owner/admin
+        const role = await getTeamMemberRole(user.teamId, req.session.userId!);
+        if (role && ["owner", "admin"].includes(role)) {
+          // Try updating by team
+          const allContacts = await storage.getContacts({ teamId: user.teamId, type: "company" });
+          const targetContact = allContacts.find(c => c.id === req.params.id);
+          if (targetContact) {
+            // Direct DB update for team contact
+            const { db: dbInstance } = await import("./storage");
+            const { contacts: contactsTable } = await import("@shared/schema");
+            const { eq } = await import("drizzle-orm");
+            const [updatedContact] = await dbInstance.update(contactsTable).set(result.data).where(eq(contactsTable.id, req.params.id as string)).returning();
+            return res.json(updatedContact);
+          }
+        }
+        return res.status(403).json({ message: "Only team owners can edit company contacts" });
+      }
+
+      return res.status(404).json({ message: "Contact not found" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to update contact" });
+    }
+  });
   app.get("/api/white-label/:username", async (req, res) => {
     try {
       const user = await storage.getUserByUsername(req.params.username as string);

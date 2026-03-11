@@ -8,6 +8,7 @@ import {
   pages,
   blocks,
   analyticsEvents,
+  savedQrCodes,
   teams,
   teamMembers,
   teamInvites,
@@ -188,6 +189,22 @@ pool.query(`
     created_at timestamp NOT NULL DEFAULT now()
   );
 
+  CREATE TABLE IF NOT EXISTS saved_qr_codes (
+    id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    label text NOT NULL DEFAULT 'Profile QR',
+    target_url text,
+    style text NOT NULL DEFAULT 'square',
+    color text NOT NULL DEFAULT '#6C5CE7',
+    color2 text NOT NULL DEFAULT '#FF6B6B',
+    border_radius integer NOT NULL DEFAULT 8,
+    border_width integer NOT NULL DEFAULT 3,
+    logo_url text,
+    scan_text boolean NOT NULL DEFAULT false,
+    qr_type text NOT NULL DEFAULT 'profile',
+    created_at timestamp NOT NULL DEFAULT now()
+  );
+
   CREATE INDEX IF NOT EXISTS idx_pages_user_id ON pages(user_id);
   CREATE INDEX IF NOT EXISTS idx_links_page_id ON links(page_id);
   CREATE INDEX IF NOT EXISTS idx_links_user_id ON links(user_id);
@@ -200,6 +217,7 @@ pool.query(`
   CREATE INDEX IF NOT EXISTS idx_team_members_team_id ON team_members(team_id);
   CREATE INDEX IF NOT EXISTS idx_team_templates_team_id ON team_templates(team_id);
   CREATE INDEX IF NOT EXISTS idx_team_branches_team_id ON team_branches(team_id);
+  CREATE INDEX IF NOT EXISTS idx_saved_qr_codes_user_id ON saved_qr_codes(user_id);
 `).then(async () => {
   // Backfill slugs for existing teams that don't have one
   try {
@@ -321,6 +339,12 @@ export interface IStorage {
     topReferrers: { referrer: string; count: number }[];
     topPages: { pageSlug: string; views: number }[];
   }>;
+
+  // QR Codes
+  getQrCodesByUserId(userId: string): Promise<any[]>;
+  createQrCode(data: any): Promise<any>;
+  updateQrCode(id: string, userId: string, data: any): Promise<any>;
+  deleteQrCode(id: string, userId: string): Promise<boolean>;
 }
 
 function slugify(title: string): string {
@@ -1024,6 +1048,30 @@ export class DatabaseStorage implements IStorage {
     const [existing] = await db.select().from(menuSocials).where(eq(menuSocials.id, id));
     if (!existing || existing.userId !== userId) return false;
     await db.delete(menuSocials).where(eq(menuSocials.id, id));
+    return true;
+  }
+
+  // ── QR Codes ──────────────────────────────────────────────────────────
+  async getQrCodesByUserId(userId: string): Promise<any[]> {
+    return db.select().from(savedQrCodes).where(eq(savedQrCodes.userId, userId)).orderBy(asc(savedQrCodes.createdAt));
+  }
+
+  async createQrCode(data: any): Promise<any> {
+    const [created] = await db.insert(savedQrCodes).values(data).returning();
+    return created;
+  }
+
+  async updateQrCode(id: string, userId: string, data: any): Promise<any> {
+    const [existing] = await db.select().from(savedQrCodes).where(eq(savedQrCodes.id, id));
+    if (!existing || existing.userId !== userId) return undefined;
+    const [updated] = await db.update(savedQrCodes).set(data).where(eq(savedQrCodes.id, id)).returning();
+    return updated;
+  }
+
+  async deleteQrCode(id: string, userId: string): Promise<boolean> {
+    const [existing] = await db.select().from(savedQrCodes).where(eq(savedQrCodes.id, id));
+    if (!existing || existing.userId !== userId) return false;
+    await db.delete(savedQrCodes).where(eq(savedQrCodes.id, id));
     return true;
   }
 }

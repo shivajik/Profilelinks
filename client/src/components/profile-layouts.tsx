@@ -17,6 +17,7 @@ interface PersonalLayoutProps {
     profileImage: string | null;
     coverImage?: string | null;
     bio: string | null;
+    emailVerified?: boolean;
   };
   template: Template;
   activeSocials: Social[];

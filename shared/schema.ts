@@ -257,6 +257,23 @@ export const analyticsEvents = pgTable("analytics_events", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// ── Saved QR Codes ──────────────────────────────────────────────────────
+export const savedQrCodes = pgTable("saved_qr_codes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  label: text("label").notNull().default("Profile QR"),
+  targetUrl: text("target_url"),
+  style: text("style").notNull().default("square"),
+  color: text("color").notNull().default("#6C5CE7"),
+  color2: text("color2").notNull().default("#FF6B6B"),
+  borderRadius: integer("border_radius").notNull().default(8),
+  borderWidth: integer("border_width").notNull().default(3),
+  logoUrl: text("logo_url"),
+  scanText: boolean("scan_text").notNull().default(false),
+  qrType: text("qr_type").notNull().default("profile"), // "profile" | "url"
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
 });

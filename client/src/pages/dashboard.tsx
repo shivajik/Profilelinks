@@ -79,6 +79,7 @@ import {
   UtensilsCrossed,
   Lock,
   Briefcase,
+  BadgeCheck,
 } from "lucide-react";
 import {
   Dialog,
@@ -1697,6 +1698,12 @@ function SettingsPanel({
         </CardContent>
       </Card>
 
+      {/* Email Verification */}
+      <EmailVerificationCard user={user} />
+
+      {/* White Label */}
+      <WhiteLabelCard onNavigateBilling={onNavigateBilling} />
+
       {/* Account Actions */}
       <div className="flex flex-col sm:flex-row gap-2 pt-1 pb-4">
         <Button variant="outline" className="flex-1 gap-2 h-9 text-sm" onClick={onLogout} data-testid="button-settings-logout">
@@ -1760,6 +1767,158 @@ function SettingsPanel({
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function EmailVerificationCard({ user }: { user: { id: string; email: string; emailVerified?: boolean } }) {
+  const { toast } = useToast();
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+
+  const sendOtpMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/auth/send-verification-otp");
+    },
+    onSuccess: () => {
+      setOtpSent(true);
+      toast({ title: "OTP sent!", description: "Check your email for the verification code." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to send OTP", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const verifyOtpMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/auth/verify-email-otp", { otp });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      setOtpSent(false);
+      setOtp("");
+      toast({ title: "Email verified!", description: "You now have a verified badge on your profile." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Verification failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  if ((user as any).emailVerified) {
+    return (
+      <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30">
+        <CardContent className="pt-4 pb-4">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-green-800 dark:text-green-200">Email Verified</p>
+              <p className="text-xs text-green-600 dark:text-green-400">Your verified badge is visible on your public profile.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <BadgeCheck className="w-4 h-4" /> Email Verification
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">
+          Verify your email to get a verified badge on your public profile card.
+        </p>
+        {!otpSent ? (
+          <Button
+            size="sm"
+            onClick={() => sendOtpMutation.mutate()}
+            disabled={sendOtpMutation.isPending}
+          >
+            {sendOtpMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Send className="w-3.5 h-3.5 mr-1" />}
+            Send Verification Code
+          </Button>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Input
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                placeholder="Enter 6-digit OTP"
+                maxLength={6}
+                className="h-9 text-sm font-mono tracking-widest w-40"
+              />
+              <Button
+                size="sm"
+                onClick={() => verifyOtpMutation.mutate()}
+                disabled={otp.length < 6 || verifyOtpMutation.isPending}
+              >
+                {verifyOtpMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Verify"}
+              </Button>
+            </div>
+            <Button variant="ghost" size="sm" className="text-xs" onClick={() => sendOtpMutation.mutate()} disabled={sendOtpMutation.isPending}>
+              Resend Code
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function WhiteLabelCard({ onNavigateBilling }: { onNavigateBilling?: () => void }) {
+  const { toast } = useToast();
+  const { data: planLimits } = usePlanLimits();
+
+  const whiteLabelMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      await apiRequest("PATCH", "/api/auth/white-label", { enabled });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      toast({ title: "White label setting updated!" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const { data: user } = useQuery<any>({ queryKey: ["/api/auth/me"] });
+  const isWhiteLabelEnabled = planLimits?.whiteLabelEnabled ?? false;
+  const currentlyEnabled = user?.whiteLabelEnabled ?? false;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Shield className="w-4 h-4" /> White Label
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">
+          Remove VisiCardly branding from your public profile pages and QR codes.
+        </p>
+        {isWhiteLabelEnabled ? (
+          <div className="flex items-center justify-between">
+            <span className="text-sm">White Label Branding</span>
+            <Switch
+              checked={currentlyEnabled}
+              onCheckedChange={(checked) => whiteLabelMutation.mutate(checked)}
+              disabled={whiteLabelMutation.isPending}
+            />
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Lock className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Available on Enterprise plans.</span>
+            <Button variant="ghost" size="sm" className="text-xs p-0 h-auto" onClick={() => onNavigateBilling?.()}>
+              Upgrade
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -1974,6 +2133,8 @@ type QRStyle = "circle" | "square" | "stripe" | "full" | "gradient" | "elegant" 
 
 interface SavedQRCode {
   id: string;
+  label: string;
+  targetUrl: string | null;
   style: QRStyle;
   color: string;
   color2: string;
@@ -1981,18 +2142,21 @@ interface SavedQRCode {
   borderWidth: number;
   logoUrl: string | null;
   scanText: boolean;
+  qrType: string;
 }
 
 function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: string }) {
   const { toast } = useToast();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [savedQRCodes, setSavedQRCodes] = useState<SavedQRCode[]>(() => {
-    try {
-      const stored = localStorage.getItem(`qrcodes-${username}`);
-      if (stored) return JSON.parse(stored);
-    } catch {}
-    return [];
+
+  const { data: savedQRCodes = [], isLoading: qrLoading } = useQuery<SavedQRCode[]>({
+    queryKey: ["/api/qrcodes", { type: "profile" }],
+    queryFn: async () => {
+      const res = await fetch("/api/qrcodes?type=profile", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
   });
 
   const [qrStyle, setQrStyle] = useState<QRStyle>("circle");
@@ -2003,9 +2167,41 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [scanText, setScanText] = useState(false);
 
-  useEffect(() => {
-    localStorage.setItem(`qrcodes-${username}`, JSON.stringify(savedQRCodes));
-  }, [savedQRCodes, username]);
+  const createQrMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/qrcodes", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/qrcodes"] });
+      toast({ title: "QR code created!" });
+      setShowCreateDialog(false);
+      resetForm();
+    },
+  });
+
+  const updateQrMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await apiRequest("PATCH", `/api/qrcodes/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/qrcodes"] });
+      toast({ title: "QR code updated!" });
+      setShowCreateDialog(false);
+      resetForm();
+    },
+  });
+
+  const deleteQrMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/qrcodes/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/qrcodes"] });
+      toast({ title: "QR code deleted" });
+    },
+  });
 
   const resetForm = () => {
     setQrStyle("circle");
@@ -2024,7 +2220,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
   };
 
   const openEdit = (qr: SavedQRCode) => {
-    setQrStyle(qr.style);
+    setQrStyle(qr.style as QRStyle);
     setQrColor(qr.color);
     setQrColor2(qr.color2 || "#FF6B6B");
     setBorderRadius(qr.borderRadius);
@@ -2044,36 +2240,16 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
   };
 
   const handleCreate = () => {
+    const qrData = { style: qrStyle, color: qrColor, color2: qrColor2, borderRadius, borderWidth, logoUrl: logoPreview, scanText, qrType: "profile", label: "Profile QR" };
     if (editingId) {
-      setSavedQRCodes((prev) =>
-        prev.map((qr) =>
-          qr.id === editingId
-            ? { ...qr, style: qrStyle, color: qrColor, color2: qrColor2, borderRadius, borderWidth, logoUrl: logoPreview, scanText }
-            : qr
-        )
-      );
-      toast({ title: "QR code updated!" });
+      updateQrMutation.mutate({ id: editingId, data: qrData });
     } else {
-      const newQR: SavedQRCode = {
-        id: Date.now().toString(),
-        style: qrStyle,
-        color: qrColor,
-        color2: qrColor2,
-        borderRadius,
-        borderWidth,
-        logoUrl: logoPreview,
-        scanText,
-      };
-      setSavedQRCodes((prev) => [...prev, newQR]);
-      toast({ title: "QR code created!" });
+      createQrMutation.mutate(qrData);
     }
-    setShowCreateDialog(false);
-    resetForm();
   };
 
   const handleDelete = (id: string) => {
-    setSavedQRCodes((prev) => prev.filter((qr) => qr.id !== id));
-    toast({ title: "QR code deleted" });
+    deleteQrMutation.mutate(id);
   };
 
   const downloadQR = (elementId: string, filename: string, qrConfig?: SavedQRCode) => {
@@ -5966,6 +6142,13 @@ function ContactsPanel({ teamId, userId, isTeamMember = false }: { teamId: strin
   const [searchQuery, setSearchQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [editContact, setEditContact] = useState<any>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editCompany, setEditCompany] = useState("");
+  const [editJobTitle, setEditJobTitle] = useState("");
+  const [editNotes, setEditNotes] = useState("");
 
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
