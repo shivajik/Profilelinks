@@ -178,13 +178,13 @@ export function CsvImportExport({ teamId, teamSlug, members, branches: externalB
       <input type="file" accept=".csv" ref={fileRef} className="hidden" onChange={handleFile} />
       <div className="flex items-center gap-2">
         <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} data-testid="button-import-csv">
-          <Upload className="w-4 h-4" /> Import CSV
+          <Upload className="w-4 h-4" /> Import Team
         </Button>
         <Button variant="ghost" size="sm" onClick={downloadTemplate}>
-          <Download className="w-4 h-4" /> Template
+          <Download className="w-4 h-4" /> Sample Template
         </Button>
         <Button variant="outline" size="sm" onClick={exportMembers} data-testid="button-export-csv">
-          <FileDown className="w-4 h-4" /> Export CSV
+          <FileDown className="w-4 h-4" /> Export Team
         </Button>
       </div>
 
