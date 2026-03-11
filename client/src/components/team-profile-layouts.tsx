@@ -493,7 +493,7 @@ function BoldTeamLayout(props: TeamLayoutProps) {
               </AvatarFallback>
             </Avatar>
             <div className="pb-1">
-              <h1 className="text-2xl font-extrabold text-white drop-shadow-lg" data-testid="text-profile-name">{displayName}</h1>
+              <h1 className="text-2xl font-extrabold text-white drop-shadow-lg flex items-center gap-1.5" data-testid="text-profile-name">{displayName}{user.emailVerified && <BadgeCheck className="w-5 h-5 text-blue-400 shrink-0" />}</h1>
               {teamBranding.jobTitle && <p className="text-sm text-white/80 font-medium" data-testid="text-profile-jobtitle">{teamBranding.jobTitle}</p>}
             </div>
           </div>
@@ -541,7 +541,7 @@ function ElegantTeamLayout(props: TeamLayoutProps) {
                 {displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <h1 className="text-xl font-semibold tracking-wide" data-testid="text-profile-name">{displayName}</h1>
+            <h1 className="text-xl font-semibold tracking-wide flex items-center gap-1.5" data-testid="text-profile-name">{displayName}{user.emailVerified && <BadgeCheck className="w-5 h-5 text-blue-500 shrink-0" />}</h1>
             {teamBranding.jobTitle && <p className="text-xs text-muted-foreground tracking-widest uppercase mt-0.5" data-testid="text-profile-jobtitle">{teamBranding.jobTitle}</p>}
             <p className="text-[10px] text-muted-foreground mt-0.5 tracking-wider" data-testid="text-profile-username">@{user.username}</p>
             {teamBranding.companyLogo && (

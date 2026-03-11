@@ -96,6 +96,15 @@ export default function PublicMenu() {
     },
   });
 
+  const { data: whiteLabelData } = useQuery<{ whiteLabelEnabled: boolean }>({
+    queryKey: ["/api/white-label", username],
+    queryFn: async () => {
+      const res = await fetch(`/api/white-label/${username}`);
+      return res.json();
+    },
+    enabled: !!username,
+  });
+
   const sortedSections = data?.sections?.sort((a, b) => a.position - b.position) || [];
 
   // Set initial active tab
@@ -389,11 +398,13 @@ export default function PublicMenu() {
         )}
 
         {/* Footer */}
-        <div className={`text-center mt-10 ${template.textColor} opacity-40`}>
-          <a href={`/${username}`} className="text-xs hover:opacity-60 transition-opacity">
-            Powered by <span className="font-semibold">VisiCardly</span>
-          </a>
-        </div>
+        {whiteLabelData !== undefined && !whiteLabelData.whiteLabelEnabled && (
+          <div className={`text-center mt-10 ${template.textColor} opacity-40`}>
+            <a href={`/${username}`} className="text-xs hover:opacity-60 transition-opacity">
+              Powered by <span className="font-semibold">VisiCardly</span>
+            </a>
+          </div>
+        )}
       </div>
 
       {/* QR Code Dialog */}

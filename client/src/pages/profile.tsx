@@ -284,7 +284,7 @@ export default function PublicProfile(props?: any) {
           />
         )}
 
-        {!whiteLabelData?.whiteLabelEnabled && (
+        {whiteLabelData !== undefined && !whiteLabelData.whiteLabelEnabled && (
           <div className="mt-12 text-center">
             <a href="/" className="text-xs transition-opacity hover:opacity-80">
               <span className={`${template.textColor}`} style={{ opacity: 0.5 }}>

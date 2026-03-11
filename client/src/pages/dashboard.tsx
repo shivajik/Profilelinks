@@ -1412,8 +1412,11 @@ function SettingsPanel({
   };
 
   return (
-    <div className="p-4 space-y-5 overflow-y-auto max-w-2xl mx-auto">
+    <div className="p-4 space-y-5 overflow-y-auto max-w-5xl mx-auto">
       <SectionHeader title="Settings" />
+
+      {/* Top two cards: Profile + Theme side by side on lg */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
 
       {/* Profile Card */}
       <Card>
@@ -1580,28 +1583,6 @@ function SettingsPanel({
         </CardContent>
       </Card>
 
-      {/* Upgrade to Team - only show for individual users */}
-      {user.accountType !== "team" && (
-        <Card className="border-primary/20 bg-primary/5">
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-md bg-primary/10 shrink-0">
-                <Users className="w-4 h-4 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium">Upgrade to Team</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Unlock public menu links, QR codes, team members, company branding & shared templates.
-                </p>
-                <Button size="sm" className="h-7 text-xs mt-2" onClick={() => onNavigateBilling?.()}>
-                  View Team Plans
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Theme Card */}
       <Card>
         <CardHeader className="pb-3">
@@ -1636,6 +1617,30 @@ function SettingsPanel({
           </div>
         </CardContent>
       </Card>
+
+      </div>{/* end 2-col grid */}
+
+      {/* Upgrade to Team - only show for individual users */}
+      {user.accountType !== "team" && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-md bg-primary/10 shrink-0">
+                <Users className="w-4 h-4 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium">Upgrade to Team</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Unlock public menu links, QR codes, team members, company branding & shared templates.
+                </p>
+                <Button size="sm" className="h-7 text-xs mt-2" onClick={() => onNavigateBilling?.()}>
+                  View Team Plans
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Security Card */}
       <Card>
