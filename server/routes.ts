@@ -1,7 +1,9 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
-import { storage } from "./storage";
+import { storage, db } from "./storage";
+import { users } from "@shared/schema";
+import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema, createPageSchema, updatePageSchema, createBlockSchema, updateBlockSchema, changePasswordSchema, deleteAccountSchema, createTeamSchema, updateTeamSchema, updateTeamMemberSchema, createTeamInviteSchema, createTeamMemberSchema, createTeamTemplateSchema, updateTeamTemplateSchema, createContactSchema, updateContactSchema, createMenuSectionSchema, updateMenuSectionSchema, createMenuProductSchema, updateMenuProductSchema, updateMenuSettingsSchema, upsertOpeningHoursSchema, createMenuSocialSchema, updateMenuSocialSchema, updateBusinessProfileSchema, createBranchSchema, updateBranchSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
@@ -113,6 +115,155 @@ export async function registerRoutes(
   const authLimiter = rateLimit("auth", 10, 15 * 60 * 1000); // 10 attempts per 15 min
   const registerLimiter = rateLimit("register", 5, 60 * 60 * 1000); // 5 per hour
 
+  const signupOtpStore = new Map<string, { otp: string; expiresAt: number; verified: boolean; attempts: number }>();
+  const passwordResetOtpStore = new Map<string, { otp: string; expiresAt: number; verified: boolean; attempts: number }>();
+
+  app.post("/api/auth/send-signup-otp", async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) return res.status(400).json({ message: "Email is required" });
+      const normalizedEmail = email.toLowerCase();
+
+      const existing = await storage.getUserByEmail(normalizedEmail);
+      if (existing) return res.status(400).json({ message: "Email already in use" });
+
+      const lastSent = signupOtpStore.get(normalizedEmail);
+      if (lastSent && Date.now() - (lastSent.expiresAt - 10 * 60 * 1000) < 60 * 1000) {
+        return res.status(429).json({ message: "Please wait before requesting another code" });
+      }
+
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      signupOtpStore.set(normalizedEmail, { otp, expiresAt: Date.now() + 10 * 60 * 1000, verified: false, attempts: 0 });
+
+      const { sendSignupOTP } = await import("./email");
+      const sent = await sendSignupOTP({ to: normalizedEmail, otp });
+      if (!sent) return res.status(500).json({ message: "Failed to send OTP email" });
+
+      res.json({ message: "OTP sent to your email" });
+    } catch (error: any) {
+      console.error("Send signup OTP error:", error);
+      res.status(500).json({ message: "Failed to send OTP" });
+    }
+  });
+
+  app.post("/api/auth/verify-signup-otp", async (req, res) => {
+    try {
+      const { email, otp } = req.body;
+      if (!email || !otp) return res.status(400).json({ message: "Email and OTP are required" });
+      const normalizedEmail = email.toLowerCase();
+
+      const stored = signupOtpStore.get(normalizedEmail);
+      if (!stored || Date.now() > stored.expiresAt) {
+        signupOtpStore.delete(normalizedEmail);
+        return res.status(400).json({ message: "OTP expired. Please request a new one." });
+      }
+      if (stored.attempts >= 5) {
+        signupOtpStore.delete(normalizedEmail);
+        return res.status(429).json({ message: "Too many attempts. Please request a new code." });
+      }
+      if (stored.otp !== otp) {
+        signupOtpStore.set(normalizedEmail, { ...stored, attempts: stored.attempts + 1 });
+        return res.status(400).json({ message: "Invalid OTP" });
+      }
+
+      signupOtpStore.set(normalizedEmail, { ...stored, verified: true });
+      res.json({ message: "Email verified successfully" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Verification failed" });
+    }
+  });
+
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) return res.status(400).json({ message: "Email is required" });
+      const normalizedEmail = email.toLowerCase();
+
+      const user = await storage.getUserByEmail(normalizedEmail);
+      if (!user) {
+        return res.json({ message: "If this email exists, a reset code has been sent." });
+      }
+
+      const lastSent = passwordResetOtpStore.get(normalizedEmail);
+      if (lastSent && Date.now() - (lastSent.expiresAt - 10 * 60 * 1000) < 60 * 1000) {
+        return res.status(429).json({ message: "Please wait before requesting another code" });
+      }
+
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      passwordResetOtpStore.set(normalizedEmail, { otp, expiresAt: Date.now() + 10 * 60 * 1000, verified: false, attempts: 0 });
+
+      const { sendPasswordResetOTP } = await import("./email");
+      await sendPasswordResetOTP({ to: normalizedEmail, otp });
+
+      res.json({ message: "If this email exists, a reset code has been sent." });
+    } catch (error: any) {
+      console.error("Forgot password error:", error);
+      res.status(500).json({ message: "Failed to process request" });
+    }
+  });
+
+  app.post("/api/auth/verify-reset-otp", async (req, res) => {
+    try {
+      const { email, otp } = req.body;
+      if (!email || !otp) return res.status(400).json({ message: "Email and OTP are required" });
+      const normalizedEmail = email.toLowerCase();
+
+      const stored = passwordResetOtpStore.get(normalizedEmail);
+      if (!stored || Date.now() > stored.expiresAt) {
+        passwordResetOtpStore.delete(normalizedEmail);
+        return res.status(400).json({ message: "OTP expired. Please request a new one." });
+      }
+      if (stored.attempts >= 5) {
+        passwordResetOtpStore.delete(normalizedEmail);
+        return res.status(429).json({ message: "Too many attempts. Please request a new code." });
+      }
+      if (stored.otp !== otp) {
+        passwordResetOtpStore.set(normalizedEmail, { ...stored, attempts: stored.attempts + 1 });
+        return res.status(400).json({ message: "Invalid OTP" });
+      }
+
+      passwordResetOtpStore.set(normalizedEmail, { ...stored, verified: true });
+      res.json({ message: "OTP verified" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Verification failed" });
+    }
+  });
+
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const { email, otp, newPassword } = req.body;
+      if (!email || !otp || !newPassword) return res.status(400).json({ message: "All fields are required" });
+      if (newPassword.length < 6) return res.status(400).json({ message: "Password must be at least 6 characters" });
+      const normalizedEmail = email.toLowerCase();
+
+      const stored = passwordResetOtpStore.get(normalizedEmail);
+      if (!stored || Date.now() > stored.expiresAt) {
+        passwordResetOtpStore.delete(normalizedEmail);
+        return res.status(400).json({ message: "OTP expired. Please request a new one." });
+      }
+      if (stored.attempts >= 5) {
+        passwordResetOtpStore.delete(normalizedEmail);
+        return res.status(429).json({ message: "Too many attempts. Please request a new code." });
+      }
+      if (stored.otp !== otp) {
+        passwordResetOtpStore.set(normalizedEmail, { ...stored, attempts: stored.attempts + 1 });
+        return res.status(400).json({ message: "Invalid OTP" });
+      }
+
+      const user = await storage.getUserByEmail(normalizedEmail);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await storage.updateUserPassword(user.id, hashedPassword);
+      passwordResetOtpStore.delete(normalizedEmail);
+
+      res.json({ message: "Password reset successfully" });
+    } catch (error: any) {
+      console.error("Reset password error:", error);
+      res.status(500).json({ message: "Failed to reset password" });
+    }
+  });
+
   app.post("/api/auth/register", registerLimiter, async (req, res) => {
     try {
       const result = registerSchema.safeParse(req.body);
@@ -121,6 +272,11 @@ export async function registerRoutes(
       }
       const { username, password } = result.data;
       const email = result.data.email.toLowerCase();
+
+      const otpEntry = signupOtpStore.get(email);
+      if (!otpEntry || !otpEntry.verified) {
+        return res.status(400).json({ message: "Please verify your email with OTP first" });
+      }
 
       const existingEmail = await storage.getUserByEmail(email);
       if (existingEmail) {
@@ -137,9 +293,12 @@ export async function registerRoutes(
         username,
         email,
         password: hashedPassword,
+        emailVerified: true,
       });
 
       await storage.ensureHomePage(user.id);
+
+      signupOtpStore.delete(email);
 
       req.session.userId = user.id;
       const { password: _, ...safeUser } = user;
@@ -2202,7 +2361,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Invalid OTP" });
       }
       otpStore.delete(user.id);
-      await storage.updateUser(user.id, { emailVerified: true } as any);
+      await storage.updateUser(user.id, { emailVerified: true });
       res.json({ message: "Email verified successfully!" });
     } catch (error: any) {
       res.status(500).json({ message: "Verification failed" });
@@ -2220,10 +2379,96 @@ export async function registerRoutes(
       if (!limits.whiteLabelEnabled) {
         return res.status(403).json({ message: "White-label is not available on your plan. Please upgrade." });
       }
-      await storage.updateUser(req.session.userId!, { whiteLabelEnabled: enabled } as any);
+      await storage.updateUser(req.session.userId!, { whiteLabelEnabled: enabled });
       res.json({ whiteLabelEnabled: enabled });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to update white-label setting" });
+    }
+  });
+
+  // ── API Key Management (team owners only) ──────────────────────────
+  app.post("/api/auth/generate-api-key", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      if (user.accountType !== "team" || !user.teamId) {
+        return res.status(403).json({ message: "API access is only available for team owners" });
+      }
+      const role = await getTeamMemberRole(user.teamId, user.id);
+      if (role !== "owner") {
+        return res.status(403).json({ message: "Only team owners can generate API keys" });
+      }
+
+      const crypto = await import("crypto");
+      const apiKey = crypto.randomBytes(24).toString("base64url");
+
+      await storage.updateUser(user.id, { apiKey });
+      res.json({ apiKey });
+    } catch (error: any) {
+      console.error("Generate API key error:", error);
+      res.status(500).json({ message: "Failed to generate API key" });
+    }
+  });
+
+  app.delete("/api/auth/revoke-api-key", requireAuth, async (req, res) => {
+    try {
+      await storage.updateUser(req.session.userId!, { apiKey: null });
+      res.json({ message: "API key revoked" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to revoke API key" });
+    }
+  });
+
+  app.get("/api/v1/data", async (req, res) => {
+    try {
+      const authHeader = req.headers["x-api-key"] || req.headers["authorization"];
+      if (!authHeader) {
+        return res.status(401).json({ message: "API key required. Pass it via X-API-Key header." });
+      }
+      const apiKey = typeof authHeader === "string" ? authHeader.replace("Bearer ", "") : "";
+
+      const allUsers = await db.select().from(users).where(eq(users.apiKey, apiKey));
+      const owner = allUsers[0];
+      if (!owner || !owner.teamId) {
+        return res.status(401).json({ message: "Invalid API key" });
+      }
+
+      const team = await storage.getTeam(owner.teamId);
+      if (!team) return res.status(404).json({ message: "Team not found" });
+
+      const members = await storage.getTeamMembers(owner.teamId);
+      const contacts = await storage.getContacts({ teamId: owner.teamId });
+
+      const memberData = await Promise.all(members.map(async (m: any) => {
+        const memberUser = await storage.getUser(m.userId);
+        return {
+          name: memberUser?.displayName || memberUser?.username || "",
+          email: memberUser?.email || "",
+          username: memberUser?.username || "",
+          publicUrl: memberUser ? `/${memberUser.username}` : "",
+          jobTitle: m.jobTitle || "",
+          role: m.role,
+        };
+      }));
+
+      const contactData = contacts.map((c: any) => ({
+        name: c.name || "",
+        email: c.email || "",
+        phone: c.phone || "",
+        company: c.company || "",
+        jobTitle: c.jobTitle || "",
+        type: c.type || "personal",
+        notes: c.notes || "",
+      }));
+
+      res.json({
+        team: { name: team.name, slug: team.slug, size: team.size },
+        members: memberData,
+        contacts: contactData,
+      });
+    } catch (error: any) {
+      console.error("API v1 data error:", error);
+      res.status(500).json({ message: "Internal server error" });
     }
   });
 

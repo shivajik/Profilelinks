@@ -139,10 +139,10 @@ function ContactSection({ teamBranding, brandColor, normalizeUrl, cardStyle = "d
             {teamBranding.headBranch && (
               <div className={`rounded-md ${cardStyle === "bordered" ? "border-2" : "border"} border-border/50 p-2.5 space-y-1`}>
                 <div className="flex items-center gap-1.5">
-                  <Building2 className="w-3 h-3" style={{ color: brandColor }} />
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Head Office</span>
+                  <Building2 className="w-3 h-3 shrink-0" style={{ color: brandColor }} />
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Head Office</span>
                 </div>
-                <p className="text-xs font-medium">{teamBranding.headBranch.name}</p>
+                <p className="text-xs font-medium truncate">{teamBranding.headBranch.name}</p>
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <MapPin className="w-3 h-3 shrink-0" style={{ color: brandColor }} />
                   {teamBranding.headBranch.address}
@@ -158,10 +158,10 @@ function ContactSection({ teamBranding, brandColor, normalizeUrl, cardStyle = "d
             {teamBranding.memberBranch && teamBranding.memberBranch.name !== teamBranding.headBranch?.name && (
               <div className={`rounded-md ${cardStyle === "bordered" ? "border-2" : "border"} border-border/50 p-2.5 space-y-1`}>
                 <div className="flex items-center gap-1.5">
-                  <MapPin className="w-3 h-3" style={{ color: brandColor }} />
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Branch Office</span>
+                  <MapPin className="w-3 h-3 shrink-0" style={{ color: brandColor }} />
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Branch Office</span>
                 </div>
-                <p className="text-xs font-medium">{teamBranding.memberBranch.name}</p>
+                <p className="text-xs font-medium truncate">{teamBranding.memberBranch.name}</p>
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <MapPin className="w-3 h-3 shrink-0" style={{ color: brandColor }} />
                   {teamBranding.memberBranch.address}

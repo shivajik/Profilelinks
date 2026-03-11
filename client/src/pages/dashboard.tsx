@@ -80,6 +80,8 @@ import {
   Lock,
   Briefcase,
   BadgeCheck,
+  Key,
+  EyeOff,
 } from "lucide-react";
 import {
   Dialog,
@@ -1704,6 +1706,9 @@ function SettingsPanel({
       {/* White Label */}
       <WhiteLabelCard onNavigateBilling={onNavigateBilling} />
 
+      {/* API Access */}
+      {user?.accountType === "team" && <ApiAccessCard />}
+
       {/* Account Actions */}
       <div className="flex flex-col sm:flex-row gap-2 pt-1 pb-4">
         <Button variant="outline" className="flex-1 gap-2 h-9 text-sm" onClick={onLogout} data-testid="button-settings-logout">
@@ -1927,6 +1932,132 @@ function WhiteLabelCard({ onNavigateBilling }: { onNavigateBilling?: () => void 
               Upgrade
             </Button>
           </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ApiAccessCard() {
+  const { toast } = useToast();
+  const { data: user } = useQuery<any>({ queryKey: ["/api/auth/me"] });
+  const { data: teamData } = useQuery<any>({
+    queryKey: ["/api/teams", user?.teamId],
+    queryFn: async () => {
+      if (!user?.teamId) return null;
+      const res = await fetch(`/api/teams/${user.teamId}`, { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!user?.teamId,
+  });
+  const [showKey, setShowKey] = useState(false);
+  const [copiedKey, setCopiedKey] = useState(false);
+  const [copiedCurl, setCopiedCurl] = useState(false);
+
+  const generateMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/auth/generate-api-key");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      toast({ title: "API key generated!" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("DELETE", "/api/auth/revoke-api-key");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      toast({ title: "API key revoked" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const apiKey = user?.apiKey;
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+  const curlExample = `curl -H "X-API-Key: ${apiKey || 'YOUR_API_KEY'}" ${baseUrl}/api/v1/data`;
+
+  const copyKey = () => {
+    if (apiKey) {
+      navigator.clipboard.writeText(apiKey);
+      setCopiedKey(true);
+      setTimeout(() => setCopiedKey(false), 2000);
+    }
+  };
+
+  const copyCurl = () => {
+    navigator.clipboard.writeText(curlExample);
+    setCopiedCurl(true);
+    setTimeout(() => setCopiedCurl(false), 2000);
+  };
+
+  if (!teamData || teamData.ownerId !== user?.id) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Key className="w-4 h-4" /> API Access
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">
+          Generate an API key to access your team's contacts and member information programmatically.
+        </p>
+
+        {apiKey ? (
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">API Key</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  readOnly
+                  value={showKey ? apiKey : "••••••••••••••••••••••••••••••••"}
+                  className="text-xs font-mono"
+                  data-testid="input-api-key"
+                />
+                <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setShowKey(!showKey)} data-testid="button-toggle-api-key">
+                  {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </Button>
+                <Button variant="ghost" size="icon" className="shrink-0" onClick={copyKey} data-testid="button-copy-api-key">
+                  {copiedKey ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">cURL Example</Label>
+              <div className="relative">
+                <pre className="text-[10px] bg-muted p-3 rounded-md overflow-x-auto font-mono whitespace-pre-wrap break-all" data-testid="text-curl-example">
+                  {curlExample}
+                </pre>
+                <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={copyCurl} data-testid="button-copy-curl">
+                  {copiedCurl ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+                </Button>
+              </div>
+            </div>
+
+            <p className="text-[10px] text-muted-foreground">
+              This API returns your team's contact list and team member details (name, email, public URL).
+            </p>
+
+            <Button variant="destructive" size="sm" className="w-full" onClick={() => revokeMutation.mutate()} disabled={revokeMutation.isPending} data-testid="button-revoke-api-key">
+              {revokeMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Revoke API Key"}
+            </Button>
+          </div>
+        ) : (
+          <Button className="w-full" size="sm" onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending} data-testid="button-generate-api-key">
+            {generateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Generate API Key"}
+          </Button>
         )}
       </CardContent>
     </Card>
@@ -2160,6 +2291,8 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
   const { toast } = useToast();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const { data: currentUser } = useQuery<any>({ queryKey: ["/api/auth/me"] });
+  const isWhiteLabel = currentUser?.whiteLabelEnabled ?? false;
 
   const { data: savedQRCodes = [], isLoading: qrLoading } = useQuery<SavedQRCode[]>({
     queryKey: ["/api/qrcodes", { type: "profile" }],
@@ -2274,7 +2407,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
     
     img.onload = () => {
       const padding = 48;
-      const brandingHeight = 60;
+      const brandingHeight = isWhiteLabel ? 0 : 60;
       const scanTextHeight = (qrConfig?.scanText || (qrConfig && ["badge", "modern", "ticket"].includes(qrConfig.style))) ? 50 : 0;
       const bw = qrConfig?.borderWidth || 4;
       const br = qrConfig?.borderRadius || 12;
@@ -2407,10 +2540,12 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
           ctx.fillText("SCAN ME", totalWidth / 2, boxH + 38);
         }
         
-        ctx.fillStyle = "#9ca3af";
-        ctx.font = "500 22px Arial, sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText("Powered by VisiCardly", totalWidth / 2, totalHeight - 20);
+        if (!isWhiteLabel) {
+          ctx.fillStyle = "#9ca3af";
+          ctx.font = "500 22px Arial, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("Powered by VisiCardly", totalWidth / 2, totalHeight - 20);
+        }
       }
       
       const pngUrl = canvas.toDataURL("image/png");
@@ -5921,6 +6056,8 @@ function TemplateCardPreview({ data, themeColor }: { data: TemplateData; themeCo
 
 function URLQRGeneratorPanel({ username }: { username: string }) {
   const { toast } = useToast();
+  const { data: currentUser } = useQuery<any>({ queryKey: ["/api/auth/me"] });
+  const isWhiteLabel = currentUser?.whiteLabelEnabled ?? false;
   const [url, setUrl] = useState("");
   const [qrStyle, setQrStyle] = useState<QRStyle>("square");
   const [qrColor, setQrColor] = useState("#6C5CE7");
@@ -6001,7 +6138,7 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
     const img = new Image();
     img.onload = () => {
       const padding = 48;
-      const brandingHeight = 60;
+      const brandingHeight = isWhiteLabel ? 0 : 60;
       const scanH = showScanText ? 50 : 0;
       const bw = borderWidth;
       const br = borderRadius;
@@ -6125,10 +6262,12 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
           ctx.fillText("SCAN ME", totalWidth / 2, boxH + 38);
         }
 
-        ctx.fillStyle = "#9ca3af";
-        ctx.font = "500 22px Arial, sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText("Powered by VisiCardly", totalWidth / 2, totalHeight - 20);
+        if (!isWhiteLabel) {
+          ctx.fillStyle = "#9ca3af";
+          ctx.font = "500 22px Arial, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("Powered by VisiCardly", totalWidth / 2, totalHeight - 20);
+        }
       }
       const pngUrl = canvas.toDataURL("image/png");
       const a = document.createElement("a");
@@ -6247,7 +6386,7 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
                 </div>
               )}
             </div>
-            <p className="text-xs text-muted-foreground text-center">Powered by VisiCardly</p>
+            {!isWhiteLabel && <p className="text-xs text-muted-foreground text-center">Powered by VisiCardly</p>}
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={downloadQR}>
                 <Download className="w-4 h-4 mr-1" /> Download

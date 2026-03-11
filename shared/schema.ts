@@ -32,6 +32,7 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
   emailVerified: boolean("email_verified").notNull().default(false),
   whiteLabelEnabled: boolean("white_label_enabled").notNull().default(false),
+  apiKey: text("api_key"),
 });
 
 // ── Menu Social Links ──────────────────────────────────────────────────────
