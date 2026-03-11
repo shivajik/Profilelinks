@@ -563,49 +563,55 @@ function ForgotPasswordFlow({
   const [loading, setLoading] = useState(false);
   const { countdown, startTimer, canResend } = useResendTimer();
 
-  const sendForgotOtp = async () => {
-    const res = await fetch("/api/auth/forgot-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.message || "Failed to send reset code");
-    }
-    return data;
-  };
-
-  const handleEmailSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendCode = async () => {
+    if (!email || loading) return;
     setLoading(true);
     try {
-      await sendForgotOtp();
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: "Error", description: data.message || "Failed to send reset code", variant: "destructive" });
+        return;
+      }
       startTimer();
       setStep("otp");
       toast({ title: "Code sent", description: "Check your email for the reset code." });
     } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: "Error", description: e.message || "Something went wrong", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
   const handleResendOtp = async () => {
+    if (loading) return;
     setLoading(true);
     try {
-      await sendForgotOtp();
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: "Error", description: data.message || "Failed to resend code", variant: "destructive" });
+        return;
+      }
       startTimer();
       toast({ title: "Code resent", description: "Check your email for the new code." });
     } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: "Error", description: e.message || "Something went wrong", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
   const handleOtpContinue = async () => {
-    if (otp.length !== 6) return;
+    if (otp.length !== 6 || loading) return;
     setLoading(true);
     try {
       const res = await fetch("/api/auth/verify-reset-otp", {
@@ -620,14 +626,14 @@ function ForgotPasswordFlow({
       }
       setStep("reset");
     } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: "Error", description: e.message || "Something went wrong", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResetSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleResetSubmit = async () => {
+    if (loading) return;
     if (newPassword.length < 6) {
       toast({ title: "Password too short", description: "Password must be at least 6 characters.", variant: "destructive" });
       return;
@@ -650,7 +656,7 @@ function ForgotPasswordFlow({
       }
       onSuccess();
     } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: "Error", description: e.message || "Something went wrong", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -682,7 +688,7 @@ function ForgotPasswordFlow({
               Enter your email address and we'll send you a code to reset your password.
             </p>
           </div>
-          <form onSubmit={handleEmailSubmit} className="space-y-4">
+          <div className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="forgot-email" className="text-sm font-medium">Email</Label>
               <Input
@@ -691,15 +697,14 @@ function ForgotPasswordFlow({
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                required
                 data-testid="input-forgot-email"
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading} data-testid="button-send-reset-code">
+            <Button className="w-full" disabled={loading || !email} onClick={handleSendCode} data-testid="button-send-reset-code">
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}
               Send Reset Code
             </Button>
-          </form>
+          </div>
         </>
       )}
 
@@ -749,7 +754,7 @@ function ForgotPasswordFlow({
               Choose a new password for your account.
             </p>
           </div>
-          <form onSubmit={handleResetSubmit} className="space-y-4">
+          <div className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="new-password" className="text-sm font-medium">New Password</Label>
               <div className="relative">
@@ -759,8 +764,6 @@ function ForgotPasswordFlow({
                   placeholder="At least 6 characters"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                  minLength={6}
                   data-testid="input-new-password"
                 />
                 <button
@@ -782,8 +785,6 @@ function ForgotPasswordFlow({
                   placeholder="Confirm your password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  minLength={6}
                   data-testid="input-confirm-password"
                 />
                 <button
@@ -796,11 +797,11 @@ function ForgotPasswordFlow({
                 </button>
               </div>
             </div>
-            <Button type="submit" className="w-full" disabled={loading} data-testid="button-reset-password">
+            <Button className="w-full" disabled={loading || !newPassword || !confirmPassword} onClick={handleResetSubmit} data-testid="button-reset-password">
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}
               Reset Password
             </Button>
-          </form>
+          </div>
         </>
       )}
     </div>
