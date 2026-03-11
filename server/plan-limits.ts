@@ -13,6 +13,7 @@ export interface PlanLimits {
   analyticsEnabled: boolean;
   customTemplatesEnabled: boolean;
   menuBuilderEnabled: boolean;
+  whiteLabelEnabled: boolean;
   currentLinks: number;
   currentPages: number;
   currentBlocks: number;
@@ -32,6 +33,7 @@ const FREE_LIMITS = {
   analyticsEnabled: false,
   customTemplatesEnabled: false,
   menuBuilderEnabled: false,
+  whiteLabelEnabled: false,
 };
 
 // Simple in-memory cache to avoid redundant DB queries within same request cycle
@@ -58,6 +60,7 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
       analyticsEnabled: pricingPlans.analyticsEnabled,
       customTemplatesEnabled: pricingPlans.customTemplatesEnabled,
       menuBuilderEnabled: pricingPlans.menuBuilderEnabled,
+      whiteLabelEnabled: pricingPlans.whiteLabelEnabled,
     })
     .from(userSubscriptions)
     .innerJoin(pricingPlans, eq(userSubscriptions.planId, pricingPlans.id))
@@ -70,6 +73,7 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
   // If user has no plan, check if they're a team member and inherit owner's analytics/QR
   let ownerAnalytics = false;
   let ownerQrCode = false;
+  let ownerWhiteLabel = false;
   if (!plan) {
     // Check if user is a team member
     const memberRows = await db
@@ -85,6 +89,7 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
           .select({
             analyticsEnabled: pricingPlans.analyticsEnabled,
             qrCodeEnabled: pricingPlans.qrCodeEnabled,
+            whiteLabelEnabled: pricingPlans.whiteLabelEnabled,
           })
           .from(userSubscriptions)
           .innerJoin(pricingPlans, eq(userSubscriptions.planId, pricingPlans.id))
@@ -93,6 +98,7 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
         if (ownerSubs.length > 0) {
           ownerAnalytics = ownerSubs[0].analyticsEnabled ?? false;
           ownerQrCode = ownerSubs[0].qrCodeEnabled ?? false;
+          ownerWhiteLabel = ownerSubs[0].whiteLabelEnabled ?? false;
         }
       }
     }
@@ -130,6 +136,7 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
     analyticsEnabled: (limits.analyticsEnabled ?? FREE_LIMITS.analyticsEnabled) || ownerAnalytics,
     customTemplatesEnabled: limits.customTemplatesEnabled ?? FREE_LIMITS.customTemplatesEnabled,
     menuBuilderEnabled: limits.menuBuilderEnabled ?? FREE_LIMITS.menuBuilderEnabled,
+    whiteLabelEnabled: (limits.whiteLabelEnabled ?? FREE_LIMITS.whiteLabelEnabled) || ownerWhiteLabel,
     currentLinks: Number(linksResult[0]?.count ?? 0),
     currentPages: Number(pagesResult[0]?.count ?? 0),
     currentBlocks: Number(blocksResult[0]?.count ?? 0),

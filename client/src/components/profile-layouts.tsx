@@ -1,6 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, ChevronDown } from "lucide-react";
+import { ExternalLink, ChevronDown, BadgeCheck } from "lucide-react";
 import { SocialIcon } from "@/components/social-icon";
 import { getPlatform } from "@/lib/social-platforms";
 import { getAvatarClass, getButtonClass } from "@/lib/templates";
@@ -188,7 +188,7 @@ function ClassicLayout(props: PersonalLayoutProps) {
             {displayName.charAt(0).toUpperCase()}
           </AvatarFallback>
         </Avatar>
-        <h1 className={`text-2xl font-bold mb-1 ${template.textColor}`} data-testid="text-profile-name">{displayName}</h1>
+        <h1 className={`text-2xl font-bold mb-1 ${template.textColor} flex items-center gap-1.5 justify-center`} data-testid="text-profile-name">{displayName}{user.emailVerified && <BadgeCheck className="w-5 h-5 text-blue-500 shrink-0" />}</h1>
         <p className={`text-sm mb-2 ${template.textColor} opacity-70`} data-testid="text-profile-username">@{user.username}</p>
         {user.bio && <p className={`text-sm max-w-sm leading-relaxed ${template.textColor} opacity-80`} data-testid="text-profile-bio">{user.bio}</p>}
         <SocialRow socials={activeSocials} template={template} normalizeUrl={normalizeUrl} className="justify-center mt-4" />
@@ -215,7 +215,7 @@ function ModernLayout(props: PersonalLayoutProps) {
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <h1 className={`text-xl font-bold ${template.cardTextColor}`} data-testid="text-profile-name">{displayName}</h1>
+              <h1 className={`text-xl font-bold ${template.cardTextColor} flex items-center gap-1.5`} data-testid="text-profile-name">{displayName}{user.emailVerified && <BadgeCheck className="w-4 h-4 text-blue-500 shrink-0" />}</h1>
               <p className={`text-xs mt-0.5 ${template.cardTextColor} opacity-60`} data-testid="text-profile-username">@{user.username}</p>
               {user.bio && <p className={`text-sm mt-2 leading-relaxed ${template.cardTextColor} opacity-80`} data-testid="text-profile-bio">{user.bio}</p>}
               <SocialRow socials={activeSocials} template={template} normalizeUrl={normalizeUrl} className="mt-3" />
@@ -333,7 +333,7 @@ function HeroLayout(props: PersonalLayoutProps) {
                   {displayName.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <h1 className={`text-xl font-bold ${template.cardTextColor}`} data-testid="text-profile-name">{displayName}</h1>
+              <h1 className={`text-xl font-bold ${template.cardTextColor} flex items-center gap-1.5`} data-testid="text-profile-name">{displayName}{user.emailVerified && <BadgeCheck className="w-4 h-4 text-blue-500 shrink-0" />}</h1>
               <p className={`text-xs mt-0.5 ${template.cardTextColor} opacity-50`} data-testid="text-profile-username">@{user.username}</p>
               {user.bio && <p className={`text-sm mt-2 max-w-xs leading-relaxed ${template.cardTextColor} opacity-75`} data-testid="text-profile-bio">{user.bio}</p>}
               <SocialRow socials={activeSocials} template={template} normalizeUrl={normalizeUrl} className="justify-center mt-3" />

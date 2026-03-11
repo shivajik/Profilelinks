@@ -170,9 +170,12 @@ pool.query(`
 
   ALTER TABLE IF EXISTS team_members ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'activated';
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS must_change_password boolean NOT NULL DEFAULT false;
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS email_verified boolean NOT NULL DEFAULT false;
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS white_label_enabled boolean NOT NULL DEFAULT false;
   ALTER TABLE IF EXISTS teams ADD COLUMN IF NOT EXISTS slug text;
   ALTER TABLE IF EXISTS team_members ADD COLUMN IF NOT EXISTS branch_id varchar;
   ALTER TABLE IF EXISTS team_invites ADD COLUMN IF NOT EXISTS branch_id varchar;
+  ALTER TABLE IF EXISTS pricing_plans ADD COLUMN IF NOT EXISTS white_label_enabled boolean NOT NULL DEFAULT false;
 
   CREATE TABLE IF NOT EXISTS team_branches (
     id varchar PRIMARY KEY DEFAULT gen_random_uuid(),

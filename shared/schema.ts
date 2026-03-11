@@ -30,6 +30,8 @@ export const users = pgTable("users", {
   menuWhatsapp: text("menu_whatsapp"),
   menuWebsite: text("menu_website"),
   createdAt: timestamp("created_at").defaultNow(),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  whiteLabelEnabled: boolean("white_label_enabled").notNull().default(false),
 });
 
 // ── Menu Social Links ──────────────────────────────────────────────────────
@@ -600,6 +602,7 @@ export const pricingPlans = pgTable("pricing_plans", {
   analyticsEnabled: boolean("analytics_enabled").notNull().default(false),
   customTemplatesEnabled: boolean("custom_templates_enabled").notNull().default(false),
   menuBuilderEnabled: boolean("menu_builder_enabled").notNull().default(false),
+  whiteLabelEnabled: boolean("white_label_enabled").notNull().default(false),
   planType: text("plan_type").notNull().default("individual"), // "individual" | "team"
   isActive: boolean("is_active").notNull().default(true),
   isFeatured: boolean("is_featured").notNull().default(false),
@@ -662,6 +665,7 @@ export const createPricingPlanSchema = z.object({
   analyticsEnabled: z.boolean().default(false),
   customTemplatesEnabled: z.boolean().default(false),
   menuBuilderEnabled: z.boolean().default(false),
+  whiteLabelEnabled: z.boolean().default(false),
   planType: z.enum(["individual", "team"]).default("individual"),
   isActive: z.boolean().default(true),
   isFeatured: z.boolean().default(false),
@@ -683,6 +687,7 @@ export const updatePricingPlanSchema = z.object({
   analyticsEnabled: z.boolean().optional(),
   customTemplatesEnabled: z.boolean().optional(),
   menuBuilderEnabled: z.boolean().optional(),
+  whiteLabelEnabled: z.boolean().optional(),
   planType: z.enum(["individual", "team"]).optional(),
   isActive: z.boolean().optional(),
   isFeatured: z.boolean().optional(),

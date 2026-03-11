@@ -1747,6 +1747,22 @@ export async function registerRoutes(
       } else {
         contactData.ownerId = user.id;
       }
+
+      // Duplicate check: skip if same email AND phone already exist
+      if (contactData.email || contactData.phone) {
+        const existingContacts = await storage.getContacts(
+          contactData.teamId ? { teamId: contactData.teamId } : { ownerId: user.id }
+        );
+        const isDuplicate = existingContacts.some((c: any) => {
+          const emailMatch = contactData.email && c.email && c.email.toLowerCase() === contactData.email.toLowerCase();
+          const phoneMatch = contactData.phone && c.phone && c.phone.replace(/\s/g, "") === contactData.phone.replace(/\s/g, "");
+          return emailMatch && phoneMatch;
+        });
+        if (isDuplicate) {
+          return res.status(409).json({ message: "A contact with this email and phone already exists" });
+        }
+      }
+
       const contact = await storage.createContact(contactData);
       res.status(201).json(contact);
     } catch (error: any) {
@@ -1880,6 +1896,7 @@ export async function registerRoutes(
       ]);
 
       const { password: _, email: __, ...publicUser } = user;
+      (publicUser as any).emailVerified = user.emailVerified || false;
 
       const defaultTemplate = templates.find((t) => t.isDefault) || templates[0];
       const tData: any = defaultTemplate?.templateData || {};
@@ -1991,6 +2008,7 @@ export async function registerRoutes(
       ]);
 
       const { password: _, email: __, ...publicUser } = user;
+      (publicUser as any).emailVerified = user.emailVerified || false;
 
       let teamBranding: {
         companyLogo?: string;
@@ -2116,6 +2134,119 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Analytics fetch error:", error);
       res.status(500).json({ message: "Failed to load analytics" });
+    }
+  });
+
+  // ── Team owner can view member analytics ──────────────────────────────
+  app.get("/api/analytics/member/:userId", requireAuth, async (req, res) => {
+    try {
+      const currentUser = await storage.getUser(req.session.userId!);
+      if (!currentUser || !currentUser.teamId) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      const role = await getTeamMemberRole(currentUser.teamId, req.session.userId!);
+      if (!role || !["owner", "admin"].includes(role)) {
+        return res.status(403).json({ message: "Only team owners/admins can view member analytics" });
+      }
+      // Verify the target user is in the same team
+      const targetMember = await storage.getTeamMemberByUserId(currentUser.teamId, req.params.userId as string);
+      if (!targetMember) {
+        return res.status(404).json({ message: "Member not found in your team" });
+      }
+      const summary = await storage.getAnalyticsSummary(req.params.userId as string);
+      res.json(summary);
+    } catch (error: any) {
+      console.error("Member analytics error:", error);
+      res.status(500).json({ message: "Failed to load member analytics" });
+    }
+  });
+
+  // ── Email OTP for verified badge ──────────────────────────────────────
+  const otpStore = new Map<string, { otp: string; expiresAt: number }>();
+
+  app.post("/api/auth/send-verification-otp", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      if (user.emailVerified) return res.status(400).json({ message: "Email already verified" });
+
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      otpStore.set(user.id, { otp, expiresAt: Date.now() + 10 * 60 * 1000 }); // 10 min
+
+      const { sendVerificationOTP } = await import("./email");
+      const sent = await sendVerificationOTP({ to: user.email, otp });
+      if (!sent) {
+        return res.status(500).json({ message: "Failed to send OTP email" });
+      }
+      res.json({ message: "OTP sent to your email" });
+    } catch (error: any) {
+      console.error("Send OTP error:", error);
+      res.status(500).json({ message: "Failed to send OTP" });
+    }
+  });
+
+  app.post("/api/auth/verify-email-otp", requireAuth, async (req, res) => {
+    try {
+      const { otp } = req.body;
+      if (!otp) return res.status(400).json({ message: "OTP is required" });
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      if (user.emailVerified) return res.status(400).json({ message: "Already verified" });
+
+      const stored = otpStore.get(user.id);
+      if (!stored || Date.now() > stored.expiresAt) {
+        otpStore.delete(user.id);
+        return res.status(400).json({ message: "OTP expired. Please request a new one." });
+      }
+      if (stored.otp !== otp) {
+        return res.status(400).json({ message: "Invalid OTP" });
+      }
+      otpStore.delete(user.id);
+      await storage.updateUser(user.id, { emailVerified: true } as any);
+      res.json({ message: "Email verified successfully!" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Verification failed" });
+    }
+  });
+
+  // ── White-label setting toggle ──────────────────────────────────────
+  app.patch("/api/auth/white-label", requireAuth, async (req, res) => {
+    try {
+      const { enabled } = req.body;
+      if (typeof enabled !== "boolean") return res.status(400).json({ message: "Invalid value" });
+
+      // Check plan limits
+      const limits = await getUserPlanLimits(req.session.userId!);
+      if (!limits.whiteLabelEnabled) {
+        return res.status(403).json({ message: "White-label is not available on your plan. Please upgrade." });
+      }
+      await storage.updateUser(req.session.userId!, { whiteLabelEnabled: enabled } as any);
+      res.json({ whiteLabelEnabled: enabled });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to update white-label setting" });
+    }
+  });
+
+  // ── Check white-label status for public pages ──────────────────────
+  app.get("/api/white-label/:username", async (req, res) => {
+    try {
+      const user = await storage.getUserByUsername(req.params.username as string);
+      if (!user) return res.json({ whiteLabelEnabled: false });
+
+      // Check user's own setting first
+      if (user.whiteLabelEnabled) return res.json({ whiteLabelEnabled: true });
+
+      // Check if team owner has white label enabled
+      if (user.teamId) {
+        const team = await storage.getTeam(user.teamId);
+        if (team) {
+          const owner = await storage.getUser(team.ownerId);
+          if (owner?.whiteLabelEnabled) return res.json({ whiteLabelEnabled: true });
+        }
+      }
+      res.json({ whiteLabelEnabled: false });
+    } catch {
+      res.json({ whiteLabelEnabled: false });
     }
   });
 

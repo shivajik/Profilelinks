@@ -12,6 +12,7 @@ export interface PlanLimits {
   analyticsEnabled: boolean;
   customTemplatesEnabled: boolean;
   menuBuilderEnabled: boolean;
+  whiteLabelEnabled: boolean;
   currentLinks: number;
   currentPages: number;
   currentBlocks: number;

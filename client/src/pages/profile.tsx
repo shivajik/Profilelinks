@@ -98,6 +98,16 @@ export default function PublicProfile(props?: any) {
     placeholderData: keepPreviousData,
   });
 
+  // Check white-label status
+  const { data: whiteLabelData } = useQuery<{ whiteLabelEnabled: boolean }>({
+    queryKey: ["/api/white-label", username],
+    queryFn: async () => {
+      const res = await fetch(`/api/white-label/${username}`);
+      return res.json();
+    },
+    enabled: !!username,
+  });
+
   const viewTracked = useRef<string | null>(null);
   const currentPage = data?.currentPage ?? null;
 
@@ -274,15 +284,17 @@ export default function PublicProfile(props?: any) {
           />
         )}
 
-        <div className="mt-12 text-center">
-          <a href="/" className="text-xs transition-opacity hover:opacity-80">
-            <span className={`${template.textColor}`} style={{ opacity: 0.5 }}>
-              Powered by{" "}
-            </span>
-            <span style={{ color: template.accent, opacity: 0.6 }}>Visi</span>
-            <span className={`${template.textColor}`} style={{ opacity: 0.4 }}>Cardly</span>
-          </a>
-        </div>
+        {!whiteLabelData?.whiteLabelEnabled && (
+          <div className="mt-12 text-center">
+            <a href="/" className="text-xs transition-opacity hover:opacity-80">
+              <span className={`${template.textColor}`} style={{ opacity: 0.5 }}>
+                Powered by{" "}
+              </span>
+              <span style={{ color: template.accent, opacity: 0.6 }}>Visi</span>
+              <span className={`${template.textColor}`} style={{ opacity: 0.4 }}>Cardly</span>
+            </a>
+          </div>
+        )}
       </div>
 
       <Dialog open={contactOpen} onOpenChange={setContactOpen}>

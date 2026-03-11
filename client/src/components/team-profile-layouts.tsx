@@ -1,6 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, ChevronDown, Phone, Mail, Globe, MapPin, Building2, FileText, Download, ImageIcon } from "lucide-react";
+import { ExternalLink, ChevronDown, Phone, Mail, Globe, MapPin, Building2, FileText, Download, ImageIcon, BadgeCheck } from "lucide-react";
 import { SocialIcon } from "@/components/social-icon";
 import { getPlatform } from "@/lib/social-platforms";
 import { getAvatarClass, getButtonClass } from "@/lib/templates";
@@ -46,6 +46,7 @@ interface TeamLayoutProps {
     username: string;
     profileImage: string | null;
     bio: string | null;
+    emailVerified?: boolean;
   };
   template: Template;
   teamBranding: TeamBranding;
@@ -386,7 +387,7 @@ function ClassicTeamLayout(props: TeamLayoutProps) {
             <CompanyBadge teamBranding={teamBranding} brandColor={brandColor} />
           </div>
           <div className="space-y-1 mb-4">
-            <h1 className="text-xl font-bold text-foreground" data-testid="text-profile-name">{displayName}</h1>
+            <h1 className="text-xl font-bold text-foreground flex items-center gap-1.5" data-testid="text-profile-name">{displayName}{user.emailVerified && <BadgeCheck className="w-5 h-5 text-blue-500 shrink-0" />}</h1>
             {teamBranding.jobTitle && <p className="text-sm text-muted-foreground" data-testid="text-profile-jobtitle">{teamBranding.jobTitle}</p>}
             {teamBranding.memberEmail ? (
               <p className="text-sm font-medium" style={{ color: brandColor }} data-testid="text-profile-company">{teamBranding.memberEmail}</p>
@@ -423,7 +424,7 @@ function ModernTeamLayout(props: TeamLayoutProps) {
                 {displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <h1 className="text-lg font-bold text-foreground" data-testid="text-profile-name">{displayName}</h1>
+            <h1 className="text-lg font-bold text-foreground flex items-center gap-1.5" data-testid="text-profile-name">{displayName}{user.emailVerified && <BadgeCheck className="w-4 h-4 text-blue-500 shrink-0" />}</h1>
             {teamBranding.jobTitle && <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-profile-jobtitle">{teamBranding.jobTitle}</p>}
             <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-profile-username">@{user.username}</p>
             {teamBranding.companyLogo && (
@@ -571,7 +572,7 @@ function HeroTeamLayout(props: TeamLayoutProps) {
                 {displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <h1 className="text-xl font-bold" data-testid="text-profile-name">{displayName}</h1>
+            <h1 className="text-xl font-bold flex items-center gap-1.5" data-testid="text-profile-name">{displayName}{user.emailVerified && <BadgeCheck className="w-5 h-5 text-blue-500 shrink-0" />}</h1>
             {teamBranding.jobTitle && <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-profile-jobtitle">{teamBranding.jobTitle}</p>}
             <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-profile-username">@{user.username}</p>
             {teamBranding.companyLogo && (
