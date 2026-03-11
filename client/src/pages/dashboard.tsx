@@ -1774,6 +1774,13 @@ function EmailVerificationCard({ user }: { user: { id: string; email: string; em
   const { toast } = useToast();
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
+
+  useEffect(() => {
+    if (resendTimer <= 0) return;
+    const interval = setInterval(() => setResendTimer((t) => t - 1), 1000);
+    return () => clearInterval(interval);
+  }, [resendTimer]);
 
   const sendOtpMutation = useMutation({
     mutationFn: async () => {
@@ -1781,7 +1788,8 @@ function EmailVerificationCard({ user }: { user: { id: string; email: string; em
     },
     onSuccess: () => {
       setOtpSent(true);
-      toast({ title: "OTP sent!", description: "Check your email for the verification code." });
+      setResendTimer(60);
+      toast({ title: "OTP sent!", description: `Verification code sent to ${user.email}` });
     },
     onError: (err: any) => {
       toast({ title: "Failed to send OTP", description: err.message, variant: "destructive" });
@@ -1841,6 +1849,9 @@ function EmailVerificationCard({ user }: { user: { id: string; email: string; em
           </Button>
         ) : (
           <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Verification code sent to <span className="font-medium text-foreground">{user.email}</span>
+            </p>
             <div className="flex items-center gap-2">
               <Input
                 value={otp}
@@ -1857,8 +1868,8 @@ function EmailVerificationCard({ user }: { user: { id: string; email: string; em
                 {verifyOtpMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Verify"}
               </Button>
             </div>
-            <Button variant="ghost" size="sm" className="text-xs" onClick={() => sendOtpMutation.mutate()} disabled={sendOtpMutation.isPending}>
-              Resend Code
+            <Button variant="ghost" size="sm" className="text-xs" onClick={() => sendOtpMutation.mutate()} disabled={sendOtpMutation.isPending || resendTimer > 0}>
+              {resendTimer > 0 ? `Resend Code (${resendTimer}s)` : "Resend Code"}
             </Button>
           </div>
         )}
@@ -4199,6 +4210,7 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
   const [limitMessage, setLimitMessage] = useState("");
   const [activeTab, setActiveTab] = useState<"members" | "invitations">("members");
+  const [analyticsMember, setAnalyticsMember] = useState<any>(null);
 
   const { data: members = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/teams", teamId, "members"],
@@ -4498,6 +4510,16 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
                         title="Edit member"
                       >
                         <Pencil className="w-4 h-4" />
+                      </Button>
+                    )}
+                    {isAdmin && member.userId && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setAnalyticsMember(member)}
+                        title="View analytics"
+                      >
+                        <BarChart3 className="w-4 h-4" />
                       </Button>
                     )}
                     {isAdmin && member.role !== "owner" && (
@@ -4901,12 +4923,117 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
 
       <EditMemberDialog member={editMember} isOpen={!!editMember} onClose={() => setEditMember(null)} teamId={teamId} isAdmin={isAdmin} isSelf={editMember?.userId === currentUserId} toast={toast} />
 
+      {/* Member Analytics Dialog */}
+      <Dialog open={!!analyticsMember} onOpenChange={(v) => { if (!v) setAnalyticsMember(null); }}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4" />
+              Analytics — {analyticsMember?.businessName || analyticsMember?.user?.displayName || "Member"}
+            </DialogTitle>
+          </DialogHeader>
+          {analyticsMember && <MemberAnalyticsContent userId={analyticsMember.userId} />}
+        </DialogContent>
+      </Dialog>
+
       <LimitReachedDialog
         open={limitDialogOpen}
         onOpenChange={setLimitDialogOpen}
         message={limitMessage}
         onUpgrade={() => navigate("/dashboard?section=billing")}
       />
+    </div>
+  );
+}
+
+function MemberAnalyticsContent({ userId }: { userId: string }) {
+  const { data, isLoading } = useQuery<any>({
+    queryKey: ["/api/analytics/member", userId],
+    queryFn: async () => {
+      const res = await fetch(`/api/analytics/member/${userId}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch analytics");
+      return res.json();
+    },
+  });
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>;
+  }
+
+  if (!data) {
+    return <p className="text-sm text-muted-foreground text-center py-8">No analytics data available.</p>;
+  }
+
+  const totalViews = data.totalViews ?? 0;
+  const totalClicks = data.totalClicks ?? 0;
+  const ctr = totalViews > 0 ? ((totalClicks / totalViews) * 100).toFixed(1) : "0.0";
+
+  const allDays: string[] = [];
+  const today = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    allDays.push(d.toISOString().slice(0, 10));
+  }
+
+  const viewsMap = new Map(data.viewsByDay?.map((d: any) => [d.date, d.count]) || []);
+  const clicksMap = new Map(data.clicksByDay?.map((d: any) => [d.date, d.count]) || []);
+  const chartData = allDays.map((date) => ({
+    date,
+    label: new Date(date + "T00:00:00").toLocaleDateString("en", { weekday: "short" }),
+    fullDate: new Date(date + "T00:00:00").toLocaleDateString("en", { month: "short", day: "numeric" }),
+    views: (viewsMap.get(date) as number) || 0,
+    clicks: (clicksMap.get(date) as number) || 0,
+  }));
+  const chartMax = Math.max(...chartData.map((d) => Math.max(d.views, d.clicks)), 1);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-2">
+        <Card><CardContent className="p-3 flex flex-col items-center text-center">
+          <Eye className="w-4 h-4 text-primary mb-1" />
+          <p className="text-xl font-bold">{totalViews}</p>
+          <p className="text-[10px] text-muted-foreground">Views</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-3 flex flex-col items-center text-center">
+          <MousePointerClick className="w-4 h-4 text-primary mb-1" />
+          <p className="text-xl font-bold">{totalClicks}</p>
+          <p className="text-[10px] text-muted-foreground">Clicks</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-3 flex flex-col items-center text-center">
+          <BarChart3 className="w-4 h-4 text-primary mb-1" />
+          <p className="text-xl font-bold">{ctr}%</p>
+          <p className="text-[10px] text-muted-foreground">CTR</p>
+        </CardContent></Card>
+      </div>
+      {totalViews > 0 && (
+        <Card><CardContent className="p-4">
+          <h4 className="text-sm font-semibold mb-3">Last 7 Days</h4>
+          <div className="space-y-2">
+            {chartData.map((day) => (
+              <div key={day.date} className="flex items-center gap-2">
+                <div className="text-right shrink-0 w-14">
+                  <span className="text-[10px] text-muted-foreground">{day.fullDate}</span>
+                </div>
+                <div className="flex-1 flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1">
+                    <div className="h-2.5 rounded-sm bg-primary transition-all" style={{ width: `${Math.max((day.views / chartMax) * 100, day.views > 0 ? 4 : 1)}%` }} />
+                    {day.views > 0 && <span className="text-[10px] font-medium">{day.views}</span>}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="h-2.5 rounded-sm bg-primary/40 transition-all" style={{ width: `${Math.max((day.clicks / chartMax) * 100, day.clicks > 0 ? 4 : 1)}%` }} />
+                    {day.clicks > 0 && <span className="text-[10px] font-medium">{day.clicks}</span>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-4 mt-3 justify-center">
+            <div className="flex items-center gap-1.5"><div className="w-3 h-2 rounded-sm bg-primary" /><span className="text-[10px] text-muted-foreground">Views</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-3 h-2 rounded-sm bg-primary/40" /><span className="text-[10px] text-muted-foreground">Clicks</span></div>
+          </div>
+        </CardContent></Card>
+      )}
     </div>
   );
 }
@@ -6203,6 +6330,31 @@ function ContactsPanel({ teamId, userId, isTeamMember = false }: { teamId: strin
     },
   });
 
+  const editMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Record<string, any> }) => {
+      const res = await apiRequest("PATCH", `/api/contacts/${id}`, data);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      setEditContact(null);
+      toast({ title: "Contact updated!" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to update contact", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const openEditContact = (contact: any) => {
+    setEditContact(contact);
+    setEditName(contact.name || "");
+    setEditEmail(contact.email || "");
+    setEditPhone(contact.phone || "");
+    setEditCompany(contact.company || "");
+    setEditJobTitle(contact.jobTitle || "");
+    setEditNotes(contact.notes || "");
+  };
+
   const closeCreateDialog = () => {
     setCreateOpen(false);
     setNewName("");
@@ -6383,20 +6535,28 @@ function ContactsPanel({ teamId, userId, isTeamMember = false }: { teamId: strin
                   <TableCell>{contact.jobTitle || <span className="text-muted-foreground">—</span>}</TableCell>
                   {!isTeamMember && (
                     <TableCell>
-                      {deleteConfirmId === contact.id ? (
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(contact.id)}>
-                            <Check className="w-4 h-4 text-destructive" />
+                      <div className="flex items-center gap-1">
+                        {/* Edit: company contacts only editable by team owner (non-team-member), personal always editable */}
+                        {(contactType === "personal" || !isTeamMember) && (
+                          <Button variant="ghost" size="icon" onClick={() => openEditContact(contact)} title="Edit contact">
+                            <Pencil className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => setDeleteConfirmId(null)}>
-                            <X className="w-4 h-4" />
+                        )}
+                        {deleteConfirmId === contact.id ? (
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(contact.id)}>
+                              <Check className="w-4 h-4 text-destructive" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => setDeleteConfirmId(null)}>
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button variant="ghost" size="icon" onClick={() => setDeleteConfirmId(contact.id)}>
+                            <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>
-                        </div>
-                      ) : (
-                        <Button variant="ghost" size="icon" onClick={() => setDeleteConfirmId(contact.id)}>
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      )}
+                        )}
+                      </div>
                     </TableCell>
                   )}
                 </TableRow>
@@ -6517,6 +6677,59 @@ function ContactsPanel({ teamId, userId, isTeamMember = false }: { teamId: strin
             >
               {createMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Create Contact
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Contact Dialog */}
+      <Dialog open={!!editContact} onOpenChange={(v) => { if (!v) setEditContact(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Contact</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Name <span className="text-destructive">*</span></Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Contact name" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Email</Label>
+              <Input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="email@example.com" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Phone</Label>
+              <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="+1 (555) 123-4567" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Company</Label>
+              <Input value={editCompany} onChange={(e) => setEditCompany(e.target.value)} placeholder="Company name" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Job Title</Label>
+              <Input value={editJobTitle} onChange={(e) => setEditJobTitle(e.target.value)} placeholder="Job title" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Notes</Label>
+              <Textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} placeholder="Additional notes..." rows={3} />
+            </div>
+            <Button
+              className="w-full"
+              disabled={!editName || editMutation.isPending}
+              onClick={() => editContact && editMutation.mutate({
+                id: editContact.id,
+                data: {
+                  name: editName,
+                  email: editEmail || undefined,
+                  phone: editPhone || undefined,
+                  company: editCompany || undefined,
+                  jobTitle: editJobTitle || undefined,
+                  notes: editNotes || undefined,
+                },
+              })}
+            >
+              {editMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Save Changes
             </Button>
           </div>
         </DialogContent>
