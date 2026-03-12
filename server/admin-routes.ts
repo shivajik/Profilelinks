@@ -157,13 +157,15 @@ router.post("/api/admin/plans", requireAdminAuth, async (req: Request, res: Resp
     if (!result.success) {
       return res.status(400).json({ message: fromZodError(result.error).message });
     }
-    const { monthlyPrice, yearlyPrice, ...rest } = result.data;
+    const { monthlyPrice, yearlyPrice, monthlyPriceUsd, yearlyPriceUsd, ...rest } = result.data;
     const [plan] = await db
       .insert(pricingPlans)
       .values({
         ...rest,
         monthlyPrice: monthlyPrice.toString(),
         yearlyPrice: yearlyPrice.toString(),
+        monthlyPriceUsd: monthlyPriceUsd.toString(),
+        yearlyPriceUsd: yearlyPriceUsd.toString(),
       })
       .returning();
     res.status(201).json(plan);
@@ -179,10 +181,12 @@ router.patch("/api/admin/plans/:id", requireAdminAuth, async (req: Request, res:
     if (!result.success) {
       return res.status(400).json({ message: fromZodError(result.error).message });
     }
-    const { monthlyPrice, yearlyPrice, ...rest } = result.data;
+    const { monthlyPrice, yearlyPrice, monthlyPriceUsd, yearlyPriceUsd, ...rest } = result.data;
     const updateData: Record<string, any> = { ...rest, updatedAt: new Date() };
     if (monthlyPrice !== undefined) updateData.monthlyPrice = monthlyPrice.toString();
     if (yearlyPrice !== undefined) updateData.yearlyPrice = yearlyPrice.toString();
+    if (monthlyPriceUsd !== undefined) updateData.monthlyPriceUsd = monthlyPriceUsd.toString();
+    if (yearlyPriceUsd !== undefined) updateData.yearlyPriceUsd = yearlyPriceUsd.toString();
 
     const planId = req.params.id;
     const updated = await db
