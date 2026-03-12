@@ -574,7 +574,11 @@ function ForgotPasswordFlow({
       });
       const data = await res.json();
       if (!res.ok) {
-        toast({ title: "Error", description: data.message || "Failed to send reset code", variant: "destructive" });
+        if (res.status === 404) {
+          toast({ title: "Email not found", description: "No account found with this email address. Please check and try again.", variant: "destructive" });
+        } else {
+          toast({ title: "Error", description: data.message || "Failed to send reset code", variant: "destructive" });
+        }
         return;
       }
       startTimer();

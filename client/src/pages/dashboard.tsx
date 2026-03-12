@@ -514,6 +514,10 @@ export default function Dashboard() {
             )}
           </SidebarContent>
           <SidebarFooter>
+            <div className="px-3 pb-2">
+              <p className="text-xs text-muted-foreground truncate" title={user.email}>{user.email}</p>
+              <Badge variant="secondary" className="text-[10px] mt-1 capitalize">{planLimits?.planName || "Free"}</Badge>
+            </div>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton onClick={handleLogout} data-testid="button-logout">
@@ -2315,6 +2319,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
   const [borderWidth, setBorderWidth] = useState(2);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [scanText, setScanText] = useState(false);
+  const [customText, setCustomText] = useState("");
 
   const createQrMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -2360,6 +2365,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
     setBorderWidth(2);
     setLogoPreview(null);
     setScanText(false);
+    setCustomText("");
     setEditingId(null);
   };
 
@@ -2414,6 +2420,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
       const padding = 48;
       const brandingHeight = isWhiteLabel ? 0 : 60;
       const scanTextHeight = (qrConfig?.scanText || (qrConfig && ["badge", "modern", "ticket"].includes(qrConfig.style))) ? 50 : 0;
+      const customTextHeight = customText.trim() ? 50 : 0;
       const bw = qrConfig?.borderWidth || 4;
       const br = qrConfig?.borderRadius || 12;
       const color1 = qrConfig?.color || "#7c3aed";
@@ -2422,7 +2429,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
       
       const qrSize = 800;
       const totalWidth = qrSize + (padding * 2) + (bw * 2);
-      const totalHeight = qrSize + (padding * 2) + (bw * 2) + brandingHeight + scanTextHeight;
+      const totalHeight = qrSize + (padding * 2) + (bw * 2) + brandingHeight + scanTextHeight + customTextHeight;
       
       canvas.width = totalWidth;
       canvas.height = totalHeight;
@@ -2543,6 +2550,13 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
           ctx.textAlign = "center";
           ctx.letterSpacing = "4px";
           ctx.fillText("SCAN ME", totalWidth / 2, boxH + 38);
+        }
+        
+        if (customTextHeight > 0) {
+          ctx.fillStyle = color1;
+          ctx.font = "bold 28px Arial, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText(customText.trim(), totalWidth / 2, boxH + scanTextHeight + 38);
         }
         
         if (!isWhiteLabel) {
@@ -2816,6 +2830,18 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
                 <Switch checked={scanText} onCheckedChange={setScanText} data-testid="switch-scan-text" />
               </div>
 
+              <div className="space-y-1.5 p-3 rounded-md border">
+                <span className="text-sm">Custom Text (Name / Company)</span>
+                <Input
+                  value={customText}
+                  onChange={(e) => setCustomText(e.target.value)}
+                  placeholder="e.g. John Doe or Acme Inc."
+                  className="text-sm"
+                  maxLength={50}
+                  data-testid="input-qr-custom-text"
+                />
+              </div>
+
               <div className="flex items-center gap-3 p-3 rounded-md border">
                 <span className="text-sm flex-1">Logo</span>
                 <label className="cursor-pointer" data-testid="button-upload-logo">
@@ -2858,6 +2884,11 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
                   data-testid="preview-qr-code"
                 />
                 {renderScanText({ style: qrStyle, color: qrColor, scanText }, 160)}
+                {customText.trim() && (
+                  <div className="text-center font-bold mt-1" style={{ color: qrColor, fontSize: "9px" }}>
+                    {customText.trim()}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -6071,6 +6102,7 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
   const [borderWidth, setBorderWidth] = useState(3);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [scanText, setScanText] = useState(false);
+  const [customText, setCustomText] = useState("");
   const [generated, setGenerated] = useState(false);
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -6145,11 +6177,12 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
       const padding = 48;
       const brandingHeight = isWhiteLabel ? 0 : 60;
       const scanH = showScanText ? 50 : 0;
+      const customH = customText.trim() ? 50 : 0;
       const bw = borderWidth;
       const br = borderRadius;
       const qrSize = 800;
       const totalWidth = qrSize + (padding * 2) + (bw * 2);
-      const totalHeight = qrSize + (padding * 2) + (bw * 2) + brandingHeight + scanH;
+      const totalHeight = qrSize + (padding * 2) + (bw * 2) + brandingHeight + scanH + customH;
       canvas.width = totalWidth;
       canvas.height = totalHeight;
       if (ctx) {
@@ -6267,6 +6300,13 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
           ctx.fillText("SCAN ME", totalWidth / 2, boxH + 38);
         }
 
+        if (customH > 0) {
+          ctx.fillStyle = qrColor;
+          ctx.font = "bold 28px Arial, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText(customText.trim(), totalWidth / 2, boxH + scanH + 38);
+        }
+
         if (!isWhiteLabel) {
           ctx.fillStyle = "#9ca3af";
           ctx.font = "500 22px Arial, sans-serif";
@@ -6366,6 +6406,16 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
               {logoPreview && <Button variant="ghost" size="sm" onClick={() => setLogoPreview(null)}>Remove</Button>}
             </div>
           </div>
+          <div className="space-y-2">
+            <Label className="text-xs">Custom Text (Name / Company)</Label>
+            <Input
+              value={customText}
+              onChange={(e) => setCustomText(e.target.value)}
+              placeholder="e.g. John Doe or Acme Inc."
+              maxLength={50}
+              data-testid="input-url-qr-custom-text"
+            />
+          </div>
           <Button className="w-full" disabled={!isValidUrl} onClick={() => setGenerated(true)}>
             Generate QR Code
           </Button>
@@ -6388,6 +6438,11 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
               {showScanText && (
                 <div className="text-center font-bold tracking-wider uppercase mt-1" style={{ color: qrColor, fontSize: "12px", letterSpacing: "0.1em" }}>
                   SCAN ME
+                </div>
+              )}
+              {customText.trim() && (
+                <div className="text-center font-bold mt-1" style={{ color: qrColor, fontSize: "11px" }}>
+                  {customText.trim()}
                 </div>
               )}
             </div>

@@ -144,7 +144,7 @@ export default function Onboarding() {
       await queryClient.invalidateQueries({ queryKey: ["/api/socials"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/pages"] });
       await queryClient.refetchQueries({ queryKey: ["/api/auth/me"] });
-      navigate("/dashboard");
+      navigate(accountType === "team" ? "/dashboard?section=team-templates" : "/dashboard");
     } catch (e: any) {
       toast({ title: "Something went wrong", description: e.message, variant: "destructive" });
     } finally {

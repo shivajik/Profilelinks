@@ -181,7 +181,7 @@ export async function registerRoutes(
 
       const user = await storage.getUserByEmail(normalizedEmail);
       if (!user) {
-        return res.json({ message: "If this email exists, a reset code has been sent." });
+        return res.status(404).json({ message: "No account found with this email address." });
       }
 
       const lastSent = passwordResetOtpStore.get(normalizedEmail);
@@ -1907,18 +1907,16 @@ export async function registerRoutes(
         contactData.ownerId = user.id;
       }
 
-      // Duplicate check: skip if same email AND phone already exist
-      if (contactData.email || contactData.phone) {
+      // Duplicate check: skip if same email already exists
+      if (contactData.email) {
         const existingContacts = await storage.getContacts(
           contactData.teamId ? { teamId: contactData.teamId } : { ownerId: user.id }
         );
         const isDuplicate = existingContacts.some((c: any) => {
-          const emailMatch = contactData.email && c.email && c.email.toLowerCase() === contactData.email.toLowerCase();
-          const phoneMatch = contactData.phone && c.phone && c.phone.replace(/\s/g, "") === contactData.phone.replace(/\s/g, "");
-          return emailMatch && phoneMatch;
+          return contactData.email && c.email && c.email.toLowerCase() === contactData.email.toLowerCase();
         });
         if (isDuplicate) {
-          return res.status(409).json({ message: "A contact with this email and phone already exists" });
+          return res.status(409).json({ message: "A contact with this email already exists" });
         }
       }
 
@@ -2444,6 +2442,7 @@ export async function registerRoutes(
         return {
           name: memberUser?.displayName || memberUser?.username || "",
           email: memberUser?.email || "",
+          phone: m.businessPhone || "",
           username: memberUser?.username || "",
           publicUrl: memberUser ? `/${memberUser.username}` : "",
           jobTitle: m.jobTitle || "",
