@@ -317,6 +317,32 @@ router.delete("/api/admin/users/:id", requireAdminAuth, async (req: Request, res
   }
 });
 
+// ─── Bulk Delete Users ────────────────────────────────────────────────────────
+router.post("/api/admin/users/bulk-delete", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ message: "No user IDs provided" });
+    await db.delete(users).where(sql`${users.id} = ANY(${ids})`);
+    res.json({ message: `${ids.length} user(s) deleted` });
+  } catch (error: any) {
+    console.error("Bulk delete error:", error);
+    res.status(500).json({ message: "Failed to bulk delete users" });
+  }
+});
+
+// ─── Bulk Deactivate/Reactivate Users ────────────────────────────────────────
+router.post("/api/admin/users/bulk-toggle-status", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const { ids, disable } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ message: "No user IDs provided" });
+    await db.update(users).set({ isDisabled: !!disable }).where(sql`${users.id} = ANY(${ids})`);
+    res.json({ message: `${ids.length} user(s) ${disable ? "deactivated" : "reactivated"}` });
+  } catch (error: any) {
+    console.error("Bulk toggle error:", error);
+    res.status(500).json({ message: "Failed to update user statuses" });
+  }
+});
+
 
 // ─── Payments List ──────────────────────────────────────────────────────────
 router.get("/api/admin/payments", requireAdminAuth, async (req: Request, res: Response) => {

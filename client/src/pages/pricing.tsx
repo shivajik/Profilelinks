@@ -11,6 +11,7 @@ import LegalLayout from "@/components/legal-layout";
 interface PricingPlan {
   id: string; name: string; description?: string;
   monthlyPrice: string; yearlyPrice: string;
+  monthlyPriceUsd?: string; yearlyPriceUsd?: string;
   features: string[]; maxLinks: number; maxPages: number;
   maxTeamMembers: number; isActive: boolean; isFeatured: boolean;
   planType?: string;
@@ -41,6 +42,7 @@ export default function PricingPage() {
   const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
+  const [currency, setCurrency] = useState<"INR" | "USD">("INR");
   const [payingPlanId, setPayingPlanId] = useState<string | null>(null);
   const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
 
@@ -174,20 +176,40 @@ export default function PricingPage() {
           Choose the plan that works for you. Upgrade, downgrade, or cancel anytime.
         </p>
 
-        <div className="inline-flex items-center gap-1 bg-muted rounded-full p-1 text-sm">
-          <button
-            className={`px-4 py-1.5 rounded-full font-medium transition-all ${billingCycle === "monthly" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
-            onClick={() => setBillingCycle("monthly")}
-          >
-            Monthly
-          </button>
-          <button
-            className={`px-4 py-1.5 rounded-full font-medium transition-all ${billingCycle === "yearly" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
-            onClick={() => setBillingCycle("yearly")}
-          >
-            Yearly
-            <span className="ml-1.5 text-xs text-primary font-semibold">Save up to 20%</span>
-          </button>
+        <div className="flex flex-col items-center gap-3">
+          <div className="inline-flex items-center gap-1 bg-muted rounded-full p-1 text-sm">
+            <button
+              className={`px-4 py-1.5 rounded-full font-medium transition-all ${billingCycle === "monthly" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
+              onClick={() => setBillingCycle("monthly")}
+            >
+              Monthly
+            </button>
+            <button
+              className={`px-4 py-1.5 rounded-full font-medium transition-all ${billingCycle === "yearly" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
+              onClick={() => setBillingCycle("yearly")}
+            >
+              Yearly
+              <span className="ml-1.5 text-xs text-primary font-semibold">Save up to 20%</span>
+            </button>
+          </div>
+
+          {/* Currency toggle */}
+          <div className="inline-flex items-center gap-1 bg-muted rounded-full p-1 text-sm" data-testid="currency-toggle">
+            <button
+              className={`px-4 py-1.5 rounded-full font-medium transition-all flex items-center gap-1 ${currency === "INR" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
+              onClick={() => setCurrency("INR")}
+              data-testid="currency-inr"
+            >
+              ₹ INR
+            </button>
+            <button
+              className={`px-4 py-1.5 rounded-full font-medium transition-all flex items-center gap-1 ${currency === "USD" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
+              onClick={() => setCurrency("USD")}
+              data-testid="currency-usd"
+            >
+              $ USD
+            </button>
+          </div>
         </div>
       </section>
 
@@ -242,6 +264,7 @@ export default function PricingPage() {
                 key={plan.id}
                 plan={plan}
                 billingCycle={billingCycle}
+                currency={currency}
                 isCurrentPlan={currentPlanId === plan.id}
                 loading={payingPlanId === plan.id}
                 onSelect={handleSelectPlan}
@@ -260,7 +283,7 @@ export default function PricingPage() {
               { q: "Can I upgrade or downgrade anytime?", a: "Yes! You can change your plan at any time. Changes take effect immediately." },
               { q: "What payment methods are accepted?", a: "We accept all major credit/debit cards, UPI, net banking, and wallets via Razorpay." },
               { q: "Is there a free plan?", a: "Yes, we offer a free plan to get you started. Upgrade when you need more features." },
-              { q: "Are prices in INR?", a: "Yes, all prices are in Indian Rupees (₹) and payments are processed securely via Razorpay." },
+              { q: "What currencies are supported?", a: "Prices can be displayed in INR (₹) or USD ($) — use the currency toggle to switch. Payments are processed in INR via Razorpay." },
               { q: "How do promo codes work?", a: "Enter a valid promo code before selecting a plan to get a percentage discount on your purchase." },
             ].map((item) => (
               <div key={item.q} className="bg-background border rounded-lg p-4">

@@ -10,6 +10,8 @@ interface PricingPlan {
   description?: string;
   monthlyPrice: string;
   yearlyPrice: string;
+  monthlyPriceUsd?: string;
+  yearlyPriceUsd?: string;
   features: string[];
   maxLinks: number;
   maxPages: number;
@@ -21,6 +23,7 @@ interface PricingPlan {
 export interface PricingCardProps {
   plan: PricingPlan;
   billingCycle: "monthly" | "yearly";
+  currency?: "INR" | "USD";
   isCurrentPlan?: boolean;
   onSelect?: (plan: PricingPlan) => void;
   loading?: boolean;
@@ -31,21 +34,38 @@ export interface PricingCardProps {
 export function PricingCard({
   plan,
   billingCycle,
+  currency = "INR",
   isCurrentPlan,
   onSelect,
   loading,
   ctaLabel,
   discountPercent,
 }: PricingCardProps) {
-  const originalPrice = billingCycle === "yearly"
-    ? parseFloat(plan.yearlyPrice)
-    : parseFloat(plan.monthlyPrice);
+  const isUsd = currency === "USD";
+
+  const inrMonthly = parseFloat(plan.monthlyPrice);
+  const inrYearly = parseFloat(plan.yearlyPrice);
+  const usdMonthly = parseFloat(plan.monthlyPriceUsd ?? "0");
+  const usdYearly = parseFloat(plan.yearlyPriceUsd ?? "0");
+
+  const hasUsdPricing = usdMonthly > 0 || usdYearly > 0;
+
+  const rawPrice = isUsd && hasUsdPricing
+    ? (billingCycle === "yearly" ? usdYearly : usdMonthly)
+    : (billingCycle === "yearly" ? inrYearly : inrMonthly);
+
+  const originalPrice = rawPrice;
 
   const price = discountPercent && originalPrice > 0
     ? Math.round(originalPrice * (1 - discountPercent / 100))
     : originalPrice;
 
   const isFree = price === 0 && originalPrice === 0;
+  const symbol = isUsd && hasUsdPricing ? "$" : "₹";
+  const locale = isUsd && hasUsdPricing ? "en-US" : "en-IN";
+
+  const inrMonthlyForSaving = inrMonthly;
+  const inrYearlyForSaving = inrYearly;
 
   return (
     <Card
@@ -83,7 +103,7 @@ export function PricingCard({
         <div className="mt-4">
           <div className="flex items-end gap-1">
             <span className="text-4xl font-extrabold text-foreground">
-              {isFree ? "Free" : `₹${price.toLocaleString("en-IN")}`}
+              {isFree ? "Free" : `${symbol}${price.toLocaleString(locale)}`}
             </span>
             {!isFree && (
               <span className="text-muted-foreground text-sm mb-1">
@@ -93,19 +113,18 @@ export function PricingCard({
           </div>
           {discountPercent && originalPrice > 0 && (
             <p className="text-xs text-muted-foreground mt-1 line-through">
-              ₹{originalPrice.toLocaleString("en-IN")}
+              {symbol}{originalPrice.toLocaleString(locale)}
             </p>
           )}
-          {!isFree && billingCycle === "yearly" && !discountPercent && (
+          {!isFree && billingCycle === "yearly" && !discountPercent && inrMonthlyForSaving > 0 && inrYearlyForSaving > 0 && (
             <p className="text-xs text-primary mt-1">
-              Save {Math.round(100 - (parseFloat(plan.yearlyPrice) / (parseFloat(plan.monthlyPrice) * 12)) * 100)}% vs monthly
+              Save {Math.round(100 - (inrYearlyForSaving / (inrMonthlyForSaving * 12)) * 100)}% vs monthly
             </p>
           )}
         </div>
       </CardHeader>
 
       <CardContent className="flex flex-col flex-1 pt-0">
-        {/* Limits */}
         <div className="grid grid-cols-3 gap-2 mb-4 text-center">
           {[
             { label: "Links", value: plan.maxLinks >= 999 ? "∞" : plan.maxLinks },
@@ -119,7 +138,6 @@ export function PricingCard({
           ))}
         </div>
 
-        {/* Features */}
         {(plan.features ?? []).length > 0 && (
           <ul className="space-y-2 mb-6 flex-1">
             {plan.features.map((feature, i) => (

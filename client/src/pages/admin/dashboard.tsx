@@ -29,6 +29,7 @@ interface AdminUser { id: string; email: string; name: string; }
 interface PricingPlan {
   id: string; name: string; description?: string;
   monthlyPrice: string; yearlyPrice: string;
+  monthlyPriceUsd: string; yearlyPriceUsd: string;
   features: string[]; maxLinks: number; maxPages: number;
   maxTeamMembers: number; maxBlocks: number; maxSocials: number;
   qrCodeEnabled: boolean; analyticsEnabled: boolean; customTemplatesEnabled: boolean;
@@ -76,6 +77,8 @@ const planSchema = z.object({
   description: z.string().optional(),
   monthlyPrice: z.coerce.number().min(0),
   yearlyPrice: z.coerce.number().min(0),
+  monthlyPriceUsd: z.coerce.number().min(0).default(0),
+  yearlyPriceUsd: z.coerce.number().min(0).default(0),
   featuresText: z.string().optional(),
   maxLinks: z.coerce.number().int().min(1).default(10),
   maxPages: z.coerce.number().int().min(1).default(1),
@@ -150,6 +153,10 @@ export default function AdminDashboard() {
   const USERS_PER_PAGE = 10;
   const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+
+  // Multi-select
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   // Payment search & pagination
   const [paymentSearchQuery, setPaymentSearchQuery] = useState("");
@@ -308,13 +315,47 @@ export default function AdminDashboard() {
     }
   };
 
+  // ── Bulk user actions ─────────────────────────────────────────────────────
+  const bulkDelete = async () => {
+    const ids = Array.from(selectedUserIds);
+    if (!ids.length) return;
+    if (!confirm(`Permanently delete ${ids.length} user(s)? This cannot be undone.`)) return;
+    setBulkActionLoading(true);
+    try {
+      const r = await fetch("/api/admin/users/bulk-delete", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.message);
+      toast({ title: j.message });
+      setSelectedUserIds(new Set());
+      fetchUsers(userPage, userSearchApplied, userTypeFilter); fetchStats();
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    } finally { setBulkActionLoading(false); }
+  };
+
+  const bulkToggleStatus = async (disable: boolean) => {
+    const ids = Array.from(selectedUserIds);
+    if (!ids.length) return;
+    setBulkActionLoading(true);
+    try {
+      const r = await fetch("/api/admin/users/bulk-toggle-status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids, disable }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.message);
+      toast({ title: j.message });
+      setSelectedUserIds(new Set());
+      fetchUsers(userPage, userSearchApplied, userTypeFilter);
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    } finally { setBulkActionLoading(false); }
+  };
+
   // ── Plan CRUD ──────────────────────────────────────────────────────────────
   const openNewPlan = () => {
-    planForm.reset({ name: "", description: "", monthlyPrice: 0, yearlyPrice: 0, featuresText: "", maxLinks: 10, maxPages: 1, maxTeamMembers: 1, maxBlocks: 20, maxSocials: 5, qrCodeEnabled: false, analyticsEnabled: false, customTemplatesEnabled: false, menuBuilderEnabled: false, whiteLabelEnabled: false, planType: "individual", isActive: true, isFeatured: false, sortOrder: 0 });
+    planForm.reset({ name: "", description: "", monthlyPrice: 0, yearlyPrice: 0, monthlyPriceUsd: 0, yearlyPriceUsd: 0, featuresText: "", maxLinks: 10, maxPages: 1, maxTeamMembers: 1, maxBlocks: 20, maxSocials: 5, qrCodeEnabled: false, analyticsEnabled: false, customTemplatesEnabled: false, menuBuilderEnabled: false, whiteLabelEnabled: false, planType: "individual", isActive: true, isFeatured: false, sortOrder: 0 });
     setPlanDialog({ open: true });
   };
   const openEditPlan = (plan: PricingPlan) => {
-    planForm.reset({ name: plan.name, description: plan.description ?? "", monthlyPrice: parseFloat(plan.monthlyPrice), yearlyPrice: parseFloat(plan.yearlyPrice), featuresText: (plan.features ?? []).join("\n"), maxLinks: plan.maxLinks, maxPages: plan.maxPages, maxTeamMembers: plan.maxTeamMembers, maxBlocks: plan.maxBlocks ?? 20, maxSocials: plan.maxSocials ?? 5, qrCodeEnabled: plan.qrCodeEnabled ?? false, analyticsEnabled: plan.analyticsEnabled ?? false, customTemplatesEnabled: plan.customTemplatesEnabled ?? false, menuBuilderEnabled: plan.menuBuilderEnabled ?? false, whiteLabelEnabled: (plan as any).whiteLabelEnabled ?? false, planType: (plan.planType as "individual" | "team") ?? "individual", isActive: plan.isActive, isFeatured: plan.isFeatured, sortOrder: plan.sortOrder });
+    planForm.reset({ name: plan.name, description: plan.description ?? "", monthlyPrice: parseFloat(plan.monthlyPrice), yearlyPrice: parseFloat(plan.yearlyPrice), monthlyPriceUsd: parseFloat(plan.monthlyPriceUsd ?? "0"), yearlyPriceUsd: parseFloat(plan.yearlyPriceUsd ?? "0"), featuresText: (plan.features ?? []).join("\n"), maxLinks: plan.maxLinks, maxPages: plan.maxPages, maxTeamMembers: plan.maxTeamMembers, maxBlocks: plan.maxBlocks ?? 20, maxSocials: plan.maxSocials ?? 5, qrCodeEnabled: plan.qrCodeEnabled ?? false, analyticsEnabled: plan.analyticsEnabled ?? false, customTemplatesEnabled: plan.customTemplatesEnabled ?? false, menuBuilderEnabled: plan.menuBuilderEnabled ?? false, whiteLabelEnabled: (plan as any).whiteLabelEnabled ?? false, planType: (plan.planType as "individual" | "team") ?? "individual", isActive: plan.isActive, isFeatured: plan.isFeatured, sortOrder: plan.sortOrder });
     setPlanDialog({ open: true, plan });
   };
   const onSavePlan = async (data: PlanForm) => {
@@ -562,11 +603,53 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
+              {/* Bulk action toolbar */}
+              {selectedUserIds.size > 0 && (
+                <div className="flex items-center gap-3 px-4 py-2.5 bg-primary/5 border border-primary/20 rounded-lg">
+                  <span className="text-sm font-medium text-foreground">{selectedUserIds.size} user{selectedUserIds.size !== 1 ? "s" : ""} selected</span>
+                  <div className="flex items-center gap-2 ml-auto">
+                    <Button size="sm" variant="outline" disabled={bulkActionLoading} onClick={() => bulkToggleStatus(true)}
+                      className="text-yellow-600 hover:bg-yellow-50" data-testid="button-bulk-deactivate">
+                      {bulkActionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <UserX className="h-3.5 w-3.5 mr-1" />}
+                      Deactivate
+                    </Button>
+                    <Button size="sm" variant="outline" disabled={bulkActionLoading} onClick={() => bulkToggleStatus(false)}
+                      className="text-green-600 hover:bg-green-50" data-testid="button-bulk-reactivate">
+                      {bulkActionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <UserCheck className="h-3.5 w-3.5 mr-1" />}
+                      Reactivate
+                    </Button>
+                    <Button size="sm" variant="outline" disabled={bulkActionLoading} onClick={bulkDelete}
+                      className="text-destructive hover:bg-destructive/10" data-testid="button-bulk-delete">
+                      {bulkActionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Trash2 className="h-3.5 w-3.5 mr-1" />}
+                      Delete
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setSelectedUserIds(new Set())} data-testid="button-clear-selection">
+                      <XIcon className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <Card>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                      <thead>
                       <tr className="border-b bg-muted/50">
+                        <th className="p-3 w-10">
+                          <input
+                            type="checkbox"
+                            className="rounded border-border cursor-pointer"
+                            checked={paginatedUsers.length > 0 && paginatedUsers.every(u => selectedUserIds.has(u.id))}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedUserIds(prev => new Set([...prev, ...paginatedUsers.map(u => u.id)]));
+                              } else {
+                                setSelectedUserIds(prev => { const next = new Set(prev); paginatedUsers.forEach(u => next.delete(u.id)); return next; });
+                              }
+                            }}
+                            data-testid="checkbox-select-all"
+                          />
+                        </th>
                         <th className="text-left p-3 font-medium text-muted-foreground">User</th>
                         <th className="text-left p-3 font-medium text-muted-foreground">Type</th>
                         <th className="text-left p-3 font-medium text-muted-foreground">Plan</th>
@@ -577,9 +660,20 @@ export default function AdminDashboard() {
                      </thead>
                     <tbody>
                        {paginatedUsers.length === 0 ? (
-                        <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No users found</td></tr>
+                        <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">No users found</td></tr>
                       ) : paginatedUsers.map((u) => (
-                        <tr key={u.id} className={`border-b last:border-0 hover:bg-muted/30 transition-colors ${u.isDisabled ? "opacity-60" : ""}`}>
+                        <tr key={u.id} className={`border-b last:border-0 hover:bg-muted/30 transition-colors ${u.isDisabled ? "opacity-60" : ""} ${selectedUserIds.has(u.id) ? "bg-primary/5" : ""}`}>
+                          <td className="p-3">
+                            <input
+                              type="checkbox"
+                              className="rounded border-border cursor-pointer"
+                              checked={selectedUserIds.has(u.id)}
+                              onChange={(e) => {
+                                setSelectedUserIds(prev => { const next = new Set(prev); e.target.checked ? next.add(u.id) : next.delete(u.id); return next; });
+                              }}
+                              data-testid={`checkbox-user-${u.id}`}
+                            />
+                          </td>
                           <td className="p-3">
                             <button
                               className="text-left hover:underline"
@@ -606,9 +700,18 @@ export default function AdminDashboard() {
                               <Button
                                 variant="outline" size="sm"
                                 onClick={() => openUserDetail(u.id)}
-                                title="View profile"
+                                title="View admin details"
+                                data-testid={`button-view-user-${u.id}`}
                               >
                                 <Eye className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                variant="outline" size="sm"
+                                onClick={() => window.open(`/${u.username}`, "_blank")}
+                                title="Open public profile"
+                                data-testid={`button-open-profile-${u.id}`}
+                              >
+                                <Link2 className="h-3.5 w-3.5" />
                               </Button>
                               <Button
                                 variant="outline" size="sm"
@@ -698,9 +801,11 @@ export default function AdminDashboard() {
                               <Badge variant={plan.planType === "team" ? "default" : "outline"} className="text-xs capitalize">{plan.planType || "individual"}</Badge>
                             </div>
                             {plan.description && <p className="text-sm text-muted-foreground mt-0.5 truncate">{plan.description}</p>}
-                            <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground flex-wrap">
                               <span>₹{parseFloat(plan.monthlyPrice).toLocaleString()}/mo</span>
                               <span>₹{parseFloat(plan.yearlyPrice).toLocaleString()}/yr</span>
+                              {parseFloat(plan.monthlyPriceUsd ?? "0") > 0 && <span className="text-green-600">${parseFloat(plan.monthlyPriceUsd).toLocaleString()}/mo</span>}
+                              {parseFloat(plan.yearlyPriceUsd ?? "0") > 0 && <span className="text-green-600">${parseFloat(plan.yearlyPriceUsd).toLocaleString()}/yr</span>}
                               <span>{plan.maxLinks} links</span>
                               <span>{plan.maxPages} pages</span>
                             </div>
@@ -1532,8 +1637,10 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2 space-y-1.5"><Label>Plan Name</Label><Input placeholder="e.g. Pro" {...planForm.register("name")} />{planForm.formState.errors.name && <p className="text-xs text-destructive">{planForm.formState.errors.name.message}</p>}</div>
               <div className="col-span-2 space-y-1.5"><Label>Description</Label><Input placeholder="Short description" {...planForm.register("description")} /></div>
-              <div className="space-y-1.5"><Label>Monthly Price (₹)</Label><Input type="number" min="0" step="0.01" {...planForm.register("monthlyPrice")} /></div>
-              <div className="space-y-1.5"><Label>Yearly Price (₹)</Label><Input type="number" min="0" step="0.01" {...planForm.register("yearlyPrice")} /></div>
+              <div className="space-y-1.5"><Label>Monthly Price (₹ INR)</Label><Input type="number" min="0" step="0.01" {...planForm.register("monthlyPrice")} /></div>
+              <div className="space-y-1.5"><Label>Yearly Price (₹ INR)</Label><Input type="number" min="0" step="0.01" {...planForm.register("yearlyPrice")} /></div>
+              <div className="space-y-1.5"><Label>Monthly Price ($ USD)</Label><Input type="number" min="0" step="0.01" {...planForm.register("monthlyPriceUsd")} /></div>
+              <div className="space-y-1.5"><Label>Yearly Price ($ USD)</Label><Input type="number" min="0" step="0.01" {...planForm.register("yearlyPriceUsd")} /></div>
               <div className="space-y-1.5"><Label>Max Links</Label><Input type="number" min="1" {...planForm.register("maxLinks")} /></div>
               <div className="space-y-1.5"><Label>Max Pages</Label><Input type="number" min="1" {...planForm.register("maxPages")} /></div>
               <div className="space-y-1.5"><Label>Max Blocks</Label><Input type="number" min="1" {...planForm.register("maxBlocks")} /></div>
