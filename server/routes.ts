@@ -2444,7 +2444,7 @@ export async function registerRoutes(
           email: memberUser?.email || "",
           phone: m.businessPhone || "",
           username: memberUser?.username || "",
-          publicUrl: memberUser ? `/${memberUser.username}` : "",
+          publicUrl: memberUser ? `/${team.slug}/${memberUser.username}` : "",
           jobTitle: m.jobTitle || "",
           role: m.role,
         };

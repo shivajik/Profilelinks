@@ -187,6 +187,15 @@ export default function Dashboard() {
     const params = new URLSearchParams(window.location.search);
     return params.get("section") || "design";
   });
+
+  // Listen for URL changes (e.g. after onboarding navigates to ?section=team-templates)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const section = params.get("section");
+    if (section && section !== activeSection) {
+      setActiveSection(section);
+    }
+  }, []);
   const [previewMode, setPreviewMode] = useState<"mobile" | "desktop">("mobile");
   const [headerName, setHeaderName] = useState("");
   const [headerBio, setHeaderBio] = useState("");
@@ -467,8 +476,10 @@ export default function Dashboard() {
       <div className="flex h-screen w-full">
         <Sidebar>
           <SidebarContent>
-            <div className="px-4 py-4 flex items-center gap-2">
+            <div className="px-4 py-4 flex flex-col gap-1">
               <img src={logoPath} alt="VisiCardly" className="w-14 h-10 object-contain" />
+              <p className="text-xs text-muted-foreground truncate" title={user.email}>{user.email}</p>
+              <Badge variant="secondary" className="text-[10px] w-fit capitalize">{planLimits?.planName || "Free"}</Badge>
             </div>
             <SidebarGroup>
               <SidebarGroupContent>
@@ -514,10 +525,6 @@ export default function Dashboard() {
             )}
           </SidebarContent>
           <SidebarFooter>
-            <div className="px-3 pb-2">
-              <p className="text-xs text-muted-foreground truncate" title={user.email}>{user.email}</p>
-              <Badge variant="secondary" className="text-[10px] mt-1 capitalize">{planLimits?.planName || "Free"}</Badge>
-            </div>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton onClick={handleLogout} data-testid="button-logout">
@@ -2382,6 +2389,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
     setBorderWidth(qr.borderWidth);
     setLogoPreview(qr.logoUrl);
     setScanText(qr.scanText || false);
+    setCustomText(qr.label && qr.label !== "Profile QR" && qr.label !== "QR Code" ? qr.label : "");
     setEditingId(qr.id);
     setShowCreateDialog(true);
   };
@@ -2395,7 +2403,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
   };
 
   const handleCreate = () => {
-    const qrData = { style: qrStyle, color: qrColor, color2: qrColor2, borderRadius, borderWidth, logoUrl: logoPreview, scanText, qrType: "profile", label: "Profile QR" };
+    const qrData = { style: qrStyle, color: qrColor, color2: qrColor2, borderRadius, borderWidth, logoUrl: logoPreview, scanText, qrType: "profile", label: customText.trim() || "Profile QR" };
     if (editingId) {
       updateQrMutation.mutate({ id: editingId, data: qrData });
     } else {
@@ -2420,7 +2428,8 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
       const padding = 48;
       const brandingHeight = isWhiteLabel ? 0 : 60;
       const scanTextHeight = (qrConfig?.scanText || (qrConfig && ["badge", "modern", "ticket"].includes(qrConfig.style))) ? 50 : 0;
-      const customTextHeight = customText.trim() ? 50 : 0;
+      const resolvedCustomTextForSize = customText.trim() || (qrConfig?.label && qrConfig.label !== "Profile QR" && qrConfig.label !== "QR Code" ? qrConfig.label : "");
+      const customTextHeight = resolvedCustomTextForSize ? 50 : 0;
       const bw = qrConfig?.borderWidth || 4;
       const br = qrConfig?.borderRadius || 12;
       const color1 = qrConfig?.color || "#7c3aed";
@@ -2552,11 +2561,13 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
           ctx.fillText("SCAN ME", totalWidth / 2, boxH + 38);
         }
         
-        if (customTextHeight > 0) {
+        // Render custom text from the QR code's label or the customText state
+        const resolvedCustomText = customText.trim() || (qrConfig?.label && qrConfig.label !== "Profile QR" && qrConfig.label !== "QR Code" ? qrConfig.label : "");
+        if (resolvedCustomText && customTextHeight > 0) {
           ctx.fillStyle = color1;
           ctx.font = "bold 28px Arial, sans-serif";
           ctx.textAlign = "center";
-          ctx.fillText(customText.trim(), totalWidth / 2, boxH + scanTextHeight + 38);
+          ctx.fillText(resolvedCustomText, totalWidth / 2, boxH + scanTextHeight + 38);
         }
         
         if (!isWhiteLabel) {
@@ -2737,6 +2748,11 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
                   data-testid={`display-qr-${qr.id}`}
                 />
                 {renderScanText(qr, 100)}
+                {qr.label && qr.label !== "Profile QR" && qr.label !== "QR Code" && (
+                  <div className="text-center font-bold mt-1" style={{ color: qr.color, fontSize: "8px" }}>
+                    {qr.label}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -6608,6 +6624,8 @@ function ContactsPanel({ teamId, userId, isTeamMember = false }: { teamId: strin
               if (lines.length < 2) { toast({ title: "Empty CSV", variant: "destructive" }); return; }
               const headers = lines[0].toLowerCase().split(",").map((h: string) => h.trim());
               let imported = 0;
+              let skipped = 0;
+              const totalRows = lines.length - 1;
               for (let i = 1; i < lines.length; i++) {
                 const values = lines[i].split(",").map((v: string) => v.trim());
                 const row: any = {};
@@ -6625,10 +6643,13 @@ function ContactsPanel({ teamId, userId, isTeamMember = false }: { teamId: strin
                     type: row.type === "company" ? "company" : "personal",
                   });
                   imported++;
-                } catch {}
+                } catch {
+                  skipped++;
+                }
               }
               queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
-              toast({ title: `Imported ${imported} contacts!` });
+              const description = skipped > 0 ? `${skipped} contact${skipped > 1 ? "s" : ""} skipped (duplicate email or invalid data)` : undefined;
+              toast({ title: `Imported ${imported} contacts!`, description });
             };
             input.click();
           }}>
