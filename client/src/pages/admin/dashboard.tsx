@@ -42,7 +42,7 @@ interface AdminStats {
 }
 interface UserRow {
   id: string; username: string; email: string; displayName?: string;
-  accountType: string; onboardingCompleted: boolean; isDisabled: boolean;
+  accountType: string; onboardingCompleted: boolean; isDisabled: boolean; isLtd: boolean;
   createdAt?: string;
   subscription?: { status: string; billingCycle: string; planName?: string } | null;
 }
@@ -217,11 +217,16 @@ export default function AdminDashboard() {
   const [ltdPageLoading, setLtdPageLoading] = useState(false);
   const [ltdCreateDialog, setLtdCreateDialog] = useState(false);
   const [ltdNewCode, setLtdNewCode] = useState("");
-  const [ltdNewPlanId, setLtdNewPlanId] = useState("");
-  const [ltdNewMaxUses, setLtdNewMaxUses] = useState("1");
+  const [ltdNewPlanId, setLtdNewPlanId] = useState("__none__");
   const [ltdNewNotes, setLtdNewNotes] = useState("");
   const [ltdSaving, setLtdSaving] = useState(false);
   const [ltdDeletingId, setLtdDeletingId] = useState<string | null>(null);
+  const [ltdBulkDialog, setLtdBulkDialog] = useState(false);
+  const [ltdBulkCount, setLtdBulkCount] = useState("10");
+  const [ltdBulkPrefix, setLtdBulkPrefix] = useState("LTD");
+  const [ltdBulkPlanId, setLtdBulkPlanId] = useState("__none__");
+  const [ltdBulkNotes, setLtdBulkNotes] = useState("");
+  const [ltdBulkResult, setLtdBulkResult] = useState<string[] | null>(null);
 
   // ── Auth check ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -735,7 +740,10 @@ export default function AdminDashboard() {
                             </button>
                           </td>
                           <td className="p-3">
-                            <Badge variant="outline" className="text-xs capitalize">{u.accountType}</Badge>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <Badge variant="outline" className="text-xs capitalize">{u.accountType}</Badge>
+                              {u.isLtd && <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100">LTD</Badge>}
+                            </div>
                           </td>
                           <td className="p-3 text-muted-foreground">{u.subscription?.planName ?? "Free"}</td>
                           <td className="p-3 text-muted-foreground text-xs">{u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}</td>
@@ -1302,9 +1310,14 @@ export default function AdminDashboard() {
                   <h2 className="text-2xl font-bold text-foreground">LTD Codes</h2>
                   <p className="text-muted-foreground text-sm">Manage lifetime deal redemption codes and registration page visibility.</p>
                 </div>
-                <Button onClick={() => { setLtdCreateDialog(true); setLtdNewCode(""); setLtdNewPlanId(""); setLtdNewMaxUses("1"); setLtdNewNotes(""); }} data-testid="button-new-ltd-code">
-                  <Plus className="h-4 w-4 mr-2" /> New Code
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" onClick={() => { setLtdBulkDialog(true); setLtdBulkCount("10"); setLtdBulkPrefix("LTD"); setLtdBulkPlanId("__none__"); setLtdBulkNotes(""); setLtdBulkResult(null); }} data-testid="button-bulk-ltd-codes">
+                    <Download className="h-4 w-4 mr-2" /> Bulk Generate
+                  </Button>
+                  <Button onClick={() => { setLtdCreateDialog(true); setLtdNewCode(""); setLtdNewPlanId("__none__"); setLtdNewNotes(""); }} data-testid="button-new-ltd-code">
+                    <Plus className="h-4 w-4 mr-2" /> New Code
+                  </Button>
+                </div>
               </div>
 
               {/* Page visibility toggle */}
@@ -1451,6 +1464,7 @@ export default function AdminDashboard() {
                     <DialogTitle className="flex items-center gap-2">
                       <Ticket className="h-5 w-5 text-primary" /> Create LTD Code
                     </DialogTitle>
+                    <p className="text-sm text-muted-foreground">Each code can only be redeemed once by a single user.</p>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div className="space-y-1.5">
@@ -1464,19 +1478,14 @@ export default function AdminDashboard() {
                       <Label>Linked Plan (optional)</Label>
                       <Select value={ltdNewPlanId} onValueChange={setLtdNewPlanId}>
                         <SelectTrigger data-testid="select-ltd-plan">
-                          <SelectValue placeholder="No plan (grant access only)" />
+                          <SelectValue placeholder="No plan" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">No plan</SelectItem>
+                          <SelectItem value="__none__">No plan (grant LTD access only)</SelectItem>
                           {plans.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
-                      <p className="text-xs text-muted-foreground">User will be subscribed to this plan on registration</p>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Max Uses</Label>
-                      <Input type="number" min="1" value={ltdNewMaxUses} onChange={e => setLtdNewMaxUses(e.target.value)} data-testid="input-ltd-max-uses" />
-                      <p className="text-xs text-muted-foreground">How many times this code can be redeemed</p>
+                      <p className="text-xs text-muted-foreground">User will be subscribed to this plan for life on registration</p>
                     </div>
                     <div className="space-y-1.5">
                       <Label>Notes (optional)</Label>
@@ -1488,9 +1497,10 @@ export default function AdminDashboard() {
                     <Button disabled={ltdSaving || !ltdNewCode.trim()} onClick={async () => {
                       setLtdSaving(true);
                       try {
+                        const resolvedPlanId = ltdNewPlanId && ltdNewPlanId !== "__none__" ? ltdNewPlanId : undefined;
                         const r = await fetch("/api/admin/ltd/codes", {
                           method: "POST", headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ code: ltdNewCode.trim(), planId: ltdNewPlanId || undefined, maxUses: parseInt(ltdNewMaxUses) || 1, notes: ltdNewNotes || undefined }),
+                          body: JSON.stringify({ code: ltdNewCode.trim(), planId: resolvedPlanId, notes: ltdNewNotes || undefined }),
                         });
                         const d = await r.json();
                         if (!r.ok) throw new Error(d.message);
@@ -1505,6 +1515,92 @@ export default function AdminDashboard() {
                       Create Code
                     </Button>
                   </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              {/* Bulk Generate Dialog */}
+              <Dialog open={ltdBulkDialog} onOpenChange={(o) => { setLtdBulkDialog(o); if (!o) setLtdBulkResult(null); }}>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Download className="h-5 w-5 text-primary" /> Bulk Generate Codes
+                    </DialogTitle>
+                    <p className="text-sm text-muted-foreground">Generate multiple unique single-use LTD codes at once.</p>
+                  </DialogHeader>
+                  {ltdBulkResult ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-green-600 font-medium">{ltdBulkResult.length} codes generated successfully!</p>
+                      <div className="bg-muted rounded p-3 max-h-48 overflow-y-auto">
+                        <div className="font-mono text-xs space-y-1">
+                          {ltdBulkResult.map(c => <div key={c} className="flex items-center justify-between">
+                            <span>{c}</span>
+                            <button onClick={() => { navigator.clipboard.writeText(c); }}><Copy className="h-3 w-3 text-muted-foreground" /></button>
+                          </div>)}
+                        </div>
+                      </div>
+                      <Button variant="outline" size="sm" className="w-full" onClick={() => {
+                        navigator.clipboard.writeText(ltdBulkResult.join("\n"));
+                        toast({ title: "All codes copied to clipboard!" });
+                      }}>
+                        <Copy className="h-3.5 w-3.5 mr-2" /> Copy All Codes
+                      </Button>
+                      <Button className="w-full" onClick={() => { setLtdBulkDialog(false); setLtdBulkResult(null); fetchLtdData(); }}>Done</Button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label>Number of Codes</Label>
+                            <Input type="number" min="1" max="500" value={ltdBulkCount} onChange={e => setLtdBulkCount(e.target.value)} data-testid="input-bulk-count" placeholder="10" />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label>Code Prefix</Label>
+                            <Input value={ltdBulkPrefix} onChange={e => setLtdBulkPrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} placeholder="LTD" data-testid="input-bulk-prefix" />
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground -mt-2">Preview: <span className="font-mono font-semibold">{(ltdBulkPrefix || "LTD").toUpperCase()}-A1B2C3D4</span></p>
+                        <div className="space-y-1.5">
+                          <Label>Linked Plan (optional)</Label>
+                          <Select value={ltdBulkPlanId} onValueChange={setLtdBulkPlanId}>
+                            <SelectTrigger data-testid="select-bulk-plan">
+                              <SelectValue placeholder="No plan" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">No plan (grant LTD access only)</SelectItem>
+                              {plans.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label>Notes (optional)</Label>
+                          <Input value={ltdBulkNotes} onChange={e => setLtdBulkNotes(e.target.value)} placeholder="e.g. AppSumo batch 1" data-testid="input-bulk-notes" />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setLtdBulkDialog(false)}>Cancel</Button>
+                        <Button disabled={ltdSaving} onClick={async () => {
+                          setLtdSaving(true);
+                          try {
+                            const resolvedPlanId = ltdBulkPlanId && ltdBulkPlanId !== "__none__" ? ltdBulkPlanId : undefined;
+                            const r = await fetch("/api/admin/ltd/codes/bulk", {
+                              method: "POST", headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ count: parseInt(ltdBulkCount) || 1, prefix: ltdBulkPrefix || "LTD", planId: resolvedPlanId, notes: ltdBulkNotes || undefined }),
+                            });
+                            const d = await r.json();
+                            if (!r.ok) throw new Error(d.message);
+                            setLtdBulkResult(d.generated || []);
+                            toast({ title: d.message });
+                          } catch (err: any) {
+                            toast({ title: "Failed", description: err.message, variant: "destructive" });
+                          } finally { setLtdSaving(false); }
+                        }} data-testid="button-bulk-generate">
+                          {ltdSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
+                          Generate Codes
+                        </Button>
+                      </DialogFooter>
+                    </>
+                  )}
                 </DialogContent>
               </Dialog>
             </div>

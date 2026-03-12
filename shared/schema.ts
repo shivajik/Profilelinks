@@ -33,6 +33,7 @@ export const users = pgTable("users", {
   emailVerified: boolean("email_verified").notNull().default(false),
   whiteLabelEnabled: boolean("white_label_enabled").notNull().default(false),
   apiKey: text("api_key"),
+  isLtd: boolean("is_ltd").notNull().default(false),
 });
 
 // ── Menu Social Links ──────────────────────────────────────────────────────

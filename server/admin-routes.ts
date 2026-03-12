@@ -254,6 +254,7 @@ router.get("/api/admin/users", requireAdminAuth, async (req: Request, res: Respo
         onboardingCompleted: users.onboardingCompleted,
         template: users.template,
         isDisabled: users.isDisabled,
+        isLtd: users.isLtd,
         createdAt: users.createdAt,
       })
       .from(users)

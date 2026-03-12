@@ -6,6 +6,7 @@ import { createLtdCodeSchema, updateLtdCodeSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { requireAdminAuth } from "./admin-auth";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 const router = Router();
 
@@ -42,8 +43,8 @@ router.post("/api/ltd/validate", async (req: Request, res: Response) => {
 
     if (!ltdCode) return res.status(404).json({ message: "Invalid redemption code" });
     if (!ltdCode.isActive) return res.status(400).json({ message: "This code has been deactivated" });
-    if (ltdCode.maxUses > 0 && ltdCode.currentUses >= ltdCode.maxUses) {
-      return res.status(400).json({ message: "This code has already been fully redeemed" });
+    if (ltdCode.currentUses >= ltdCode.maxUses) {
+      return res.status(400).json({ message: "This code has already been redeemed" });
     }
 
     let planName: string | null = null;
@@ -52,7 +53,7 @@ router.post("/api/ltd/validate", async (req: Request, res: Response) => {
       planName = plan?.name ?? null;
     }
 
-    res.json({ valid: true, planName, usesRemaining: ltdCode.maxUses - ltdCode.currentUses });
+    res.json({ valid: true, planName });
   } catch (err: any) {
     console.error("LTD validate error:", err);
     res.status(500).json({ message: "Failed to validate code" });
@@ -74,12 +75,12 @@ router.post("/api/ltd/register", async (req: Request, res: Response) => {
     const normalizedEmail = email.toLowerCase().trim();
     const normalizedUsername = username.toLowerCase().trim();
 
-    // Validate code
+    // Validate code (re-validate to prevent race conditions)
     const [ltdCode] = await db.select().from(ltdCodes).where(eq(ltdCodes.code, code.toUpperCase().trim()));
     if (!ltdCode) return res.status(400).json({ message: "Invalid redemption code" });
     if (!ltdCode.isActive) return res.status(400).json({ message: "This code has been deactivated" });
-    if (ltdCode.maxUses > 0 && ltdCode.currentUses >= ltdCode.maxUses) {
-      return res.status(400).json({ message: "This code has already been fully redeemed" });
+    if (ltdCode.currentUses >= ltdCode.maxUses) {
+      return res.status(400).json({ message: "This code has already been redeemed" });
     }
 
     // Check email/username uniqueness
@@ -89,7 +90,7 @@ router.post("/api/ltd/register", async (req: Request, res: Response) => {
     const [existingUsername] = await db.select({ id: users.id }).from(users).where(eq(users.username, normalizedUsername));
     if (existingUsername) return res.status(400).json({ message: "Username already taken" });
 
-    // Create user
+    // Create user — marked as LTD
     const hashedPassword = await bcrypt.hash(password, 10);
     const [newUser] = await db.insert(users).values({
       email: normalizedEmail,
@@ -97,9 +98,10 @@ router.post("/api/ltd/register", async (req: Request, res: Response) => {
       password: hashedPassword,
       displayName: displayName?.trim() || username,
       onboardingCompleted: true,
-    }).returning();
+      isLtd: true,
+    } as any).returning();
 
-    // Create subscription to the plan if one is linked
+    // Create lifetime subscription if a plan is linked
     if (ltdCode.planId) {
       await db.insert(userSubscriptions).values({
         userId: newUser.id,
@@ -107,12 +109,14 @@ router.post("/api/ltd/register", async (req: Request, res: Response) => {
         status: "active",
         billingCycle: "yearly",
         currentPeriodStart: new Date(),
-        currentPeriodEnd: new Date(Date.now() + 50 * 365 * 24 * 60 * 60 * 1000), // ~50 years
+        currentPeriodEnd: new Date(Date.now() + 50 * 365 * 24 * 60 * 60 * 1000),
       });
     }
 
-    // Increment code usage
-    await db.update(ltdCodes).set({ currentUses: ltdCode.currentUses + 1 }).where(eq(ltdCodes.id, ltdCode.id));
+    // Increment code usage (mark as used for single-use codes)
+    await db.update(ltdCodes)
+      .set({ currentUses: ltdCode.currentUses + 1 })
+      .where(eq(ltdCodes.id, ltdCode.id));
 
     // Auto-login
     (req.session as any).userId = newUser.id;
@@ -163,26 +167,65 @@ router.get("/api/admin/ltd/codes", requireAdminAuth, async (_req: Request, res: 
   }
 });
 
-// ─── Admin: create LTD code ───────────────────────────────────────────────────
+// ─── Admin: create single LTD code ───────────────────────────────────────────
 router.post("/api/admin/ltd/codes", requireAdminAuth, async (req: Request, res: Response) => {
   try {
     const result = createLtdCodeSchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ message: fromZodError(result.error).message });
 
-    const { code, planId, maxUses, notes } = result.data;
+    const { code, planId, notes } = result.data;
+    const resolvedPlanId = planId && planId !== "__none__" && planId.trim() !== "" ? planId : null;
+
     const [existing] = await db.select({ id: ltdCodes.id }).from(ltdCodes).where(eq(ltdCodes.code, code.toUpperCase()));
     if (existing) return res.status(400).json({ message: "A code with this name already exists" });
 
     const [created] = await db.insert(ltdCodes).values({
       code: code.toUpperCase(),
-      planId: planId || null,
-      maxUses,
+      planId: resolvedPlanId,
+      maxUses: 1, // each code is always for 1 user
       notes: notes || null,
     }).returning();
     res.json(created);
   } catch (err: any) {
     console.error("LTD create error:", err);
     res.status(500).json({ message: "Failed to create LTD code" });
+  }
+});
+
+// ─── Admin: bulk generate LTD codes ──────────────────────────────────────────
+router.post("/api/admin/ltd/codes/bulk", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const { count, prefix, planId, notes } = req.body;
+    const n = Math.min(Math.max(parseInt(count) || 1, 1), 500);
+    const resolvedPlanId = planId && planId !== "__none__" && planId.trim() !== "" ? planId : null;
+
+    const generated: string[] = [];
+    const failed: string[] = [];
+
+    for (let i = 0; i < n; i++) {
+      const randomPart = crypto.randomBytes(4).toString("hex").toUpperCase();
+      const code = prefix ? `${prefix.toUpperCase()}-${randomPart}` : `LTD-${randomPart}`;
+      try {
+        await db.insert(ltdCodes).values({
+          code,
+          planId: resolvedPlanId,
+          maxUses: 1,
+          notes: notes || null,
+        });
+        generated.push(code);
+      } catch {
+        failed.push(code);
+      }
+    }
+
+    res.json({
+      message: `Generated ${generated.length} code(s)${failed.length ? `, ${failed.length} failed (duplicates)` : ""}`,
+      generated,
+      failed,
+    });
+  } catch (err: any) {
+    console.error("LTD bulk generate error:", err);
+    res.status(500).json({ message: "Failed to bulk generate codes" });
   }
 });
 

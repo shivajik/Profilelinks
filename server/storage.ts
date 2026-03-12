@@ -236,6 +236,8 @@ pool.query(`
   INSERT INTO app_settings (key, value, updated_at)
   VALUES ('ltd_page_enabled', 'false', now())
   ON CONFLICT (key) DO NOTHING;
+
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS is_ltd boolean NOT NULL DEFAULT false;
 `).then(async () => {
   // Backfill slugs for existing teams that don't have one
   try {
@@ -253,7 +255,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateUser(id: string, data: Partial<Pick<User, "displayName" | "bio" | "profileImage" | "coverImage" | "username" | "onboardingCompleted" | "template" | "accountType" | "teamId" | "menuTemplate" | "menuDisplayName" | "menuProfileImage" | "menuAccentColor" | "menuDescription" | "menuPhone" | "menuEmail" | "menuAddress" | "menuGoogleMapsUrl" | "menuWhatsapp" | "menuWebsite" | "mustChangePassword" | "emailVerified" | "whiteLabelEnabled" | "apiKey">>): Promise<User | undefined>;
+  updateUser(id: string, data: Partial<Pick<User, "displayName" | "bio" | "profileImage" | "coverImage" | "username" | "onboardingCompleted" | "template" | "accountType" | "teamId" | "menuTemplate" | "menuDisplayName" | "menuProfileImage" | "menuAccentColor" | "menuDescription" | "menuPhone" | "menuEmail" | "menuAddress" | "menuGoogleMapsUrl" | "menuWhatsapp" | "menuWebsite" | "mustChangePassword" | "emailVerified" | "whiteLabelEnabled" | "apiKey" | "isLtd">>): Promise<User | undefined>;
 
   getPagesByUserId(userId: string): Promise<Page[]>;
   getPageById(id: string): Promise<Page | undefined>;
@@ -394,7 +396,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async updateUser(id: string, data: Partial<Pick<User, "displayName" | "bio" | "profileImage" | "coverImage" | "username" | "onboardingCompleted" | "template" | "accountType" | "teamId" | "menuTemplate" | "menuDisplayName" | "menuProfileImage" | "menuAccentColor" | "menuDescription" | "menuPhone" | "menuEmail" | "menuAddress" | "menuGoogleMapsUrl" | "menuWhatsapp" | "menuWebsite" | "mustChangePassword" | "emailVerified" | "whiteLabelEnabled" | "apiKey">>): Promise<User | undefined> {
+  async updateUser(id: string, data: Partial<Pick<User, "displayName" | "bio" | "profileImage" | "coverImage" | "username" | "onboardingCompleted" | "template" | "accountType" | "teamId" | "menuTemplate" | "menuDisplayName" | "menuProfileImage" | "menuAccentColor" | "menuDescription" | "menuPhone" | "menuEmail" | "menuAddress" | "menuGoogleMapsUrl" | "menuWhatsapp" | "menuWebsite" | "mustChangePassword" | "emailVerified" | "whiteLabelEnabled" | "apiKey" | "isLtd">>): Promise<User | undefined> {
     const [user] = await db.update(users).set(data).where(eq(users.id, id)).returning();
     return user;
   }
