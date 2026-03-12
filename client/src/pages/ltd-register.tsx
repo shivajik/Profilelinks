@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { Link as WouterLink } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, CheckCircle2, Lock, Mail, User, KeyRound, Zap, Infinity, Shield, Star, ChevronRight } from "lucide-react";
+import logoPath from "/favicon.png";
 
 const BENEFITS = [
   { icon: Infinity, text: "Lifetime access — pay once, use forever" },
@@ -118,7 +120,9 @@ export default function LtdRegisterPage() {
       <div className="md:w-1/2 bg-gradient-to-br from-primary via-purple-600 to-indigo-700 p-10 flex flex-col justify-center text-white">
         <div className="max-w-md mx-auto">
           <div className="mb-8">
-            <div className="text-3xl font-extrabold tracking-tight mb-1">VisiCardly</div>
+          <WouterLink href="/">
+            <img src={logoPath} alt="VisiCardly" className="w-16 h-12 object-contain" data-testid="text-logo" />
+          </WouterLink>
             <div className="text-white/70 text-sm">Link-in-Bio Platform</div>
           </div>
 
