@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation, Redirect } from "wouter";
+import { useLocation, Redirect, useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
@@ -183,19 +183,19 @@ export default function Dashboard() {
   const [addingBlock, setAddingBlock] = useState(false);
   const [addingSocial, setAddingSocial] = useState(false);
   const [copied, setCopied] = useState(false);
+  const search = useSearch();
   const [activeSection, setActiveSection] = useState<string>(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get("section") || "design";
   });
 
-  // Listen for URL changes (e.g. after onboarding navigates to ?section=team-templates)
+  // Reactively sync section from URL (handles navigation from onboarding, etc.)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const section = params.get("section");
-    if (section && section !== activeSection) {
+    const section = new URLSearchParams(search).get("section");
+    if (section) {
       setActiveSection(section);
     }
-  }, []);
+  }, [search]);
   const [previewMode, setPreviewMode] = useState<"mobile" | "desktop">("mobile");
   const [headerName, setHeaderName] = useState("");
   const [headerBio, setHeaderBio] = useState("");
