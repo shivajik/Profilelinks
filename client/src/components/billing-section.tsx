@@ -93,6 +93,7 @@ export function BillingSection() {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
+  const [currency, setCurrency] = useState<"INR" | "USD">("INR");
   const [payingPlanId, setPayingPlanId] = useState<string | null>(null);
 
   // Transaction history
@@ -269,7 +270,7 @@ export function BillingSection() {
       const res = await fetch("/api/payments/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId: plan.id, billingCycle, promoCode: appliedPromo?.code || undefined }),
+        body: JSON.stringify({ planId: plan.id, billingCycle, currency, promoCode: appliedPromo?.code || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
@@ -328,7 +329,7 @@ export function BillingSection() {
       toast({ title: "Payment failed", description: err.message, variant: "destructive" });
       setPayingPlanId(null);
     }
-  }, [user, billingCycle, subscription, fetchData, fetchHistory, toast, appliedPromo]);
+  }, [user, billingCycle, currency, subscription, fetchData, fetchHistory, toast, appliedPromo]);
 
   if (loading) {
     return (
@@ -374,21 +375,39 @@ export function BillingSection() {
         </div>
       )}
 
-      {/* Billing toggle */}
-      <div className="flex items-center gap-1 bg-muted rounded-full p-1 text-sm w-fit">
-        <button
-          className={`px-4 py-1.5 rounded-full font-medium transition-all ${billingCycle === "monthly" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
-          onClick={() => setBillingCycle("monthly")}
-        >
-          Monthly
-        </button>
-        <button
-          className={`px-4 py-1.5 rounded-full font-medium transition-all ${billingCycle === "yearly" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
-          onClick={() => setBillingCycle("yearly")}
-        >
-          Yearly
-          <span className="ml-1.5 text-xs text-primary font-semibold">Save 20%</span>
-        </button>
+      {/* Billing toggle row */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-1 bg-muted rounded-full p-1 text-sm">
+          <button
+            className={`px-4 py-1.5 rounded-full font-medium transition-all ${billingCycle === "monthly" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
+            onClick={() => setBillingCycle("monthly")}
+          >
+            Monthly
+          </button>
+          <button
+            className={`px-4 py-1.5 rounded-full font-medium transition-all ${billingCycle === "yearly" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
+            onClick={() => setBillingCycle("yearly")}
+          >
+            Yearly
+            <span className="ml-1.5 text-xs text-primary font-semibold">Save 20%</span>
+          </button>
+        </div>
+        {plans.some(p => parseFloat((p as any).monthlyPriceUsd ?? "0") > 0 || parseFloat((p as any).yearlyPriceUsd ?? "0") > 0) && (
+          <div className="flex items-center gap-1 bg-muted rounded-full p-1 text-sm">
+            <button
+              className={`px-3 py-1.5 rounded-full font-medium transition-all ${currency === "INR" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
+              onClick={() => setCurrency("INR")}
+            >
+              ₹ INR
+            </button>
+            <button
+              className={`px-3 py-1.5 rounded-full font-medium transition-all ${currency === "USD" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
+              onClick={() => setCurrency("USD")}
+            >
+              $ USD
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Promo Code Section */}
@@ -437,6 +456,7 @@ export function BillingSection() {
               key={plan.id}
               plan={plan}
               billingCycle={billingCycle}
+              currency={currency}
               isCurrentPlan={subscription?.planId === plan.id && subscription?.status === "active"}
               loading={payingPlanId === plan.id}
               onSelect={handleSelectPlan}
@@ -525,7 +545,7 @@ export function BillingSection() {
         {[
           { q: "Can I upgrade or downgrade anytime?", a: "Yes — changes take effect immediately." },
           { q: "What payment methods are accepted?", a: "Cards, UPI, net banking, and wallets via Razorpay." },
-          { q: "Are prices in INR?", a: "Yes, all prices are in Indian Rupees (₹)." },
+          { q: "What currencies are supported?", a: "Prices are shown in INR (₹) and USD ($) where available. Payment is processed in your selected currency via Razorpay." },
           { q: "How do I cancel?", a: "Contact support and we'll process your cancellation promptly." },
         ].map((item) => (
           <div key={item.q} className="rounded-lg border bg-muted/30 p-3">

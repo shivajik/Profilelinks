@@ -221,6 +221,21 @@ pool.query(`
   CREATE INDEX IF NOT EXISTS idx_team_templates_team_id ON team_templates(team_id);
   CREATE INDEX IF NOT EXISTS idx_team_branches_team_id ON team_branches(team_id);
   CREATE INDEX IF NOT EXISTS idx_saved_qr_codes_user_id ON saved_qr_codes(user_id);
+
+  CREATE TABLE IF NOT EXISTS ltd_codes (
+    id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+    code text NOT NULL UNIQUE,
+    plan_id varchar REFERENCES pricing_plans(id),
+    max_uses integer NOT NULL DEFAULT 1,
+    current_uses integer NOT NULL DEFAULT 0,
+    is_active boolean NOT NULL DEFAULT true,
+    notes text,
+    created_at timestamp NOT NULL DEFAULT now()
+  );
+
+  INSERT INTO app_settings (key, value, updated_at)
+  VALUES ('ltd_page_enabled', 'false', now())
+  ON CONFLICT (key) DO NOTHING;
 `).then(async () => {
   // Backfill slugs for existing teams that don't have one
   try {

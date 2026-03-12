@@ -14,7 +14,7 @@ import {
   createPricingPlanSchema,
   updatePricingPlanSchema,
 } from "@shared/schema";
-import { eq, desc, count, sql, and, or, ilike } from "drizzle-orm";
+import { eq, desc, count, sql, and, or, ilike, inArray } from "drizzle-orm";
 import { fromZodError } from "zod-validation-error";
 
 const router = Router();
@@ -322,7 +322,7 @@ router.post("/api/admin/users/bulk-delete", requireAdminAuth, async (req: Reques
   try {
     const { ids } = req.body;
     if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ message: "No user IDs provided" });
-    await db.delete(users).where(sql`${users.id} = ANY(${ids})`);
+    await db.delete(users).where(inArray(users.id, ids));
     res.json({ message: `${ids.length} user(s) deleted` });
   } catch (error: any) {
     console.error("Bulk delete error:", error);
@@ -335,7 +335,7 @@ router.post("/api/admin/users/bulk-toggle-status", requireAdminAuth, async (req:
   try {
     const { ids, disable } = req.body;
     if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ message: "No user IDs provided" });
-    await db.update(users).set({ isDisabled: !!disable }).where(sql`${users.id} = ANY(${ids})`);
+    await db.update(users).set({ isDisabled: !!disable }).where(inArray(users.id, ids));
     res.json({ message: `${ids.length} user(s) ${disable ? "deactivated" : "reactivated"}` });
   } catch (error: any) {
     console.error("Bulk toggle error:", error);

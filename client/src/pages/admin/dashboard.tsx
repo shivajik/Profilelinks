@@ -20,7 +20,7 @@ import {
   UserCheck, UserX, ChevronRight, Menu, X as XIcon, Search,
   FileText, Eye, User, Mail, AtSign, Calendar, Hash,
   Download, ArrowLeft, Link2, FileStack, Globe, MessageSquare,
-  Handshake, Tag, Percent, Copy,
+  Handshake, Tag, Percent, Copy, Ticket, Key, ToggleLeft, ToggleRight,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -120,6 +120,7 @@ const NAV_ITEMS = [
   { key: "payments",    label: "Payments",       icon: CreditCard },
   { key: "affiliates",  label: "Affiliates",     icon: Handshake },
   { key: "promo-codes", label: "Promo Codes",    icon: Tag },
+  { key: "ltd-codes",   label: "LTD Codes",      icon: Ticket },
   { key: "reports",     label: "Reports",        icon: BarChart3 },
   { key: "settings",    label: "Settings",       icon: Settings },
 ];
@@ -209,6 +210,19 @@ export default function AdminDashboard() {
   const [savingPromo, setSavingPromo] = useState(false);
   const [deletingPromoId, setDeletingPromoId] = useState<string | null>(null);
 
+  // LTD codes state
+  interface LtdCodeRow { id: string; code: string; planId: string | null; planName: string | null; maxUses: number; currentUses: number; isActive: boolean; notes: string | null; createdAt: string; }
+  const [ltdCodes, setLtdCodes] = useState<LtdCodeRow[]>([]);
+  const [ltdPageEnabled, setLtdPageEnabled] = useState(false);
+  const [ltdPageLoading, setLtdPageLoading] = useState(false);
+  const [ltdCreateDialog, setLtdCreateDialog] = useState(false);
+  const [ltdNewCode, setLtdNewCode] = useState("");
+  const [ltdNewPlanId, setLtdNewPlanId] = useState("");
+  const [ltdNewMaxUses, setLtdNewMaxUses] = useState("1");
+  const [ltdNewNotes, setLtdNewNotes] = useState("");
+  const [ltdSaving, setLtdSaving] = useState(false);
+  const [ltdDeletingId, setLtdDeletingId] = useState<string | null>(null);
+
   // ── Auth check ─────────────────────────────────────────────────────────────
   useEffect(() => {
     fetch("/api/admin/me")
@@ -270,11 +284,16 @@ export default function AdminDashboard() {
   }, []);
   const fetchAffiliates = useCallback(async () => { const r = await fetch("/api/admin/affiliates"); if (r.ok) setAdminAffiliates(await r.json()); }, []);
   const fetchPromoCodes = useCallback(async () => { const r = await fetch("/api/admin/promo-codes"); if (r.ok) setAdminPromoCodes(await r.json()); }, []);
+  const fetchLtdData = useCallback(async () => {
+    const [codesRes, settingsRes] = await Promise.all([fetch("/api/admin/ltd/codes"), fetch("/api/admin/ltd/settings")]);
+    if (codesRes.ok) setLtdCodes(await codesRes.json());
+    if (settingsRes.ok) { const d = await settingsRes.json(); setLtdPageEnabled(d.ltdPageEnabled); }
+  }, []);
 
   const refreshAll = useCallback(() => {
     setLoadingData(true);
-    Promise.all([fetchStats(), fetchPlans(), fetchUsers(), fetchPayments(), fetchAffiliates(), fetchPromoCodes()]).finally(() => setLoadingData(false));
-  }, [fetchStats, fetchPlans, fetchUsers, fetchPayments, fetchAffiliates, fetchPromoCodes]);
+    Promise.all([fetchStats(), fetchPlans(), fetchUsers(), fetchPayments(), fetchAffiliates(), fetchPromoCodes(), fetchLtdData()]).finally(() => setLoadingData(false));
+  }, [fetchStats, fetchPlans, fetchUsers, fetchPayments, fetchAffiliates, fetchPromoCodes, fetchLtdData]);
 
   useEffect(() => { if (admin) refreshAll(); }, [admin, refreshAll]);
 
@@ -604,31 +623,63 @@ export default function AdminDashboard() {
               </div>
 
               {/* Bulk action toolbar */}
-              {selectedUserIds.size > 0 && (
-                <div className="flex items-center gap-3 px-4 py-2.5 bg-primary/5 border border-primary/20 rounded-lg">
-                  <span className="text-sm font-medium text-foreground">{selectedUserIds.size} user{selectedUserIds.size !== 1 ? "s" : ""} selected</span>
-                  <div className="flex items-center gap-2 ml-auto">
-                    <Button size="sm" variant="outline" disabled={bulkActionLoading} onClick={() => bulkToggleStatus(true)}
-                      className="text-yellow-600 hover:bg-yellow-50" data-testid="button-bulk-deactivate">
-                      {bulkActionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <UserX className="h-3.5 w-3.5 mr-1" />}
-                      Deactivate
-                    </Button>
-                    <Button size="sm" variant="outline" disabled={bulkActionLoading} onClick={() => bulkToggleStatus(false)}
-                      className="text-green-600 hover:bg-green-50" data-testid="button-bulk-reactivate">
-                      {bulkActionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <UserCheck className="h-3.5 w-3.5 mr-1" />}
-                      Reactivate
-                    </Button>
-                    <Button size="sm" variant="outline" disabled={bulkActionLoading} onClick={bulkDelete}
-                      className="text-destructive hover:bg-destructive/10" data-testid="button-bulk-delete">
-                      {bulkActionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Trash2 className="h-3.5 w-3.5 mr-1" />}
-                      Delete
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setSelectedUserIds(new Set())} data-testid="button-clear-selection">
-                      <XIcon className="h-3.5 w-3.5" />
-                    </Button>
+              {selectedUserIds.size > 0 && (() => {
+                const selectedUsers = adminUsers.filter(u => selectedUserIds.has(u.id));
+                const activeCount = selectedUsers.filter(u => !u.isDisabled).length;
+                const disabledCount = selectedUsers.filter(u => u.isDisabled).length;
+                return (
+                  <div className="flex items-center gap-3 px-4 py-2.5 bg-primary/5 border border-primary/20 rounded-lg flex-wrap">
+                    <span className="text-sm font-medium text-foreground">
+                      {selectedUserIds.size} selected
+                      {activeCount > 0 && disabledCount > 0 && (
+                        <span className="ml-1 text-xs text-muted-foreground">({activeCount} active, {disabledCount} disabled)</span>
+                      )}
+                    </span>
+                    <div className="flex items-center gap-2 ml-auto flex-wrap">
+                      {activeCount > 0 && (
+                        <Button size="sm" variant="outline" disabled={bulkActionLoading}
+                          onClick={() => {
+                            const ids = adminUsers.filter(u => selectedUserIds.has(u.id) && !u.isDisabled).map(u => u.id);
+                            if (ids.length === 0) return;
+                            setBulkActionLoading(true);
+                            fetch("/api/admin/users/bulk-toggle-status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids, disable: true }) })
+                              .then(r => r.json()).then(d => { toast({ title: d.message ?? "Done" }); setSelectedUserIds(new Set()); fetchUsers(); })
+                              .catch(() => toast({ title: "Failed", variant: "destructive" }))
+                              .finally(() => setBulkActionLoading(false));
+                          }}
+                          className="text-yellow-600 hover:bg-yellow-50" data-testid="button-bulk-deactivate">
+                          {bulkActionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <UserX className="h-3.5 w-3.5 mr-1" />}
+                          Deactivate {activeCount > 0 && activeCount < selectedUserIds.size ? `(${activeCount})` : ""}
+                        </Button>
+                      )}
+                      {disabledCount > 0 && (
+                        <Button size="sm" variant="outline" disabled={bulkActionLoading}
+                          onClick={() => {
+                            const ids = adminUsers.filter(u => selectedUserIds.has(u.id) && u.isDisabled).map(u => u.id);
+                            if (ids.length === 0) return;
+                            setBulkActionLoading(true);
+                            fetch("/api/admin/users/bulk-toggle-status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids, disable: false }) })
+                              .then(r => r.json()).then(d => { toast({ title: d.message ?? "Done" }); setSelectedUserIds(new Set()); fetchUsers(); })
+                              .catch(() => toast({ title: "Failed", variant: "destructive" }))
+                              .finally(() => setBulkActionLoading(false));
+                          }}
+                          className="text-green-600 hover:bg-green-50" data-testid="button-bulk-reactivate">
+                          {bulkActionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <UserCheck className="h-3.5 w-3.5 mr-1" />}
+                          Reactivate {disabledCount > 0 && disabledCount < selectedUserIds.size ? `(${disabledCount})` : ""}
+                        </Button>
+                      )}
+                      <Button size="sm" variant="outline" disabled={bulkActionLoading} onClick={bulkDelete}
+                        className="text-destructive hover:bg-destructive/10" data-testid="button-bulk-delete">
+                        {bulkActionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Trash2 className="h-3.5 w-3.5 mr-1" />}
+                        Delete ({selectedUserIds.size})
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setSelectedUserIds(new Set())} data-testid="button-clear-selection">
+                        <XIcon className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               <Card>
                 <div className="overflow-x-auto">
@@ -1240,6 +1291,222 @@ export default function AdminDashboard() {
                   </table>
                 </div>
               </Card>
+            </div>
+          )}
+
+          {/* ── LTD CODES ─────────────────────────────────────────────────────── */}
+          {activeSection === "ltd-codes" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div>
+                  <h2 className="text-2xl font-bold text-foreground">LTD Codes</h2>
+                  <p className="text-muted-foreground text-sm">Manage lifetime deal redemption codes and registration page visibility.</p>
+                </div>
+                <Button onClick={() => { setLtdCreateDialog(true); setLtdNewCode(""); setLtdNewPlanId(""); setLtdNewMaxUses("1"); setLtdNewNotes(""); }} data-testid="button-new-ltd-code">
+                  <Plus className="h-4 w-4 mr-2" /> New Code
+                </Button>
+              </div>
+
+              {/* Page visibility toggle */}
+              <Card>
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Globe className="h-4 w-4 text-primary" />
+                        <span className="font-semibold text-foreground">Registration Page</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Controls whether <code className="text-xs bg-muted px-1 py-0.5 rounded">/ltd-register</code> is publicly accessible.
+                        When disabled, visitors see a "not available" message.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className={`text-sm font-medium ${ltdPageEnabled ? "text-green-600" : "text-muted-foreground"}`}>
+                        {ltdPageEnabled ? "Enabled" : "Disabled"}
+                      </span>
+                      <button
+                        disabled={ltdPageLoading}
+                        onClick={async () => {
+                          setLtdPageLoading(true);
+                          try {
+                            const r = await fetch("/api/admin/ltd/settings", {
+                              method: "POST", headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ ltdPageEnabled: !ltdPageEnabled }),
+                            });
+                            if (r.ok) { setLtdPageEnabled(!ltdPageEnabled); toast({ title: !ltdPageEnabled ? "Page enabled" : "Page disabled" }); }
+                          } finally { setLtdPageLoading(false); }
+                        }}
+                        data-testid="button-toggle-ltd-page"
+                        className="focus:outline-none"
+                      >
+                        {ltdPageLoading
+                          ? <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
+                          : ltdPageEnabled
+                            ? <ToggleRight className="h-10 w-10 text-primary cursor-pointer" />
+                            : <ToggleLeft className="h-10 w-10 text-muted-foreground cursor-pointer" />}
+                      </button>
+                    </div>
+                  </div>
+                  {ltdPageEnabled && (
+                    <div className="mt-3 pt-3 border-t">
+                      <p className="text-xs text-muted-foreground">Registration URL:</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <code className="text-xs bg-muted px-2 py-1 rounded flex-1">{window.location.origin}/ltd-register</code>
+                        <Button variant="ghost" size="sm" className="h-7 px-2"
+                          onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/ltd-register`); toast({ title: "URL copied!" }); }}>
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 px-2"
+                          onClick={() => window.open("/ltd-register", "_blank")}>
+                          <Link2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Codes list */}
+              <Card>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left p-3 font-medium text-muted-foreground">Code</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Plan</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Usage</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Notes</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ltdCodes.length === 0 ? (
+                        <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No LTD codes yet. Create one to get started.</td></tr>
+                      ) : ltdCodes.map(c => (
+                        <tr key={c.id} className={`border-b last:border-0 hover:bg-muted/20 ${!c.isActive ? "opacity-60" : ""}`}>
+                          <td className="p-3">
+                            <div className="flex items-center gap-2">
+                              <Key className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="font-mono font-semibold text-foreground">{c.code}</span>
+                              <button onClick={() => { navigator.clipboard.writeText(c.code); toast({ title: "Copied!" }); }}>
+                                <Copy className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                              </button>
+                            </div>
+                          </td>
+                          <td className="p-3 text-muted-foreground">{c.planName ?? <span className="italic">None</span>}</td>
+                          <td className="p-3">
+                            <span className={`font-medium ${c.currentUses >= c.maxUses ? "text-destructive" : "text-foreground"}`}>
+                              {c.currentUses}/{c.maxUses}
+                            </span>
+                            {c.currentUses >= c.maxUses && <span className="ml-1 text-xs text-destructive">(full)</span>}
+                          </td>
+                          <td className="p-3">
+                            {c.isActive && c.currentUses < c.maxUses
+                              ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Active</span>
+                              : c.isActive && c.currentUses >= c.maxUses
+                                ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Exhausted</span>
+                                : <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">Inactive</span>
+                            }
+                          </td>
+                          <td className="p-3 text-muted-foreground text-xs max-w-[150px] truncate">{c.notes ?? "—"}</td>
+                          <td className="p-3">
+                            <div className="flex items-center gap-1.5">
+                              <Button variant="outline" size="sm"
+                                onClick={async () => {
+                                  const r = await fetch(`/api/admin/ltd/codes/${c.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isActive: !c.isActive }) });
+                                  if (r.ok) { toast({ title: c.isActive ? "Deactivated" : "Activated" }); fetchLtdData(); }
+                                }}
+                                className={c.isActive ? "text-yellow-600 hover:bg-yellow-50" : "text-green-600 hover:bg-green-50"}
+                                data-testid={`button-toggle-ltd-${c.id}`}>
+                                {c.isActive ? <ToggleLeft className="h-3.5 w-3.5" /> : <ToggleRight className="h-3.5 w-3.5" />}
+                              </Button>
+                              <Button variant="outline" size="sm"
+                                disabled={ltdDeletingId === c.id}
+                                onClick={async () => {
+                                  if (!confirm(`Delete code "${c.code}"?`)) return;
+                                  setLtdDeletingId(c.id);
+                                  const r = await fetch(`/api/admin/ltd/codes/${c.id}`, { method: "DELETE" });
+                                  if (r.ok) { toast({ title: "Code deleted" }); fetchLtdData(); }
+                                  setLtdDeletingId(null);
+                                }}
+                                className="text-destructive hover:bg-destructive/10"
+                                data-testid={`button-delete-ltd-${c.id}`}>
+                                {ltdDeletingId === c.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+
+              {/* Create LTD Code Dialog */}
+              <Dialog open={ltdCreateDialog} onOpenChange={setLtdCreateDialog}>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Ticket className="h-5 w-5 text-primary" /> Create LTD Code
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label>Code <span className="text-destructive">*</span></Label>
+                      <Input placeholder="VISI-LTD-2024" value={ltdNewCode}
+                        onChange={e => setLtdNewCode(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ""))}
+                        data-testid="input-ltd-code" />
+                      <p className="text-xs text-muted-foreground">Letters, numbers, hyphens and underscores only</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Linked Plan (optional)</Label>
+                      <Select value={ltdNewPlanId} onValueChange={setLtdNewPlanId}>
+                        <SelectTrigger data-testid="select-ltd-plan">
+                          <SelectValue placeholder="No plan (grant access only)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No plan</SelectItem>
+                          {plans.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">User will be subscribed to this plan on registration</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Max Uses</Label>
+                      <Input type="number" min="1" value={ltdNewMaxUses} onChange={e => setLtdNewMaxUses(e.target.value)} data-testid="input-ltd-max-uses" />
+                      <p className="text-xs text-muted-foreground">How many times this code can be redeemed</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Notes (optional)</Label>
+                      <Textarea placeholder="e.g. AppSumo batch 1" value={ltdNewNotes} onChange={e => setLtdNewNotes(e.target.value)} rows={2} data-testid="input-ltd-notes" />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setLtdCreateDialog(false)}>Cancel</Button>
+                    <Button disabled={ltdSaving || !ltdNewCode.trim()} onClick={async () => {
+                      setLtdSaving(true);
+                      try {
+                        const r = await fetch("/api/admin/ltd/codes", {
+                          method: "POST", headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ code: ltdNewCode.trim(), planId: ltdNewPlanId || undefined, maxUses: parseInt(ltdNewMaxUses) || 1, notes: ltdNewNotes || undefined }),
+                        });
+                        const d = await r.json();
+                        if (!r.ok) throw new Error(d.message);
+                        toast({ title: "Code created!" });
+                        setLtdCreateDialog(false);
+                        fetchLtdData();
+                      } catch (err: any) {
+                        toast({ title: "Failed", description: err.message, variant: "destructive" });
+                      } finally { setLtdSaving(false); }
+                    }} data-testid="button-save-ltd-code">
+                      {ltdSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                      Create Code
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           )}
 

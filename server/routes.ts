@@ -16,6 +16,7 @@ import crypto from "crypto";
 import adminRouter from "./admin-routes";
 import paymentRouter from "./payment-routes";
 import affiliateRouter from "./affiliate-routes";
+import ltdRouter from "./ltd-routes";
 import { getUserPlanLimits } from "./plan-limits";
 import { sendInviteEmail, sendCredentialsEmail } from "./email";
 import { rateLimit } from "./rate-limit";
@@ -2905,10 +2906,11 @@ export async function registerRoutes(
     }
   });
 
-  // Register admin, payment, and affiliate routes
+  // Register admin, payment, affiliate, and ltd routes
   app.use(adminRouter);
   app.use(paymentRouter);
   app.use(affiliateRouter);
+  app.use(ltdRouter);
 
   return httpServer;
 }

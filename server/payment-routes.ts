@@ -87,7 +87,7 @@ router.post("/api/payments/create-order", requireAuth as any, async (req: Reques
     if (!result.success) {
       return res.status(400).json({ message: fromZodError(result.error).message });
     }
-    const { planId, billingCycle } = result.data;
+    const { planId, billingCycle, currency } = result.data;
     const promoCode = req.body.promoCode as string | undefined;
 
     const plans = await db.select().from(pricingPlans).where(sql`${pricingPlans.id} = ${planId}`);
@@ -96,7 +96,11 @@ router.post("/api/payments/create-order", requireAuth as any, async (req: Reques
       return res.status(404).json({ message: "Plan not found or inactive" });
     }
 
-    let price = billingCycle === "yearly" ? parseFloat(plan.yearlyPrice) : parseFloat(plan.monthlyPrice);
+    const useUsd = currency === "USD" && parseFloat(billingCycle === "yearly" ? plan.yearlyPriceUsd : plan.monthlyPriceUsd) > 0;
+    let price = useUsd
+      ? (billingCycle === "yearly" ? parseFloat(plan.yearlyPriceUsd) : parseFloat(plan.monthlyPriceUsd))
+      : (billingCycle === "yearly" ? parseFloat(plan.yearlyPrice) : parseFloat(plan.monthlyPrice));
+    const orderCurrency = useUsd ? "USD" : "INR";
 
     // Apply promo code discount
     let appliedPromoId: string | null = null;
@@ -154,12 +158,12 @@ router.post("/api/payments/create-order", requireAuth as any, async (req: Reques
       return res.status(500).json({ message: "Payment gateway not configured. Admin needs to set Razorpay keys in Settings." });
     }
 
-    // Amount in paise (INR smallest unit)
-    const amountInPaise = Math.round(price * 100);
+    // Amount in smallest unit (paise for INR, cents for USD)
+    const amountInSmallestUnit = Math.round(price * 100);
 
     const orderPayload = {
-      amount: amountInPaise,
-      currency: "INR",
+      amount: amountInSmallestUnit,
+      currency: orderCurrency,
       receipt: `rcpt_${Date.now()}`,
       notes: {
         userId: req.session.userId!,
@@ -190,8 +194,8 @@ router.post("/api/payments/create-order", requireAuth as any, async (req: Reques
     await db.insert(payments).values({
       userId: req.session.userId!,
       planId,
-      amount: (amountInPaise / 100).toString(),
-      currency: "INR",
+      amount: (amountInSmallestUnit / 100).toString(),
+      currency: orderCurrency,
       status: "pending",
       razorpayOrderId: order.id,
       billingCycle,

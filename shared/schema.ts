@@ -721,6 +721,7 @@ export const updatePricingPlanSchema = z.object({
 export const createPaymentOrderSchema = z.object({
   planId: z.string().min(1, "Plan ID is required"),
   billingCycle: z.enum(["monthly", "yearly"]).default("monthly"),
+  currency: z.enum(["INR", "USD"]).default("INR"),
 });
 
 export const verifyPaymentSchema = z.object({
@@ -811,3 +812,33 @@ export const validatePromoCodeSchema = z.object({
 export type Affiliate = typeof affiliates.$inferSelect;
 export type AffiliateReferral = typeof affiliateReferrals.$inferSelect;
 export type PromoCode = typeof promoCodes.$inferSelect;
+
+// =============================================
+// LTD (Lifetime Deal) CODES
+// =============================================
+
+export const ltdCodes = pgTable("ltd_codes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: text("code").notNull().unique(),
+  planId: varchar("plan_id").references(() => pricingPlans.id),
+  maxUses: integer("max_uses").notNull().default(1),
+  currentUses: integer("current_uses").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const createLtdCodeSchema = z.object({
+  code: z.string().min(4, "Code must be at least 4 characters").max(50).regex(/^[A-Z0-9_-]+$/i, "Only letters, numbers, hyphens and underscores"),
+  planId: z.string().optional(),
+  maxUses: z.number().int().min(1).default(1),
+  notes: z.string().optional(),
+});
+
+export const updateLtdCodeSchema = z.object({
+  isActive: z.boolean().optional(),
+  maxUses: z.number().int().min(1).optional(),
+  notes: z.string().optional(),
+});
+
+export type LtdCode = typeof ltdCodes.$inferSelect;
