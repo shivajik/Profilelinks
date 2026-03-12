@@ -2167,6 +2167,7 @@ export async function registerRoutes(
 
       const { password: _, email: __, ...publicUser } = user;
       (publicUser as any).emailVerified = user.emailVerified || false;
+      (publicUser as any).useOriginalSocialColors = user.useOriginalSocialColors || false;
 
       let teamBranding: {
         companyLogo?: string;

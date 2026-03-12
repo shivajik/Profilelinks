@@ -126,7 +126,56 @@ const PLATFORM_ICONS: Record<string, IconComponent> = {
   youtubeshorts: SiYoutube,
 };
 
-export function SocialIcon({ platform, className }: { platform: string; className?: string }) {
+export const BRAND_COLORS: Record<string, string> = {
+  facebook: "#1877F2",
+  instagram: "#E4405F",
+  x: "#000000",
+  linkedin: "#0A66C2",
+  youtube: "#FF0000",
+  youtubemusic: "#FF0000",
+  youtubeshorts: "#FF0000",
+  tiktok: "#000000",
+  spotify: "#1DB954",
+  discord: "#5865F2",
+  reddit: "#FF4500",
+  pinterest: "#E60023",
+  snapchat: "#FFFC00",
+  twitch: "#9146FF",
+  soundcloud: "#FF5500",
+  telegram: "#26A5E4",
+  whatsapp: "#25D366",
+  medium: "#000000",
+  patreon: "#FF424D",
+  steam: "#1B2838",
+  behance: "#1769FF",
+  dribbble: "#EA4C89",
+  vimeo: "#1AB7EA",
+  unsplash: "#000000",
+  tumblr: "#36465D",
+  slack: "#4A154B",
+  signal: "#3A76F0",
+  bluesky: "#0085FF",
+  threads: "#000000",
+  kofi: "#FF5E5B",
+  lastfm: "#D51007",
+  meetup: "#ED1C40",
+  bandcamp: "#1DA0C3",
+  strava: "#FC4C02",
+  tidal: "#000000",
+  wechat: "#07C160",
+  github: "#181717",
+  email: "#EA4335",
+  phone: "#34A853",
+  website: "#4285F4",
+  amazon: "#FF9900",
+  applemusic: "#FA243C",
+  applepodcasts: "#9933CC",
+  artstation: "#13AFF0",
+  rednote: "#FE2C55",
+};
+
+export function SocialIcon({ platform, className, brandColor }: { platform: string; className?: string; brandColor?: boolean }) {
   const Icon = PLATFORM_ICONS[platform] || Link2;
-  return <Icon className={className || "w-4 h-4"} />;
+  const color = brandColor ? BRAND_COLORS[platform] : undefined;
+  return <Icon className={className || "w-4 h-4"} style={color ? { color } : undefined} />;
 }

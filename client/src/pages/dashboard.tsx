@@ -290,7 +290,7 @@ export default function Dashboard() {
   }, [user, businessProfileData]);
 
   const profileMutation = useMutation({
-    mutationFn: async (data: { displayName?: string | null; bio?: string | null; profileImage?: string | null; coverImage?: string | null }) => {
+    mutationFn: async (data: { displayName?: string | null; bio?: string | null; profileImage?: string | null; coverImage?: string | null; useOriginalSocialColors?: boolean }) => {
       await apiRequest("PATCH", "/api/auth/profile", data);
     },
     onSuccess: () => {
@@ -944,6 +944,17 @@ export default function Dashboard() {
                         <Link2 className="w-4 h-4" />
                       </Button>
                     </div>
+                    <div className="border rounded-md p-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">Use original brand colors</p>
+                        <p className="text-xs text-muted-foreground">Show social icons in their real brand colors (e.g. Facebook blue)</p>
+                      </div>
+                      <Switch
+                        checked={user.useOriginalSocialColors || false}
+                        onCheckedChange={(checked) => profileMutation.mutate({ useOriginalSocialColors: checked })}
+                        data-testid="toggle-original-social-colors"
+                      />
+                    </div>
                   </div>
                 </CategorySection>
 
@@ -1198,6 +1209,7 @@ export default function Dashboard() {
                       pages={userPages}
                       currentPage={currentPage || null}
                       mode={previewMode}
+                      useOriginalSocialColors={user.useOriginalSocialColors}
                     />
                   </>
                 )}
@@ -3141,6 +3153,7 @@ function PhonePreview({
   pages,
   currentPage,
   mode,
+  useOriginalSocialColors,
 }: {
   template: (typeof TEMPLATES)[0];
   displayName: string;
@@ -3153,6 +3166,7 @@ function PhonePreview({
   pages: Page[];
   currentPage: Page | null;
   mode: "mobile" | "desktop";
+  useOriginalSocialColors?: boolean;
 }) {
   const activeBlocks = blocks.filter((b) => b.active);
   const activeSocials = socials.filter((s) => s.url);
@@ -3166,8 +3180,8 @@ function PhonePreview({
   const socialIcons = activeSocials.length > 0 ? (
     <div className="flex items-center gap-2 flex-wrap">
       {activeSocials.map((social) => (
-        <div key={social.id} className={`${template.textColor} opacity-70`}>
-          <SocialIcon platform={social.platform} className="w-3.5 h-3.5" />
+        <div key={social.id} className={`${useOriginalSocialColors ? '' : template.textColor} opacity-70`}>
+          <SocialIcon platform={social.platform} className="w-3.5 h-3.5" brandColor={useOriginalSocialColors} />
         </div>
       ))}
     </div>

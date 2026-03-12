@@ -34,6 +34,7 @@ export const users = pgTable("users", {
   whiteLabelEnabled: boolean("white_label_enabled").notNull().default(false),
   apiKey: text("api_key"),
   isLtd: boolean("is_ltd").notNull().default(false),
+  useOriginalSocialColors: boolean("use_original_social_colors").notNull().default(false),
 });
 
 // ── Menu Social Links ──────────────────────────────────────────────────────
@@ -305,6 +306,7 @@ export const updateProfileSchema = z.object({
   menuDisplayName: z.string().max(100).optional().nullable(),
   menuProfileImage: z.string().optional().nullable(),
   menuAccentColor: z.string().optional().nullable(),
+  useOriginalSocialColors: z.boolean().optional(),
 });
 
 export const updateMenuSettingsSchema = z.object({
