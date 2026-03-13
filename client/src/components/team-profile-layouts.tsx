@@ -67,13 +67,14 @@ interface TeamLayoutProps {
   PublicBlock: any;
 }
 
-function ContactSection({ teamBranding, brandColor, normalizeUrl, activeSocials, cardStyle = "default", useOriginalSocialColors }: {
+function ContactSection({ teamBranding, brandColor, normalizeUrl, activeSocials, cardStyle = "default", useOriginalSocialColors, trackClick }: {
   teamBranding: TeamBranding;
   brandColor: string;
   activeSocials: Social[];
   normalizeUrl: (url: string, platform?: string) => string;
   cardStyle?: "default" | "accent" | "minimal" | "bordered";
   useOriginalSocialColors?: boolean;
+  trackClick?: (blockId?: string) => void;
 }) {
   const userContactItems = [
     ...(teamBranding.memberPhone ? [{ icon: Phone, value: teamBranding.memberPhone }] : []),
@@ -109,7 +110,7 @@ function ContactSection({ teamBranding, brandColor, normalizeUrl, activeSocials,
             </div>
           ))}
           <div className="flex gap-2 pl-9">
-            <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={useOriginalSocialColors} />
+            <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={useOriginalSocialColors} trackClick={trackClick} />
           </div>
         </div>
       )}
@@ -263,16 +264,18 @@ function ContactSection({ teamBranding, brandColor, normalizeUrl, activeSocials,
   );
 }
 
-function SocialRows({ activeSocials, normalizeUrl, useOriginalSocialColors }: {
+function SocialRows({ activeSocials, normalizeUrl, useOriginalSocialColors, trackClick }: {
   activeSocials: Social[];
   normalizeUrl: (url: string, platform?: string) => string;
   useOriginalSocialColors?: boolean;
+  trackClick?: (blockId?: string) => void;
 }) {
   if (activeSocials.length === 0) return null;
   return (
         <div className="flex items-center gap-2 flex-wrap" data-testid="social-icons-row">
           {activeSocials.map((social) => (
             <a key={social.id} href={normalizeUrl(social.url, social.platform)} target="_blank" rel="noopener noreferrer"
+              onClick={() => trackClick?.(`social-${social.platform}`)}
               className={`p-1.5 rounded-full ${useOriginalSocialColors ? '' : 'text-muted-foreground'} hover-elevate active-elevate-2`}
               title={getPlatform(social.platform)?.name || social.platform} data-testid={`social-icon-${social.platform}`}>
               <SocialIcon platform={social.platform} className="w-4 h-4" brandColor={useOriginalSocialColors} />
@@ -385,7 +388,7 @@ function CompanyBadge({ teamBranding, brandColor }: { teamBranding: TeamBranding
 }
 
 function ClassicTeamLayout(props: TeamLayoutProps) {
-  const { user, template, teamBranding, brandColor, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl } = props;
+  const { user, template, teamBranding, brandColor, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick } = props;
   const displayName = user.displayName || user.username;
   return (
     <div className="mb-10">
@@ -422,9 +425,9 @@ function ClassicTeamLayout(props: TeamLayoutProps) {
             <p className="text-xs text-muted-foreground" data-testid="text-profile-username">@{user.username}</p>
           </div>
           {user.bio && <p className="text-sm text-muted-foreground leading-relaxed mb-4" data-testid="text-profile-bio">{user.bio}</p>}
-          <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} useOriginalSocialColors={user.useOriginalSocialColors} />
+          <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
           <div className="mt-3">
-            <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={user.useOriginalSocialColors} />
+            <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
           </div>
           {hasMultiplePages && <div className="mt-4"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} /></div>}
           <ContentSection {...props} />
@@ -435,7 +438,7 @@ function ClassicTeamLayout(props: TeamLayoutProps) {
 }
 
 function ModernTeamLayout(props: TeamLayoutProps) {
-  const { user, template, teamBranding, brandColor, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl } = props;
+  const { user, template, teamBranding, brandColor, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick } = props;
   const displayName = user.displayName || user.username;
   const avatarCls = getAvatarClass(template.avatarStyle);
   return (
@@ -462,7 +465,7 @@ function ModernTeamLayout(props: TeamLayoutProps) {
               <p className="text-xs font-semibold mt-2" style={{ color: brandColor }} data-testid="text-team-brand">{teamBranding.companyName}</p>
             )}
             <div className="mt-3">
-              <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={user.useOriginalSocialColors} />
+              <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
             </div>
           </div>
           <div className="sm:w-2/3 p-6 bg-card/90">
@@ -478,7 +481,7 @@ function ModernTeamLayout(props: TeamLayoutProps) {
 }
 
 function BoldTeamLayout(props: TeamLayoutProps) {
-  const { user, template, teamBranding, brandColor, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl } = props;
+  const { user, template, teamBranding, brandColor, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick } = props;
   const displayName = user.displayName || user.username;
   const avatarCls = getAvatarClass(template.avatarStyle);
   return (
@@ -518,9 +521,9 @@ function BoldTeamLayout(props: TeamLayoutProps) {
             <span className="text-xs text-muted-foreground" data-testid="text-profile-username">@{user.username}</span>
           </div>
           {user.bio && <p className="text-sm text-muted-foreground leading-relaxed mb-4" data-testid="text-profile-bio">{user.bio}</p>}
-          <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} cardStyle="bordered" useOriginalSocialColors={user.useOriginalSocialColors} />
+          <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} cardStyle="bordered" useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
           <div className="mt-3">
-            <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={user.useOriginalSocialColors} />
+            <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
           </div>
           {hasMultiplePages && <div className="mt-4"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} /></div>}
           <ContentSection {...props} />
@@ -572,7 +575,7 @@ function ElegantTeamLayout(props: TeamLayoutProps) {
 }
 
 function HeroTeamLayout(props: TeamLayoutProps) {
-  const { user, template, teamBranding, brandColor, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl } = props;
+  const { user, template, teamBranding, brandColor, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick } = props;
   const displayName = user.displayName || user.username;
   const avatarCls = getAvatarClass(template.avatarStyle);
   return (
@@ -608,9 +611,9 @@ function HeroTeamLayout(props: TeamLayoutProps) {
             )}
           </div>
           {user.bio && <p className="text-sm text-muted-foreground leading-relaxed mb-4 text-center" data-testid="text-profile-bio">{user.bio}</p>}
-          <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} cardStyle="accent" useOriginalSocialColors={user.useOriginalSocialColors} />
+          <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} cardStyle="accent" useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
           <div className="mt-3 flex justify-center">
-            <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={user.useOriginalSocialColors} />
+            <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
           </div>
           {hasMultiplePages && (
             <div className="mt-4 pt-3 border-t border-border/50">

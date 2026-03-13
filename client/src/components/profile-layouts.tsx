@@ -97,12 +97,13 @@ function PageNav({ pages, currentPage, setActivePageSlug, template }: {
   );
 }
 
-function SocialRow({ socials, template, normalizeUrl, className = "", useOriginalSocialColors }: {
+function SocialRow({ socials, template, normalizeUrl, className = "", useOriginalSocialColors, trackClick }: {
   socials: Social[];
   template: Template;
   normalizeUrl: (url: string, platform?: string) => string;
   className?: string;
   useOriginalSocialColors?: boolean;
+  trackClick?: (blockId?: string) => void;
 }) {
   if (socials.length === 0) return null;
   return (
@@ -113,6 +114,7 @@ function SocialRow({ socials, template, normalizeUrl, className = "", useOrigina
           href={normalizeUrl(social.url, social.platform)}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => trackClick?.(`social-${social.platform}`)}
           className={`p-2 rounded-full ${useOriginalSocialColors ? '' : template.textColor} opacity-70 hover-elevate active-elevate-2`}
           title={getPlatform(social.platform)?.name || social.platform}
           data-testid={`social-icon-${social.platform}`}
@@ -174,7 +176,7 @@ function ContentBlocks({ hasBlocks, activeBlocks, activeLinks, template, isFetch
 }
 
 function ClassicLayout(props: PersonalLayoutProps) {
-  const { user, template, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl } = props;
+  const { user, template, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick } = props;
   const displayName = user.displayName || user.username;
   const avatarClass = getAvatarClass(template.avatarStyle);
   return (
@@ -194,7 +196,7 @@ function ClassicLayout(props: PersonalLayoutProps) {
         <h1 className={`text-2xl font-bold mb-1 ${template.textColor} flex items-center gap-1.5 justify-center`} data-testid="text-profile-name">{displayName}{user.emailVerified && <BadgeCheck className="w-5 h-5 text-blue-500 shrink-0" />}</h1>
         <p className={`text-sm mb-2 ${template.textColor} opacity-70`} data-testid="text-profile-username">@{user.username}</p>
         {user.bio && <p className={`text-sm max-w-sm leading-relaxed ${template.textColor} opacity-80`} data-testid="text-profile-bio">{user.bio}</p>}
-        <SocialRow socials={activeSocials} template={template} normalizeUrl={normalizeUrl} className="justify-center mt-4" useOriginalSocialColors={user.useOriginalSocialColors} />
+        <SocialRow socials={activeSocials} template={template} normalizeUrl={normalizeUrl} className="justify-center mt-4" useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
         {hasMultiplePages && <PageNav pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} />}
       </div>
       <ContentBlocks {...props} />
@@ -203,7 +205,7 @@ function ClassicLayout(props: PersonalLayoutProps) {
 }
 
 function ModernLayout(props: PersonalLayoutProps) {
-  const { user, template, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl } = props;
+  const { user, template, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick } = props;
   const displayName = user.displayName || user.username;
   const avatarClass = getAvatarClass(template.avatarStyle);
   return (
@@ -221,7 +223,7 @@ function ModernLayout(props: PersonalLayoutProps) {
               <h1 className={`text-xl font-bold ${template.cardTextColor} flex items-center gap-1.5`} data-testid="text-profile-name">{displayName}{user.emailVerified && <BadgeCheck className="w-4 h-4 text-blue-500 shrink-0" />}</h1>
               <p className={`text-xs mt-0.5 ${template.cardTextColor} opacity-60`} data-testid="text-profile-username">@{user.username}</p>
               {user.bio && <p className={`text-sm mt-2 leading-relaxed ${template.cardTextColor} opacity-80`} data-testid="text-profile-bio">{user.bio}</p>}
-              <SocialRow socials={activeSocials} template={template} normalizeUrl={normalizeUrl} className="mt-3" useOriginalSocialColors={user.useOriginalSocialColors} />
+              <SocialRow socials={activeSocials} template={template} normalizeUrl={normalizeUrl} className="mt-3" useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
             </div>
           </div>
           {hasMultiplePages && (
@@ -237,7 +239,7 @@ function ModernLayout(props: PersonalLayoutProps) {
 }
 
 function BoldLayout(props: PersonalLayoutProps) {
-  const { user, template, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl } = props;
+  const { user, template, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick } = props;
   const displayName = user.displayName || user.username;
   const avatarClass = getAvatarClass(template.avatarStyle);
   return (
@@ -264,7 +266,7 @@ function BoldLayout(props: PersonalLayoutProps) {
           <h1 className={`text-3xl font-extrabold tracking-tight mb-1 ${template.textColor}`} data-testid="text-profile-name">{displayName}</h1>
           <p className={`text-sm mb-3 ${template.textColor} opacity-60`} data-testid="text-profile-username">@{user.username}</p>
           {user.bio && <p className={`text-sm max-w-md mx-auto leading-relaxed ${template.textColor} opacity-75`} data-testid="text-profile-bio">{user.bio}</p>}
-          <SocialRow socials={activeSocials} template={template} normalizeUrl={normalizeUrl} className="justify-center mt-4" useOriginalSocialColors={user.useOriginalSocialColors} />
+          <SocialRow socials={activeSocials} template={template} normalizeUrl={normalizeUrl} className="justify-center mt-4" useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
           {hasMultiplePages && <PageNav pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} />}
         </div>
       </div>
@@ -274,7 +276,7 @@ function BoldLayout(props: PersonalLayoutProps) {
 }
 
 function ElegantLayout(props: PersonalLayoutProps) {
-  const { user, template, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl } = props;
+  const { user, template, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick } = props;
   const displayName = user.displayName || user.username;
   const avatarClass = getAvatarClass(template.avatarStyle);
   return (
@@ -297,7 +299,7 @@ function ElegantLayout(props: PersonalLayoutProps) {
                 <p className={`text-sm mt-3 max-w-xs leading-relaxed ${template.cardTextColor} opacity-70`} data-testid="text-profile-bio">{user.bio}</p>
               )}
               <div className="w-12 h-px my-4" style={{ backgroundColor: template.accent + "40" }} />
-              <SocialRow socials={activeSocials} template={template} normalizeUrl={normalizeUrl} className="justify-center" useOriginalSocialColors={user.useOriginalSocialColors} />
+              <SocialRow socials={activeSocials} template={template} normalizeUrl={normalizeUrl} className="justify-center" useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
             </div>
           </div>
         </div>
@@ -313,7 +315,7 @@ function ElegantLayout(props: PersonalLayoutProps) {
 }
 
 function HeroLayout(props: PersonalLayoutProps) {
-  const { user, template, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl } = props;
+  const { user, template, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick } = props;
   const displayName = user.displayName || user.username;
   const avatarClass = getAvatarClass(template.avatarStyle);
   return (
@@ -339,7 +341,7 @@ function HeroLayout(props: PersonalLayoutProps) {
               <h1 className={`text-xl font-bold ${template.cardTextColor} flex items-center gap-1.5`} data-testid="text-profile-name">{displayName}{user.emailVerified && <BadgeCheck className="w-4 h-4 text-blue-500 shrink-0" />}</h1>
               <p className={`text-xs mt-0.5 ${template.cardTextColor} opacity-50`} data-testid="text-profile-username">@{user.username}</p>
               {user.bio && <p className={`text-sm mt-2 max-w-xs leading-relaxed ${template.cardTextColor} opacity-75`} data-testid="text-profile-bio">{user.bio}</p>}
-              <SocialRow socials={activeSocials} template={template} normalizeUrl={normalizeUrl} className="justify-center mt-3" useOriginalSocialColors={user.useOriginalSocialColors} />
+              <SocialRow socials={activeSocials} template={template} normalizeUrl={normalizeUrl} className="justify-center mt-3" useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
             </div>
             {hasMultiplePages && (
               <div className="flex justify-center pt-3 border-t border-white/10">

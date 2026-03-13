@@ -235,7 +235,7 @@ router.patch("/api/admin/ltd/codes/:id", requireAdminAuth, async (req: Request, 
     const result = updateLtdCodeSchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ message: fromZodError(result.error).message });
 
-    const [updated] = await db.update(ltdCodes).set(result.data).where(eq(ltdCodes.id, req.params.id)).returning();
+    const [updated] = await db.update(ltdCodes).set(result.data).where(sql`${ltdCodes.id} = ${req.params.id}`).returning();
     if (!updated) return res.status(404).json({ message: "Code not found" });
     res.json(updated);
   } catch (err: any) {
@@ -246,7 +246,7 @@ router.patch("/api/admin/ltd/codes/:id", requireAdminAuth, async (req: Request, 
 // ─── Admin: delete LTD code ───────────────────────────────────────────────────
 router.delete("/api/admin/ltd/codes/:id", requireAdminAuth, async (req: Request, res: Response) => {
   try {
-    await db.delete(ltdCodes).where(eq(ltdCodes.id, req.params.id));
+    await db.delete(ltdCodes).where(sql`${ltdCodes.id} = ${req.params.id}`);
     res.json({ message: "Code deleted" });
   } catch (err: any) {
     res.status(500).json({ message: "Failed to delete code" });

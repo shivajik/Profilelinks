@@ -158,6 +158,8 @@ export default function AdminDashboard() {
   // Multi-select
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const [userPlanFilter, setUserPlanFilter] = useState("all");
+  const [exportingUsers, setExportingUsers] = useState(false);
 
   // Payment search & pagination
   const [paymentSearchQuery, setPaymentSearchQuery] = useState("");
@@ -241,13 +243,15 @@ export default function AdminDashboard() {
   const [totalUsersCount, setTotalUsersCount] = useState(0);
   const [totalUserPages, setTotalUserPages] = useState(1);
   const [loadingUsers, setLoadingUsers] = useState(false);
-  const fetchUsers = useCallback(async (page?: number, search?: string, filter?: string) => {
+  const fetchUsers = useCallback(async (page?: number, search?: string, filter?: string, planFilter?: string) => {
     const p = page ?? 1;
     const s = search ?? "";
     const f = filter ?? "all";
+    const pf = planFilter ?? "all";
     const params = new URLSearchParams({ page: String(p), limit: String(USERS_PER_PAGE) });
     if (s) params.set("search", s);
     if (f && f !== "all") params.set("accountType", f);
+    if (pf && pf !== "all") params.set("planName", pf);
     setLoadingUsers(true);
     const r = await fetch(`/api/admin/users?${params}`);
     if (r.ok) {
@@ -258,7 +262,7 @@ export default function AdminDashboard() {
       setTotalUserPages(pages);
       if (p > pages) {
         setUserPage(pages);
-        fetchUsers(pages, s, f);
+        fetchUsers(pages, s, f, pf);
         return;
       }
     }
@@ -613,7 +617,7 @@ export default function AdminDashboard() {
                       }}
                     />
                   </div>
-                  <Select value={userTypeFilter} onValueChange={(v) => { setUserTypeFilter(v); setUserPage(1); fetchUsers(1, userSearchApplied, v); }}>
+                  <Select value={userTypeFilter} onValueChange={(v) => { setUserTypeFilter(v); setUserPage(1); fetchUsers(1, userSearchApplied, v, userPlanFilter); }}>
                     <SelectTrigger className="w-36">
                       <SelectValue placeholder="Filter by type" />
                     </SelectTrigger>
@@ -624,6 +628,47 @@ export default function AdminDashboard() {
                       <SelectItem value="disabled">Disabled</SelectItem>
                     </SelectContent>
                   </Select>
+                  <Select value={userPlanFilter} onValueChange={(v) => { setUserPlanFilter(v); setUserPage(1); fetchUsers(1, userSearchApplied, userTypeFilter, v); }}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Filter by plan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Plans</SelectItem>
+                      <SelectItem value="free">Free</SelectItem>
+                      {plans.map((p) => (
+                        <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" size="sm" disabled={exportingUsers} onClick={async () => {
+                    setExportingUsers(true);
+                    try {
+                      const params = new URLSearchParams({ limit: "10000" });
+                      if (userSearchApplied) params.set("search", userSearchApplied);
+                      if (userTypeFilter !== "all") params.set("accountType", userTypeFilter);
+                      if (userPlanFilter !== "all") params.set("planName", userPlanFilter);
+                      const r = await fetch(`/api/admin/users?${params}`);
+                      if (!r.ok) throw new Error("Export failed");
+                      const d = await r.json();
+                      const rows = (d.users || []).map((u: UserRow) => [
+                        u.displayName || u.username, u.email, u.accountType, u.subscription?.planName || "Free",
+                        u.isLtd ? "Yes" : "No", u.isDisabled ? "Disabled" : (u.subscription?.status || "—"),
+                        u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"
+                      ]);
+                      const csv = ["Name,Email,Type,Plan,LTD,Status,Registered", ...rows.map((r: string[]) => r.map(c => `"${c}"`).join(","))].join("\n");
+                      const blob = new Blob([csv], { type: "text/csv" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url; a.download = `users-export-${new Date().toISOString().split("T")[0]}.csv`; a.click();
+                      URL.revokeObjectURL(url);
+                      toast({ title: "Users exported!" });
+                    } catch (err: any) {
+                      toast({ title: "Export failed", description: err.message, variant: "destructive" });
+                    }
+                    setExportingUsers(false);
+                  }}>
+                    {exportingUsers ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  </Button>
                 </div>
               </div>
 

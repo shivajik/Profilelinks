@@ -2718,12 +2718,31 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
         </Button>
       </div>
 
-      {savedQRCodes.length === 0 && (
+      {qrLoading ? (
+        <div className="space-y-4">
+          {[1, 2].map((i) => (
+            <Card key={i}>
+              <CardContent className="p-4 flex items-center gap-4">
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-32 bg-muted animate-pulse rounded" />
+                  <div className="h-3 w-24 bg-muted animate-pulse rounded" />
+                  <div className="flex gap-1 pt-2">
+                    {[1, 2, 3, 4].map((j) => (
+                      <div key={j} className="h-8 w-8 bg-muted animate-pulse rounded" />
+                    ))}
+                  </div>
+                </div>
+                <div className="w-[100px] h-[100px] bg-muted animate-pulse rounded" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : savedQRCodes.length === 0 ? (
         <div className="text-center py-8">
           <QrCode className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">No QR codes yet. Create your first one!</p>
         </div>
-      )}
+      ) : null}
 
       <div className="space-y-4">
         {savedQRCodes.map((qr) => (
@@ -6212,7 +6231,8 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
       const br = borderRadius;
       const qrSize = 800;
       const totalWidth = qrSize + (padding * 2) + (bw * 2);
-      const totalHeight = qrSize + (padding * 2) + (bw * 2) + brandingHeight + scanH + customH;
+      const qrBoxHeight = qrSize + (padding * 2) + (bw * 2);
+      const totalHeight = qrBoxHeight + scanH + customH + brandingHeight;
       canvas.width = totalWidth;
       canvas.height = totalHeight;
       if (ctx) {
@@ -6220,7 +6240,7 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
         ctx.fillRect(0, 0, totalWidth, totalHeight);
 
         const boxW = totalWidth;
-        const boxH = totalHeight - brandingHeight - scanH;
+        const boxH = qrBoxHeight;
 
         if (qrStyle === "circle") {
           const cx = boxW / 2;
@@ -6327,21 +6347,21 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
           ctx.fillStyle = qrColor;
           ctx.font = "bold 32px Arial, sans-serif";
           ctx.textAlign = "center";
-          ctx.fillText("SCAN ME", totalWidth / 2, boxH + 38);
+          ctx.fillText("SCAN ME", totalWidth / 2, qrBoxHeight + 38);
         }
 
         if (customH > 0) {
           ctx.fillStyle = qrColor;
           ctx.font = "bold 28px Arial, sans-serif";
           ctx.textAlign = "center";
-          ctx.fillText(customText.trim(), totalWidth / 2, boxH + scanH + 38);
+          ctx.fillText(customText.trim(), totalWidth / 2, qrBoxHeight + scanH + 38);
         }
 
         if (!isWhiteLabel) {
           ctx.fillStyle = "#9ca3af";
           ctx.font = "500 22px Arial, sans-serif";
           ctx.textAlign = "center";
-          ctx.fillText("Powered by VisiCardly", totalWidth / 2, totalHeight - 20);
+          ctx.fillText("Powered by VisiCardly", totalWidth / 2, qrBoxHeight + scanH + customH + 40);
         }
       }
       const pngUrl = canvas.toDataURL("image/png");
@@ -6446,14 +6466,19 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
               data-testid="input-url-qr-custom-text"
             />
           </div>
-          <Button className="w-full" disabled={!isValidUrl} onClick={() => setGenerated(true)}>
+          <Button className="w-full" disabled={!isValidUrl} onClick={() => {
+            setGenerated(true);
+            setTimeout(() => {
+              document.getElementById("url-qr-result")?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }, 100);
+          }}>
             Generate QR Code
           </Button>
         </CardContent>
       </Card>
 
       {generated && isValidUrl && (
-        <Card>
+        <Card id="url-qr-result">
           <CardContent className="p-6 flex flex-col items-center gap-4">
             <div style={getContainerStyle()} data-qr-container>
               <QRCodeSVG

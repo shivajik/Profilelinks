@@ -222,6 +222,7 @@ router.get("/api/admin/users", requireAdminAuth, async (req: Request, res: Respo
     const offset = (page - 1) * limit;
     const accountType = req.query.accountType as string | undefined;
     const search = (req.query.search as string || "").trim();
+    const planNameFilter = (req.query.planName as string || "").trim();
 
     const conditions = [];
 
@@ -263,7 +264,7 @@ router.get("/api/admin/users", requireAdminAuth, async (req: Request, res: Respo
       .limit(limit)
       .offset(offset);
 
-    const usersWithSubs = await Promise.all(
+    let usersWithSubs = await Promise.all(
       allUsers.map(async (u) => {
         const subs = await db
           .select({
@@ -279,6 +280,15 @@ router.get("/api/admin/users", requireAdminAuth, async (req: Request, res: Respo
         return { ...u, subscription: subs[0] ?? null };
       })
     );
+
+    // Apply plan name filter after join
+    if (planNameFilter) {
+      if (planNameFilter.toLowerCase() === "free") {
+        usersWithSubs = usersWithSubs.filter(u => !u.subscription?.planName);
+      } else {
+        usersWithSubs = usersWithSubs.filter(u => u.subscription?.planName === planNameFilter);
+      }
+    }
 
     const [totalResult] = await db.select({ count: count() }).from(users).where(whereCondition);
     const total = Number(totalResult?.count ?? 0);
