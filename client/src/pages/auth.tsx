@@ -41,13 +41,24 @@ function OtpInputField({
   value,
   onChange,
   testId,
+  onSubmit,
 }: {
   value: string;
   onChange: (val: string) => void;
   testId: string;
+  onSubmit?: () => void;
 }) {
   return (
-    <div className="flex justify-center" data-testid={testId}>
+    <div
+      className="flex justify-center"
+      data-testid={testId}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && value.length === 6 && onSubmit) {
+          e.preventDefault();
+          onSubmit();
+        }
+      }}
+    >
       <InputOTP maxLength={6} value={value} onChange={onChange}>
         <InputOTPGroup>
           <InputOTPSlot index={0} />
@@ -420,7 +431,7 @@ function RegisterForm({
           </p>
         </div>
 
-        <OtpInputField value={otp} onChange={setOtp} testId="input-signup-otp" />
+        <OtpInputField value={otp} onChange={setOtp} testId="input-signup-otp" onSubmit={handleVerifyOtp} />
 
         <Button
           className="w-full"
@@ -724,7 +735,7 @@ function ForgotPasswordFlow({
             </p>
           </div>
 
-          <OtpInputField value={otp} onChange={setOtp} testId="input-forgot-otp" />
+          <OtpInputField value={otp} onChange={setOtp} testId="input-forgot-otp" onSubmit={handleOtpContinue} />
 
           <Button
             className="w-full"

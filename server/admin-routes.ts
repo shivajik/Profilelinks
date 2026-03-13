@@ -257,6 +257,7 @@ router.get("/api/admin/users", requireAdminAuth, async (req: Request, res: Respo
         isDisabled: users.isDisabled,
         isLtd: users.isLtd,
         createdAt: users.createdAt,
+        businessPhone: users.businessPhone,
       })
       .from(users)
       .where(whereCondition)
@@ -867,6 +868,59 @@ router.post("/api/auth/verify-email", async (req: Request, res: Response) => {
     console.error("Email verification error:", error);
     // On error, allow registration
     return res.json({ valid: true, skipped: true, reason: "error" });
+  }
+});
+
+// ─── Email Blast ────────────────────────────────────────────────────────────
+router.post("/api/admin/email-blast", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const { subject, body, recipientMode, planFilter, emails } = req.body;
+    if (!subject || !body) return res.status(400).json({ message: "Subject and body are required" });
+
+    let recipients: { email: string; username: string; displayName?: string | null }[] = [];
+
+    if (recipientMode === "manual") {
+      if (!Array.isArray(emails) || emails.length === 0) return res.status(400).json({ message: "No recipients selected" });
+      const allUsers = await db.select({ email: users.email, username: users.username, displayName: users.displayName }).from(users).where(inArray(users.email, emails));
+      recipients = allUsers;
+    } else if (recipientMode === "all") {
+      recipients = await db.select({ email: users.email, username: users.username, displayName: users.displayName }).from(users);
+    } else if (recipientMode === "plan") {
+      if (planFilter === "free" || !planFilter || planFilter === "all") {
+        // For "free" or "all", get all users
+        const allUsers = await db.select({ email: users.email, username: users.username, displayName: users.displayName, id: users.id }).from(users);
+        if (planFilter === "free") {
+          // Filter out users with active subscriptions
+          const usersWithSubs = await db.select({ userId: userSubscriptions.userId }).from(userSubscriptions).where(eq(userSubscriptions.status, "active"));
+          const subUserIds = new Set(usersWithSubs.map(s => s.userId));
+          recipients = allUsers.filter(u => !subUserIds.has(u.id));
+        } else {
+          recipients = allUsers;
+        }
+      } else {
+        // Filter by specific plan name
+        const planRows = await db.select({ id: pricingPlans.id }).from(pricingPlans).where(eq(pricingPlans.name, planFilter));
+        if (planRows.length > 0) {
+          const planIds = planRows.map(p => p.id);
+          const subs = await db.select({ userId: userSubscriptions.userId }).from(userSubscriptions).where(and(eq(userSubscriptions.status, "active"), inArray(userSubscriptions.planId, planIds)));
+          const userIds = subs.map(s => s.userId);
+          if (userIds.length > 0) {
+            recipients = await db.select({ email: users.email, username: users.username, displayName: users.displayName }).from(users).where(inArray(users.id, userIds));
+          }
+        }
+      }
+    }
+
+    if (recipients.length === 0) return res.status(400).json({ message: "No recipients found" });
+
+    // Send emails using existing email service
+    const { sendBulkTemplateEmail } = await import("./email");
+    const results = await sendBulkTemplateEmail({ subject, body, recipients });
+
+    res.json({ message: `Email sent to ${results.sent} of ${results.total} recipients.`, sent: results.sent, failed: results.failed });
+  } catch (error: any) {
+    console.error("Email blast error:", error);
+    res.status(500).json({ message: "Failed to send emails" });
   }
 });
 

@@ -239,6 +239,7 @@ pool.query(`
 
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS is_ltd boolean NOT NULL DEFAULT false;
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS use_original_social_colors boolean NOT NULL DEFAULT false;
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS business_phone text;
 `).then(async () => {
   // Backfill slugs for existing teams that don't have one
   try {

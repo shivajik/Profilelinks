@@ -52,6 +52,7 @@ export default function Onboarding() {
   const [displayName, setDisplayName] = useState(user?.displayName || "");
   const [bio, setBio] = useState(user?.bio || "");
   const [profileImage, setProfileImage] = useState(user?.profileImage || "");
+  const [mobileNumber, setMobileNumber] = useState("");
   const [selectedSocials, setSelectedSocials] = useState<string[]>([]);
   const [socialEntries, setSocialEntries] = useState<SocialEntry[]>([]);
   const [username, setUsername] = useState(user?.username || "");
@@ -107,6 +108,7 @@ export default function Onboarding() {
         template: selectedTemplate,
         onboardingCompleted: true,
         accountType,
+        businessPhone: mobileNumber || null,
       });
 
       if (accountType === "team") {
@@ -172,12 +174,12 @@ export default function Onboarding() {
     }
 
     if (accountType === "personal") {
-      if (step === 2) return <ProfileStep displayName={displayName} setDisplayName={setDisplayName} bio={bio} setBio={setBio} profileImage={profileImage} setProfileImage={setProfileImage} />;
+      if (step === 2) return <ProfileStep displayName={displayName} setDisplayName={setDisplayName} bio={bio} setBio={setBio} profileImage={profileImage} setProfileImage={setProfileImage} mobileNumber={mobileNumber} setMobileNumber={setMobileNumber} />;
       if (step === 3) return <SocialStep selectedSocials={selectedSocials} socialEntries={socialEntries} toggleSocial={toggleSocial} updateSocialUrl={updateSocialUrl} removeSocialEntry={removeSocialEntry} />;
       if (step === 4) return <UrlStep username={username} setUsername={setUsername} />;
     } else {
       if (step === 2) return <WorkspaceStep companyName={companyName} setCompanyName={setCompanyName} companySize={companySize} setCompanySize={setCompanySize} companyUrl={companyUrl} setCompanyUrl={setCompanyUrl} companyLogo={companyLogo} setCompanyLogo={setCompanyLogo} businessType={businessType} setBusinessType={setBusinessType} customBusinessType={customBusinessType} setCustomBusinessType={setCustomBusinessType} />;
-      if (step === 3) return <ProfileStep displayName={displayName} setDisplayName={setDisplayName} bio={bio} setBio={setBio} profileImage={profileImage} setProfileImage={setProfileImage} />;
+      if (step === 3) return <ProfileStep displayName={displayName} setDisplayName={setDisplayName} bio={bio} setBio={setBio} profileImage={profileImage} setProfileImage={setProfileImage} mobileNumber={mobileNumber} setMobileNumber={setMobileNumber} />;
       if (step === 4) return <InviteMembersStep inviteEmails={inviteEmails} setInviteEmails={setInviteEmails} />;
       if (step === 5) return <UrlStep username={username} setUsername={setUsername} />;
     }
@@ -680,6 +682,8 @@ function ProfileStep({
   setBio,
   profileImage,
   setProfileImage,
+  mobileNumber,
+  setMobileNumber,
 }: {
   displayName: string;
   setDisplayName: (v: string) => void;
@@ -687,6 +691,8 @@ function ProfileStep({
   setBio: (v: string) => void;
   profileImage: string;
   setProfileImage: (v: string) => void;
+  mobileNumber: string;
+  setMobileNumber: (v: string) => void;
 }) {
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
@@ -822,6 +828,18 @@ function ProfileStep({
             data-testid="input-onboarding-bio"
           />
           <p className="text-xs text-muted-foreground text-right">{bio.length}/500</p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="onb-phone">Mobile Number (optional)</Label>
+          <Input
+            id="onb-phone"
+            type="tel"
+            placeholder="+91 9876543210"
+            value={mobileNumber}
+            onChange={(e) => setMobileNumber(e.target.value)}
+            data-testid="input-onboarding-phone"
+          />
+          <p className="text-xs text-muted-foreground">This will be saved to your profile and visible to your admin.</p>
         </div>
       </div>
     </div>

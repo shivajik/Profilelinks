@@ -478,7 +478,7 @@ export default function Dashboard() {
           <SidebarContent>
             <div className="px-4 py-4 flex flex-col gap-1">
               <img src={logoPath} alt="VisiCardly" className="w-14 h-10 object-contain" />
-              <p className="text-xs text-muted-foreground truncate" title={user.email}>{user.email}</p>
+              <p className="text-xs text-foreground font-medium truncate" title={user.username}>{user.username}</p>
               <Badge variant="secondary" className="text-[10px] w-fit capitalize">{planLimits?.planName || "Free"}</Badge>
             </div>
             <SidebarGroup>

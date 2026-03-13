@@ -20,7 +20,7 @@ import {
   UserCheck, UserX, ChevronRight, Menu, X as XIcon, Search,
   FileText, Eye, User, Mail, AtSign, Calendar, Hash,
   Download, ArrowLeft, Link2, FileStack, Globe, MessageSquare,
-  Handshake, Tag, Percent, Copy, Ticket, Key, ToggleLeft, ToggleRight,
+  Handshake, Tag, Percent, Copy, Ticket, Key, ToggleLeft, ToggleRight, Send,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -121,6 +121,7 @@ const NAV_ITEMS = [
   { key: "affiliates",  label: "Affiliates",     icon: Handshake },
   { key: "promo-codes", label: "Promo Codes",    icon: Tag },
   { key: "ltd-codes",   label: "LTD Codes",      icon: Ticket },
+  { key: "email-blast", label: "Email Blast",    icon: Mail },
   { key: "reports",     label: "Reports",        icon: BarChart3 },
   { key: "settings",    label: "Settings",       icon: Settings },
 ];
@@ -635,7 +636,7 @@ export default function AdminDashboard() {
                     <SelectContent>
                       <SelectItem value="all">All Plans</SelectItem>
                       <SelectItem value="free">Free</SelectItem>
-                      {plans.map((p) => (
+                      {plans.filter((p) => p.name.toLowerCase() !== "free").map((p) => (
                         <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -652,10 +653,11 @@ export default function AdminDashboard() {
                       const d = await r.json();
                       const rows = (d.users || []).map((u: UserRow) => [
                         u.displayName || u.username, u.email, u.accountType, u.subscription?.planName || "Free",
-                        u.isLtd ? "Yes" : "No", u.isDisabled ? "Disabled" : (u.subscription?.status || "—"),
-                        u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"
+                        u.isLtd ? "Yes" : "No",
+                        u.isDisabled ? "Disabled" : (u.subscription?.status || "N/A"),
+                        u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "N/A"
                       ]);
-                      const csv = ["Name,Email,Type,Plan,LTD,Status,Registered", ...rows.map((r: string[]) => r.map(c => `"${c}"`).join(","))].join("\n");
+                      const csv = ["\uFEFFName,Email,Type,Plan,LTD,Status,Registered", ...rows.map((r: string[]) => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(","))].join("\n");
                       const blob = new Blob([csv], { type: "text/csv" });
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement("a");
@@ -2246,6 +2248,204 @@ export default function AdminDashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+          {/* ── EMAIL BLAST ──────────────────────────────────────────────────── */}
+          {activeSection === "email-blast" && (
+            <EmailBlastSection plans={plans} />
+          )}
+
+    </div>
+  );
+}
+
+// ── Email Blast Section ──────────────────────────────────────────────
+function EmailBlastSection({ plans }: { plans: PricingPlan[] }) {
+  const { toast } = useToast();
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const [recipientMode, setRecipientMode] = useState<"all" | "plan" | "manual">("manual");
+  const [selectedPlanFilter, setSelectedPlanFilter] = useState("all");
+  const [manualEmails, setManualEmails] = useState("");
+  const [sending, setSending] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<{ id: string; email: string; username: string; displayName?: string }[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<{ id: string; email: string; username: string; displayName?: string }[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  useEffect(() => {
+    if (!searchQuery.trim()) { setSearchResults([]); return; }
+    const timer = setTimeout(async () => {
+      const r = await fetch(`/api/admin/users?search=${encodeURIComponent(searchQuery)}&limit=10`);
+      if (r.ok) {
+        const d = await r.json();
+        setSearchResults((d.users || []).filter((u: any) => !selectedUsers.some(s => s.id === u.id)));
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, selectedUsers]);
+
+  const addUser = (user: { id: string; email: string; username: string; displayName?: string }) => {
+    if (!selectedUsers.some(s => s.id === user.id)) {
+      setSelectedUsers([...selectedUsers, user]);
+    }
+    setSearchQuery("");
+    setShowDropdown(false);
+  };
+
+  const removeUser = (userId: string) => {
+    setSelectedUsers(selectedUsers.filter(u => u.id !== userId));
+  };
+
+  const handleSend = async () => {
+    if (!subject.trim() || !body.trim()) {
+      toast({ title: "Missing fields", description: "Subject and body are required.", variant: "destructive" });
+      return;
+    }
+
+    let emails: string[] = [];
+    if (recipientMode === "manual") {
+      emails = selectedUsers.map(u => u.email);
+      if (emails.length === 0) {
+        toast({ title: "No recipients", description: "Please select at least one user.", variant: "destructive" });
+        return;
+      }
+    }
+
+    setSending(true);
+    try {
+      const r = await fetch("/api/admin/email-blast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject,
+          body,
+          recipientMode,
+          planFilter: recipientMode === "plan" ? selectedPlanFilter : undefined,
+          emails: recipientMode === "manual" ? emails : undefined,
+        }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.message);
+      toast({ title: "Emails sent!", description: j.message });
+    } catch (err: any) {
+      toast({ title: "Send failed", description: err.message, variant: "destructive" });
+    }
+    setSending(false);
+  };
+
+  const insertVariable = (variable: string) => {
+    setBody(prev => prev + `{{${variable}}}`);
+  };
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <div>
+        <h2 className="text-2xl font-bold text-foreground">Email Blast</h2>
+        <p className="text-muted-foreground text-sm">Compose and send emails to users. Use variables like {"{{username}}"}, {"{{email}}"}, {"{{displayName}}"} in the body.</p>
+      </div>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Recipients</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <Select value={recipientMode} onValueChange={(v: "all" | "plan" | "manual") => setRecipientMode(v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="manual">Select Users</SelectItem>
+              <SelectItem value="all">All Users</SelectItem>
+              <SelectItem value="plan">By Plan</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {recipientMode === "plan" && (
+            <Select value={selectedPlanFilter} onValueChange={setSelectedPlanFilter}>
+              <SelectTrigger><SelectValue placeholder="Select plan" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Plans</SelectItem>
+                <SelectItem value="free">Free</SelectItem>
+                {plans.filter(p => p.name.toLowerCase() !== "free").map(p => (
+                  <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {recipientMode === "manual" && (
+            <div className="space-y-3">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  className="pl-8"
+                  placeholder="Search users by name or email..."
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); setShowDropdown(true); }}
+                  onFocus={() => setShowDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                />
+                {showDropdown && searchResults.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                    {searchResults.map((user) => (
+                      <button
+                        key={user.id}
+                        className="w-full text-left px-3 py-2 hover:bg-accent text-sm flex items-center gap-2 transition-colors"
+                        onMouseDown={(e) => { e.preventDefault(); addUser(user); }}
+                      >
+                        <Mail className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <div className="min-w-0">
+                          <span className="text-foreground truncate block">{user.email}</span>
+                          <span className="text-xs text-muted-foreground">@{user.username}{user.displayName ? ` · ${user.displayName}` : ""}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {selectedUsers.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {selectedUsers.map(u => (
+                    <span key={u.id} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-primary/10 text-primary text-sm">
+                      {u.displayName || u.username} ({u.email})
+                      <button onClick={() => removeUser(u.id)} className="shrink-0">
+                        <XIcon className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Email Content</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>Subject</Label>
+            <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. Important update from VisiCardly" />
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label>Body (HTML supported)</Label>
+              <div className="flex gap-1">
+                {["username", "email", "displayName"].map(v => (
+                  <Button key={v} type="button" variant="outline" size="sm" className="text-xs h-6 px-2" onClick={() => insertVariable(v)}>
+                    {`{{${v}}}`}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <Textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder={`Hello {{username}},\n\nWe have an exciting update for you!\n\nBest regards,\nVisiCardly Team`}
+              rows={10}
+            />
+          </div>
+          <Button className="w-full" disabled={sending || !subject.trim() || !body.trim()} onClick={handleSend}>
+            {sending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+            Send Email{recipientMode === "manual" && selectedUsers.length > 0 ? ` to ${selectedUsers.length} user(s)` : ""}
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

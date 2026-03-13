@@ -281,3 +281,49 @@ export async function sendPackageExpiryEmail(opts: {
     return false;
   }
 }
+
+export async function sendBulkTemplateEmail(opts: {
+  subject: string;
+  body: string;
+  recipients: { email: string; username: string; displayName?: string | null }[];
+}): Promise<{ sent: number; failed: number; total: number }> {
+  const emailTransporter = getTransporter();
+  let sent = 0;
+  let failed = 0;
+
+  for (const recipient of opts.recipients) {
+    try {
+      // Replace template variables
+      let personalizedBody = opts.body
+        .replace(/\{\{username\}\}/g, recipient.username || "")
+        .replace(/\{\{email\}\}/g, recipient.email || "")
+        .replace(/\{\{displayName\}\}/g, recipient.displayName || recipient.username || "");
+
+      let personalizedSubject = opts.subject
+        .replace(/\{\{username\}\}/g, recipient.username || "")
+        .replace(/\{\{email\}\}/g, recipient.email || "")
+        .replace(/\{\{displayName\}\}/g, recipient.displayName || recipient.username || "");
+
+      await emailTransporter.sendMail({
+        from: process.env.EMAIL,
+        to: recipient.email,
+        subject: personalizedSubject,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            ${personalizedBody}
+            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
+            <p style="color: #aaa; font-size: 12px;">
+              VisiCardly — Your Digital Business Card
+            </p>
+          </div>
+        `,
+      });
+      sent++;
+    } catch (err) {
+      console.error(`Failed to send email to ${recipient.email}:`, err);
+      failed++;
+    }
+  }
+
+  return { sent, failed, total: opts.recipients.length };
+}
