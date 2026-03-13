@@ -2458,157 +2458,150 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
     const img = new Image();
     
     img.onload = () => {
-      const padding = 64; // extra breathing room around QR
-      const brandingHeight = isWhiteLabel ? 0 : 60;
+      const brandingHeight = isWhiteLabel ? 0 : 70;
       const style = qrConfig?.style || "square";
-      const isHeart = style === "heart";
-      const scanTextHeight = (qrConfig?.scanText || (qrConfig && ["badge", "modern", "ticket", "bubble", "tag"].includes(qrConfig.style))) ? 50 : 0;
-      const resolvedCustomTextForSize = customText.trim() || (qrConfig?.label && qrConfig.label !== "Profile QR" && qrConfig.label !== "QR Code" ? qrConfig.label : "");
-      const customTextHeight = resolvedCustomTextForSize ? 50 : 0;
-      // Scale up border width for high-res canvas (preview ~150px → download ~900px ≈ 6x)
-      const bwRaw = qrConfig?.borderWidth || 4;
-      const bw = Math.round(bwRaw * 5); // scale to be visually matching the preview
-      const br = (qrConfig?.borderRadius || 12) * 5; // scale radius too
       const color1 = qrConfig?.color || "#7c3aed";
       const color2 = qrConfig?.color2 || "#FF6B6B";
-      
+      // Scale up border width for high-res canvas (preview ~150px → download ~900px ≈ 6x)
+      const bwRaw = qrConfig?.borderWidth || 4;
+      const bw = Math.round(bwRaw * 5);
+      const br = (qrConfig?.borderRadius || 12) * 5;
       const qrSize = 800;
-      // For heart: the QR goes inside a white box within the heart, canvas is taller to fit the heart
-      const heartExtraHeight = isHeart ? qrSize * 0.35 : 0; // heart is taller than wide
-      const totalWidth = qrSize + (padding * 2) + (isHeart ? 0 : bw * 2);
-      const totalHeight = qrSize + (padding * 2) + (isHeart ? heartExtraHeight : bw * 2) + brandingHeight + (isHeart ? 0 : scanTextHeight) + customTextHeight;
-      
-      canvas.width = totalWidth;
-      canvas.height = totalHeight;
-      
-      if (ctx) {
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, totalWidth, totalHeight);
-        
-        const boxW = totalWidth;
-        const boxH = totalHeight - brandingHeight - (isHeart ? 0 : scanTextHeight);
-        
-        if (style === "circle") {
-          const cx = boxW / 2;
-          const cy = boxH / 2;
-          const r = Math.min(boxW, boxH) / 2;
-          ctx.beginPath();
-          ctx.arc(cx, cy, r - bw / 2, 0, Math.PI * 2);
-          ctx.strokeStyle = color1;
-          ctx.lineWidth = bw;
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.arc(cx, cy, r - bw, 0, Math.PI * 2);
+      const resolvedCustomText = customText.trim() || (qrConfig?.label && qrConfig.label !== "Profile QR" && qrConfig.label !== "QR Code" ? qrConfig.label : "");
+
+      // ── HEART: fully separate rendering path ──────────────────────────────
+      if (style === "heart") {
+        const outerPad = 140; // generous white space around the heart
+        const heartW = qrSize; // heart width in pixels
+        const heartH = Math.round(heartW * 0.95); // slightly taller than wide
+        const cW = heartW + outerPad * 2;
+        const cH = heartH + outerPad * 2 + brandingHeight;
+        canvas.width = cW;
+        canvas.height = cH;
+        if (ctx) {
           ctx.fillStyle = "#ffffff";
-          ctx.fill();
-        } else if (style === "gradient") {
-          const grad = ctx.createLinearGradient(0, 0, boxW, boxH);
-          grad.addColorStop(0, color1);
-          grad.addColorStop(1, color2);
-          ctx.fillStyle = grad;
-          ctx.beginPath();
-          ctx.roundRect(0, 0, boxW, boxH, br || 16);
-          ctx.fill();
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.roundRect(Math.max(bw, 3), Math.max(bw, 3), boxW - Math.max(bw, 3) * 2, boxH - Math.max(bw, 3) * 2, Math.max(0, (br || 16) - Math.max(bw, 3)));
-          ctx.fill();
-        } else if (style === "elegant") {
-          ctx.strokeStyle = color1;
-          ctx.lineWidth = Math.max(bw, 2);
-          ctx.beginPath();
-          ctx.roundRect(Math.max(bw, 2) / 2, Math.max(bw, 2) / 2, boxW - Math.max(bw, 2), boxH - Math.max(bw, 2), br || 12);
-          ctx.stroke();
-          const outerGap = Math.max(bw, 2) + 5;
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.roundRect(outerGap + 1, outerGap + 1, boxW - (outerGap + 1) * 2, boxH - (outerGap + 1) * 2, Math.max(0, (br || 12) - outerGap));
-          ctx.stroke();
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.roundRect(Math.max(bw, 2), Math.max(bw, 2), boxW - Math.max(bw, 2) * 2, boxH - Math.max(bw, 2) * 2, Math.max(0, (br || 12) - Math.max(bw, 2) / 2));
-          ctx.fill();
-        } else if (style === "full") {
-          ctx.fillStyle = color1;
-          ctx.beginPath();
-          ctx.roundRect(0, 0, boxW, boxH, br);
-          ctx.fill();
-        } else if (style === "stripe") {
-          ctx.fillStyle = color1;
-          ctx.fillRect(0, 0, boxW, Math.max(bw, 3));
-          ctx.fillRect(0, boxH - Math.max(bw, 3), boxW, Math.max(bw, 3));
-        } else if (style === "ticket") {
-          ctx.setLineDash([12, 8]);
-          ctx.strokeStyle = color1;
-          ctx.lineWidth = Math.max(bw, 2);
-          ctx.beginPath();
-          ctx.roundRect(Math.max(bw, 2) / 2, Math.max(bw, 2) / 2, boxW - Math.max(bw, 2), boxH - Math.max(bw, 2), br || 16);
-          ctx.stroke();
-          ctx.setLineDash([]);
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.roundRect(Math.max(bw, 2), Math.max(bw, 2), boxW - Math.max(bw, 2) * 2, boxH - Math.max(bw, 2) * 2, Math.max(0, (br || 16) - Math.max(bw, 2) / 2));
-          ctx.fill();
-        } else if (style === "modern") {
-          ctx.shadowColor = color1 + "30";
-          ctx.shadowBlur = 32;
-          ctx.shadowOffsetY = 8;
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.roundRect(1, 1, boxW - 2, boxH - 2, br || 20);
-          ctx.fill();
-          ctx.shadowColor = "transparent";
-          ctx.shadowBlur = 0;
-          ctx.shadowOffsetY = 0;
-          ctx.strokeStyle = color1 + "30";
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.roundRect(0.5, 0.5, boxW - 1, boxH - 1, br || 20);
-          ctx.stroke();
-        } else if (style === "badge") {
-          ctx.strokeStyle = color1;
-          ctx.lineWidth = Math.max(bw, 3);
-          ctx.beginPath();
-          ctx.roundRect(Math.max(bw, 3) / 2, Math.max(bw, 3) / 2, boxW - Math.max(bw, 3), boxH - Math.max(bw, 3), br || 20);
-          ctx.stroke();
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.roundRect(Math.max(bw, 3), Math.max(bw, 3), boxW - Math.max(bw, 3) * 2, boxH - Math.max(bw, 3) * 2, Math.max(0, (br || 20) - Math.max(bw, 3) / 2));
-          ctx.fill();
-        } else if (style === "heart") {
-          // Draw heart using the same SVG path as the preview (viewBox 0-100 scaled to canvas)
-          // SVG path: M50 88 C25 65, 2 45, 2 28 C2 14, 14 2, 28 2 C36 2, 44 6, 50 14 C56 6, 64 2, 72 2 C86 2, 98 14, 98 28 C98 45, 75 65, 50 88Z
-          const sx = boxW / 100;
-          const sy = boxH / 100;
+          ctx.fillRect(0, 0, cW, cH);
+          // Draw heart scaled and centered with outer padding
           ctx.save();
-          ctx.scale(sx, sy);
+          ctx.translate(outerPad, outerPad);
+          ctx.scale(heartW / 100, heartH / 100);
           ctx.fillStyle = color1;
-          const heartPath = new Path2D("M50 88 C25 65, 2 45, 2 28 C2 14, 14 2, 28 2 C36 2, 44 6, 50 14 C56 6, 64 2, 72 2 C86 2, 98 14, 98 28 C98 45, 75 65, 50 88Z");
-          ctx.fill(heartPath);
+          ctx.fill(new Path2D("M50 88 C25 65, 2 45, 2 28 C2 14, 14 2, 28 2 C36 2, 44 6, 50 14 C56 6, 64 2, 72 2 C86 2, 98 14, 98 28 C98 45, 75 65, 50 88Z"));
           ctx.restore();
-          // Draw white rounded box inside the heart (matches the preview white box)
-          const wbW = boxW * 0.58;
-          const wbH = boxW * 0.58;
-          const wbX = (boxW - wbW) / 2;
-          const wbY = boxH * 0.15; // start at 15% from top, matching preview
+          // White rounded box inside heart — positioned at 14% from top of heart
+          const wbW = heartW * 0.65;
+          const wbH = wbW;
+          const wbX = (cW - wbW) / 2;
+          const wbY = outerPad + heartH * 0.14;
           ctx.fillStyle = "#ffffff";
           ctx.beginPath();
           ctx.roundRect(wbX, wbY, wbW, wbH, 20);
           ctx.fill();
-        } else if (style === "bubble") {
-          // Speech bubble with pointer
-          const r = br || 20;
-          ctx.strokeStyle = color1;
-          ctx.lineWidth = Math.max(bw, 3);
-          ctx.beginPath();
-          ctx.roundRect(Math.max(bw, 3) / 2, Math.max(bw, 3) / 2, boxW - Math.max(bw, 3), boxH - Math.max(bw, 3), r);
-          ctx.stroke();
+          // QR inside white box
+          const qrPad = 28;
+          const qrFit = wbW - qrPad * 2;
+          ctx.drawImage(img, wbX + qrPad, wbY + (wbH - qrFit) / 2, qrFit, qrFit);
+          // SCAN ME inside heart (white text, near the bottom of the heart)
+          const showScanHeart = qrConfig?.scanText;
+          if (showScanHeart) {
+            const heartBottomY = outerPad + heartH * 0.85;
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 44px Arial, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("SCAN ME", cW / 2, heartBottomY);
+          }
+          if (!isWhiteLabel) {
+            ctx.fillStyle = "#9ca3af";
+            ctx.font = "500 26px Arial, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("Powered by VisiCardly", cW / 2, cH - 22);
+          }
+        }
+        const pngUrl = canvas.toDataURL("image/png");
+        const a = document.createElement("a");
+        a.href = pngUrl; a.download = filename; a.click();
+        toast({ title: "QR code downloaded!" });
+        return;
+      }
+
+      // ── ALL OTHER STYLES ───────────────────────────────────────────────────
+      const outerMargin = 100; // white canvas margin around the border frame
+      const innerPad = 56;    // space between border frame and QR
+      const scanTextHeight = (qrConfig?.scanText || (qrConfig && ["badge", "modern", "ticket", "bubble", "tag"].includes(qrConfig.style))) ? 60 : 0;
+      const customTextHeight = resolvedCustomText ? 60 : 0;
+      const totalWidth = outerMargin * 2 + bw * 2 + innerPad * 2 + qrSize;
+      const totalHeight = totalWidth + brandingHeight + scanTextHeight + customTextHeight;
+      
+      canvas.width = totalWidth;
+      canvas.height = totalHeight;
+
+      if (ctx) {
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, totalWidth, totalHeight);
+
+        // Frame area (inside the outer white margin)
+        const boxW = totalWidth - outerMargin * 2;
+        const boxH = boxW; // square frame
+
+        // Translate so all frame drawing uses (0,0) as the frame's top-left
+        ctx.save();
+        ctx.translate(outerMargin, outerMargin);
+
+        if (style === "circle") {
+          const cx = boxW / 2, cy = boxH / 2;
+          const r = Math.min(boxW, boxH) / 2;
+          ctx.beginPath(); ctx.arc(cx, cy, r - bw / 2, 0, Math.PI * 2);
+          ctx.strokeStyle = color1; ctx.lineWidth = bw; ctx.stroke();
+          ctx.beginPath(); ctx.arc(cx, cy, r - bw, 0, Math.PI * 2);
+          ctx.fillStyle = "#ffffff"; ctx.fill();
+        } else if (style === "gradient") {
+          const grad = ctx.createLinearGradient(0, 0, boxW, boxH);
+          grad.addColorStop(0, color1); grad.addColorStop(1, color2);
+          ctx.fillStyle = grad;
+          ctx.beginPath(); ctx.roundRect(0, 0, boxW, boxH, br || 16); ctx.fill();
           ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.roundRect(Math.max(bw, 3), Math.max(bw, 3), boxW - Math.max(bw, 3) * 2, boxH - Math.max(bw, 3) * 2, Math.max(0, r - Math.max(bw, 3) / 2));
-          ctx.fill();
-          // Pointer triangle — scale up for high-res canvas
-          const pSize = Math.max(50, bw * 2.5);
+          ctx.beginPath(); ctx.roundRect(bw, bw, boxW - bw * 2, boxH - bw * 2, Math.max(0, (br || 16) - bw)); ctx.fill();
+        } else if (style === "elegant") {
+          ctx.strokeStyle = color1; ctx.lineWidth = bw;
+          ctx.beginPath(); ctx.roundRect(bw / 2, bw / 2, boxW - bw, boxH - bw, br || 12); ctx.stroke();
+          const outerGap = bw + 8;
+          ctx.lineWidth = 4;
+          ctx.beginPath(); ctx.roundRect(outerGap, outerGap, boxW - outerGap * 2, boxH - outerGap * 2, Math.max(0, (br || 12) - outerGap)); ctx.stroke();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath(); ctx.roundRect(bw, bw, boxW - bw * 2, boxH - bw * 2, Math.max(0, (br || 12) - bw / 2)); ctx.fill();
+        } else if (style === "full") {
+          ctx.fillStyle = color1;
+          ctx.beginPath(); ctx.roundRect(0, 0, boxW, boxH, br); ctx.fill();
+        } else if (style === "stripe") {
+          ctx.fillStyle = color1;
+          ctx.fillRect(0, 0, boxW, bw);
+          ctx.fillRect(0, boxH - bw, boxW, bw);
+        } else if (style === "ticket") {
+          ctx.setLineDash([20, 14]);
+          ctx.strokeStyle = color1; ctx.lineWidth = bw;
+          ctx.beginPath(); ctx.roundRect(bw / 2, bw / 2, boxW - bw, boxH - bw, br || 16); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath(); ctx.roundRect(bw, bw, boxW - bw * 2, boxH - bw * 2, Math.max(0, (br || 16) - bw / 2)); ctx.fill();
+        } else if (style === "modern") {
+          ctx.shadowColor = color1 + "40"; ctx.shadowBlur = 60; ctx.shadowOffsetY = 16;
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath(); ctx.roundRect(2, 2, boxW - 4, boxH - 4, br || 20); ctx.fill();
+          ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+          ctx.strokeStyle = color1 + "30"; ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.roundRect(1, 1, boxW - 2, boxH - 2, br || 20); ctx.stroke();
+        } else if (style === "badge") {
+          ctx.strokeStyle = color1; ctx.lineWidth = bw;
+          ctx.beginPath(); ctx.roundRect(bw / 2, bw / 2, boxW - bw, boxH - bw, br || 20); ctx.stroke();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath(); ctx.roundRect(bw, bw, boxW - bw * 2, boxH - bw * 2, Math.max(0, (br || 20) - bw / 2)); ctx.fill();
+        } else if (style === "bubble") {
+          ctx.strokeStyle = color1; ctx.lineWidth = bw;
+          ctx.beginPath(); ctx.roundRect(bw / 2, bw / 2, boxW - bw, boxH - bw, br || 24); ctx.stroke();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath(); ctx.roundRect(bw, bw, boxW - bw * 2, boxH - bw * 2, Math.max(0, (br || 24) - bw / 2)); ctx.fill();
+          // Pointer triangle
+          const pSize = Math.max(60, bw * 3);
           ctx.fillStyle = color1;
           ctx.beginPath();
           ctx.moveTo(boxW / 2 - pSize, boxH - 2);
@@ -2616,112 +2609,78 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
           ctx.lineTo(boxW / 2 + pSize, boxH - 2);
           ctx.fill();
           ctx.fillStyle = "#ffffff";
-          const pInset = Math.max(bw, 3);
           ctx.beginPath();
-          ctx.moveTo(boxW / 2 - pSize + pInset, boxH - pInset);
-          ctx.lineTo(boxW / 2, boxH + pSize - pInset * 2.5);
-          ctx.lineTo(boxW / 2 + pSize - pInset, boxH - pInset);
+          ctx.moveTo(boxW / 2 - pSize + bw, boxH - bw);
+          ctx.lineTo(boxW / 2, boxH + pSize - bw * 3);
+          ctx.lineTo(boxW / 2 + pSize - bw, boxH - bw);
           ctx.fill();
         } else if (style === "tag") {
-          // Tag: circle with ring at top
-          const cx = boxW / 2;
-          const cy = boxH / 2 + 10;
-          const rad = Math.min(boxW, boxH) / 2 - 2;
-          // Filled circle
+          const cx = boxW / 2, cy = boxH / 2 + 20;
+          const rad = Math.min(boxW, boxH) / 2 - 10;
           ctx.fillStyle = color1;
-          ctx.beginPath();
-          ctx.arc(cx, cy, rad, 0, Math.PI * 2);
-          ctx.fill();
-          // White inner
+          ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.arc(cx, cy, rad - Math.max(bw, 4), 0, Math.PI * 2);
-          ctx.fill();
-          // Ring at top
-          ctx.strokeStyle = color1;
-          ctx.lineWidth = Math.max(bw, 3);
-          ctx.beginPath();
-          ctx.arc(cx, cy - rad + 5, 14, 0, Math.PI * 2);
-          ctx.stroke();
+          ctx.beginPath(); ctx.arc(cx, cy, rad - bw, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = color1; ctx.lineWidth = bw;
+          ctx.beginPath(); ctx.arc(cx, cy - rad + 10, bw * 2, 0, Math.PI * 2); ctx.stroke();
           ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.arc(cx, cy - rad + 5, 10, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.beginPath(); ctx.arc(cx, cy - rad + 10, bw * 1.2, 0, Math.PI * 2); ctx.fill();
         } else {
-          ctx.strokeStyle = color1;
-          ctx.lineWidth = bw;
-          ctx.beginPath();
-          ctx.roundRect(bw / 2, bw / 2, boxW - bw, boxH - bw, br);
-          ctx.stroke();
+          // square (default)
+          ctx.strokeStyle = color1; ctx.lineWidth = bw;
+          ctx.beginPath(); ctx.roundRect(bw / 2, bw / 2, boxW - bw, boxH - bw, br); ctx.stroke();
           ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.roundRect(bw, bw, boxW - bw * 2, boxH - bw * 2, Math.max(0, br - bw / 2));
-          ctx.fill();
+          ctx.beginPath(); ctx.roundRect(bw, bw, boxW - bw * 2, boxH - bw * 2, Math.max(0, br - bw / 2)); ctx.fill();
         }
-        
-        // Center the QR code in the box area
-        if (style === "circle" || style === "tag") {
-          const cx = boxW / 2;
-          const cy = style === "tag" ? boxH / 2 + 10 : boxH / 2;
-          const rad = style === "tag" ? (Math.min(boxW, boxH) / 2 - 2 - Math.max(bw, 4)) : (Math.min(boxW, boxH) / 2 - bw);
+
+        // Draw QR (still in translated frame coords)
+        if (style === "circle") {
+          const cx = boxW / 2, cy = boxH / 2;
+          const rad = Math.min(boxW, boxH) / 2 - bw;
           const fitSize = rad * Math.sqrt(2) * 0.85;
-          const qrX = cx - fitSize / 2;
-          const qrY = cy - fitSize / 2;
-          ctx.drawImage(img, qrX, qrY, fitSize, fitSize);
-        } else if (style === "heart") {
-          // Draw QR inside the white box we drew above (match the preview layout)
-          const wbW = boxW * 0.58;
-          const wbH = boxW * 0.58;
-          const wbX = (boxW - wbW) / 2;
-          const wbY = boxH * 0.15;
-          const qrPad = 28; // padding inside the white box
-          const qrFitSize = wbW - qrPad * 2;
-          const qrX = wbX + qrPad;
-          const qrY = wbY + (wbH - qrFitSize) / 2;
-          ctx.drawImage(img, qrX, qrY, qrFitSize, qrFitSize);
+          ctx.drawImage(img, cx - fitSize / 2, cy - fitSize / 2, fitSize, fitSize);
+        } else if (style === "tag") {
+          const cx = boxW / 2, cy = boxH / 2 + 20;
+          const rad = Math.min(boxW, boxH) / 2 - 10 - bw;
+          const fitSize = rad * Math.sqrt(2) * 0.82;
+          ctx.drawImage(img, cx - fitSize / 2, cy - fitSize / 2, fitSize, fitSize);
+        } else if (style === "full") {
+          // full: QR is white on colored bg — draw with some inner padding
+          ctx.drawImage(img, innerPad, innerPad, qrSize, qrSize);
         } else {
-          const qrX = bw + padding;
-          const qrY = bw + padding;
-          ctx.drawImage(img, qrX, qrY, qrSize, qrSize);
+          ctx.drawImage(img, bw + innerPad, bw + innerPad, qrSize, qrSize);
         }
-        
-        // Heart: "SCAN ME" text inside the heart at the bottom (white text, like the preview)
-        if (isHeart) {
-          // The heart bottom is at ~88% of boxH (based on the SVG path "M50 88")
-          const heartBottomY = boxH * 0.88;
-          const textY = heartBottomY - 28; // just inside the heart bottom
-          ctx.fillStyle = "#ffffff";
-          ctx.font = "bold 36px Arial, sans-serif";
+
+        ctx.restore(); // reset translation, back to absolute canvas coordinates
+
+        // SCAN ME text
+        if (scanTextHeight > 0) {
+          const pSize = style === "bubble" ? Math.max(60, bw * 3) : 0;
+          const textY = outerMargin + boxH + pSize + 48;
+          ctx.fillStyle = style === "full" ? "#ffffff" : color1;
+          ctx.font = "bold 40px Arial, sans-serif";
           ctx.textAlign = "center";
-          ctx.letterSpacing = "6px";
           ctx.fillText("SCAN ME", totalWidth / 2, textY);
-          ctx.letterSpacing = "0px";
-        } else if (scanTextHeight > 0) {
+        }
+
+        // Custom label text
+        if (resolvedCustomText && customTextHeight > 0) {
+          const pSize = style === "bubble" ? Math.max(60, bw * 3) : 0;
           ctx.fillStyle = color1;
           ctx.font = "bold 36px Arial, sans-serif";
           ctx.textAlign = "center";
-          ctx.letterSpacing = "4px";
-          ctx.fillText("SCAN ME", totalWidth / 2, boxH + 42);
-          ctx.letterSpacing = "0px";
+          ctx.fillText(resolvedCustomText, totalWidth / 2, outerMargin + boxH + pSize + scanTextHeight + 48);
         }
-        
-        // Render custom text from the QR code's label or the customText state
-        const resolvedCustomText = customText.trim() || (qrConfig?.label && qrConfig.label !== "Profile QR" && qrConfig.label !== "QR Code" ? qrConfig.label : "");
-        if (resolvedCustomText && customTextHeight > 0) {
-          ctx.fillStyle = isHeart ? "#ffffff" : color1;
-          ctx.font = "bold 32px Arial, sans-serif";
-          ctx.textAlign = "center";
-          ctx.fillText(resolvedCustomText, totalWidth / 2, boxH + scanTextHeight + 42);
-        }
-        
+
+        // Branding
         if (!isWhiteLabel) {
           ctx.fillStyle = "#9ca3af";
-          ctx.font = "500 24px Arial, sans-serif";
+          ctx.font = "500 28px Arial, sans-serif";
           ctx.textAlign = "center";
-          ctx.fillText("Powered by VisiCardly", totalWidth / 2, totalHeight - 20);
+          ctx.fillText("Powered by VisiCardly", totalWidth / 2, totalHeight - 24);
         }
       }
-      
+
       const pngUrl = canvas.toDataURL("image/png");
       const a = document.createElement("a");
       a.href = pngUrl;
