@@ -294,7 +294,10 @@ export async function sendBulkTemplateEmail(opts: {
   for (const recipient of opts.recipients) {
     try {
       // Replace template variables
+      // Convert plain text line breaks to HTML <br> tags for proper formatting
       let personalizedBody = opts.body
+        .replace(/\r\n/g, "\n")
+        .replace(/\n/g, "<br>")
         .replace(/\{\{username\}\}/g, recipient.username || "")
         .replace(/\{\{email\}\}/g, recipient.email || "")
         .replace(/\{\{displayName\}\}/g, recipient.displayName || recipient.username || "");

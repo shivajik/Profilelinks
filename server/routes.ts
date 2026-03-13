@@ -1173,6 +1173,7 @@ export async function registerRoutes(
           role: memberRole || "member",
           jobTitle: jobTitle || null,
           status: "activated",
+          businessName: displayName || existingUser.displayName || null,
         });
         await storage.updateUser(existingUser.id, { teamId: req.params.teamId as string, accountType: "team" });
         // Create invite record as "accepted" (existing user)
@@ -1231,6 +1232,7 @@ export async function registerRoutes(
         role: memberRole || "member",
         jobTitle: jobTitle || null,
         status: "activated",
+        businessName: displayName || null,
       });
       // Create invite record as "pending" (new user with temp password)
       await storage.createTeamInvites([{

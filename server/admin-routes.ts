@@ -221,10 +221,11 @@ router.get("/api/admin/users", requireAdminAuth, async (req: Request, res: Respo
     const limit = Math.max(1, Math.min(parseInt(req.query.limit as string) || 10, 100));
     const offset = (page - 1) * limit;
     const accountType = req.query.accountType as string | undefined;
-    const search = (req.query.search as string || "").trim();
-    const planNameFilter = (req.query.planName as string || "").trim();
+    const search = ((req.query.search as string) || "").trim();
+    const planNameFilter = ((req.query.planName as string) || "").trim();
+    const normalizedPlanFilter = planNameFilter.toLowerCase();
 
-    const conditions = [];
+    const conditions: any[] = [];
 
     if (accountType === "disabled") {
       conditions.push(eq(users.isDisabled, true));
@@ -239,13 +240,33 @@ router.get("/api/admin/users", requireAdminAuth, async (req: Request, res: Respo
           ilike(users.displayName, pattern),
           ilike(users.username, pattern),
           ilike(users.email, pattern),
-        )!
+        )!,
       );
+    }
+
+    if (normalizedPlanFilter && normalizedPlanFilter !== "all") {
+      if (normalizedPlanFilter === "free") {
+        conditions.push(sql`NOT EXISTS (
+          SELECT 1
+          FROM user_subscriptions us
+          WHERE us.user_id = ${users.id}
+            AND us.status = 'active'
+        )`);
+      } else {
+        conditions.push(sql`EXISTS (
+          SELECT 1
+          FROM user_subscriptions us
+          INNER JOIN pricing_plans pp ON pp.id = us.plan_id
+          WHERE us.user_id = ${users.id}
+            AND us.status = 'active'
+            AND LOWER(pp.name) = LOWER(${planNameFilter})
+        )`);
+      }
     }
 
     const whereCondition = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const allUsers = await db
+    const paginatedUsers = await db
       .select({
         id: users.id,
         username: users.username,
@@ -265,34 +286,43 @@ router.get("/api/admin/users", requireAdminAuth, async (req: Request, res: Respo
       .limit(limit)
       .offset(offset);
 
-    let usersWithSubs = await Promise.all(
-      allUsers.map(async (u) => {
-        const subs = await db
-          .select({
-            status: userSubscriptions.status,
-            billingCycle: userSubscriptions.billingCycle,
-            planName: pricingPlans.name,
-          })
-          .from(userSubscriptions)
-          .leftJoin(pricingPlans, sql`${userSubscriptions.planId} = ${pricingPlans.id}`)
-          .where(sql`${userSubscriptions.userId} = ${u.id}`)
-          .orderBy(desc(userSubscriptions.createdAt))
-          .limit(1);
-        return { ...u, subscription: subs[0] ?? null };
-      })
-    );
+    const [totalResult] = await db.select({ count: count() }).from(users).where(whereCondition);
+    const total = Number(totalResult?.count ?? 0);
 
-    // Apply plan name filter after join
-    if (planNameFilter) {
-      if (planNameFilter.toLowerCase() === "free") {
-        usersWithSubs = usersWithSubs.filter(u => !u.subscription?.planName);
-      } else {
-        usersWithSubs = usersWithSubs.filter(u => u.subscription?.planName === planNameFilter);
+    if (paginatedUsers.length === 0) {
+      return res.json({ users: [], total, page, limit });
+    }
+
+    const userIds = paginatedUsers.map((u) => u.id);
+
+    const subscriptionRows = await db
+      .select({
+        userId: userSubscriptions.userId,
+        status: userSubscriptions.status,
+        billingCycle: userSubscriptions.billingCycle,
+        planName: pricingPlans.name,
+        createdAt: userSubscriptions.createdAt,
+      })
+      .from(userSubscriptions)
+      .leftJoin(pricingPlans, sql`${userSubscriptions.planId} = ${pricingPlans.id}`)
+      .where(inArray(userSubscriptions.userId, userIds))
+      .orderBy(desc(userSubscriptions.createdAt));
+
+    const latestSubscriptionByUserId = new Map<string, { status: string; billingCycle: string; planName?: string | null }>();
+    for (const sub of subscriptionRows) {
+      if (!latestSubscriptionByUserId.has(sub.userId)) {
+        latestSubscriptionByUserId.set(sub.userId, {
+          status: sub.status,
+          billingCycle: sub.billingCycle,
+          planName: sub.planName,
+        });
       }
     }
 
-    const [totalResult] = await db.select({ count: count() }).from(users).where(whereCondition);
-    const total = Number(totalResult?.count ?? 0);
+    const usersWithSubs = paginatedUsers.map((userRow) => ({
+      ...userRow,
+      subscription: latestSubscriptionByUserId.get(userRow.id) ?? null,
+    }));
 
     res.json({ users: usersWithSubs, total, page, limit });
   } catch (error: any) {
@@ -448,6 +478,7 @@ router.get("/api/admin/users/:id", requireAdminAuth, async (req: Request, res: R
         template: users.template,
         bio: users.bio,
         profileImage: users.profileImage,
+        businessPhone: users.businessPhone,
       })
       .from(users)
       .where(sql`${users.id} = ${userId}`)
@@ -455,6 +486,10 @@ router.get("/api/admin/users/:id", requireAdminAuth, async (req: Request, res: R
 
     if (!userResult.length) return res.status(404).json({ message: "User not found" });
     const user = userResult[0];
+
+    const memberships = await storage.getTeamMembershipsByUserId(userId as string);
+    const activeMembership = memberships.find((membership) => membership.status === "activated");
+    const resolvedBusinessPhone = activeMembership?.businessPhone || user.businessPhone || null;
 
     // Get subscription
     const subs = await db
@@ -494,7 +529,7 @@ router.get("/api/admin/users/:id", requireAdminAuth, async (req: Request, res: R
     const limits = await getUserPlanLimits(userId as string);
 
     res.json({
-      user,
+      user: { ...user, businessPhone: resolvedBusinessPhone },
       subscription: subs[0] ?? null,
       payments: userPayments,
       usage: limits,

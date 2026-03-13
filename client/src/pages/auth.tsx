@@ -398,6 +398,9 @@ function RegisterForm({
       }
 
       await register(username, email, password);
+      // Registration successful - invalidate and refetch to trigger redirect
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/auth/me"] });
       if (refCode) {
         try {
           const meRes = await fetch("/api/auth/me");

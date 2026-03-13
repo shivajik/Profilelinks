@@ -24,9 +24,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginMutation = useMutation({
     mutationFn: async ({ email, password }: { email: string; password: string }) => {
       await apiRequest("POST", "/api/auth/login", { email, password });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      // Refetch user data immediately after login
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/auth/me"] });
     },
   });
 
