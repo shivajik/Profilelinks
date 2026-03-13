@@ -113,6 +113,7 @@ import {
 } from "@/components/ui/sidebar";
 import { QRCodeSVG } from "qrcode.react";
 import { Slider } from "@/components/ui/slider";
+import { QR_TEMPLATES, QR_TEMPLATE_CATEGORIES, type QRTemplate, type QRTemplateCategory } from "@/lib/qr-templates";
 import { SOCIAL_PLATFORMS, getPlatform } from "@/lib/social-platforms";
 import { SocialIcon } from "@/components/social-icon";
 import type { Link, Social, Page, Block, BlockContent, BlockType } from "@shared/schema";
@@ -2299,7 +2300,7 @@ function AnalyticsPanel({ username }: { username: string }) {
   );
 }
 
-type QRStyle = "circle" | "square" | "stripe" | "full" | "gradient" | "elegant" | "badge" | "modern" | "ticket";
+type QRStyle = "circle" | "square" | "stripe" | "full" | "gradient" | "elegant" | "badge" | "modern" | "ticket" | "heart" | "bubble" | "tag";
 
 interface SavedQRCode {
   id: string;
@@ -2339,6 +2340,24 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [scanText, setScanText] = useState(false);
   const [customText, setCustomText] = useState("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [templateCategory, setTemplateCategory] = useState<QRTemplateCategory>("all");
+
+  const applyTemplate = (template: QRTemplate) => {
+    setSelectedTemplateId(template.id);
+    setQrStyle(template.style);
+    setQrColor(template.color);
+    setQrColor2(template.color2);
+    setBorderRadius(template.borderRadius);
+    setBorderWidth(template.borderWidth);
+    setScanText(template.scanText);
+  };
+
+  const clearTemplate = () => {
+    setSelectedTemplateId(null);
+  };
+
+  const filteredTemplates = templateCategory === "all" ? QR_TEMPLATES : QR_TEMPLATES.filter(t => t.category === templateCategory);
 
   const createQrMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -2385,6 +2404,8 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
     setLogoPreview(null);
     setScanText(false);
     setCustomText("");
+    setSelectedTemplateId(null);
+    setTemplateCategory("all");
     setEditingId(null);
   };
 
@@ -2439,7 +2460,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
     img.onload = () => {
       const padding = 48;
       const brandingHeight = isWhiteLabel ? 0 : 60;
-      const scanTextHeight = (qrConfig?.scanText || (qrConfig && ["badge", "modern", "ticket"].includes(qrConfig.style))) ? 50 : 0;
+      const scanTextHeight = (qrConfig?.scanText || (qrConfig && ["badge", "modern", "ticket", "bubble", "tag"].includes(qrConfig.style))) ? 50 : 0;
       const resolvedCustomTextForSize = customText.trim() || (qrConfig?.label && qrConfig.label !== "Profile QR" && qrConfig.label !== "QR Code" ? qrConfig.label : "");
       const customTextHeight = resolvedCustomTextForSize ? 50 : 0;
       const bw = qrConfig?.borderWidth || 4;
@@ -2549,6 +2570,83 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
           ctx.beginPath();
           ctx.roundRect(Math.max(bw, 3), Math.max(bw, 3), boxW - Math.max(bw, 3) * 2, boxH - Math.max(bw, 3) * 2, Math.max(0, (br || 20) - Math.max(bw, 3) / 2));
           ctx.fill();
+        } else if (style === "heart") {
+          // Heart shape - filled background
+          const cx = boxW / 2;
+          const cy = boxH / 2;
+          const w = boxW * 0.45;
+          const h = boxH * 0.45;
+          ctx.fillStyle = color1;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy + h * 0.7);
+          ctx.bezierCurveTo(cx - w * 1.2, cy - h * 0.1, cx - w * 0.6, cy - h * 0.9, cx, cy - h * 0.3);
+          ctx.bezierCurveTo(cx + w * 0.6, cy - h * 0.9, cx + w * 1.2, cy - h * 0.1, cx, cy + h * 0.7);
+          ctx.fill();
+          // White inner area
+          ctx.fillStyle = "#ffffff";
+          const inset = Math.max(bw, 4);
+          ctx.beginPath();
+          const s = 1 - (inset * 2) / boxW;
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.scale(s, s);
+          ctx.translate(-cx, -cy);
+          ctx.moveTo(cx, cy + h * 0.7);
+          ctx.bezierCurveTo(cx - w * 1.2, cy - h * 0.1, cx - w * 0.6, cy - h * 0.9, cx, cy - h * 0.3);
+          ctx.bezierCurveTo(cx + w * 0.6, cy - h * 0.9, cx + w * 1.2, cy - h * 0.1, cx, cy + h * 0.7);
+          ctx.fill();
+          ctx.restore();
+        } else if (style === "bubble") {
+          // Speech bubble with pointer
+          const r = br || 20;
+          ctx.strokeStyle = color1;
+          ctx.lineWidth = Math.max(bw, 3);
+          ctx.beginPath();
+          ctx.roundRect(Math.max(bw, 3) / 2, Math.max(bw, 3) / 2, boxW - Math.max(bw, 3), boxH - Math.max(bw, 3), r);
+          ctx.stroke();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.roundRect(Math.max(bw, 3), Math.max(bw, 3), boxW - Math.max(bw, 3) * 2, boxH - Math.max(bw, 3) * 2, Math.max(0, r - Math.max(bw, 3) / 2));
+          ctx.fill();
+          // Pointer triangle
+          const pSize = 20;
+          ctx.fillStyle = color1;
+          ctx.beginPath();
+          ctx.moveTo(boxW / 2 - pSize, boxH - 1);
+          ctx.lineTo(boxW / 2, boxH + pSize);
+          ctx.lineTo(boxW / 2 + pSize, boxH - 1);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.moveTo(boxW / 2 - pSize + Math.max(bw, 3), boxH - Math.max(bw, 3));
+          ctx.lineTo(boxW / 2, boxH + pSize - Math.max(bw, 3) * 2);
+          ctx.lineTo(boxW / 2 + pSize - Math.max(bw, 3), boxH - Math.max(bw, 3));
+          ctx.fill();
+        } else if (style === "tag") {
+          // Tag: circle with ring at top
+          const cx = boxW / 2;
+          const cy = boxH / 2 + 10;
+          const rad = Math.min(boxW, boxH) / 2 - 2;
+          // Filled circle
+          ctx.fillStyle = color1;
+          ctx.beginPath();
+          ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+          ctx.fill();
+          // White inner
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(cx, cy, rad - Math.max(bw, 4), 0, Math.PI * 2);
+          ctx.fill();
+          // Ring at top
+          ctx.strokeStyle = color1;
+          ctx.lineWidth = Math.max(bw, 3);
+          ctx.beginPath();
+          ctx.arc(cx, cy - rad + 5, 14, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(cx, cy - rad + 5, 10, 0, Math.PI * 2);
+          ctx.fill();
         } else {
           ctx.strokeStyle = color1;
           ctx.lineWidth = bw;
@@ -2621,73 +2719,165 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
   const getContainerStyle = (qr: { style: QRStyle; borderRadius: number; borderWidth: number; color: string; color2?: string; scanText?: boolean }) => {
     const style: React.CSSProperties = {
       overflow: "visible",
-      padding: "12px",
+      padding: "16px",
       background: "white",
       position: "relative",
+      transition: "all 0.3s ease",
     };
     switch (qr.style) {
       case "circle":
         style.borderRadius = "50%";
-        style.border = `${qr.borderWidth}px solid ${qr.color}`;
+        style.border = `${Math.max(qr.borderWidth, 3)}px solid ${qr.color}`;
         style.overflow = "hidden";
+        style.boxShadow = `0 4px 20px ${qr.color}25, 0 0 0 4px ${qr.color}08`;
         break;
       case "square":
         style.borderRadius = `${qr.borderRadius}px`;
         style.border = `${qr.borderWidth}px solid ${qr.color}`;
+        style.boxShadow = `0 4px 16px ${qr.color}20`;
         break;
       case "stripe":
         style.borderRadius = `${qr.borderRadius}px`;
-        style.borderTop = `${Math.max(qr.borderWidth, 3)}px solid ${qr.color}`;
-        style.borderBottom = `${Math.max(qr.borderWidth, 3)}px solid ${qr.color}`;
+        style.borderTop = `${Math.max(qr.borderWidth, 4)}px solid ${qr.color}`;
+        style.borderBottom = `${Math.max(qr.borderWidth, 4)}px solid ${qr.color}`;
+        style.boxShadow = `0 4px 16px rgba(0,0,0,0.06)`;
         break;
       case "full":
         style.borderRadius = `${qr.borderRadius}px`;
         style.background = qr.color;
-        style.padding = "16px";
+        style.padding = "20px";
+        style.boxShadow = `0 8px 32px ${qr.color}40, inset 0 1px 0 rgba(255,255,255,0.1)`;
         break;
       case "gradient":
         style.borderRadius = `${qr.borderRadius || 16}px`;
-        style.border = `${Math.max(qr.borderWidth, 3)}px solid transparent`;
+        style.border = `${Math.max(qr.borderWidth, 4)}px solid transparent`;
         style.backgroundImage = `linear-gradient(white, white), linear-gradient(135deg, ${qr.color}, ${qr.color2 || "#FF6B6B"})`;
         style.backgroundOrigin = "border-box";
         style.backgroundClip = "padding-box, border-box";
+        style.boxShadow = `0 8px 32px ${qr.color}30, 0 0 0 1px ${qr.color}10`;
         break;
       case "elegant":
         style.borderRadius = `${qr.borderRadius || 12}px`;
         style.border = `${Math.max(qr.borderWidth, 2)}px solid ${qr.color}`;
-        style.boxShadow = `0 0 0 ${Math.max(qr.borderWidth, 2) + 3}px white, 0 0 0 ${Math.max(qr.borderWidth, 2) + 5}px ${qr.color}`;
+        style.boxShadow = `0 0 0 ${Math.max(qr.borderWidth, 2) + 3}px white, 0 0 0 ${Math.max(qr.borderWidth, 2) + 5}px ${qr.color}, 0 8px 24px ${qr.color}20`;
         break;
       case "badge":
         style.borderRadius = `${qr.borderRadius || 20}px`;
         style.border = `${Math.max(qr.borderWidth, 3)}px solid ${qr.color}`;
-        style.padding = "16px 12px 24px 12px";
+        style.padding = "18px 14px 28px 14px";
+        style.boxShadow = `0 6px 24px ${qr.color}25`;
         break;
       case "modern":
         style.borderRadius = `${qr.borderRadius || 20}px`;
-        style.boxShadow = `0 8px 32px ${qr.color}30, 0 2px 8px rgba(0,0,0,0.08)`;
-        style.border = `1px solid ${qr.color}20`;
-        style.padding = "16px 12px 24px 12px";
+        style.boxShadow = `0 12px 40px ${qr.color}25, 0 4px 12px rgba(0,0,0,0.06)`;
+        style.border = `2px solid ${qr.color}15`;
+        style.padding = "18px 14px 28px 14px";
         break;
       case "ticket":
         style.borderRadius = `${qr.borderRadius || 16}px`;
         style.border = `${Math.max(qr.borderWidth, 2)}px dashed ${qr.color}`;
-        style.padding = "16px 12px 24px 12px";
+        style.padding = "18px 14px 28px 14px";
+        style.boxShadow = `0 4px 16px ${qr.color}15`;
+        break;
+      case "heart":
+        style.background = qr.color;
+        style.width = "fit-content";
+        style.padding = "0";
+        style.overflow = "visible";
+        style.borderRadius = "0";
+        style.border = "none";
+        style.filter = `drop-shadow(0 8px 24px ${qr.color}40)`;
+        break;
+      case "bubble":
+        style.borderRadius = `${qr.borderRadius || 24}px`;
+        style.border = `${Math.max(qr.borderWidth, 3)}px solid ${qr.color}`;
+        style.padding = "18px 14px 28px 14px";
+        style.marginBottom = "16px";
+        style.boxShadow = `0 6px 24px ${qr.color}20`;
+        break;
+      case "tag":
+        style.borderRadius = "50%";
+        style.border = `${Math.max(qr.borderWidth, 4)}px solid ${qr.color}`;
+        style.background = qr.color;
+        style.padding = "18px";
+        style.marginTop = "16px";
+        style.overflow = "hidden";
+        style.boxShadow = `0 8px 28px ${qr.color}35`;
         break;
     }
     return style;
   };
 
   const renderScanText = (qr: { style: QRStyle; color: string; scanText?: boolean }, size: number) => {
-    const showText = qr.scanText || ["badge", "modern", "ticket"].includes(qr.style);
+    const showText = qr.scanText || ["badge", "modern", "ticket", "bubble", "tag"].includes(qr.style);
     if (!showText) return null;
-    const fontSize = Math.max(size * 0.08, 8);
+    const fontSize = Math.max(size * 0.08, 9);
     return (
       <div
-        className="text-center font-bold tracking-wider uppercase mt-1"
-        style={{ color: qr.color, fontSize: `${fontSize}px`, letterSpacing: "0.1em" }}
+        className="text-center font-extrabold tracking-[0.15em] uppercase mt-2"
+        style={{ color: qr.style === "heart" || qr.style === "tag" ? "#ffffff" : qr.color, fontSize: `${fontSize}px` }}
         data-testid="text-scan-me"
       >
         SCAN ME
+      </div>
+    );
+  };
+
+  const renderFrameDecorations = (qr: { style: QRStyle; color: string; borderWidth: number }) => {
+    if (qr.style === "bubble") {
+      return (
+        <div style={{
+          position: "absolute",
+          bottom: "-14px",
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: 0,
+          height: 0,
+          borderLeft: "14px solid transparent",
+          borderRight: "14px solid transparent",
+          borderTop: `14px solid ${qr.color}`,
+          filter: `drop-shadow(0 2px 4px ${qr.color}30)`,
+        }} />
+      );
+    }
+    if (qr.style === "tag") {
+      return (
+        <div style={{
+          position: "absolute",
+          top: "-12px",
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "20px",
+          height: "20px",
+          borderRadius: "50%",
+          border: `3px solid ${qr.color}`,
+          background: "white",
+          boxShadow: `0 2px 8px ${qr.color}30`,
+        }} />
+      );
+    }
+    return null;
+  };
+
+  // Render heart SVG wrapper for the QR code
+  const renderHeartQR = (qrElement: React.ReactNode, qr: { color: string; scanText?: boolean }, size: number) => {
+    const w = size + 40;
+    const h = size + 60;
+    return (
+      <div style={{ position: "relative", width: w, height: h, filter: `drop-shadow(0 8px 24px ${qr.color}40)` }}>
+        <svg viewBox="0 0 100 100" width={w} height={h} style={{ position: "absolute", top: 0, left: 0 }}>
+          <path d="M50 88 C25 65, 2 45, 2 28 C2 14, 14 2, 28 2 C36 2, 44 6, 50 14 C56 6, 64 2, 72 2 C86 2, 98 14, 98 28 C98 45, 75 65, 50 88Z" fill={qr.color} />
+        </svg>
+        <div style={{ position: "absolute", top: "18%", left: "50%", transform: "translateX(-50%)", zIndex: 1 }}>
+          <div style={{ background: "white", borderRadius: "8px", padding: "6px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {qrElement}
+          </div>
+          {qr.scanText && (
+            <div className="text-center font-extrabold tracking-[0.15em] uppercase mt-1" style={{ color: "#ffffff", fontSize: `${Math.max(size * 0.06, 7)}px` }}>
+              SCAN ME
+            </div>
+          )}
+        </div>
       </div>
     );
   };
@@ -2702,6 +2892,9 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
     { value: "badge", label: "Badge", icon: "⬡" },
     { value: "modern", label: "Modern", icon: "◉" },
     { value: "ticket", label: "Ticket", icon: "⎕" },
+    { value: "heart", label: "Heart", icon: "♥" },
+    { value: "bubble", label: "Bubble", icon: "💬" },
+    { value: "tag", label: "Tag", icon: "⏣" },
   ];
 
   return (
@@ -2771,33 +2964,131 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
                   </Button>
                 </div>
               </div>
-              <div style={getContainerStyle(qr)} className="shrink-0" data-qr-container>
-                <QRCodeSVG
-                  id={`qr-saved-${qr.id}`}
-                  {...getQRProps(qr)}
-                  size={100}
-                  data-testid={`display-qr-${qr.id}`}
-                />
-                {renderScanText(qr, 100)}
-                {qr.label && qr.label !== "Profile QR" && qr.label !== "QR Code" && (
-                  <div className="text-center font-bold mt-1" style={{ color: qr.color, fontSize: "8px" }}>
-                    {qr.label}
-                  </div>
-                )}
-              </div>
+              {qr.style === "heart" ? (
+                renderHeartQR(
+                  <QRCodeSVG id={`qr-saved-${qr.id}`} {...getQRProps(qr)} size={60} data-testid={`display-qr-${qr.id}`} />,
+                  { color: qr.color, scanText: qr.scanText },
+                  60
+                )
+              ) : (
+                <div style={getContainerStyle(qr)} className="shrink-0" data-qr-container>
+                  <QRCodeSVG
+                    id={`qr-saved-${qr.id}`}
+                    {...getQRProps(qr)}
+                    size={100}
+                    data-testid={`display-qr-${qr.id}`}
+                  />
+                  {renderScanText(qr, 100)}
+                  {renderFrameDecorations(qr)}
+                  {qr.label && qr.label !== "Profile QR" && qr.label !== "QR Code" && (
+                    <div className="text-center font-bold mt-1" style={{ color: qr.color, fontSize: "8px" }}>
+                      {qr.label}
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}
       </div>
 
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[700px]">
           <DialogHeader>
             <DialogTitle data-testid="text-create-qr-title">{editingId ? "Edit QR Code" : "Create QR Code"}</DialogTitle>
-            <p className="text-sm text-muted-foreground">Create a dynamic QR Code and track its usage over time.</p>
+            <p className="text-sm text-muted-foreground">Choose a template or customize from scratch.</p>
           </DialogHeader>
-          <div className="flex flex-col sm:flex-row gap-6 mt-4">
-            <div className="flex-1 space-y-5 max-h-[60vh] overflow-y-auto pr-1">
+
+          {/* Template Picker */}
+          <div className="space-y-3">
+            <span className="text-xs font-medium text-muted-foreground block">Quick Templates</span>
+            <div className="flex flex-wrap gap-1.5">
+              {QR_TEMPLATE_CATEGORIES.map((cat) => (
+                <button
+                  key={cat.value}
+                  type="button"
+                  onClick={() => setTemplateCategory(cat.value)}
+                  className={`text-xs px-2.5 py-1 rounded-full transition-all border ${
+                    templateCategory === cat.value
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-muted text-muted-foreground border-transparent hover:bg-muted/80"
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[140px] overflow-y-auto pr-1">
+              <button
+                type="button"
+                onClick={clearTemplate}
+                className={`flex flex-col items-center gap-1 p-2 rounded-lg border-2 transition-all text-xs ${
+                  !selectedTemplateId
+                    ? "border-primary bg-primary/5"
+                    : "border-transparent hover:bg-muted"
+                }`}
+              >
+                <div className="w-10 h-10 rounded-md border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                  <Settings className="w-4 h-4 text-muted-foreground/50" />
+                </div>
+                <span className="font-medium text-muted-foreground truncate w-full text-center">Custom</span>
+              </button>
+              {filteredTemplates.map((t) => {
+                const getTemplateThumbStyle = (): React.CSSProperties => {
+                  const base: React.CSSProperties = { width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", transition: "all 0.2s ease" };
+                  if (t.style === "heart") return { ...base, background: "transparent", border: "none", color: t.color };
+                  if (t.style === "circle") return { ...base, borderRadius: "50%", border: `2px solid ${t.color}`, background: `${t.color}08`, boxShadow: `0 2px 8px ${t.color}20` };
+                  if (t.style === "full") return { ...base, borderRadius: "8px", background: t.color, color: "#fff", boxShadow: `0 3px 12px ${t.color}35` };
+                  if (t.style === "gradient") return { ...base, borderRadius: "8px", background: `linear-gradient(135deg, ${t.color}, ${t.color2})`, color: "#fff", boxShadow: `0 3px 12px ${t.color}30` };
+                  if (t.style === "elegant") return { ...base, borderRadius: "6px", border: `2px solid ${t.color}`, boxShadow: `0 0 0 3px white, 0 0 0 5px ${t.color}40, 0 2px 8px ${t.color}20` };
+                  if (t.style === "ticket") return { ...base, borderRadius: "6px", border: `2px dashed ${t.color}`, background: `${t.color}05` };
+                  if (t.style === "modern") return { ...base, borderRadius: "10px", border: `1px solid ${t.color}20`, boxShadow: `0 4px 16px ${t.color}20`, background: "white" };
+                  if (t.style === "badge") return { ...base, borderRadius: "10px", border: `2px solid ${t.color}`, background: `${t.color}06`, boxShadow: `0 2px 8px ${t.color}15` };
+                  if (t.style === "bubble") return { ...base, borderRadius: "10px", border: `2px solid ${t.color}`, background: `${t.color}06` };
+                  if (t.style === "tag") return { ...base, borderRadius: "50%", background: t.color, color: "#fff", boxShadow: `0 3px 12px ${t.color}35` };
+                  if (t.style === "stripe") return { ...base, borderRadius: "4px", borderTop: `3px solid ${t.color}`, borderBottom: `3px solid ${t.color}` };
+                  return { ...base, borderRadius: "6px", border: `2px solid ${t.color}`, background: `${t.color}08` };
+                };
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => applyTemplate(t)}
+                    className={`flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all text-xs group ${
+                      selectedTemplateId === t.id
+                        ? "border-primary bg-primary/5 shadow-sm"
+                        : "border-transparent hover:bg-muted/60 hover:shadow-sm"
+                    }`}
+                  >
+                    <div style={getTemplateThumbStyle()} className="group-hover:scale-110 transition-transform">
+                      {t.style === "heart" ? (
+                        <svg viewBox="0 0 40 40" width="40" height="40">
+                          <path d="M20 35 C10 25, 2 18, 2 12 C2 6, 7 2, 12 2 C15 2, 18 4, 20 8 C22 4, 25 2, 28 2 C33 2, 38 6, 38 12 C38 18, 30 25, 20 35Z" fill={t.color} />
+                          <text x="20" y="20" textAnchor="middle" dominantBaseline="central" fontSize="10" fill="white">{t.icon}</text>
+                        </svg>
+                      ) : t.style === "bubble" ? (
+                        <div style={{ position: "relative" }}>
+                          <span>{t.icon}</span>
+                          <div style={{ position: "absolute", bottom: "-6px", left: "50%", transform: "translateX(-50)", width: 0, height: 0, borderLeft: "4px solid transparent", borderRight: "4px solid transparent", borderTop: `5px solid ${t.color}` }} />
+                        </div>
+                      ) : t.style === "tag" ? (
+                        <div style={{ position: "relative" }}>
+                          <span>{t.icon}</span>
+                          <div style={{ position: "absolute", top: "-6px", left: "50%", transform: "translateX(-50%)", width: "8px", height: "8px", borderRadius: "50%", border: `2px solid rgba(255,255,255,0.8)` }} />
+                        </div>
+                      ) : (
+                        <span>{t.icon}</span>
+                      )}
+                    </div>
+                    <span className="font-medium text-foreground truncate w-full text-center">{t.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-6 mt-2">
+            <div className="flex-1 space-y-5 max-h-[45vh] overflow-y-auto pr-1">
               <div>
                 <span className="text-xs font-medium text-muted-foreground mb-2 block">Frame Style</span>
                 <div className="grid grid-cols-3 gap-1.5" data-testid="tabs-qr-style">
@@ -2919,21 +3210,37 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
               </Button>
             </div>
 
-            <div className="flex items-center justify-center sm:w-[200px]">
-              <div
-                style={getContainerStyle({ style: qrStyle, borderRadius, borderWidth, color: qrColor, color2: qrColor2, scanText })}
-                data-testid="preview-qr-container"
-              >
-                <QRCodeSVG
-                  id="create-qr-preview"
-                  {...getQRProps({ style: qrStyle, color: qrColor, logoUrl: logoPreview })}
-                  size={160}
-                  data-testid="preview-qr-code"
-                />
-                {renderScanText({ style: qrStyle, color: qrColor, scanText }, 160)}
-                {customText.trim() && (
-                  <div className="text-center font-bold mt-1" style={{ color: qrColor, fontSize: "9px" }}>
-                    {customText.trim()}
+            <div className="flex items-center justify-center sm:w-[240px]">
+              <div className="rounded-2xl bg-gradient-to-br from-muted/40 to-muted/20 p-6 flex items-center justify-center">
+                {qrStyle === "heart" ? (
+                  renderHeartQR(
+                    <QRCodeSVG
+                      id="create-qr-preview"
+                      {...getQRProps({ style: qrStyle, color: qrColor, logoUrl: logoPreview })}
+                      size={100}
+                      data-testid="preview-qr-code"
+                    />,
+                    { color: qrColor, scanText },
+                    100
+                  )
+                ) : (
+                  <div
+                    style={getContainerStyle({ style: qrStyle, borderRadius, borderWidth, color: qrColor, color2: qrColor2, scanText })}
+                    data-testid="preview-qr-container"
+                  >
+                    <QRCodeSVG
+                      id="create-qr-preview"
+                      {...getQRProps({ style: qrStyle, color: qrColor, logoUrl: logoPreview })}
+                      size={160}
+                      data-testid="preview-qr-code"
+                    />
+                    {renderScanText({ style: qrStyle, color: qrColor, scanText }, 160)}
+                    {renderFrameDecorations({ style: qrStyle, color: qrColor, borderWidth })}
+                    {customText.trim() && (
+                      <div className="text-center font-bold mt-1" style={{ color: qrStyle === "tag" ? "#ffffff" : qrColor, fontSize: "10px" }}>
+                        {customText.trim()}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -6153,6 +6460,21 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
   const [scanText, setScanText] = useState(false);
   const [customText, setCustomText] = useState("");
   const [generated, setGenerated] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [templateCategory, setTemplateCategory] = useState<QRTemplateCategory>("all");
+
+  const applyTemplate = (template: QRTemplate) => {
+    setSelectedTemplateId(template.id);
+    setQrStyle(template.style);
+    setQrColor(template.color);
+    setQrColor2(template.color2);
+    setBorderRadius(template.borderRadius);
+    setBorderWidth(template.borderWidth);
+    setScanText(template.scanText);
+    setGenerated(false);
+  };
+
+  const filteredUrlTemplates = templateCategory === "all" ? QR_TEMPLATES : QR_TEMPLATES.filter(t => t.category === templateCategory);
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -6172,48 +6494,99 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
     { value: "badge", label: "Badge" },
     { value: "modern", label: "Modern" },
     { value: "ticket", label: "Ticket" },
+    { value: "heart", label: "Heart" },
+    { value: "bubble", label: "Bubble" },
+    { value: "tag", label: "Tag" },
   ];
 
   const getContainerStyle = (): React.CSSProperties => {
-    const style: React.CSSProperties = { overflow: "visible", padding: "16px", background: "white", position: "relative" };
+    const style: React.CSSProperties = { overflow: "visible", padding: "16px", background: "white", position: "relative", transition: "all 0.3s ease" };
     switch (qrStyle) {
-      case "circle": style.borderRadius = "50%"; style.border = `${borderWidth}px solid ${qrColor}`; style.overflow = "hidden"; break;
-      case "square": style.borderRadius = `${borderRadius}px`; style.border = `${borderWidth}px solid ${qrColor}`; break;
-      case "stripe": style.borderRadius = `${borderRadius}px`; style.borderTop = `${Math.max(borderWidth, 3)}px solid ${qrColor}`; style.borderBottom = `${Math.max(borderWidth, 3)}px solid ${qrColor}`; break;
-      case "full": style.borderRadius = `${borderRadius}px`; style.background = qrColor; style.padding = "20px"; break;
+      case "circle": style.borderRadius = "50%"; style.border = `${Math.max(borderWidth, 3)}px solid ${qrColor}`; style.overflow = "hidden"; style.boxShadow = `0 4px 20px ${qrColor}25`; break;
+      case "square": style.borderRadius = `${borderRadius}px`; style.border = `${borderWidth}px solid ${qrColor}`; style.boxShadow = `0 4px 16px ${qrColor}20`; break;
+      case "stripe": style.borderRadius = `${borderRadius}px`; style.borderTop = `${Math.max(borderWidth, 4)}px solid ${qrColor}`; style.borderBottom = `${Math.max(borderWidth, 4)}px solid ${qrColor}`; style.boxShadow = `0 4px 16px rgba(0,0,0,0.06)`; break;
+      case "full": style.borderRadius = `${borderRadius}px`; style.background = qrColor; style.padding = "20px"; style.boxShadow = `0 8px 32px ${qrColor}40`; break;
       case "gradient":
         style.borderRadius = `${borderRadius || 16}px`;
-        style.border = `${Math.max(borderWidth, 3)}px solid transparent`;
+        style.border = `${Math.max(borderWidth, 4)}px solid transparent`;
         style.backgroundImage = `linear-gradient(white, white), linear-gradient(135deg, ${qrColor}, ${qrColor2})`;
         style.backgroundOrigin = "border-box";
         style.backgroundClip = "padding-box, border-box";
+        style.boxShadow = `0 8px 32px ${qrColor}30`;
         break;
       case "elegant":
         style.borderRadius = `${borderRadius || 12}px`;
         style.border = `${Math.max(borderWidth, 2)}px solid ${qrColor}`;
-        style.boxShadow = `0 0 0 ${Math.max(borderWidth, 2) + 3}px white, 0 0 0 ${Math.max(borderWidth, 2) + 5}px ${qrColor}`;
+        style.boxShadow = `0 0 0 ${Math.max(borderWidth, 2) + 3}px white, 0 0 0 ${Math.max(borderWidth, 2) + 5}px ${qrColor}, 0 8px 24px ${qrColor}20`;
         break;
       case "badge":
         style.borderRadius = `${borderRadius || 20}px`;
         style.border = `${Math.max(borderWidth, 3)}px solid ${qrColor}`;
         style.padding = "20px 16px 28px 16px";
+        style.boxShadow = `0 6px 24px ${qrColor}25`;
         break;
       case "modern":
         style.borderRadius = `${borderRadius || 20}px`;
-        style.boxShadow = `0 8px 32px ${qrColor}30, 0 2px 8px rgba(0,0,0,0.08)`;
-        style.border = `1px solid ${qrColor}20`;
+        style.boxShadow = `0 12px 40px ${qrColor}25, 0 4px 12px rgba(0,0,0,0.06)`;
+        style.border = `2px solid ${qrColor}15`;
         style.padding = "20px 16px 28px 16px";
         break;
       case "ticket":
         style.borderRadius = `${borderRadius || 16}px`;
         style.border = `${Math.max(borderWidth, 2)}px dashed ${qrColor}`;
         style.padding = "20px 16px 28px 16px";
+        style.boxShadow = `0 4px 16px ${qrColor}15`;
+        break;
+      case "heart":
+        style.background = "transparent";
+        style.padding = "0";
+        style.overflow = "visible";
+        style.border = "none";
+        break;
+      case "bubble":
+        style.borderRadius = `${borderRadius || 24}px`;
+        style.border = `${Math.max(borderWidth, 3)}px solid ${qrColor}`;
+        style.padding = "20px 16px 28px 16px";
+        style.marginBottom = "16px";
+        style.boxShadow = `0 6px 24px ${qrColor}20`;
+        break;
+      case "tag":
+        style.borderRadius = "50%";
+        style.border = `${Math.max(borderWidth, 4)}px solid ${qrColor}`;
+        style.background = qrColor;
+        style.padding = "20px";
+        style.marginTop = "16px";
+        style.overflow = "hidden";
+        style.boxShadow = `0 8px 28px ${qrColor}35`;
         break;
     }
     return style;
   };
 
-  const showScanText = scanText || ["badge", "modern", "ticket"].includes(qrStyle);
+  // Heart SVG renderer for URL QR panel
+  const renderUrlHeartQR = (qrElement: React.ReactNode, size: number) => {
+    const w = size + 40;
+    const h = size + 60;
+    return (
+      <div style={{ position: "relative", width: w, height: h, filter: `drop-shadow(0 8px 24px ${qrColor}40)` }}>
+        <svg viewBox="0 0 100 100" width={w} height={h} style={{ position: "absolute", top: 0, left: 0 }}>
+          <path d="M50 88 C25 65, 2 45, 2 28 C2 14, 14 2, 28 2 C36 2, 44 6, 50 14 C56 6, 64 2, 72 2 C86 2, 98 14, 98 28 C98 45, 75 65, 50 88Z" fill={qrColor} />
+        </svg>
+        <div style={{ position: "absolute", top: "18%", left: "50%", transform: "translateX(-50%)", zIndex: 1 }}>
+          <div style={{ background: "white", borderRadius: "8px", padding: "6px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {qrElement}
+          </div>
+          {showScanText && (
+            <div className="text-center font-extrabold tracking-[0.15em] uppercase mt-1" style={{ color: "#ffffff", fontSize: "9px" }}>
+              SCAN ME
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const showScanText = scanText || ["badge", "modern", "ticket", "bubble", "tag"].includes(qrStyle);
 
   const downloadQR = () => {
     const svg = document.getElementById("url-qr-code");
@@ -6329,6 +6702,75 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
           ctx.beginPath();
           ctx.roundRect(Math.max(bw, 3), Math.max(bw, 3), boxW - Math.max(bw, 3) * 2, boxH - Math.max(bw, 3) * 2, Math.max(0, (br || 20) - Math.max(bw, 3) / 2));
           ctx.fill();
+        } else if (qrStyle === "heart") {
+          const cx = boxW / 2;
+          const cy = boxH / 2;
+          const w = boxW * 0.45;
+          const h = boxH * 0.45;
+          ctx.fillStyle = qrColor;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy + h * 0.7);
+          ctx.bezierCurveTo(cx - w * 1.2, cy - h * 0.1, cx - w * 0.6, cy - h * 0.9, cx, cy - h * 0.3);
+          ctx.bezierCurveTo(cx + w * 0.6, cy - h * 0.9, cx + w * 1.2, cy - h * 0.1, cx, cy + h * 0.7);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          const inset = Math.max(bw, 4);
+          const s = 1 - (inset * 2) / boxW;
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.scale(s, s);
+          ctx.translate(-cx, -cy);
+          ctx.beginPath();
+          ctx.moveTo(cx, cy + h * 0.7);
+          ctx.bezierCurveTo(cx - w * 1.2, cy - h * 0.1, cx - w * 0.6, cy - h * 0.9, cx, cy - h * 0.3);
+          ctx.bezierCurveTo(cx + w * 0.6, cy - h * 0.9, cx + w * 1.2, cy - h * 0.1, cx, cy + h * 0.7);
+          ctx.fill();
+          ctx.restore();
+        } else if (qrStyle === "bubble") {
+          const r = br || 20;
+          ctx.strokeStyle = qrColor;
+          ctx.lineWidth = Math.max(bw, 3);
+          ctx.beginPath();
+          ctx.roundRect(Math.max(bw, 3) / 2, Math.max(bw, 3) / 2, boxW - Math.max(bw, 3), boxH - Math.max(bw, 3), r);
+          ctx.stroke();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.roundRect(Math.max(bw, 3), Math.max(bw, 3), boxW - Math.max(bw, 3) * 2, boxH - Math.max(bw, 3) * 2, Math.max(0, r - Math.max(bw, 3) / 2));
+          ctx.fill();
+          const pSize = 20;
+          ctx.fillStyle = qrColor;
+          ctx.beginPath();
+          ctx.moveTo(boxW / 2 - pSize, boxH - 1);
+          ctx.lineTo(boxW / 2, boxH + pSize);
+          ctx.lineTo(boxW / 2 + pSize, boxH - 1);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.moveTo(boxW / 2 - pSize + Math.max(bw, 3), boxH - Math.max(bw, 3));
+          ctx.lineTo(boxW / 2, boxH + pSize - Math.max(bw, 3) * 2);
+          ctx.lineTo(boxW / 2 + pSize - Math.max(bw, 3), boxH - Math.max(bw, 3));
+          ctx.fill();
+        } else if (qrStyle === "tag") {
+          const cx = boxW / 2;
+          const cy = boxH / 2 + 10;
+          const rad = Math.min(boxW, boxH) / 2 - 2;
+          ctx.fillStyle = qrColor;
+          ctx.beginPath();
+          ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(cx, cy, rad - Math.max(bw, 4), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = qrColor;
+          ctx.lineWidth = Math.max(bw, 3);
+          ctx.beginPath();
+          ctx.arc(cx, cy - rad + 5, 14, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(cx, cy - rad + 5, 10, 0, Math.PI * 2);
+          ctx.fill();
         } else {
           ctx.strokeStyle = qrColor;
           ctx.lineWidth = bw;
@@ -6395,6 +6837,68 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
               data-testid="input-qr-url"
             />
           </div>
+
+          {/* Template Picker for URL QR */}
+          <div className="space-y-2">
+            <Label className="text-xs">Quick Templates</Label>
+            <div className="flex flex-wrap gap-1 mb-2">
+              {QR_TEMPLATE_CATEGORIES.map((cat) => (
+                <button
+                  key={cat.value}
+                  type="button"
+                  onClick={() => setTemplateCategory(cat.value)}
+                  className={`text-[10px] px-2 py-0.5 rounded-full transition-all border ${
+                    templateCategory === cat.value
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-muted text-muted-foreground border-transparent hover:bg-muted/80"
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-5 gap-1.5 max-h-[120px] overflow-y-auto">
+              {filteredUrlTemplates.map((t) => {
+                const getThumbStyle = (): React.CSSProperties => {
+                  const base: React.CSSProperties = { width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", transition: "all 0.2s ease" };
+                  if (t.style === "heart") return { ...base, background: "transparent", border: "none", color: t.color };
+                  if (t.style === "circle") return { ...base, borderRadius: "50%", border: `2px solid ${t.color}`, background: `${t.color}08`, boxShadow: `0 2px 6px ${t.color}20` };
+                  if (t.style === "full") return { ...base, borderRadius: "6px", background: t.color, color: "#fff", boxShadow: `0 2px 8px ${t.color}35` };
+                  if (t.style === "gradient") return { ...base, borderRadius: "6px", background: `linear-gradient(135deg, ${t.color}, ${t.color2})`, color: "#fff", boxShadow: `0 2px 8px ${t.color}30` };
+                  if (t.style === "elegant") return { ...base, borderRadius: "4px", border: `2px solid ${t.color}`, boxShadow: `0 0 0 2px white, 0 0 0 4px ${t.color}40` };
+                  if (t.style === "ticket") return { ...base, borderRadius: "4px", border: `2px dashed ${t.color}` };
+                  if (t.style === "modern") return { ...base, borderRadius: "8px", border: `1px solid ${t.color}20`, boxShadow: `0 3px 12px ${t.color}20` };
+                  if (t.style === "tag") return { ...base, borderRadius: "50%", background: t.color, color: "#fff", boxShadow: `0 2px 8px ${t.color}35` };
+                  return { ...base, borderRadius: "4px", border: `2px solid ${t.color}`, background: `${t.color}08` };
+                };
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => applyTemplate(t)}
+                    className={`flex flex-col items-center gap-0.5 p-1.5 rounded-xl border-2 transition-all text-[10px] group ${
+                      selectedTemplateId === t.id
+                        ? "border-primary bg-primary/5 shadow-sm"
+                        : "border-transparent hover:bg-muted/60"
+                    }`}
+                  >
+                    <div style={getThumbStyle()} className="group-hover:scale-110 transition-transform">
+                      {t.style === "heart" ? (
+                        <svg viewBox="0 0 32 32" width="32" height="32">
+                          <path d="M16 28 C8 20, 2 15, 2 10 C2 5, 6 2, 10 2 C12 2, 14 3, 16 6 C18 3, 20 2, 22 2 C26 2, 30 5, 30 10 C30 15, 24 20, 16 28Z" fill={t.color} />
+                          <text x="16" y="15" textAnchor="middle" dominantBaseline="central" fontSize="8" fill="white">{t.icon}</text>
+                        </svg>
+                      ) : (
+                        <span>{t.icon}</span>
+                      )}
+                    </div>
+                    <span className="font-medium text-foreground truncate w-full text-center leading-tight">{t.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label className="text-xs">Frame Style</Label>
             <Select value={qrStyle} onValueChange={(v: any) => setQrStyle(v)}>
@@ -6480,24 +6984,47 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
       {generated && isValidUrl && (
         <Card id="url-qr-result">
           <CardContent className="p-6 flex flex-col items-center gap-4">
-            <div style={getContainerStyle()} data-qr-container>
-              <QRCodeSVG
-                id="url-qr-code"
-                value={url.startsWith("http") ? url : `https://${url}`}
-                size={180}
-                level="H"
-                fgColor={qrStyle === "full" ? "#ffffff" : qrColor}
-                bgColor="transparent"
-                imageSettings={logoPreview ? { src: logoPreview, height: 30, width: 30, excavate: true } : undefined}
-              />
-              {showScanText && (
-                <div className="text-center font-bold tracking-wider uppercase mt-1" style={{ color: qrColor, fontSize: "12px", letterSpacing: "0.1em" }}>
-                  SCAN ME
-                </div>
-              )}
-              {customText.trim() && (
-                <div className="text-center font-bold mt-1" style={{ color: qrColor, fontSize: "11px" }}>
-                  {customText.trim()}
+            <div className="rounded-2xl bg-gradient-to-br from-muted/40 to-muted/20 p-8 flex items-center justify-center">
+              {qrStyle === "heart" ? (
+                renderUrlHeartQR(
+                  <QRCodeSVG
+                    id="url-qr-code"
+                    value={url.startsWith("http") ? url : `https://${url}`}
+                    size={120}
+                    level="H"
+                    fgColor={qrColor}
+                    bgColor="transparent"
+                    imageSettings={logoPreview ? { src: logoPreview, height: 30, width: 30, excavate: true } : undefined}
+                  />,
+                  120
+                )
+              ) : (
+                <div style={getContainerStyle()} data-qr-container>
+                  <QRCodeSVG
+                    id="url-qr-code"
+                    value={url.startsWith("http") ? url : `https://${url}`}
+                    size={180}
+                    level="H"
+                    fgColor={qrStyle === "full" ? "#ffffff" : qrColor}
+                    bgColor="transparent"
+                    imageSettings={logoPreview ? { src: logoPreview, height: 30, width: 30, excavate: true } : undefined}
+                  />
+                  {showScanText && (
+                    <div className="text-center font-extrabold tracking-[0.15em] uppercase mt-2" style={{ color: qrStyle === "tag" ? "#ffffff" : qrColor, fontSize: "12px" }}>
+                      SCAN ME
+                    </div>
+                  )}
+                  {qrStyle === "bubble" && (
+                    <div style={{ position: "absolute", bottom: "-14px", left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "14px solid transparent", borderRight: "14px solid transparent", borderTop: `14px solid ${qrColor}`, filter: `drop-shadow(0 2px 4px ${qrColor}30)` }} />
+                  )}
+                  {qrStyle === "tag" && (
+                    <div style={{ position: "absolute", top: "-12px", left: "50%", transform: "translateX(-50%)", width: "20px", height: "20px", borderRadius: "50%", border: `3px solid ${qrColor}`, background: "white", boxShadow: `0 2px 8px ${qrColor}30` }} />
+                  )}
+                  {customText.trim() && (
+                    <div className="text-center font-bold mt-1" style={{ color: qrStyle === "tag" ? "#ffffff" : qrColor, fontSize: "11px" }}>
+                      {customText.trim()}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
