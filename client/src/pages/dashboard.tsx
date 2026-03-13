@@ -2659,9 +2659,46 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
           ctx.fill();
         }
         
-        const qrX = bw + padding;
-        const qrY = bw + padding;
-        ctx.drawImage(img, qrX, qrY, qrSize, qrSize);
+        // Center the QR code in the box area
+        if (style === "circle" || style === "tag") {
+          const cx = boxW / 2;
+          const cy = style === "tag" ? boxH / 2 + 10 : boxH / 2;
+          const rad = style === "tag" ? (Math.min(boxW, boxH) / 2 - 2 - Math.max(bw, 4)) : (Math.min(boxW, boxH) / 2 - bw);
+          const fitSize = rad * Math.sqrt(2) * 0.85;
+          const qrX = cx - fitSize / 2;
+          const qrY = cy - fitSize / 2;
+          ctx.drawImage(img, qrX, qrY, fitSize, fitSize);
+        } else if (style === "heart") {
+          // Fit QR inside the heart shape - heart center and usable area
+          const cx = boxW / 2;
+          const cy = boxH / 2;
+          const heartW = boxW * 0.45;
+          // The usable inner area of the heart is roughly 55% of heart width
+          const fitSize = heartW * 0.95;
+          const qrX = cx - fitSize / 2;
+          const qrY = cy - fitSize * 0.55; // offset up slightly since heart is top-heavy
+          // Clip to heart shape so QR doesn't overflow
+          ctx.save();
+          const hw = boxW * 0.45;
+          const hh = boxH * 0.45;
+          const inset = Math.max(bw, 4);
+          const s = 1 - (inset * 2) / boxW;
+          ctx.beginPath();
+          ctx.translate(cx, cy);
+          ctx.scale(s, s);
+          ctx.translate(-cx, -cy);
+          ctx.moveTo(cx, cy + hh * 0.7);
+          ctx.bezierCurveTo(cx - hw * 1.2, cy - hh * 0.1, cx - hw * 0.6, cy - hh * 0.9, cx, cy - hh * 0.3);
+          ctx.bezierCurveTo(cx + hw * 0.6, cy - hh * 0.9, cx + hw * 1.2, cy - hh * 0.1, cx, cy + hh * 0.7);
+          ctx.clip();
+          ctx.setTransform(1, 0, 0, 1, 0, 0); // reset transform for drawing
+          ctx.drawImage(img, qrX, qrY, fitSize, fitSize);
+          ctx.restore();
+        } else {
+          const qrX = bw + padding;
+          const qrY = bw + padding;
+          ctx.drawImage(img, qrX, qrY, qrSize, qrSize);
+        }
         
         if (scanTextHeight > 0) {
           ctx.fillStyle = color1;
@@ -2798,10 +2835,10 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
       case "tag":
         style.borderRadius = "50%";
         style.border = `${Math.max(qr.borderWidth, 4)}px solid ${qr.color}`;
-        style.background = qr.color;
+        style.background = "white";
         style.padding = "18px";
         style.marginTop = "16px";
-        style.overflow = "hidden";
+        style.overflow = "visible";
         style.boxShadow = `0 8px 28px ${qr.color}35`;
         break;
     }
@@ -2815,7 +2852,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
     return (
       <div
         className="text-center font-extrabold tracking-[0.15em] uppercase mt-2"
-        style={{ color: qr.style === "heart" || qr.style === "tag" ? "#ffffff" : qr.color, fontSize: `${fontSize}px` }}
+        style={{ color: qr.style === "heart" ? "#ffffff" : qr.color, fontSize: `${fontSize}px` }}
         data-testid="text-scan-me"
       >
         SCAN ME
@@ -3237,7 +3274,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
                     {renderScanText({ style: qrStyle, color: qrColor, scanText }, 160)}
                     {renderFrameDecorations({ style: qrStyle, color: qrColor, borderWidth })}
                     {customText.trim() && (
-                      <div className="text-center font-bold mt-1" style={{ color: qrStyle === "tag" ? "#ffffff" : qrColor, fontSize: "10px" }}>
+                      <div className="text-center font-bold mt-1" style={{ color: qrColor, fontSize: "10px" }}>
                         {customText.trim()}
                       </div>
                     )}
@@ -6553,10 +6590,10 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
       case "tag":
         style.borderRadius = "50%";
         style.border = `${Math.max(borderWidth, 4)}px solid ${qrColor}`;
-        style.background = qrColor;
+        style.background = "white";
         style.padding = "20px";
         style.marginTop = "16px";
-        style.overflow = "hidden";
+        style.overflow = "visible";
         style.boxShadow = `0 8px 28px ${qrColor}35`;
         break;
     }
@@ -6783,7 +6820,41 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
           ctx.fill();
         }
 
-        ctx.drawImage(img, bw + padding, bw + padding, qrSize, qrSize);
+        // Center the QR code in the box area
+        if (qrStyle === "circle" || qrStyle === "tag") {
+          const cx = boxW / 2;
+          const cy = qrStyle === "tag" ? boxH / 2 + 10 : boxH / 2;
+          const rad = qrStyle === "tag" ? (Math.min(boxW, boxH) / 2 - 2 - Math.max(bw, 4)) : (Math.min(boxW, boxH) / 2 - bw);
+          const fitSize = rad * Math.sqrt(2) * 0.85;
+          const qrX = cx - fitSize / 2;
+          const qrY = cy - fitSize / 2;
+          ctx.drawImage(img, qrX, qrY, fitSize, fitSize);
+        } else if (qrStyle === "heart") {
+          const cx = boxW / 2;
+          const cy = boxH / 2;
+          const heartW = boxW * 0.45;
+          const fitSize = heartW * 0.95;
+          const qrX = cx - fitSize / 2;
+          const qrY = cy - fitSize * 0.55;
+          ctx.save();
+          const hw = boxW * 0.45;
+          const hh = boxH * 0.45;
+          const inset = Math.max(bw, 4);
+          const s = 1 - (inset * 2) / boxW;
+          ctx.beginPath();
+          ctx.translate(cx, cy);
+          ctx.scale(s, s);
+          ctx.translate(-cx, -cy);
+          ctx.moveTo(cx, cy + hh * 0.7);
+          ctx.bezierCurveTo(cx - hw * 1.2, cy - hh * 0.1, cx - hw * 0.6, cy - hh * 0.9, cx, cy - hh * 0.3);
+          ctx.bezierCurveTo(cx + hw * 0.6, cy - hh * 0.9, cx + hw * 1.2, cy - hh * 0.1, cx, cy + hh * 0.7);
+          ctx.clip();
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.drawImage(img, qrX, qrY, fitSize, fitSize);
+          ctx.restore();
+        } else {
+          ctx.drawImage(img, bw + padding, bw + padding, qrSize, qrSize);
+        }
 
         if (scanH > 0) {
           ctx.fillStyle = qrColor;
