@@ -2197,7 +2197,7 @@ export async function registerRoutes(
         const defaultTemplate = templates.find((t: any) => t.isDefault) || templates[0];
         const tData: any = defaultTemplate?.templateData || {};
 
-        // Fetch branch data
+        // Fetch branch data (already parallelized with team data above)
         let memberBranchData: any = null;
         let headBranchData: any = null;
         try {
@@ -2578,17 +2578,29 @@ export async function registerRoutes(
   });
   app.get("/api/white-label/:username", async (req, res) => {
     try {
-      const user = await storage.getUserByUsername(req.params.username as string);
+      const [userByName, teamBySlug] = await Promise.all([
+        storage.getUserByUsername(req.params.username as string),
+        storage.getTeamBySlug(req.params.username as string),
+      ]);
+
+      let user = userByName;
+
+      // If no user found but team slug matches, resolve to team owner
+      if (!user && teamBySlug) {
+        user = await storage.getUser(teamBySlug.ownerId);
+      }
+
       if (!user) return res.json({ whiteLabelEnabled: false });
 
       // Check user's own setting first
       if (user.whiteLabelEnabled) return res.json({ whiteLabelEnabled: true });
 
       // Check if team owner has white label enabled
-      if (user.teamId) {
-        const team = await storage.getTeam(user.teamId);
+      const teamId = user.teamId || teamBySlug?.id;
+      if (teamId) {
+        const team = teamBySlug || await storage.getTeam(teamId);
         if (team) {
-          const owner = await storage.getUser(team.ownerId);
+          const owner = team.ownerId === user.id ? user : await storage.getUser(team.ownerId);
           if (owner?.whiteLabelEnabled) return res.json({ whiteLabelEnabled: true });
         }
       }

@@ -43,7 +43,7 @@ interface AdminStats {
 interface UserRow {
   id: string; username: string; email: string; displayName?: string;
   accountType: string; onboardingCompleted: boolean; isDisabled: boolean; isLtd: boolean;
-  createdAt?: string;
+  createdAt?: string; businessPhone?: string | null;
   subscription?: { status: string; billingCycle: string; planName?: string } | null;
 }
 interface PaymentRow {
@@ -1049,6 +1049,11 @@ export default function AdminDashboard() {
                       <div>
                         <h2 className="text-xl font-bold text-foreground">{d.user.displayName || d.user.username}</h2>
                         <p className="text-sm text-muted-foreground">{d.user.email}</p>
+                        {d.user.businessPhone && (
+                          <p className="text-sm text-muted-foreground flex items-center gap-1">
+                            <span>📱</span> {d.user.businessPhone}
+                          </p>
+                        )}
                         <div className="flex items-center gap-2 mt-1">
                           <Badge variant="outline" className="text-xs capitalize">{d.user.accountType}</Badge>
                           {d.user.isDisabled && <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive">Disabled</span>}
