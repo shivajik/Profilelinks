@@ -2458,20 +2458,25 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
     const img = new Image();
     
     img.onload = () => {
-      const padding = 48;
+      const padding = 64; // extra breathing room around QR
       const brandingHeight = isWhiteLabel ? 0 : 60;
+      const style = qrConfig?.style || "square";
+      const isHeart = style === "heart";
       const scanTextHeight = (qrConfig?.scanText || (qrConfig && ["badge", "modern", "ticket", "bubble", "tag"].includes(qrConfig.style))) ? 50 : 0;
       const resolvedCustomTextForSize = customText.trim() || (qrConfig?.label && qrConfig.label !== "Profile QR" && qrConfig.label !== "QR Code" ? qrConfig.label : "");
       const customTextHeight = resolvedCustomTextForSize ? 50 : 0;
-      const bw = qrConfig?.borderWidth || 4;
-      const br = qrConfig?.borderRadius || 12;
+      // Scale up border width for high-res canvas (preview ~150px → download ~900px ≈ 6x)
+      const bwRaw = qrConfig?.borderWidth || 4;
+      const bw = Math.round(bwRaw * 5); // scale to be visually matching the preview
+      const br = (qrConfig?.borderRadius || 12) * 5; // scale radius too
       const color1 = qrConfig?.color || "#7c3aed";
       const color2 = qrConfig?.color2 || "#FF6B6B";
-      const style = qrConfig?.style || "square";
       
       const qrSize = 800;
-      const totalWidth = qrSize + (padding * 2) + (bw * 2);
-      const totalHeight = qrSize + (padding * 2) + (bw * 2) + brandingHeight + scanTextHeight + customTextHeight;
+      // For heart: the QR goes inside a white box within the heart, canvas is taller to fit the heart
+      const heartExtraHeight = isHeart ? qrSize * 0.35 : 0; // heart is taller than wide
+      const totalWidth = qrSize + (padding * 2) + (isHeart ? 0 : bw * 2);
+      const totalHeight = qrSize + (padding * 2) + (isHeart ? heartExtraHeight : bw * 2) + brandingHeight + (isHeart ? 0 : scanTextHeight) + customTextHeight;
       
       canvas.width = totalWidth;
       canvas.height = totalHeight;
@@ -2481,7 +2486,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
         ctx.fillRect(0, 0, totalWidth, totalHeight);
         
         const boxW = totalWidth;
-        const boxH = totalHeight - brandingHeight - scanTextHeight;
+        const boxH = totalHeight - brandingHeight - (isHeart ? 0 : scanTextHeight);
         
         if (style === "circle") {
           const cx = boxW / 2;
@@ -2571,31 +2576,25 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
           ctx.roundRect(Math.max(bw, 3), Math.max(bw, 3), boxW - Math.max(bw, 3) * 2, boxH - Math.max(bw, 3) * 2, Math.max(0, (br || 20) - Math.max(bw, 3) / 2));
           ctx.fill();
         } else if (style === "heart") {
-          // Heart shape - filled background
-          const cx = boxW / 2;
-          const cy = boxH / 2;
-          const w = boxW * 0.45;
-          const h = boxH * 0.45;
-          ctx.fillStyle = color1;
-          ctx.beginPath();
-          ctx.moveTo(cx, cy + h * 0.7);
-          ctx.bezierCurveTo(cx - w * 1.2, cy - h * 0.1, cx - w * 0.6, cy - h * 0.9, cx, cy - h * 0.3);
-          ctx.bezierCurveTo(cx + w * 0.6, cy - h * 0.9, cx + w * 1.2, cy - h * 0.1, cx, cy + h * 0.7);
-          ctx.fill();
-          // White inner area
-          ctx.fillStyle = "#ffffff";
-          const inset = Math.max(bw, 4);
-          ctx.beginPath();
-          const s = 1 - (inset * 2) / boxW;
+          // Draw heart using the same SVG path as the preview (viewBox 0-100 scaled to canvas)
+          // SVG path: M50 88 C25 65, 2 45, 2 28 C2 14, 14 2, 28 2 C36 2, 44 6, 50 14 C56 6, 64 2, 72 2 C86 2, 98 14, 98 28 C98 45, 75 65, 50 88Z
+          const sx = boxW / 100;
+          const sy = boxH / 100;
           ctx.save();
-          ctx.translate(cx, cy);
-          ctx.scale(s, s);
-          ctx.translate(-cx, -cy);
-          ctx.moveTo(cx, cy + h * 0.7);
-          ctx.bezierCurveTo(cx - w * 1.2, cy - h * 0.1, cx - w * 0.6, cy - h * 0.9, cx, cy - h * 0.3);
-          ctx.bezierCurveTo(cx + w * 0.6, cy - h * 0.9, cx + w * 1.2, cy - h * 0.1, cx, cy + h * 0.7);
-          ctx.fill();
+          ctx.scale(sx, sy);
+          ctx.fillStyle = color1;
+          const heartPath = new Path2D("M50 88 C25 65, 2 45, 2 28 C2 14, 14 2, 28 2 C36 2, 44 6, 50 14 C56 6, 64 2, 72 2 C86 2, 98 14, 98 28 C98 45, 75 65, 50 88Z");
+          ctx.fill(heartPath);
           ctx.restore();
+          // Draw white rounded box inside the heart (matches the preview white box)
+          const wbW = boxW * 0.58;
+          const wbH = boxW * 0.58;
+          const wbX = (boxW - wbW) / 2;
+          const wbY = boxH * 0.15; // start at 15% from top, matching preview
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.roundRect(wbX, wbY, wbW, wbH, 20);
+          ctx.fill();
         } else if (style === "bubble") {
           // Speech bubble with pointer
           const r = br || 20;
@@ -2608,19 +2607,20 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
           ctx.beginPath();
           ctx.roundRect(Math.max(bw, 3), Math.max(bw, 3), boxW - Math.max(bw, 3) * 2, boxH - Math.max(bw, 3) * 2, Math.max(0, r - Math.max(bw, 3) / 2));
           ctx.fill();
-          // Pointer triangle
-          const pSize = 20;
+          // Pointer triangle — scale up for high-res canvas
+          const pSize = Math.max(50, bw * 2.5);
           ctx.fillStyle = color1;
           ctx.beginPath();
-          ctx.moveTo(boxW / 2 - pSize, boxH - 1);
+          ctx.moveTo(boxW / 2 - pSize, boxH - 2);
           ctx.lineTo(boxW / 2, boxH + pSize);
-          ctx.lineTo(boxW / 2 + pSize, boxH - 1);
+          ctx.lineTo(boxW / 2 + pSize, boxH - 2);
           ctx.fill();
           ctx.fillStyle = "#ffffff";
+          const pInset = Math.max(bw, 3);
           ctx.beginPath();
-          ctx.moveTo(boxW / 2 - pSize + Math.max(bw, 3), boxH - Math.max(bw, 3));
-          ctx.lineTo(boxW / 2, boxH + pSize - Math.max(bw, 3) * 2);
-          ctx.lineTo(boxW / 2 + pSize - Math.max(bw, 3), boxH - Math.max(bw, 3));
+          ctx.moveTo(boxW / 2 - pSize + pInset, boxH - pInset);
+          ctx.lineTo(boxW / 2, boxH + pSize - pInset * 2.5);
+          ctx.lineTo(boxW / 2 + pSize - pInset, boxH - pInset);
           ctx.fill();
         } else if (style === "tag") {
           // Tag: circle with ring at top
@@ -2669,57 +2669,54 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
           const qrY = cy - fitSize / 2;
           ctx.drawImage(img, qrX, qrY, fitSize, fitSize);
         } else if (style === "heart") {
-          // Fit QR inside the heart shape - heart center and usable area
-          const cx = boxW / 2;
-          const cy = boxH / 2;
-          const heartW = boxW * 0.45;
-          // The usable inner area of the heart is roughly 55% of heart width
-          const fitSize = heartW * 0.95;
-          const qrX = cx - fitSize / 2;
-          const qrY = cy - fitSize * 0.55; // offset up slightly since heart is top-heavy
-          // Clip to heart shape so QR doesn't overflow
-          ctx.save();
-          const hw = boxW * 0.45;
-          const hh = boxH * 0.45;
-          const inset = Math.max(bw, 4);
-          const s = 1 - (inset * 2) / boxW;
-          ctx.beginPath();
-          ctx.translate(cx, cy);
-          ctx.scale(s, s);
-          ctx.translate(-cx, -cy);
-          ctx.moveTo(cx, cy + hh * 0.7);
-          ctx.bezierCurveTo(cx - hw * 1.2, cy - hh * 0.1, cx - hw * 0.6, cy - hh * 0.9, cx, cy - hh * 0.3);
-          ctx.bezierCurveTo(cx + hw * 0.6, cy - hh * 0.9, cx + hw * 1.2, cy - hh * 0.1, cx, cy + hh * 0.7);
-          ctx.clip();
-          ctx.setTransform(1, 0, 0, 1, 0, 0); // reset transform for drawing
-          ctx.drawImage(img, qrX, qrY, fitSize, fitSize);
-          ctx.restore();
+          // Draw QR inside the white box we drew above (match the preview layout)
+          const wbW = boxW * 0.58;
+          const wbH = boxW * 0.58;
+          const wbX = (boxW - wbW) / 2;
+          const wbY = boxH * 0.15;
+          const qrPad = 28; // padding inside the white box
+          const qrFitSize = wbW - qrPad * 2;
+          const qrX = wbX + qrPad;
+          const qrY = wbY + (wbH - qrFitSize) / 2;
+          ctx.drawImage(img, qrX, qrY, qrFitSize, qrFitSize);
         } else {
           const qrX = bw + padding;
           const qrY = bw + padding;
           ctx.drawImage(img, qrX, qrY, qrSize, qrSize);
         }
         
-        if (scanTextHeight > 0) {
+        // Heart: "SCAN ME" text inside the heart at the bottom (white text, like the preview)
+        if (isHeart) {
+          // The heart bottom is at ~88% of boxH (based on the SVG path "M50 88")
+          const heartBottomY = boxH * 0.88;
+          const textY = heartBottomY - 28; // just inside the heart bottom
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "bold 36px Arial, sans-serif";
+          ctx.textAlign = "center";
+          ctx.letterSpacing = "6px";
+          ctx.fillText("SCAN ME", totalWidth / 2, textY);
+          ctx.letterSpacing = "0px";
+        } else if (scanTextHeight > 0) {
           ctx.fillStyle = color1;
-          ctx.font = "bold 32px Arial, sans-serif";
+          ctx.font = "bold 36px Arial, sans-serif";
           ctx.textAlign = "center";
           ctx.letterSpacing = "4px";
-          ctx.fillText("SCAN ME", totalWidth / 2, boxH + 38);
+          ctx.fillText("SCAN ME", totalWidth / 2, boxH + 42);
+          ctx.letterSpacing = "0px";
         }
         
         // Render custom text from the QR code's label or the customText state
         const resolvedCustomText = customText.trim() || (qrConfig?.label && qrConfig.label !== "Profile QR" && qrConfig.label !== "QR Code" ? qrConfig.label : "");
         if (resolvedCustomText && customTextHeight > 0) {
-          ctx.fillStyle = color1;
-          ctx.font = "bold 28px Arial, sans-serif";
+          ctx.fillStyle = isHeart ? "#ffffff" : color1;
+          ctx.font = "bold 32px Arial, sans-serif";
           ctx.textAlign = "center";
-          ctx.fillText(resolvedCustomText, totalWidth / 2, boxH + scanTextHeight + 38);
+          ctx.fillText(resolvedCustomText, totalWidth / 2, boxH + scanTextHeight + 42);
         }
         
         if (!isWhiteLabel) {
           ctx.fillStyle = "#9ca3af";
-          ctx.font = "500 22px Arial, sans-serif";
+          ctx.font = "500 24px Arial, sans-serif";
           ctx.textAlign = "center";
           ctx.fillText("Powered by VisiCardly", totalWidth / 2, totalHeight - 20);
         }
