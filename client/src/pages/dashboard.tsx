@@ -1736,6 +1736,9 @@ function SettingsPanel({
       {/* White Label */}
       <WhiteLabelCard onNavigateBilling={onNavigateBilling} />
 
+      {/* Custom Domain */}
+      <CustomDomainCard />
+
       {/* API Access */}
       {user?.accountType === "team" && <ApiAccessCard />}
 
@@ -1961,6 +1964,106 @@ function WhiteLabelCard({ onNavigateBilling }: { onNavigateBilling?: () => void 
             <Button variant="ghost" size="sm" className="text-xs p-0 h-auto" onClick={() => onNavigateBilling?.()}>
               Upgrade
             </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function CustomDomainCard() {
+  const { toast } = useToast();
+  const { data: planLimits } = usePlanLimits();
+  const [domains, setDomains] = useState<any[]>([]);
+  const [newDomain, setNewDomain] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const isWhiteLabelEnabled = planLimits?.whiteLabelEnabled ?? false;
+
+  useEffect(() => {
+    fetch("/api/auth/custom-domains")
+      .then(r => r.ok ? r.json() : [])
+      .then(setDomains)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleAdd = async () => {
+    if (!newDomain.trim()) return;
+    setAdding(true);
+    try {
+      const r = await fetch("/api/auth/custom-domains", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain: newDomain.trim() }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.message);
+      toast({ title: "Domain added! Configure your DNS to point to our server." });
+      setNewDomain("");
+      const r2 = await fetch("/api/auth/custom-domains");
+      if (r2.ok) setDomains(await r2.json());
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    }
+    setAdding(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await fetch(`/api/auth/custom-domains/${id}`, { method: "DELETE" });
+      toast({ title: "Domain removed" });
+      const r = await fetch("/api/auth/custom-domains");
+      if (r.ok) setDomains(await r.json());
+    } catch {
+      toast({ title: "Failed to remove domain", variant: "destructive" });
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Globe className="w-4 h-4" /> Custom Domain
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">
+          Map your own domain to serve your profile and dashboard from a custom URL.
+        </p>
+        {isWhiteLabelEnabled ? (
+          <>
+            {!loading && domains.map((d: any) => (
+              <div key={d.id} className="flex items-center justify-between bg-muted/50 p-2 rounded-md">
+                <div>
+                  <span className="text-sm font-medium">{d.domain}</span>
+                  <Badge variant={d.status === 'active' ? 'default' : 'secondary'} className="ml-2 text-xs">{d.status}</Badge>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => handleDelete(d.id)}>
+                  <X className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            ))}
+            <div className="flex gap-2">
+              <Input
+                value={newDomain}
+                onChange={(e) => setNewDomain(e.target.value)}
+                placeholder="e.g. cards.yourdomain.com"
+                className="text-sm"
+              />
+              <Button size="sm" disabled={adding || !newDomain.trim()} onClick={handleAdd}>
+                {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Add"}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Point your domain's CNAME record to <code className="bg-muted px-1 rounded">visicardly.com</code>
+            </p>
+          </>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Lock className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Available on plans with white-label branding.</span>
           </div>
         )}
       </CardContent>

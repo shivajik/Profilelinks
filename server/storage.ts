@@ -240,6 +240,18 @@ pool.query(`
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS is_ltd boolean NOT NULL DEFAULT false;
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS use_original_social_colors boolean NOT NULL DEFAULT false;
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS business_phone text;
+
+  CREATE TABLE IF NOT EXISTS custom_domains (
+    id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    domain text NOT NULL UNIQUE,
+    status text NOT NULL DEFAULT 'pending',
+    verified boolean NOT NULL DEFAULT false,
+    verification_token text,
+    created_at timestamp NOT NULL DEFAULT now()
+  );
+  CREATE INDEX IF NOT EXISTS idx_custom_domains_domain ON custom_domains(domain);
+  CREATE INDEX IF NOT EXISTS idx_custom_domains_user_id ON custom_domains(user_id);
 `).then(async () => {
   // Backfill slugs for existing teams that don't have one
   try {

@@ -959,4 +959,181 @@ router.post("/api/admin/email-blast", requireAdminAuth, async (req: Request, res
   }
 });
 
+// ─── SendGrid Settings ──────────────────────────────────────────────────────
+router.get("/api/admin/settings/sendgrid", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const result = await db.execute(sql`SELECT key, value FROM app_settings WHERE key IN ('sendgrid_api_key', 'sendgrid_from_email', 'sendgrid_from_name')`);
+    const rows = result.rows as any[];
+    const settings: Record<string, string> = {};
+    for (const row of rows) {
+      if (row.key === 'sendgrid_api_key') {
+        const v = row.value;
+        settings.apiKey = v.length > 8 ? v.substring(0, 4) + '****' + v.substring(v.length - 4) : (v ? '********' : '');
+        settings.isSet = v ? 'true' : 'false';
+      } else {
+        settings[row.key] = row.value;
+      }
+    }
+    res.json(settings);
+  } catch {
+    res.status(500).json({ message: "Failed to fetch SendGrid settings" });
+  }
+});
+
+router.post("/api/admin/settings/sendgrid", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const { apiKey, fromEmail, fromName } = req.body;
+    if (apiKey !== undefined) {
+      await db.execute(sql`INSERT INTO app_settings (key, value, updated_at) VALUES ('sendgrid_api_key', ${apiKey}, now()) ON CONFLICT (key) DO UPDATE SET value = ${apiKey}, updated_at = now()`);
+    }
+    if (fromEmail) {
+      await db.execute(sql`INSERT INTO app_settings (key, value, updated_at) VALUES ('sendgrid_from_email', ${fromEmail}, now()) ON CONFLICT (key) DO UPDATE SET value = ${fromEmail}, updated_at = now()`);
+    }
+    if (fromName) {
+      await db.execute(sql`INSERT INTO app_settings (key, value, updated_at) VALUES ('sendgrid_from_name', ${fromName}, now()) ON CONFLICT (key) DO UPDATE SET value = ${fromName}, updated_at = now()`);
+    }
+    res.json({ message: "SendGrid settings saved successfully" });
+  } catch (error: any) {
+    console.error("SendGrid settings error:", error);
+    res.status(500).json({ message: "Failed to save SendGrid settings" });
+  }
+});
+
+// ─── Custom Domain Management (Admin) ───────────────────────────────────────
+router.get("/api/admin/custom-domains", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const domains = await db.execute(sql`
+      SELECT cd.*, u.username, u.email, u.display_name 
+      FROM custom_domains cd 
+      LEFT JOIN users u ON cd.user_id = u.id 
+      ORDER BY cd.created_at DESC
+    `);
+    res.json(domains.rows);
+  } catch {
+    res.status(500).json({ message: "Failed to fetch domains" });
+  }
+});
+
+router.post("/api/admin/custom-domains", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const { userId, domain } = req.body;
+    if (!userId || !domain) return res.status(400).json({ message: "User ID and domain are required" });
+    
+    const cleanDomain = domain.toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, '').trim();
+    if (!cleanDomain || !cleanDomain.includes('.')) return res.status(400).json({ message: "Invalid domain format" });
+
+    // Check duplicate
+    const existing = await db.execute(sql`SELECT id FROM custom_domains WHERE domain = ${cleanDomain}`);
+    if ((existing.rows as any[]).length > 0) return res.status(409).json({ message: "Domain already mapped" });
+
+    const verificationToken = Math.random().toString(36).substring(2, 15);
+    const [created] = (await db.execute(sql`
+      INSERT INTO custom_domains (user_id, domain, status, verification_token) 
+      VALUES (${userId}, ${cleanDomain}, 'active', ${verificationToken})
+      RETURNING *
+    `)).rows as any[];
+
+    res.status(201).json(created);
+  } catch (error: any) {
+    console.error("Create domain error:", error);
+    res.status(500).json({ message: "Failed to add domain" });
+  }
+});
+
+router.delete("/api/admin/custom-domains/:id", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const result = await db.execute(sql`DELETE FROM custom_domains WHERE id = ${req.params.id} RETURNING *`);
+    if ((result.rows as any[]).length === 0) return res.status(404).json({ message: "Domain not found" });
+    res.json({ message: "Domain removed" });
+  } catch {
+    res.status(500).json({ message: "Failed to remove domain" });
+  }
+});
+
+router.patch("/api/admin/custom-domains/:id/toggle", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const current = await db.execute(sql`SELECT status FROM custom_domains WHERE id = ${req.params.id}`);
+    const rows = current.rows as any[];
+    if (!rows.length) return res.status(404).json({ message: "Domain not found" });
+    const newStatus = rows[0].status === 'active' ? 'inactive' : 'active';
+    await db.execute(sql`UPDATE custom_domains SET status = ${newStatus} WHERE id = ${req.params.id}`);
+    res.json({ message: `Domain ${newStatus}`, status: newStatus });
+  } catch {
+    res.status(500).json({ message: "Failed to toggle domain" });
+  }
+});
+
+// ─── Custom Domain Management (User) ────────────────────────────────────────
+router.get("/api/auth/custom-domains", async (req: Request, res: Response) => {
+  if (!req.session.userId) return res.status(401).json({ message: "Unauthorized" });
+  try {
+    const domains = await db.execute(sql`SELECT * FROM custom_domains WHERE user_id = ${req.session.userId} ORDER BY created_at DESC`);
+    res.json(domains.rows);
+  } catch {
+    res.status(500).json({ message: "Failed to fetch domains" });
+  }
+});
+
+router.post("/api/auth/custom-domains", async (req: Request, res: Response) => {
+  if (!req.session.userId) return res.status(401).json({ message: "Unauthorized" });
+  try {
+    const { domain } = req.body;
+    if (!domain) return res.status(400).json({ message: "Domain is required" });
+    
+    const cleanDomain = domain.toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, '').trim();
+    if (!cleanDomain || !cleanDomain.includes('.')) return res.status(400).json({ message: "Invalid domain format" });
+
+    // Check plan allows custom domains (white label)
+    const { getUserPlanLimits } = await import("./plan-limits");
+    const limits = await getUserPlanLimits(req.session.userId);
+    if (!limits.whiteLabelEnabled) return res.status(403).json({ message: "Custom domains require a plan with white-label branding" });
+
+    // Check duplicate
+    const existing = await db.execute(sql`SELECT id FROM custom_domains WHERE domain = ${cleanDomain}`);
+    if ((existing.rows as any[]).length > 0) return res.status(409).json({ message: "Domain already in use" });
+
+    const verificationToken = Math.random().toString(36).substring(2, 15);
+    const [created] = (await db.execute(sql`
+      INSERT INTO custom_domains (user_id, domain, status, verification_token) 
+      VALUES (${req.session.userId}, ${cleanDomain}, 'pending', ${verificationToken})
+      RETURNING *
+    `)).rows as any[];
+
+    res.status(201).json(created);
+  } catch (error: any) {
+    console.error("User create domain error:", error);
+    res.status(500).json({ message: "Failed to add domain" });
+  }
+});
+
+router.delete("/api/auth/custom-domains/:id", async (req: Request, res: Response) => {
+  if (!req.session.userId) return res.status(401).json({ message: "Unauthorized" });
+  try {
+    const result = await db.execute(sql`DELETE FROM custom_domains WHERE id = ${req.params.id} AND user_id = ${req.session.userId} RETURNING *`);
+    if ((result.rows as any[]).length === 0) return res.status(404).json({ message: "Domain not found" });
+    res.json({ message: "Domain removed" });
+  } catch {
+    res.status(500).json({ message: "Failed to remove domain" });
+  }
+});
+
+// ─── Domain Lookup (for custom domain middleware) ────────────────────────────
+router.get("/api/domain-lookup", async (req: Request, res: Response) => {
+  try {
+    const host = (req.query.host as string || req.get("host") || "").toLowerCase().replace(/:\d+$/, '');
+    const result = await db.execute(sql`
+      SELECT cd.*, u.username, u.id as owner_id
+      FROM custom_domains cd
+      JOIN users u ON cd.user_id = u.id
+      WHERE cd.domain = ${host} AND cd.status = 'active'
+      LIMIT 1
+    `);
+    const rows = result.rows as any[];
+    if (rows.length === 0) return res.json({ found: false });
+    res.json({ found: true, userId: rows[0].user_id, username: rows[0].username, domain: rows[0].domain });
+  } catch {
+    res.json({ found: false });
+  }
+});
+
 export default router;

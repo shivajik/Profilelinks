@@ -122,6 +122,7 @@ const NAV_ITEMS = [
   { key: "promo-codes", label: "Promo Codes",    icon: Tag },
   { key: "ltd-codes",   label: "LTD Codes",      icon: Ticket },
   { key: "email-blast", label: "Email Blast",    icon: Mail },
+  { key: "domains",     label: "Custom Domains", icon: Globe },
   { key: "reports",     label: "Reports",        icon: BarChart3 },
   { key: "settings",    label: "Settings",       icon: Settings },
 ];
@@ -1867,6 +1868,11 @@ export default function AdminDashboard() {
             </div>
           )}
 
+          {/* ── DOMAINS ──────────────────────────────────────────────────────── */}
+          {activeSection === "domains" && (
+            <CustomDomainsSection />
+          )}
+
           {/* ── SETTINGS ──────────────────────────────────────────────────────── */}
           {activeSection === "settings" && (
             <RazorpaySettingsSection admin={admin} />
@@ -2584,6 +2590,7 @@ function RazorpaySettingsSection({ admin }: { admin: { name: string; email: stri
       </Card>
 
       <CleanSignupsSettings />
+      <SendGridSettings />
 
       <Card>
         <CardHeader><CardTitle className="text-base">Legal Pages</CardTitle></CardHeader>
@@ -2821,6 +2828,380 @@ function AffiliateEmailSearch({
         {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
         Add
       </Button>
+    </div>
+  );
+}
+
+// ── SendGrid Settings ──────────────────────────────────────────────────────
+function SendGridSettings() {
+  const { toast } = useToast();
+  const [apiKey, setApiKey] = useState("");
+  const [fromEmail, setFromEmail] = useState("");
+  const [fromName, setFromName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [maskedKey, setMaskedKey] = useState("");
+  const [isSet, setIsSet] = useState(false);
+  const [currentFromEmail, setCurrentFromEmail] = useState("");
+  const [currentFromName, setCurrentFromName] = useState("");
+
+  useEffect(() => {
+    fetch("/api/admin/settings/sendgrid")
+      .then(r => r.ok ? r.json() : {})
+      .then((data: any) => {
+        if (data.apiKey) setMaskedKey(data.apiKey);
+        setIsSet(data.isSet === 'true');
+        if (data.sendgrid_from_email) setCurrentFromEmail(data.sendgrid_from_email);
+        if (data.sendgrid_from_name) setCurrentFromName(data.sendgrid_from_name);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const body: Record<string, string> = {};
+      if (apiKey.trim()) body.apiKey = apiKey.trim();
+      if (fromEmail.trim()) body.fromEmail = fromEmail.trim();
+      if (fromName.trim()) body.fromName = fromName.trim();
+      const r = await fetch("/api/admin/settings/sendgrid", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.message);
+      toast({ title: "SendGrid settings saved!" });
+      setApiKey("");
+      // Refresh
+      const r2 = await fetch("/api/admin/settings/sendgrid");
+      if (r2.ok) {
+        const d = await r2.json();
+        setMaskedKey(d.apiKey || "");
+        setIsSet(d.isSet === 'true');
+        if (d.sendgrid_from_email) setCurrentFromEmail(d.sendgrid_from_email);
+        if (d.sendgrid_from_name) setCurrentFromName(d.sendgrid_from_name);
+      }
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    }
+    setSaving(false);
+  };
+
+  const handleDisable = async () => {
+    setSaving(true);
+    try {
+      const r = await fetch("/api/admin/settings/sendgrid", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey: "" }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.message);
+      toast({ title: "SendGrid disabled. Falling back to Gmail/Nodemailer." });
+      setMaskedKey("");
+      setIsSet(false);
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    }
+    setSaving(false);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Mail className="h-4 w-4" />
+          SendGrid SMTP
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-xs text-muted-foreground">
+          Configure SendGrid for reliable email delivery. When set, all emails (OTP, invites, bulk email blast) will go through SendGrid instead of Gmail.
+          {!isSet && " Currently using Gmail/Nodemailer fallback."}
+        </p>
+
+        {isSet && maskedKey && (
+          <div className="bg-muted/50 p-3 rounded-md text-xs space-y-1">
+            <p>API Key: <code className="bg-muted px-1 rounded">{maskedKey}</code></p>
+            {currentFromEmail && <p>From Email: <strong>{currentFromEmail}</strong></p>}
+            {currentFromName && <p>From Name: <strong>{currentFromName}</strong></p>}
+          </div>
+        )}
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">SendGrid API Key</Label>
+          <Input
+            type="password"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder={isSet ? "Leave empty to keep current" : "SG.xxxxxxxxxxxxx"}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">From Email</Label>
+            <Input
+              value={fromEmail}
+              onChange={(e) => setFromEmail(e.target.value)}
+              placeholder={currentFromEmail || "noreply@yourdomain.com"}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">From Name</Label>
+            <Input
+              value={fromName}
+              onChange={(e) => setFromName(e.target.value)}
+              placeholder={currentFromName || "VisiCardly"}
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <Button onClick={handleSave} disabled={saving} className="flex-1">
+            {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            {isSet ? "Update SendGrid" : "Enable SendGrid"}
+          </Button>
+          {isSet && (
+            <Button variant="outline" onClick={handleDisable} disabled={saving}>
+              Disable
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Custom Domains Section ──────────────────────────────────────────────────
+interface DomainRow {
+  id: string; user_id: string; domain: string; status: string;
+  verified: boolean; verification_token?: string; created_at: string;
+  username?: string; email?: string; display_name?: string;
+}
+
+function CustomDomainsSection() {
+  const { toast } = useToast();
+  const [domains, setDomains] = useState<DomainRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [addDialog, setAddDialog] = useState(false);
+  const [newDomain, setNewDomain] = useState("");
+  const [newUserId, setNewUserId] = useState("");
+  const [userSearch, setUserSearch] = useState("");
+  const [userResults, setUserResults] = useState<{ id: string; email: string; username: string; displayName?: string }[]>([]);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const fetchDomains = useCallback(async () => {
+    setLoading(true);
+    const r = await fetch("/api/admin/custom-domains");
+    if (r.ok) setDomains(await r.json());
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchDomains(); }, [fetchDomains]);
+
+  // User search
+  useEffect(() => {
+    if (!userSearch.trim()) { setUserResults([]); return; }
+    const timer = setTimeout(async () => {
+      const r = await fetch(`/api/admin/users?search=${encodeURIComponent(userSearch)}&limit=8`);
+      if (r.ok) { const d = await r.json(); setUserResults(d.users || []); }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [userSearch]);
+
+  const handleAdd = async () => {
+    if (!newDomain.trim() || !newUserId) return;
+    setSaving(true);
+    try {
+      const r = await fetch("/api/admin/custom-domains", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: newUserId, domain: newDomain.trim() }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.message);
+      toast({ title: "Domain added!" });
+      setAddDialog(false);
+      setNewDomain("");
+      setNewUserId("");
+      setUserSearch("");
+      fetchDomains();
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    }
+    setSaving(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Remove this custom domain?")) return;
+    setDeletingId(id);
+    try {
+      const r = await fetch(`/api/admin/custom-domains/${id}`, { method: "DELETE" });
+      if (!r.ok) throw new Error((await r.json()).message);
+      toast({ title: "Domain removed" });
+      fetchDomains();
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    }
+    setDeletingId(null);
+  };
+
+  const handleToggle = async (id: string) => {
+    try {
+      const r = await fetch(`/api/admin/custom-domains/${id}/toggle`, { method: "PATCH" });
+      if (!r.ok) throw new Error((await r.json()).message);
+      toast({ title: "Domain status updated" });
+      fetchDomains();
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <Globe className="h-5 w-5 text-primary" />
+            Custom Domains
+          </h2>
+          <p className="text-muted-foreground text-sm mt-1">Map custom domains to user profiles. Users with custom domains get a full portal at their domain.</p>
+        </div>
+        <Button onClick={() => setAddDialog(true)}>
+          <Plus className="h-4 w-4 mr-1" /> Add Domain
+        </Button>
+      </div>
+
+      <Card>
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="flex items-center justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+          ) : domains.length === 0 ? (
+            <div className="py-10 text-center text-muted-foreground text-sm">No custom domains configured yet.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/30">
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Domain</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">User</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Added</th>
+                    <th className="text-right px-4 py-3 font-medium text-muted-foreground">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {domains.map(d => (
+                    <tr key={d.id} className="border-b hover:bg-muted/20">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Globe className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium text-foreground">{d.domain}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-foreground">@{d.username}</span>
+                        {d.email && <span className="text-xs text-muted-foreground ml-1">({d.email})</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant={d.status === 'active' ? 'default' : 'secondary'} className="text-xs">
+                          {d.status}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">
+                        {new Date(d.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => handleToggle(d.id)}>
+                            {d.status === 'active' ? <ToggleRight className="h-4 w-4 text-primary" /> : <ToggleLeft className="h-4 w-4" />}
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(d.id)} disabled={deletingId === d.id}>
+                            {deletingId === d.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-destructive" />}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">DNS Setup Instructions</CardTitle></CardHeader>
+        <CardContent className="text-sm text-muted-foreground space-y-2">
+          <p>For each custom domain, the user needs to configure their DNS:</p>
+          <ol className="list-decimal list-inside space-y-1">
+            <li>Add a <strong>CNAME record</strong> pointing the domain to <code className="bg-muted px-1 rounded">visicardly.com</code></li>
+            <li>Or add an <strong>A record</strong> pointing to your server IP</li>
+            <li>Wait for DNS propagation (up to 48 hours)</li>
+          </ol>
+          <p className="text-xs mt-2">Once DNS is set up, the domain will serve the user's profile and allow login access.</p>
+        </CardContent>
+      </Card>
+
+      {/* Add Domain Dialog */}
+      <Dialog open={addDialog} onOpenChange={setAddDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Add Custom Domain</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Domain</Label>
+              <Input
+                value={newDomain}
+                onChange={(e) => setNewDomain(e.target.value)}
+                placeholder="e.g. cards.company.com"
+              />
+            </div>
+            <div className="space-y-1.5 relative">
+              <Label>Assign to User</Label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  className="pl-8"
+                  value={userSearch}
+                  onChange={(e) => { setUserSearch(e.target.value); setShowUserDropdown(true); }}
+                  onFocus={() => setShowUserDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowUserDropdown(false), 200)}
+                  placeholder="Search by username or email..."
+                />
+              </div>
+              {showUserDropdown && userResults.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                  {userResults.map((u: any) => (
+                    <button
+                      key={u.id}
+                      className="w-full text-left px-3 py-2 hover:bg-accent text-sm"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setNewUserId(u.id);
+                        setUserSearch(`@${u.username} (${u.email})`);
+                        setShowUserDropdown(false);
+                      }}
+                    >
+                      <span className="text-foreground">@{u.username}</span>
+                      <span className="text-xs text-muted-foreground ml-2">{u.email}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddDialog(false)}>Cancel</Button>
+            <Button disabled={saving || !newDomain.trim() || !newUserId} onClick={handleAdd}>
+              {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Add Domain
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

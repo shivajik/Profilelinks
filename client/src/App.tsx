@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -43,7 +43,32 @@ function PageLoader() {
   );
 }
 
-function Router() {
+// Detect custom domain from server-injected script
+function getCustomDomain(): { domain: string; userId: string; username: string } | null {
+  return (window as any).__CUSTOM_DOMAIN__ || null;
+}
+
+function CustomDomainRouter() {
+  const customDomain = getCustomDomain();
+  
+  // On custom domain: show profile at root, allow login + dashboard
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <Switch>
+        <Route path="/auth" component={AuthPage} />
+        <Route path="/dashboard" component={Dashboard} />
+        <Route path="/onboarding" component={Onboarding} />
+        <Route path="/change-password" component={ForceChangePassword} />
+        <Route path="/">
+          {() => <PublicProfile params={{ username: customDomain?.username || "" }} />}
+        </Route>
+        <Route component={NotFound} />
+      </Switch>
+    </Suspense>
+  );
+}
+
+function MainRouter() {
   return (
     <Suspense fallback={<PageLoader />}>
       <Switch>
@@ -75,6 +100,14 @@ function Router() {
       </Switch>
     </Suspense>
   );
+}
+
+function Router() {
+  const customDomain = getCustomDomain();
+  if (customDomain) {
+    return <CustomDomainRouter />;
+  }
+  return <MainRouter />;
 }
 
 function App() {
