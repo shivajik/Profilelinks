@@ -150,8 +150,15 @@ export function BusinessProfileSection() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center gap-3">
-              {team.logoUrl && (
-                <img src={team.logoUrl} alt={team.name} className="w-10 h-10 rounded-full object-cover" />
+              {(team.logoUrl || (templateData as any).companyLogo) && (
+                <img
+                  src={(templateData as any).companyLogo || team.logoUrl || ""}
+                  alt={team.name}
+                  className="w-10 h-10 rounded-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
               )}
               <div>
                 <p className="font-medium">{templateData.companyName || team.name}</p>

@@ -2828,7 +2828,7 @@ export async function registerRoutes(
         const defaultTemplate = templates.find(t => t.isDefault) || templates[0];
         const tData: any = defaultTemplate?.templateData || {};
         teamBranding = {
-          companyLogo: team?.logoUrl || tData.companyLogo,
+          companyLogo: tData.companyLogo || team?.logoUrl,
           companyName: tData.companyName || team?.name,
           themeColor: tData.themeColor,
           coverPhoto: tData.coverPhoto || undefined,

@@ -219,7 +219,23 @@ export default function PublicMenu() {
 
           {teamBranding?.companyLogo ? (
             <div className="w-20 h-20 rounded-full mx-auto mb-3 overflow-hidden border-2 border-white/20 shadow-lg">
-              <img src={teamBranding.companyLogo} alt={teamBranding.companyName || ""} className="w-full h-full object-cover" />
+              <img
+                src={teamBranding.companyLogo}
+                alt={teamBranding.companyName || ""}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  target.style.display = 'none';
+                  const fallback = target.parentElement;
+                  if (fallback) {
+                    fallback.style.display = 'flex';
+                    fallback.style.alignItems = 'center';
+                    fallback.style.justifyContent = 'center';
+                    fallback.style.backgroundColor = brandColor + '30';
+                    fallback.innerHTML = `<span style="font-size:1.5rem;color:${brandColor}">${displayName.charAt(0).toUpperCase()}</span>`;
+                  }
+                }}
+              />
             </div>
           ) : (
             <Avatar className="w-20 h-20 mx-auto mb-3 border-2 border-white/20 shadow-lg">

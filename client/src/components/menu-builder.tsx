@@ -333,34 +333,34 @@ export function MenuBuilder() {
             return (
               <Card key={section.id}>
                 <Collapsible open={isExpanded} onOpenChange={() => toggleSection(section.id)}>
-                  <CollapsibleTrigger asChild>
-                    <CardHeader className="cursor-pointer py-3 px-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+                  <CardHeader className="py-3 px-4">
+                    <div className="flex items-center justify-between">
+                      <CollapsibleTrigger asChild>
+                        <button type="button" className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
                           {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                           <CardTitle className="text-sm font-medium">{section.name}</CardTitle>
                           <Badge variant="secondary" className="text-xs">{sectionProducts.length} items</Badge>
                           {!section.active && <Badge variant="outline" className="text-xs">Hidden</Badge>}
-                        </div>
-                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                          <Switch
-                            checked={section.active}
-                            onCheckedChange={(v) => updateSectionMutation.mutate({ id: section.id, active: v })}
-                            className="scale-75"
-                          />
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditSection(section)}>
-                            <Pencil className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => {
-                            if (confirm("Delete this section and all its products?")) deleteSectionMutation.mutate(section.id);
-                          }}>
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
+                        </button>
+                      </CollapsibleTrigger>
+                      <div className="flex items-center gap-1">
+                        <Switch
+                          checked={section.active}
+                          onCheckedChange={(v) => updateSectionMutation.mutate({ id: section.id, active: v })}
+                          className="scale-75"
+                        />
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditSection(section)}>
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => {
+                          if (confirm("Delete this section and all its products?")) deleteSectionMutation.mutate(section.id);
+                        }}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
                       </div>
-                      {section.description && <p className="text-xs text-muted-foreground mt-1 ml-6">{section.description}</p>}
-                    </CardHeader>
-                  </CollapsibleTrigger>
+                    </div>
+                    {section.description && <p className="text-xs text-muted-foreground mt-1 ml-6">{section.description}</p>}
+                  </CardHeader>
                   <CollapsibleContent>
                     <CardContent className="pt-0 px-4 pb-3">
                       {sectionProducts.length === 0 ? (
