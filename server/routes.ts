@@ -2092,6 +2092,7 @@ export async function registerRoutes(
         memberBranch: memberBranch ? { name: memberBranch.name, address: memberBranch.address, phone: memberBranch.phone, email: memberBranch.email } : undefined,
         companyProfileUrl: tData.companyProfileUrl || undefined,
         productProfileUrl: tData.productProfileUrl || undefined,
+        productUrls: tData.productUrls || undefined,
         companyBrochureUrl: tData.companyBrochureUrl || undefined,
       };
 
@@ -2190,6 +2191,7 @@ export async function registerRoutes(
         memberBranch?: { name: string; address: string; phone?: string | null; email?: string | null };
         companyProfileUrl?: string;
         productProfileUrl?: string;
+        productUrls?: Array<{ label: string; url: string }>;
         companyBrochureUrl?: string;
       } | null = null;
 
@@ -2227,6 +2229,7 @@ export async function registerRoutes(
           memberBranch: memberBranchData ? { name: memberBranchData.name, address: memberBranchData.address, phone: memberBranchData.phone, email: memberBranchData.email } : undefined,
           companyProfileUrl: tData.companyProfileUrl || undefined,
           productProfileUrl: tData.productProfileUrl || undefined,
+          productUrls: tData.productUrls || undefined,
           companyBrochureUrl: tData.companyBrochureUrl || undefined,
         };
 
