@@ -391,6 +391,7 @@ export default function DocsPage() {
                 {section.screenshot && (
                   <ScreenshotPlaceholder
                     title={`${section.title} Interface`}
+                    src={`/docs/${section.id}.png`}
                   />
                 )}
 
