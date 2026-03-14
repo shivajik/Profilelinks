@@ -2342,115 +2342,134 @@ function EmailBlastSection({ plans }: { plans: PricingPlan[] }) {
   };
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-foreground">Email Blast</h2>
-        <p className="text-muted-foreground text-sm">Compose and send emails to users. Use variables like {"{{username}}"}, {"{{email}}"}, {"{{displayName}}"} in the body.</p>
+        <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+          <Send className="h-5 w-5 text-primary" />
+          Email Blast
+        </h2>
+        <p className="text-muted-foreground text-sm mt-1">Compose and send emails to users. Use variables like {"{{username}}"}, {"{{email}}"}, {"{{displayName}}"} in the body.</p>
       </div>
 
-      <Card>
-        <CardHeader><CardTitle className="text-base">Recipients</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <Select value={recipientMode} onValueChange={(v: "all" | "plan" | "manual") => setRecipientMode(v)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="manual">Select Users</SelectItem>
-              <SelectItem value="all">All Users</SelectItem>
-              <SelectItem value="plan">By Plan</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {recipientMode === "plan" && (
-            <Select value={selectedPlanFilter} onValueChange={setSelectedPlanFilter}>
-              <SelectTrigger><SelectValue placeholder="Select plan" /></SelectTrigger>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Column - Recipients */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">Recipients</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <Select value={recipientMode} onValueChange={(v: "all" | "plan" | "manual") => setRecipientMode(v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Plans</SelectItem>
-                <SelectItem value="free">Free</SelectItem>
-                {plans.filter(p => p.name.toLowerCase() !== "free").map(p => (
-                  <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
-                ))}
+                <SelectItem value="manual">Select Users</SelectItem>
+                <SelectItem value="all">All Users</SelectItem>
+                <SelectItem value="plan">By Plan</SelectItem>
               </SelectContent>
             </Select>
-          )}
 
-          {recipientMode === "manual" && (
-            <div className="space-y-3">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  className="pl-8"
-                  placeholder="Search users by name or email..."
-                  value={searchQuery}
-                  onChange={(e) => { setSearchQuery(e.target.value); setShowDropdown(true); }}
-                  onFocus={() => setShowDropdown(true)}
-                  onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
-                />
-                {showDropdown && searchResults.length > 0 && (
-                  <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-48 overflow-y-auto">
-                    {searchResults.map((user) => (
-                      <button
-                        key={user.id}
-                        className="w-full text-left px-3 py-2 hover:bg-accent text-sm flex items-center gap-2 transition-colors"
-                        onMouseDown={(e) => { e.preventDefault(); addUser(user); }}
-                      >
-                        <Mail className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <div className="min-w-0">
-                          <span className="text-foreground truncate block">{user.email}</span>
-                          <span className="text-xs text-muted-foreground">@{user.username}{user.displayName ? ` · ${user.displayName}` : ""}</span>
-                        </div>
-                      </button>
-                    ))}
+            {recipientMode === "plan" && (
+              <Select value={selectedPlanFilter} onValueChange={setSelectedPlanFilter}>
+                <SelectTrigger><SelectValue placeholder="Select plan" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Plans</SelectItem>
+                  <SelectItem value="free">Free</SelectItem>
+                  {plans.filter(p => p.name.toLowerCase() !== "free").map(p => (
+                    <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {recipientMode === "manual" && (
+              <div className="space-y-3">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    className="pl-8"
+                    placeholder="Search users by name or email..."
+                    value={searchQuery}
+                    onChange={(e) => { setSearchQuery(e.target.value); setShowDropdown(true); }}
+                    onFocus={() => setShowDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                  />
+                  {showDropdown && searchResults.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                      {searchResults.map((user) => (
+                        <button
+                          key={user.id}
+                          className="w-full text-left px-3 py-2 hover:bg-accent text-sm flex items-center gap-2 transition-colors"
+                          onMouseDown={(e) => { e.preventDefault(); addUser(user); }}
+                        >
+                          <Mail className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <div className="min-w-0">
+                            <span className="text-foreground truncate block">{user.email}</span>
+                            <span className="text-xs text-muted-foreground">@{user.username}{user.displayName ? ` · ${user.displayName}` : ""}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {selectedUsers.length > 0 && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">{selectedUsers.length} recipient(s) selected</Label>
+                    <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+                      {selectedUsers.map(u => (
+                        <span key={u.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-primary text-xs">
+                          {u.displayName || u.username}
+                          <button onClick={() => removeUser(u.id)} className="shrink-0 hover:text-destructive">
+                            <XIcon className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
+                {selectedUsers.length === 0 && (
+                  <p className="text-xs text-muted-foreground italic">Search and select users above to add them as recipients.</p>
+                )}
               </div>
-              {selectedUsers.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {selectedUsers.map(u => (
-                    <span key={u.id} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-primary/10 text-primary text-sm">
-                      {u.displayName || u.username} ({u.email})
-                      <button onClick={() => removeUser(u.id)} className="shrink-0">
-                        <XIcon className="w-3 h-3" />
-                      </button>
-                    </span>
+            )}
+
+            {recipientMode === "all" && (
+              <p className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-md">⚠️ This will send the email to <strong>all registered users</strong>. Use with caution.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Right Column - Email Content */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">Email Content</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Subject</Label>
+              <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. Important update from VisiCardly" />
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label>Body (HTML supported)</Label>
+                <div className="flex gap-1">
+                  {["username", "email", "displayName"].map(v => (
+                    <Button key={v} type="button" variant="outline" size="sm" className="text-xs h-6 px-2" onClick={() => insertVariable(v)}>
+                      {`{{${v}}}`}
+                    </Button>
                   ))}
                 </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader><CardTitle className="text-base">Email Content</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Subject</Label>
-            <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. Important update from VisiCardly" />
-          </div>
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label>Body (HTML supported)</Label>
-              <div className="flex gap-1">
-                {["username", "email", "displayName"].map(v => (
-                  <Button key={v} type="button" variant="outline" size="sm" className="text-xs h-6 px-2" onClick={() => insertVariable(v)}>
-                    {`{{${v}}}`}
-                  </Button>
-                ))}
               </div>
+              <Textarea
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                placeholder={`Hello {{username}},\n\nWe have an exciting update for you!\n\nBest regards,\nVisiCardly Team`}
+                rows={10}
+              />
             </div>
-            <Textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder={`Hello {{username}},\n\nWe have an exciting update for you!\n\nBest regards,\nVisiCardly Team`}
-              rows={10}
-            />
-          </div>
-          <Button className="w-full" disabled={sending || !subject.trim() || !body.trim()} onClick={handleSend}>
-            {sending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-            Send Email{recipientMode === "manual" && selectedUsers.length > 0 ? ` to ${selectedUsers.length} user(s)` : ""}
-          </Button>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Send Button - Full Width */}
+      <Button className="w-full max-w-md mx-auto block" size="lg" disabled={sending || !subject.trim() || !body.trim()} onClick={handleSend}>
+        {sending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+        Send Email{recipientMode === "manual" && selectedUsers.length > 0 ? ` to ${selectedUsers.length} user(s)` : ""}
+      </Button>
     </div>
   );
 }

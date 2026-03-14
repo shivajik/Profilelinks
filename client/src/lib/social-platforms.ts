@@ -24,6 +24,8 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
   { id: "facebook", name: "Facebook", placeholder: "https://facebook.com/..." },
   { id: "github", name: "Github", placeholder: "https://github.com/..." },
   { id: "goodreads", name: "Goodreads", placeholder: "https://goodreads.com/..." },
+  { id: "googlebusiness", name: "Google Business", placeholder: "https://business.google.com/..." },
+  { id: "googlemap", name: "Google Maps", placeholder: "https://maps.google.com/..." },
   { id: "googlepodcasts", name: "Google Pod...", placeholder: "https://podcasts.google.com/..." },
   { id: "instagram", name: "Instagram", placeholder: "https://instagram.com/..." },
   { id: "kofi", name: "Ko-fi", placeholder: "https://ko-fi.com/..." },

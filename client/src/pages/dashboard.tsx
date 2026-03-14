@@ -2488,27 +2488,27 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
           ctx.fillStyle = color1;
           ctx.fill(new Path2D("M50 88 C25 65, 2 45, 2 28 C2 14, 14 2, 28 2 C36 2, 44 6, 50 14 C56 6, 64 2, 72 2 C86 2, 98 14, 98 28 C98 45, 75 65, 50 88Z"));
           ctx.restore();
-          // White rounded box inside heart — positioned at 14% from top of heart
-          const wbW = heartW * 0.65;
-          const wbH = wbW;
+          // White rounded box inside heart — shorter to leave room for SCAN ME
+          const wbW = heartW * 0.60;
+          const wbH = wbW * 0.88;
           const wbX = (cW - wbW) / 2;
-          const wbY = outerPad + heartH * 0.14;
+          const wbY = outerPad + heartH * 0.15;
           ctx.fillStyle = "#ffffff";
           ctx.beginPath();
           ctx.roundRect(wbX, wbY, wbW, wbH, 20);
           ctx.fill();
           // QR inside white box
           const qrPad = 28;
-          const qrFit = wbW - qrPad * 2;
-          ctx.drawImage(img, wbX + qrPad, wbY + (wbH - qrFit) / 2, qrFit, qrFit);
-          // SCAN ME inside heart (white text, near the bottom of the heart)
+          const qrFit = Math.min(wbW, wbH) - qrPad * 2;
+          ctx.drawImage(img, wbX + (wbW - qrFit) / 2, wbY + (wbH - qrFit) / 2, qrFit, qrFit);
+          // SCAN ME inside heart (white text, below white box in colored heart area)
           const showScanHeart = qrConfig?.scanText;
           if (showScanHeart) {
-            const heartBottomY = outerPad + heartH * 0.85;
+            const scanY = wbY + wbH + 50;
             ctx.fillStyle = "#ffffff";
-            ctx.font = "bold 44px Arial, sans-serif";
+            ctx.font = "bold 38px Arial, sans-serif";
             ctx.textAlign = "center";
-            ctx.fillText("SCAN ME", cW / 2, heartBottomY);
+            ctx.fillText("SCAN ME", cW / 2, scanY);
           }
           if (!isWhiteLabel) {
             ctx.fillStyle = "#9ca3af";

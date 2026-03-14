@@ -50,8 +50,8 @@ export function serveStatic(app: Express) {
         const origin = `${req.protocol}://${req.get("host")}`;
         const fullUrl = `${origin}${urlPath}`;
         const title = teamName
-          ? `${displayName} — ${teamName}`
-          : `VisiCardly — ${displayName}`;
+          ? `${displayName} — ${teamName} | VisiCardly`
+          : `VisiCardly — ${displayName} (@${user.username})`;
 
         const ogHtml = indexHtml
           .replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(title)}</title>`)

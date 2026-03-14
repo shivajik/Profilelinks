@@ -91,6 +91,8 @@ const PLATFORM_ICONS: Record<string, IconComponent> = {
   facebook: SiFacebook,
   github: SiGithub,
   goodreads: BookMarked,
+  googlebusiness: Globe,
+  googlemap: Map,
   googlepodcasts: Podcast,
   instagram: SiInstagram,
   kofi: SiKofi,
@@ -171,6 +173,8 @@ export const BRAND_COLORS: Record<string, string> = {
   applemusic: "#FA243C",
   applepodcasts: "#9933CC",
   artstation: "#13AFF0",
+  googlebusiness: "#4285F4",
+  googlemap: "#34A853",
   rednote: "#FE2C55",
 };
 
