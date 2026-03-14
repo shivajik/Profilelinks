@@ -332,7 +332,7 @@ export function MenuBuilder() {
             const isExpanded = expandedSections[section.id] !== false; // default open
             return (
               <Card key={section.id}>
-                <Collapsible open={isExpanded} onOpenChange={() => toggleSection(section.id)}>
+                <Collapsible open={isExpanded} onOpenChange={(open) => setExpandedSections((prev) => ({ ...prev,[section.id]: open, })) }>
                   <CardHeader className="py-3 px-4">
                     <div className="flex items-center justify-between">
                       <CollapsibleTrigger asChild>
