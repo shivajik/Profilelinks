@@ -2831,6 +2831,7 @@ export async function registerRoutes(
           companyLogo: team?.logoUrl || tData.companyLogo,
           companyName: tData.companyName || team?.name,
           themeColor: tData.themeColor,
+          coverPhoto: tData.coverPhoto || undefined,
         };
       }
 

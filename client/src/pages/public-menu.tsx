@@ -64,6 +64,7 @@ interface TeamBranding {
   companyLogo?: string;
   companyName?: string;
   themeColor?: string;
+  coverPhoto?: string;
 }
 
 interface PublicMenuData {
@@ -182,6 +183,7 @@ export default function PublicMenu() {
   const profileImage = user.menuProfileImage || user.profileImage;
   const brandColor = user.menuAccentColor || teamBranding?.themeColor || template.accent;
   const menuDescription = user.menuDescription || user.bio;
+  const coverPhoto = teamBranding?.coverPhoto || user.profileImage;
   const menuUrl = typeof window !== "undefined" ? `${window.location.origin}/${username}/menu` : `/${username}/menu`;
 
   const hasContact = user.menuPhone || user.menuEmail || user.menuAddress || user.menuWhatsapp || user.menuWebsite || user.menuGoogleMapsUrl;
@@ -205,6 +207,13 @@ export default function PublicMenu() {
               <Button variant="ghost" size="icon" onClick={() => setShowQr(true)} className={template.textColor}>
                 <QrCode className="w-4 h-4" />
               </Button>
+            </div>
+          )}
+
+          {/* Cover Image */}
+          {teamBranding?.coverPhoto && (
+            <div className="w-full h-32 rounded-xl overflow-hidden mb-4 shadow-md">
+              <img src={teamBranding.coverPhoto} alt="Cover" className="w-full h-full object-cover" />
             </div>
           )}
 

@@ -1,4 +1,4 @@
-export type QRStyle = "circle" | "square" | "stripe" | "full" | "gradient" | "elegant" | "badge" | "modern" | "ticket" | "heart" | "bubble" | "tag";
+export type QRStyle = "circle" | "square" | "stripe" | "full" | "gradient" | "elegant" | "badge" | "modern" | "ticket" | "heart" | "bubble" | "tag" | "poster";
 
 export type QRTemplateCategory = "all" | "business" | "social" | "events" | "food" | "feedback" | "health" | "general";
 

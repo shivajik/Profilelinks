@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { toPng } from "html-to-image";
 import { useLocation, Redirect, useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -2300,7 +2301,7 @@ function AnalyticsPanel({ username }: { username: string }) {
   );
 }
 
-type QRStyle = "circle" | "square" | "stripe" | "full" | "gradient" | "elegant" | "badge" | "modern" | "ticket" | "heart" | "bubble" | "tag";
+type QRStyle = "circle" | "square" | "stripe" | "full" | "gradient" | "elegant" | "badge" | "modern" | "ticket" | "heart" | "bubble" | "tag" | "poster";
 
 interface SavedQRCode {
   id: string;
@@ -2448,258 +2449,24 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
     deleteQrMutation.mutate(id);
   };
 
-  const downloadQR = (elementId: string, filename: string, qrConfig?: SavedQRCode) => {
-    const svg = document.getElementById(elementId);
-    if (!svg) return;
-    
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    const img = new Image();
-    
-    img.onload = () => {
-      const brandingHeight = isWhiteLabel ? 0 : 70;
-      const style = qrConfig?.style || "square";
-      const color1 = qrConfig?.color || "#7c3aed";
-      const color2 = qrConfig?.color2 || "#FF6B6B";
-      // Scale up border width for high-res canvas (preview ~150px → download ~900px ≈ 6x)
-      const bwRaw = qrConfig?.borderWidth || 4;
-      const bw = Math.round(bwRaw * 5);
-      const br = (qrConfig?.borderRadius || 12) * 5;
-      const qrSize = 800;
-      const resolvedCustomText = customText.trim() || (qrConfig?.label && qrConfig.label !== "Profile QR" && qrConfig.label !== "QR Code" ? qrConfig.label : "");
-
-      // ── HEART: fully separate rendering path ──────────────────────────────
-      if (style === "heart") {
-        const outerPad = 80;
-        const heartW = qrSize;
-        const heartH = Math.round(heartW * 1.0); // match SVG viewBox aspect 100x100
-        const showScanHeart = qrConfig?.scanText;
-        const hasCustom = !!resolvedCustomText;
-        const textAreaH = (showScanHeart ? 50 : 0) + (hasCustom ? 45 : 0);
-        const cW = heartW + outerPad * 2;
-        const cH = heartH + outerPad * 2 + brandingHeight + textAreaH;
-        canvas.width = cW;
-        canvas.height = cH;
-        if (ctx) {
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, 0, cW, cH);
-          // Draw heart using same SVG path as preview
-          ctx.save();
-          ctx.translate(outerPad, outerPad);
-          ctx.scale(heartW / 100, heartH / 100);
-          ctx.fillStyle = color1;
-          ctx.fill(new Path2D("M50 88 C25 65, 2 45, 2 28 C2 14, 14 2, 28 2 C36 2, 44 6, 50 14 C56 6, 64 2, 72 2 C86 2, 98 14, 98 28 C98 45, 75 65, 50 88Z"));
-          ctx.restore();
-          // White rounded box inside heart — matching preview proportions (top 18%)
-          const wbW = heartW * 0.55;
-          const wbH = wbW * 0.85;
-          const wbX = (cW - wbW) / 2;
-          const wbY = outerPad + heartH * 0.18;
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.roundRect(wbX, wbY, wbW, wbH, 20);
-          ctx.fill();
-          // QR inside white box
-          const qrPad = 24;
-          const qrFit = Math.min(wbW, wbH) - qrPad * 2;
-          ctx.drawImage(img, wbX + (wbW - qrFit) / 2, wbY + (wbH - qrFit) / 2, qrFit, qrFit);
-          // SCAN ME inside heart (white text, below white box)
-          let textY = wbY + wbH + 40;
-          if (showScanHeart) {
-            ctx.fillStyle = "#ffffff";
-            ctx.font = "bold 36px Arial, sans-serif";
-            ctx.textAlign = "center";
-            ctx.letterSpacing = "4px";
-            ctx.fillText("SCAN ME", cW / 2, textY);
-            textY += 45;
-          }
-          // Custom text inside heart
-          if (hasCustom) {
-            ctx.fillStyle = "#ffffff";
-            ctx.font = "bold 32px Arial, sans-serif";
-            ctx.textAlign = "center";
-            ctx.fillText(resolvedCustomText, cW / 2, textY);
-          }
-          if (!isWhiteLabel) {
-            ctx.fillStyle = "#9ca3af";
-            ctx.font = "500 26px Arial, sans-serif";
-            ctx.textAlign = "center";
-            ctx.fillText("Powered by VisiCardly", cW / 2, cH - 22);
-          }
-        }
-        const pngUrl = canvas.toDataURL("image/png");
-        const a = document.createElement("a");
-        a.href = pngUrl; a.download = filename; a.click();
-        toast({ title: "QR code downloaded!" });
-        return;
-      }
-
-      // ── ALL OTHER STYLES ───────────────────────────────────────────────────
-      const outerMargin = 100; // white canvas margin around the border frame
-      const innerPad = 56;    // space between border frame and QR
-      const scanTextHeight = (qrConfig?.scanText || (qrConfig && ["badge", "modern", "ticket", "bubble", "tag"].includes(qrConfig.style))) ? 60 : 0;
-      const customTextHeight = resolvedCustomText ? 60 : 0;
-      const totalWidth = outerMargin * 2 + bw * 2 + innerPad * 2 + qrSize;
-      const totalHeight = totalWidth + brandingHeight + scanTextHeight + customTextHeight;
-      
-      canvas.width = totalWidth;
-      canvas.height = totalHeight;
-
-      if (ctx) {
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, totalWidth, totalHeight);
-
-        // Frame area (inside the outer white margin)
-        const boxW = totalWidth - outerMargin * 2;
-        const boxH = boxW; // square frame
-
-        // Translate so all frame drawing uses (0,0) as the frame's top-left
-        ctx.save();
-        ctx.translate(outerMargin, outerMargin);
-
-        if (style === "circle") {
-          const cx = boxW / 2, cy = boxH / 2;
-          const r = Math.min(boxW, boxH) / 2;
-          ctx.beginPath(); ctx.arc(cx, cy, r - bw / 2, 0, Math.PI * 2);
-          ctx.strokeStyle = color1; ctx.lineWidth = bw; ctx.stroke();
-          ctx.beginPath(); ctx.arc(cx, cy, r - bw, 0, Math.PI * 2);
-          ctx.fillStyle = "#ffffff"; ctx.fill();
-        } else if (style === "gradient") {
-          const grad = ctx.createLinearGradient(0, 0, boxW, boxH);
-          grad.addColorStop(0, color1); grad.addColorStop(1, color2);
-          ctx.fillStyle = grad;
-          ctx.beginPath(); ctx.roundRect(0, 0, boxW, boxH, br || 16); ctx.fill();
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath(); ctx.roundRect(bw, bw, boxW - bw * 2, boxH - bw * 2, Math.max(0, (br || 16) - bw)); ctx.fill();
-        } else if (style === "elegant") {
-          ctx.strokeStyle = color1; ctx.lineWidth = bw;
-          ctx.beginPath(); ctx.roundRect(bw / 2, bw / 2, boxW - bw, boxH - bw, br || 12); ctx.stroke();
-          const outerGap = bw + 8;
-          ctx.lineWidth = 4;
-          ctx.beginPath(); ctx.roundRect(outerGap, outerGap, boxW - outerGap * 2, boxH - outerGap * 2, Math.max(0, (br || 12) - outerGap)); ctx.stroke();
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath(); ctx.roundRect(bw, bw, boxW - bw * 2, boxH - bw * 2, Math.max(0, (br || 12) - bw / 2)); ctx.fill();
-        } else if (style === "full") {
-          ctx.fillStyle = color1;
-          ctx.beginPath(); ctx.roundRect(0, 0, boxW, boxH, br); ctx.fill();
-        } else if (style === "stripe") {
-          ctx.fillStyle = color1;
-          ctx.fillRect(0, 0, boxW, bw);
-          ctx.fillRect(0, boxH - bw, boxW, bw);
-        } else if (style === "ticket") {
-          ctx.setLineDash([20, 14]);
-          ctx.strokeStyle = color1; ctx.lineWidth = bw;
-          ctx.beginPath(); ctx.roundRect(bw / 2, bw / 2, boxW - bw, boxH - bw, br || 16); ctx.stroke();
-          ctx.setLineDash([]);
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath(); ctx.roundRect(bw, bw, boxW - bw * 2, boxH - bw * 2, Math.max(0, (br || 16) - bw / 2)); ctx.fill();
-        } else if (style === "modern") {
-          ctx.shadowColor = color1 + "40"; ctx.shadowBlur = 60; ctx.shadowOffsetY = 16;
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath(); ctx.roundRect(2, 2, boxW - 4, boxH - 4, br || 20); ctx.fill();
-          ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-          ctx.strokeStyle = color1 + "30"; ctx.lineWidth = 3;
-          ctx.beginPath(); ctx.roundRect(1, 1, boxW - 2, boxH - 2, br || 20); ctx.stroke();
-        } else if (style === "badge") {
-          ctx.strokeStyle = color1; ctx.lineWidth = bw;
-          ctx.beginPath(); ctx.roundRect(bw / 2, bw / 2, boxW - bw, boxH - bw, br || 20); ctx.stroke();
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath(); ctx.roundRect(bw, bw, boxW - bw * 2, boxH - bw * 2, Math.max(0, (br || 20) - bw / 2)); ctx.fill();
-        } else if (style === "bubble") {
-          ctx.strokeStyle = color1; ctx.lineWidth = bw;
-          ctx.beginPath(); ctx.roundRect(bw / 2, bw / 2, boxW - bw, boxH - bw, br || 24); ctx.stroke();
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath(); ctx.roundRect(bw, bw, boxW - bw * 2, boxH - bw * 2, Math.max(0, (br || 24) - bw / 2)); ctx.fill();
-          // Pointer triangle
-          const pSize = Math.max(60, bw * 3);
-          ctx.fillStyle = color1;
-          ctx.beginPath();
-          ctx.moveTo(boxW / 2 - pSize, boxH - 2);
-          ctx.lineTo(boxW / 2, boxH + pSize);
-          ctx.lineTo(boxW / 2 + pSize, boxH - 2);
-          ctx.fill();
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.moveTo(boxW / 2 - pSize + bw, boxH - bw);
-          ctx.lineTo(boxW / 2, boxH + pSize - bw * 3);
-          ctx.lineTo(boxW / 2 + pSize - bw, boxH - bw);
-          ctx.fill();
-        } else if (style === "tag") {
-          const cx = boxW / 2, cy = boxH / 2 + 20;
-          const rad = Math.min(boxW, boxH) / 2 - 10;
-          ctx.fillStyle = color1;
-          ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath(); ctx.arc(cx, cy, rad - bw, 0, Math.PI * 2); ctx.fill();
-          ctx.strokeStyle = color1; ctx.lineWidth = bw;
-          ctx.beginPath(); ctx.arc(cx, cy - rad + 10, bw * 2, 0, Math.PI * 2); ctx.stroke();
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath(); ctx.arc(cx, cy - rad + 10, bw * 1.2, 0, Math.PI * 2); ctx.fill();
-        } else {
-          // square (default)
-          ctx.strokeStyle = color1; ctx.lineWidth = bw;
-          ctx.beginPath(); ctx.roundRect(bw / 2, bw / 2, boxW - bw, boxH - bw, br); ctx.stroke();
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath(); ctx.roundRect(bw, bw, boxW - bw * 2, boxH - bw * 2, Math.max(0, br - bw / 2)); ctx.fill();
-        }
-
-        // Draw QR (still in translated frame coords)
-        if (style === "circle") {
-          const cx = boxW / 2, cy = boxH / 2;
-          const rad = Math.min(boxW, boxH) / 2 - bw;
-          const fitSize = rad * Math.sqrt(2) * 0.85;
-          ctx.drawImage(img, cx - fitSize / 2, cy - fitSize / 2, fitSize, fitSize);
-        } else if (style === "tag") {
-          const cx = boxW / 2, cy = boxH / 2 + 20;
-          const rad = Math.min(boxW, boxH) / 2 - 10 - bw;
-          const fitSize = rad * Math.sqrt(2) * 0.82;
-          ctx.drawImage(img, cx - fitSize / 2, cy - fitSize / 2, fitSize, fitSize);
-        } else if (style === "full") {
-          // full: QR is white on colored bg — draw with some inner padding
-          ctx.drawImage(img, innerPad, innerPad, qrSize, qrSize);
-        } else {
-          ctx.drawImage(img, bw + innerPad, bw + innerPad, qrSize, qrSize);
-        }
-
-        ctx.restore(); // reset translation, back to absolute canvas coordinates
-
-        // SCAN ME text
-        if (scanTextHeight > 0) {
-          const pSize = style === "bubble" ? Math.max(60, bw * 3) : 0;
-          const textY = outerMargin + boxH + pSize + 48;
-          ctx.fillStyle = style === "full" ? "#ffffff" : color1;
-          ctx.font = "bold 40px Arial, sans-serif";
-          ctx.textAlign = "center";
-          ctx.fillText("SCAN ME", totalWidth / 2, textY);
-        }
-
-        // Custom label text
-        if (resolvedCustomText && customTextHeight > 0) {
-          const pSize = style === "bubble" ? Math.max(60, bw * 3) : 0;
-          ctx.fillStyle = color1;
-          ctx.font = "bold 36px Arial, sans-serif";
-          ctx.textAlign = "center";
-          ctx.fillText(resolvedCustomText, totalWidth / 2, outerMargin + boxH + pSize + scanTextHeight + 48);
-        }
-
-        // Branding
-        if (!isWhiteLabel) {
-          ctx.fillStyle = "#9ca3af";
-          ctx.font = "500 28px Arial, sans-serif";
-          ctx.textAlign = "center";
-          ctx.fillText("Powered by VisiCardly", totalWidth / 2, totalHeight - 24);
-        }
-      }
-
-      const pngUrl = canvas.toDataURL("image/png");
+  const downloadQR = async (elementId: string, filename: string, _qrConfig?: SavedQRCode) => {
+    const container = document.getElementById(`qr-download-wrap-${elementId}`);
+    if (!container) return;
+    try {
+      const dataUrl = await toPng(container, {
+        pixelRatio: 4,
+        backgroundColor: "#ffffff",
+        cacheBust: true,
+      });
       const a = document.createElement("a");
-      a.href = pngUrl;
+      a.href = dataUrl;
       a.download = filename;
       a.click();
       toast({ title: "QR code downloaded!" });
-    };
-    img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
+    } catch (err) {
+      console.error("QR download failed", err);
+      toast({ title: "Download failed", description: "Please try again" });
+    }
   };
 
   const copyLink = () => {
@@ -2865,27 +2632,95 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
 
   // Render heart SVG wrapper for the QR code
   const renderHeartQR = (qrElement: React.ReactNode, qr: { color: string; scanText?: boolean; customText?: string }, size: number) => {
-    const w = size + 40;
-    const h = size + 60;
+    const heartW = size * 1.8;
+    const heartH = size * 2.0;
+    const qrPad = size * 0.08;
+    const textAreaH = (qr.scanText || qr.customText) ? size * 0.35 : 0;
+    const totalH = heartH + textAreaH;
     return (
-      <div style={{ position: "relative", width: w, height: h, filter: `drop-shadow(0 8px 24px ${qr.color}40)` }}>
-        <svg viewBox="0 0 100 100" width={w} height={h} style={{ position: "absolute", top: 0, left: 0 }}>
+      <div style={{ position: "relative", width: heartW, height: totalH, filter: `drop-shadow(0 8px 24px ${qr.color}40)` }}>
+        <svg viewBox="0 0 100 100" width={heartW} height={heartH} style={{ position: "absolute", top: 0, left: 0 }} preserveAspectRatio="none">
           <path d="M50 88 C25 65, 2 45, 2 28 C2 14, 14 2, 28 2 C36 2, 44 6, 50 14 C56 6, 64 2, 72 2 C86 2, 98 14, 98 28 C98 45, 75 65, 50 88Z" fill={qr.color} />
         </svg>
-        <div style={{ position: "absolute", top: "18%", left: "50%", transform: "translateX(-50%)", zIndex: 1 }}>
-          <div style={{ background: "white", borderRadius: "8px", padding: "6px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ position: "absolute", top: "16%", left: "50%", transform: "translateX(-50%)", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <div style={{ background: "white", borderRadius: "8px", padding: `${qrPad}px`, display: "flex", alignItems: "center", justifyContent: "center" }}>
             {qrElement}
           </div>
+        </div>
+        {(qr.scanText || qr.customText) && (
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, textAlign: "center", zIndex: 2 }}>
+            {qr.scanText && (
+              <div className="font-extrabold tracking-[0.15em] uppercase" style={{ color: qr.color, fontSize: `${Math.max(size * 0.09, 8)}px` }}>
+                SCAN ME
+              </div>
+            )}
+            {qr.customText && (
+              <div className="font-bold" style={{ color: qr.color, fontSize: `${Math.max(size * 0.08, 7)}px`, marginTop: "2px" }}>
+                {qr.customText}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Render poster-style QR: rectangular layout with text on left, QR on right
+  const renderPosterQR = (qrElement: React.ReactNode, qr: { color: string; scanText?: boolean; customText?: string }, size: number) => {
+    const textContent = qr.customText || "";
+    const lines = textContent.split("\n");
+    return (
+      <div style={{
+        display: "flex",
+        alignItems: "stretch",
+        border: `3px solid ${qr.color}`,
+        borderRadius: "12px",
+        overflow: "hidden",
+        minWidth: size * 2.2,
+        background: "#ffffff",
+      }}>
+        <div style={{
+          flex: "1 1 0",
+          padding: `${size * 0.12}px`,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          minWidth: size * 0.8,
+          background: `linear-gradient(135deg, ${qr.color}08, ${qr.color}15)`,
+        }}>
+          {lines.map((line, i) => (
+            <div key={i} style={{
+              fontSize: i === 0 ? `${Math.max(size * 0.13, 11)}px` : `${Math.max(size * 0.09, 8)}px`,
+              fontWeight: i === 0 ? 700 : 400,
+              color: i === 0 ? qr.color : "#374151",
+              lineHeight: 1.4,
+              marginTop: line === "" ? `${size * 0.06}px` : "0",
+              whiteSpace: "pre-wrap",
+            }}>
+              {line || "\u00A0"}
+            </div>
+          ))}
           {qr.scanText && (
-            <div className="text-center font-extrabold tracking-[0.15em] uppercase mt-1" style={{ color: "#ffffff", fontSize: `${Math.max(size * 0.06, 7)}px` }}>
-              SCAN ME
+            <div style={{
+              marginTop: `${size * 0.08}px`,
+              fontSize: `${Math.max(size * 0.07, 7)}px`,
+              fontWeight: 800,
+              color: qr.color,
+              letterSpacing: "0.15em",
+              textTransform: "uppercase" as const,
+            }}>
+              SCAN ME →
             </div>
           )}
-          {qr.customText && (
-            <div className="text-center font-bold mt-0.5" style={{ color: "#ffffff", fontSize: `${Math.max(size * 0.055, 6)}px` }}>
-              {qr.customText}
-            </div>
-          )}
+        </div>
+        <div style={{
+          padding: `${size * 0.1}px`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          borderLeft: `2px solid ${qr.color}20`,
+        }}>
+          {qrElement}
         </div>
       </div>
     );
@@ -2904,6 +2739,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
     { value: "heart", label: "Heart", icon: "♥" },
     { value: "bubble", label: "Bubble", icon: "💬" },
     { value: "tag", label: "Tag", icon: "⏣" },
+    { value: "poster", label: "Poster", icon: "📋" },
   ];
 
   return (
@@ -2973,11 +2809,18 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
                   </Button>
                 </div>
               </div>
+              <div id={`qr-download-wrap-qr-saved-${qr.id}`} style={{ display: "inline-block", padding: "12px", background: "#ffffff" }}>
               {qr.style === "heart" ? (
                 renderHeartQR(
                   <QRCodeSVG id={`qr-saved-${qr.id}`} {...getQRProps(qr)} size={60} data-testid={`display-qr-${qr.id}`} />,
                   { color: qr.color, scanText: qr.scanText, customText: qr.label && qr.label !== "Profile QR" && qr.label !== "QR Code" ? qr.label : undefined },
                   60
+                )
+              ) : qr.style === "poster" ? (
+                renderPosterQR(
+                  <QRCodeSVG id={`qr-saved-${qr.id}`} {...getQRProps(qr)} size={80} data-testid={`display-qr-${qr.id}`} />,
+                  { color: qr.color, scanText: qr.scanText, customText: qr.label && qr.label !== "Profile QR" && qr.label !== "QR Code" ? qr.label : undefined },
+                  80
                 )
               ) : (
                 <div style={getContainerStyle(qr)} className="shrink-0" data-qr-container>
@@ -2996,6 +2839,8 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
                   )}
                 </div>
               )}
+              {!isWhiteLabel && <p style={{ color: "#9ca3af", fontSize: "6px", textAlign: "center", marginTop: "4px" }}>Powered by VisiCardly</p>}
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -3178,15 +3023,26 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
               </div>
 
               <div className="space-y-1.5 p-3 rounded-md border">
-                <span className="text-sm">Custom Text (Name / Company)</span>
-                <Input
-                  value={customText}
-                  onChange={(e) => setCustomText(e.target.value)}
-                  placeholder="e.g. John Doe or Acme Inc."
-                  className="text-sm"
-                  maxLength={50}
-                  data-testid="input-qr-custom-text"
-                />
+                <span className="text-sm">{qrStyle === "poster" ? "Poster Text (multi-line)" : "Custom Text (Name / Company)"}</span>
+                {qrStyle === "poster" ? (
+                  <Textarea
+                    value={customText}
+                    onChange={(e) => setCustomText(e.target.value)}
+                    placeholder={"e.g.\nJohn Doe\nSoftware Engineer\n\nScan to connect!"}
+                    className="text-sm min-h-[80px]"
+                    maxLength={200}
+                    data-testid="input-qr-custom-text"
+                  />
+                ) : (
+                  <Input
+                    value={customText}
+                    onChange={(e) => setCustomText(e.target.value)}
+                    placeholder="e.g. John Doe or Acme Inc."
+                    className="text-sm"
+                    maxLength={50}
+                    data-testid="input-qr-custom-text"
+                  />
+                )}
               </div>
 
               <div className="flex items-center gap-3 p-3 rounded-md border">
@@ -3231,6 +3087,17 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
                     />,
                     { color: qrColor, scanText, customText: customText.trim() || undefined },
                     100
+                  )
+                ) : qrStyle === "poster" ? (
+                  renderPosterQR(
+                    <QRCodeSVG
+                      id="create-qr-preview"
+                      {...getQRProps({ style: qrStyle, color: qrColor, logoUrl: logoPreview })}
+                      size={120}
+                      data-testid="preview-qr-code"
+                    />,
+                    { color: qrColor, scanText, customText: customText.trim() || undefined },
+                    120
                   )
                 ) : (
                   <div
@@ -6568,6 +6435,7 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
     { value: "heart", label: "Heart" },
     { value: "bubble", label: "Bubble" },
     { value: "tag", label: "Tag" },
+    { value: "poster", label: "Poster" },
   ];
 
   const getContainerStyle = (): React.CSSProperties => {
@@ -6636,22 +6504,95 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
 
   // Heart SVG renderer for URL QR panel
   const renderUrlHeartQR = (qrElement: React.ReactNode, size: number) => {
-    const w = size + 40;
-    const h = size + 60;
+    const heartW = size * 1.8;
+    const heartH = size * 2.0;
+    const hasText = showScanText || customText.trim();
+    const textAreaH = hasText ? size * 0.35 : 0;
+    const totalH = heartH + textAreaH;
     return (
-      <div style={{ position: "relative", width: w, height: h, filter: `drop-shadow(0 8px 24px ${qrColor}40)` }}>
-        <svg viewBox="0 0 100 100" width={w} height={h} style={{ position: "absolute", top: 0, left: 0 }}>
+      <div style={{ position: "relative", width: heartW, height: totalH, filter: `drop-shadow(0 8px 24px ${qrColor}40)` }}>
+        <svg viewBox="0 0 100 100" width={heartW} height={heartH} style={{ position: "absolute", top: 0, left: 0 }} preserveAspectRatio="none">
           <path d="M50 88 C25 65, 2 45, 2 28 C2 14, 14 2, 28 2 C36 2, 44 6, 50 14 C56 6, 64 2, 72 2 C86 2, 98 14, 98 28 C98 45, 75 65, 50 88Z" fill={qrColor} />
         </svg>
-        <div style={{ position: "absolute", top: "18%", left: "50%", transform: "translateX(-50%)", zIndex: 1 }}>
-          <div style={{ background: "white", borderRadius: "8px", padding: "6px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ position: "absolute", top: "16%", left: "50%", transform: "translateX(-50%)", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <div style={{ background: "white", borderRadius: "8px", padding: "8px", display: "flex", alignItems: "center", justifyContent: "center" }}>
             {qrElement}
           </div>
+        </div>
+        {hasText && (
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, textAlign: "center", zIndex: 2 }}>
+            {showScanText && (
+              <div className="font-extrabold tracking-[0.15em] uppercase" style={{ color: qrColor, fontSize: "11px" }}>
+                SCAN ME
+              </div>
+            )}
+            {customText.trim() && (
+              <div className="font-bold" style={{ color: qrColor, fontSize: "10px", marginTop: "2px" }}>
+                {customText.trim()}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Poster-style renderer for URL QR panel
+  const renderUrlPosterQR = (qrElement: React.ReactNode, size: number) => {
+    const textContent = customText.trim() || "";
+    const lines = textContent.split("\n");
+    return (
+      <div style={{
+        display: "flex",
+        alignItems: "stretch",
+        border: `3px solid ${qrColor}`,
+        borderRadius: "12px",
+        overflow: "hidden",
+        minWidth: size * 2.2,
+        background: "#ffffff",
+      }}>
+        <div style={{
+          flex: "1 1 0",
+          padding: `${size * 0.12}px`,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          minWidth: size * 0.8,
+          background: `linear-gradient(135deg, ${qrColor}08, ${qrColor}15)`,
+        }}>
+          {lines.map((line: string, i: number) => (
+            <div key={i} style={{
+              fontSize: i === 0 ? `${Math.max(size * 0.11, 11)}px` : `${Math.max(size * 0.08, 9)}px`,
+              fontWeight: i === 0 ? 700 : 400,
+              color: i === 0 ? qrColor : "#374151",
+              lineHeight: 1.4,
+              marginTop: line === "" ? `${size * 0.06}px` : "0",
+              whiteSpace: "pre-wrap",
+            }}>
+              {line || "\u00A0"}
+            </div>
+          ))}
           {showScanText && (
-            <div className="text-center font-extrabold tracking-[0.15em] uppercase mt-1" style={{ color: "#ffffff", fontSize: "9px" }}>
-              SCAN ME
+            <div style={{
+              marginTop: `${size * 0.08}px`,
+              fontSize: `${Math.max(size * 0.07, 8)}px`,
+              fontWeight: 800,
+              color: qrColor,
+              letterSpacing: "0.15em",
+              textTransform: "uppercase" as const,
+            }}>
+              SCAN ME →
             </div>
           )}
+        </div>
+        <div style={{
+          padding: `${size * 0.1}px`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          borderLeft: `2px solid ${qrColor}20`,
+        }}>
+          {qrElement}
         </div>
       </div>
     );
@@ -6659,278 +6600,24 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
 
   const showScanText = scanText || ["badge", "modern", "ticket", "bubble", "tag"].includes(qrStyle);
 
-  const downloadQR = () => {
-    const svg = document.getElementById("url-qr-code");
-    if (!svg) return;
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    const img = new Image();
-    img.onload = () => {
-      const padding = 48;
-      const brandingHeight = isWhiteLabel ? 0 : 60;
-      const scanH = showScanText ? 50 : 0;
-      const customH = customText.trim() ? 50 : 0;
-      const bw = borderWidth;
-      const br = borderRadius;
-      const qrSize = 800;
-
-      // ── HEART: separate rendering path matching QRCodePanel ──────────────
-      if (qrStyle === "heart") {
-        const outerPad = 80;
-        const heartW = qrSize;
-        const heartH = Math.round(heartW * 1.0);
-        const textAreaH = (showScanText ? 50 : 0) + (customText.trim() ? 45 : 0);
-        const cW = heartW + outerPad * 2;
-        const cH = heartH + outerPad * 2 + brandingHeight + textAreaH;
-        canvas.width = cW;
-        canvas.height = cH;
-        if (ctx) {
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, 0, cW, cH);
-          ctx.save();
-          ctx.translate(outerPad, outerPad);
-          ctx.scale(heartW / 100, heartH / 100);
-          ctx.fillStyle = qrColor;
-          ctx.fill(new Path2D("M50 88 C25 65, 2 45, 2 28 C2 14, 14 2, 28 2 C36 2, 44 6, 50 14 C56 6, 64 2, 72 2 C86 2, 98 14, 98 28 C98 45, 75 65, 50 88Z"));
-          ctx.restore();
-          const wbW = heartW * 0.55;
-          const wbH = wbW * 0.85;
-          const wbX = (cW - wbW) / 2;
-          const wbY = outerPad + heartH * 0.18;
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.roundRect(wbX, wbY, wbW, wbH, 20);
-          ctx.fill();
-          const qrPad = 24;
-          const qrFit = Math.min(wbW, wbH) - qrPad * 2;
-          ctx.drawImage(img, wbX + (wbW - qrFit) / 2, wbY + (wbH - qrFit) / 2, qrFit, qrFit);
-          let textY = wbY + wbH + 40;
-          if (showScanText) {
-            ctx.fillStyle = "#ffffff";
-            ctx.font = "bold 36px Arial, sans-serif";
-            ctx.textAlign = "center";
-            ctx.fillText("SCAN ME", cW / 2, textY);
-            textY += 45;
-          }
-          if (customText.trim()) {
-            ctx.fillStyle = "#ffffff";
-            ctx.font = "bold 32px Arial, sans-serif";
-            ctx.textAlign = "center";
-            ctx.fillText(customText.trim(), cW / 2, textY);
-          }
-          if (!isWhiteLabel) {
-            ctx.fillStyle = "#9ca3af";
-            ctx.font = "500 26px Arial, sans-serif";
-            ctx.textAlign = "center";
-            ctx.fillText("Powered by VisiCardly", cW / 2, cH - 22);
-          }
-        }
-        const pngUrl = canvas.toDataURL("image/png");
-        const a = document.createElement("a");
-        a.href = pngUrl; a.download = "qrcode.png"; a.click();
-        toast({ title: "QR code downloaded!" });
-        return;
-      }
-
-      const totalWidth = qrSize + (padding * 2) + (bw * 2);
-      const qrBoxHeight = qrSize + (padding * 2) + (bw * 2);
-      const totalHeight = qrBoxHeight + scanH + customH + brandingHeight;
-      canvas.width = totalWidth;
-      canvas.height = totalHeight;
-      if (ctx) {
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, totalWidth, totalHeight);
-
-        const boxW = totalWidth;
-        const boxH = qrBoxHeight;
-
-        if (qrStyle === "circle") {
-          const cx = boxW / 2;
-          const cy = boxH / 2;
-          const r = Math.min(boxW, boxH) / 2;
-          ctx.beginPath();
-          ctx.arc(cx, cy, r - bw / 2, 0, Math.PI * 2);
-          ctx.strokeStyle = qrColor;
-          ctx.lineWidth = bw;
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.arc(cx, cy, r - bw, 0, Math.PI * 2);
-          ctx.fillStyle = "#ffffff";
-          ctx.fill();
-        } else if (qrStyle === "gradient") {
-          const grad = ctx.createLinearGradient(0, 0, boxW, boxH);
-          grad.addColorStop(0, qrColor);
-          grad.addColorStop(1, qrColor2);
-          ctx.fillStyle = grad;
-          ctx.beginPath();
-          ctx.roundRect(0, 0, boxW, boxH, br || 16);
-          ctx.fill();
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.roundRect(Math.max(bw, 3), Math.max(bw, 3), boxW - Math.max(bw, 3) * 2, boxH - Math.max(bw, 3) * 2, Math.max(0, (br || 16) - Math.max(bw, 3)));
-          ctx.fill();
-        } else if (qrStyle === "elegant") {
-          ctx.strokeStyle = qrColor;
-          ctx.lineWidth = Math.max(bw, 2);
-          ctx.beginPath();
-          ctx.roundRect(Math.max(bw, 2) / 2, Math.max(bw, 2) / 2, boxW - Math.max(bw, 2), boxH - Math.max(bw, 2), br || 12);
-          ctx.stroke();
-          const outerGap = Math.max(bw, 2) + 5;
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.roundRect(outerGap + 1, outerGap + 1, boxW - (outerGap + 1) * 2, boxH - (outerGap + 1) * 2, Math.max(0, (br || 12) - outerGap));
-          ctx.stroke();
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.roundRect(Math.max(bw, 2), Math.max(bw, 2), boxW - Math.max(bw, 2) * 2, boxH - Math.max(bw, 2) * 2, Math.max(0, (br || 12) - Math.max(bw, 2) / 2));
-          ctx.fill();
-        } else if (qrStyle === "full") {
-          ctx.fillStyle = qrColor;
-          ctx.beginPath();
-          ctx.roundRect(0, 0, boxW, boxH, br);
-          ctx.fill();
-        } else if (qrStyle === "stripe") {
-          ctx.fillStyle = qrColor;
-          ctx.fillRect(0, 0, boxW, Math.max(bw, 3));
-          ctx.fillRect(0, boxH - Math.max(bw, 3), boxW, Math.max(bw, 3));
-        } else if (qrStyle === "ticket") {
-          ctx.setLineDash([12, 8]);
-          ctx.strokeStyle = qrColor;
-          ctx.lineWidth = Math.max(bw, 2);
-          ctx.beginPath();
-          ctx.roundRect(Math.max(bw, 2) / 2, Math.max(bw, 2) / 2, boxW - Math.max(bw, 2), boxH - Math.max(bw, 2), br || 16);
-          ctx.stroke();
-          ctx.setLineDash([]);
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.roundRect(Math.max(bw, 2), Math.max(bw, 2), boxW - Math.max(bw, 2) * 2, boxH - Math.max(bw, 2) * 2, Math.max(0, (br || 16) - Math.max(bw, 2) / 2));
-          ctx.fill();
-        } else if (qrStyle === "modern") {
-          ctx.shadowColor = qrColor + "30";
-          ctx.shadowBlur = 32;
-          ctx.shadowOffsetY = 8;
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.roundRect(1, 1, boxW - 2, boxH - 2, br || 20);
-          ctx.fill();
-          ctx.shadowColor = "transparent";
-          ctx.shadowBlur = 0;
-          ctx.shadowOffsetY = 0;
-          ctx.strokeStyle = qrColor + "30";
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.roundRect(0.5, 0.5, boxW - 1, boxH - 1, br || 20);
-          ctx.stroke();
-        } else if (qrStyle === "badge") {
-          ctx.strokeStyle = qrColor;
-          ctx.lineWidth = Math.max(bw, 3);
-          ctx.beginPath();
-          ctx.roundRect(Math.max(bw, 3) / 2, Math.max(bw, 3) / 2, boxW - Math.max(bw, 3), boxH - Math.max(bw, 3), br || 20);
-          ctx.stroke();
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.roundRect(Math.max(bw, 3), Math.max(bw, 3), boxW - Math.max(bw, 3) * 2, boxH - Math.max(bw, 3) * 2, Math.max(0, (br || 20) - Math.max(bw, 3) / 2));
-          ctx.fill();
-        } else if (qrStyle === "bubble") {
-          const r = br || 20;
-          ctx.strokeStyle = qrColor;
-          ctx.lineWidth = Math.max(bw, 3);
-          ctx.beginPath();
-          ctx.roundRect(Math.max(bw, 3) / 2, Math.max(bw, 3) / 2, boxW - Math.max(bw, 3), boxH - Math.max(bw, 3), r);
-          ctx.stroke();
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.roundRect(Math.max(bw, 3), Math.max(bw, 3), boxW - Math.max(bw, 3) * 2, boxH - Math.max(bw, 3) * 2, Math.max(0, r - Math.max(bw, 3) / 2));
-          ctx.fill();
-          const pSize = 20;
-          ctx.fillStyle = qrColor;
-          ctx.beginPath();
-          ctx.moveTo(boxW / 2 - pSize, boxH - 1);
-          ctx.lineTo(boxW / 2, boxH + pSize);
-          ctx.lineTo(boxW / 2 + pSize, boxH - 1);
-          ctx.fill();
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.moveTo(boxW / 2 - pSize + Math.max(bw, 3), boxH - Math.max(bw, 3));
-          ctx.lineTo(boxW / 2, boxH + pSize - Math.max(bw, 3) * 2);
-          ctx.lineTo(boxW / 2 + pSize - Math.max(bw, 3), boxH - Math.max(bw, 3));
-          ctx.fill();
-        } else if (qrStyle === "tag") {
-          const cx = boxW / 2;
-          const cy = boxH / 2 + 10;
-          const rad = Math.min(boxW, boxH) / 2 - 2;
-          ctx.fillStyle = qrColor;
-          ctx.beginPath();
-          ctx.arc(cx, cy, rad, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.arc(cx, cy, rad - Math.max(bw, 4), 0, Math.PI * 2);
-          ctx.fill();
-          ctx.strokeStyle = qrColor;
-          ctx.lineWidth = Math.max(bw, 3);
-          ctx.beginPath();
-          ctx.arc(cx, cy - rad + 5, 14, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.arc(cx, cy - rad + 5, 10, 0, Math.PI * 2);
-          ctx.fill();
-        } else {
-          ctx.strokeStyle = qrColor;
-          ctx.lineWidth = bw;
-          ctx.beginPath();
-          ctx.roundRect(bw / 2, bw / 2, boxW - bw, boxH - bw, br);
-          ctx.stroke();
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.roundRect(bw, bw, boxW - bw * 2, boxH - bw * 2, Math.max(0, br - bw / 2));
-          ctx.fill();
-        }
-
-        // Center the QR code in the box area
-        if (qrStyle === "circle" || qrStyle === "tag") {
-          const cx = boxW / 2;
-          const cy = qrStyle === "tag" ? boxH / 2 + 10 : boxH / 2;
-          const rad = qrStyle === "tag" ? (Math.min(boxW, boxH) / 2 - 2 - Math.max(bw, 4)) : (Math.min(boxW, boxH) / 2 - bw);
-          const fitSize = rad * Math.sqrt(2) * 0.85;
-          const qrX = cx - fitSize / 2;
-          const qrY = cy - fitSize / 2;
-          ctx.drawImage(img, qrX, qrY, fitSize, fitSize);
-        } else {
-          ctx.drawImage(img, bw + padding, bw + padding, qrSize, qrSize);
-        }
-
-        if (scanH > 0) {
-          ctx.fillStyle = qrColor;
-          ctx.font = "bold 32px Arial, sans-serif";
-          ctx.textAlign = "center";
-          ctx.fillText("SCAN ME", totalWidth / 2, qrBoxHeight + 38);
-        }
-
-        if (customH > 0) {
-          ctx.fillStyle = qrColor;
-          ctx.font = "bold 28px Arial, sans-serif";
-          ctx.textAlign = "center";
-          ctx.fillText(customText.trim(), totalWidth / 2, qrBoxHeight + scanH + 38);
-        }
-
-        if (!isWhiteLabel) {
-          ctx.fillStyle = "#9ca3af";
-          ctx.font = "500 22px Arial, sans-serif";
-          ctx.textAlign = "center";
-          ctx.fillText("Powered by VisiCardly", totalWidth / 2, qrBoxHeight + scanH + customH + 40);
-        }
-      }
-      const pngUrl = canvas.toDataURL("image/png");
+  const downloadQR = async () => {
+    const container = document.getElementById("url-qr-download-wrap");
+    if (!container) return;
+    try {
+      const dataUrl = await toPng(container, {
+        pixelRatio: 4,
+        backgroundColor: "#ffffff",
+        cacheBust: true,
+      });
       const a = document.createElement("a");
-      a.href = pngUrl;
+      a.href = dataUrl;
       a.download = `qrcode-${Date.now()}.png`;
       a.click();
       toast({ title: "QR code downloaded!" });
-    };
-    img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
+    } catch (err) {
+      console.error("QR download failed", err);
+      toast({ title: "Download failed", description: "Please try again" });
+    }
   };
 
   const isValidUrl = url.trim().length > 0;
@@ -7078,14 +6765,25 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
             </div>
           </div>
           <div className="space-y-2">
-            <Label className="text-xs">Custom Text (Name / Company)</Label>
-            <Input
-              value={customText}
-              onChange={(e) => setCustomText(e.target.value)}
-              placeholder="e.g. John Doe or Acme Inc."
-              maxLength={50}
-              data-testid="input-url-qr-custom-text"
-            />
+            <Label className="text-xs">{qrStyle === "poster" ? "Poster Text (multi-line)" : "Custom Text (Name / Company)"}</Label>
+            {qrStyle === "poster" ? (
+              <Textarea
+                value={customText}
+                onChange={(e) => setCustomText(e.target.value)}
+                placeholder={"e.g.\nJohn Doe\nSoftware Engineer\n\nScan to connect!"}
+                className="text-sm min-h-[80px]"
+                maxLength={200}
+                data-testid="input-url-qr-custom-text"
+              />
+            ) : (
+              <Input
+                value={customText}
+                onChange={(e) => setCustomText(e.target.value)}
+                placeholder="e.g. John Doe or Acme Inc."
+                maxLength={50}
+                data-testid="input-url-qr-custom-text"
+              />
+            )}
           </div>
           <Button className="w-full" disabled={!isValidUrl} onClick={() => {
             setGenerated(true);
@@ -7101,7 +6799,7 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
       {generated && isValidUrl && (
         <Card id="url-qr-result">
           <CardContent className="p-6 flex flex-col items-center gap-4">
-            <div className="rounded-2xl bg-gradient-to-br from-muted/40 to-muted/20 p-8 flex items-center justify-center">
+            <div id="url-qr-download-wrap" style={{ display: "inline-block", padding: "16px", background: "#ffffff" }}>
               {qrStyle === "heart" ? (
                 renderUrlHeartQR(
                   <QRCodeSVG
@@ -7114,6 +6812,19 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
                     imageSettings={logoPreview ? { src: logoPreview, height: 30, width: 30, excavate: true } : undefined}
                   />,
                   120
+                )
+              ) : qrStyle === "poster" ? (
+                renderUrlPosterQR(
+                  <QRCodeSVG
+                    id="url-qr-code"
+                    value={url.startsWith("http") ? url : `https://${url}`}
+                    size={150}
+                    level="H"
+                    fgColor={qrColor}
+                    bgColor="transparent"
+                    imageSettings={logoPreview ? { src: logoPreview, height: 30, width: 30, excavate: true } : undefined}
+                  />,
+                  150
                 )
               ) : (
                 <div style={getContainerStyle()} data-qr-container>
@@ -7144,8 +6855,8 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
                   )}
                 </div>
               )}
+              {!isWhiteLabel && <p style={{ color: "#9ca3af", fontSize: "8px", textAlign: "center", marginTop: "6px" }}>Powered by VisiCardly</p>}
             </div>
-            {!isWhiteLabel && <p className="text-xs text-muted-foreground text-center">Powered by VisiCardly</p>}
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={downloadQR}>
                 <Download className="w-4 h-4 mr-1" /> Download
