@@ -37,6 +37,7 @@ type TeamBranding = {
   memberBranch?: BranchInfo;
   companyProfileUrl?: string;
   productProfileUrl?: string;
+  productUrls?: Array<{ label: string; url: string }>;
   companyBrochureUrl?: string;
 };
 
@@ -87,7 +88,7 @@ function ContactSection({ teamBranding, brandColor, normalizeUrl, activeSocials,
     { icon: MapPin, value: teamBranding.companyAddress },
   ].filter(item => item.value);
   const hasBranches = !!(teamBranding.headBranch || teamBranding.memberBranch);
-  const hasDocs = !!(teamBranding.companyProfileUrl || teamBranding.productProfileUrl || teamBranding.companyBrochureUrl);
+  const hasDocs = !!(teamBranding.companyProfileUrl || teamBranding.productProfileUrl || teamBranding.companyBrochureUrl || (teamBranding.productUrls && teamBranding.productUrls.length > 0));
 
   if (contactItems.length === 0 && userContactItems.length === 0 && !hasBranches && !hasDocs) return null;
 
@@ -242,6 +243,16 @@ function ContactSection({ teamBranding, brandColor, normalizeUrl, activeSocials,
                 <Download className="w-3.5 h-3.5 text-muted-foreground" />
               </a>
             )}
+            {teamBranding.productUrls && teamBranding.productUrls.filter((p: any) => p.url).map((pu: any, idx: number) => (
+              <a key={`product-url-${idx}`} href={normalizeUrl(pu.url)} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-2.5 p-2 rounded-md border border-border/50 hover:bg-muted/50 transition-colors">
+                <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: iconBg }}>
+                  <FileText className="w-3.5 h-3.5" style={{ color: iconColor }} />
+                </div>
+                <span className="text-xs font-medium flex-1">{pu.label || `Product ${idx + 1}`}</span>
+                <Download className="w-3.5 h-3.5 text-muted-foreground" />
+              </a>
+            ))}
           </div>
         </>
       )}

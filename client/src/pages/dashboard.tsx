@@ -2471,44 +2471,55 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
 
       // ── HEART: fully separate rendering path ──────────────────────────────
       if (style === "heart") {
-        const outerPad = 140; // generous white space around the heart
-        const heartW = qrSize; // heart width in pixels
-        const heartH = Math.round(heartW * 0.95); // slightly taller than wide
+        const outerPad = 80;
+        const heartW = qrSize;
+        const heartH = Math.round(heartW * 1.0); // match SVG viewBox aspect 100x100
+        const showScanHeart = qrConfig?.scanText;
+        const hasCustom = !!resolvedCustomText;
+        const textAreaH = (showScanHeart ? 50 : 0) + (hasCustom ? 45 : 0);
         const cW = heartW + outerPad * 2;
-        const cH = heartH + outerPad * 2 + brandingHeight;
+        const cH = heartH + outerPad * 2 + brandingHeight + textAreaH;
         canvas.width = cW;
         canvas.height = cH;
         if (ctx) {
           ctx.fillStyle = "#ffffff";
           ctx.fillRect(0, 0, cW, cH);
-          // Draw heart scaled and centered with outer padding
+          // Draw heart using same SVG path as preview
           ctx.save();
           ctx.translate(outerPad, outerPad);
           ctx.scale(heartW / 100, heartH / 100);
           ctx.fillStyle = color1;
           ctx.fill(new Path2D("M50 88 C25 65, 2 45, 2 28 C2 14, 14 2, 28 2 C36 2, 44 6, 50 14 C56 6, 64 2, 72 2 C86 2, 98 14, 98 28 C98 45, 75 65, 50 88Z"));
           ctx.restore();
-          // White rounded box inside heart — shorter to leave room for SCAN ME
-          const wbW = heartW * 0.60;
-          const wbH = wbW * 0.88;
+          // White rounded box inside heart — matching preview proportions (top 18%)
+          const wbW = heartW * 0.55;
+          const wbH = wbW * 0.85;
           const wbX = (cW - wbW) / 2;
-          const wbY = outerPad + heartH * 0.15;
+          const wbY = outerPad + heartH * 0.18;
           ctx.fillStyle = "#ffffff";
           ctx.beginPath();
           ctx.roundRect(wbX, wbY, wbW, wbH, 20);
           ctx.fill();
           // QR inside white box
-          const qrPad = 28;
+          const qrPad = 24;
           const qrFit = Math.min(wbW, wbH) - qrPad * 2;
           ctx.drawImage(img, wbX + (wbW - qrFit) / 2, wbY + (wbH - qrFit) / 2, qrFit, qrFit);
-          // SCAN ME inside heart (white text, below white box in colored heart area)
-          const showScanHeart = qrConfig?.scanText;
+          // SCAN ME inside heart (white text, below white box)
+          let textY = wbY + wbH + 40;
           if (showScanHeart) {
-            const scanY = wbY + wbH + 50;
             ctx.fillStyle = "#ffffff";
-            ctx.font = "bold 38px Arial, sans-serif";
+            ctx.font = "bold 36px Arial, sans-serif";
             ctx.textAlign = "center";
-            ctx.fillText("SCAN ME", cW / 2, scanY);
+            ctx.letterSpacing = "4px";
+            ctx.fillText("SCAN ME", cW / 2, textY);
+            textY += 45;
+          }
+          // Custom text inside heart
+          if (hasCustom) {
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 32px Arial, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText(resolvedCustomText, cW / 2, textY);
           }
           if (!isWhiteLabel) {
             ctx.fillStyle = "#9ca3af";
@@ -2853,7 +2864,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
   };
 
   // Render heart SVG wrapper for the QR code
-  const renderHeartQR = (qrElement: React.ReactNode, qr: { color: string; scanText?: boolean }, size: number) => {
+  const renderHeartQR = (qrElement: React.ReactNode, qr: { color: string; scanText?: boolean; customText?: string }, size: number) => {
     const w = size + 40;
     const h = size + 60;
     return (
@@ -2868,6 +2879,11 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
           {qr.scanText && (
             <div className="text-center font-extrabold tracking-[0.15em] uppercase mt-1" style={{ color: "#ffffff", fontSize: `${Math.max(size * 0.06, 7)}px` }}>
               SCAN ME
+            </div>
+          )}
+          {qr.customText && (
+            <div className="text-center font-bold mt-0.5" style={{ color: "#ffffff", fontSize: `${Math.max(size * 0.055, 6)}px` }}>
+              {qr.customText}
             </div>
           )}
         </div>
@@ -2960,7 +2976,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
               {qr.style === "heart" ? (
                 renderHeartQR(
                   <QRCodeSVG id={`qr-saved-${qr.id}`} {...getQRProps(qr)} size={60} data-testid={`display-qr-${qr.id}`} />,
-                  { color: qr.color, scanText: qr.scanText },
+                  { color: qr.color, scanText: qr.scanText, customText: qr.label && qr.label !== "Profile QR" && qr.label !== "QR Code" ? qr.label : undefined },
                   60
                 )
               ) : (
@@ -3213,7 +3229,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
                       size={100}
                       data-testid="preview-qr-code"
                     />,
-                    { color: qrColor, scanText },
+                    { color: qrColor, scanText, customText: customText.trim() || undefined },
                     100
                   )
                 ) : (
@@ -5673,6 +5689,7 @@ interface TemplateData {
   companySocials?: Array<{ platform: string; url: string }>;
   companyProfileUrl?: string;
   productProfileUrl?: string;
+  productUrls?: Array<{ label: string; url: string }>;
   companyBrochureUrl?: string;
 }
 
@@ -5787,6 +5804,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
       companySocials: localSocials.filter(s => s.platform && s.url),
       companyProfileUrl: localCompanyProfileUrl || undefined,
       productProfileUrl: localProductProfileUrl || undefined,
+      productUrls: localProductUrls.filter(p => p.url.trim()) || undefined,
       companyBrochureUrl: localBrochureUrl || undefined,
     };
     const metaUpdates: Record<string, any> = { templateData: newTemplateData };
@@ -5838,6 +5856,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
   const [localSocials, setLocalSocials] = useState<Array<{ platform: string; url: string }>>([]);
   const [localCompanyProfileUrl, setLocalCompanyProfileUrl] = useState("");
   const [localProductProfileUrl, setLocalProductProfileUrl] = useState("");
+  const [localProductUrls, setLocalProductUrls] = useState<Array<{ label: string; url: string }>>([]);
   const [localBrochureUrl, setLocalBrochureUrl] = useState("");
 
   useEffect(() => {
@@ -5853,9 +5872,10 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
       setLocalSocials(tData.companySocials || []);
       setLocalCompanyProfileUrl(tData.companyProfileUrl || "");
       setLocalProductProfileUrl(tData.productProfileUrl || "");
+      setLocalProductUrls(tData.productUrls || []);
       setLocalBrochureUrl(tData.companyBrochureUrl || "");
     }
-  }, [selectedTemplate?.id, selectedTemplate?.name, selectedTemplate?.description, tData.companyName, tData.companyPhone, tData.companyEmail, tData.companyWebsite, tData.companyAddress, tData.companyContact, JSON.stringify(tData.companySocials), tData.companyProfileUrl, tData.productProfileUrl, tData.companyBrochureUrl]);
+  }, [selectedTemplate?.id, selectedTemplate?.name, selectedTemplate?.description, tData.companyName, tData.companyPhone, tData.companyEmail, tData.companyWebsite, tData.companyAddress, tData.companyContact, JSON.stringify(tData.companySocials), tData.companyProfileUrl, tData.productProfileUrl, JSON.stringify(tData.productUrls), tData.companyBrochureUrl]);
 
   return (
     <div className="p-4 space-y-4">
@@ -6128,7 +6148,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Product Profile URL</Label>
+                      <Label className="text-xs text-muted-foreground">Product Profile URL (Legacy)</Label>
                       <Input
                         value={localProductProfileUrl}
                         onChange={(e) => { setLocalProductProfileUrl(e.target.value); markDirty(); }}
@@ -6136,6 +6156,64 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                         data-testid="input-tpl-product-profile-url"
                       />
                     </div>
+
+                    {/* Multiple Product URLs */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs text-muted-foreground">Product URLs</Label>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs gap-1"
+                          onClick={() => { setLocalProductUrls([...localProductUrls, { label: "", url: "" }]); markDirty(); }}
+                          data-testid="button-add-product-url"
+                        >
+                          <Plus className="w-3 h-3" /> Add
+                        </Button>
+                      </div>
+                      {localProductUrls.map((pu, idx) => (
+                        <div key={idx} className="flex items-center gap-2" data-testid={`product-url-row-${idx}`}>
+                          <Input
+                            value={pu.label}
+                            onChange={(e) => {
+                              const updated = [...localProductUrls];
+                              updated[idx] = { ...updated[idx], label: e.target.value };
+                              setLocalProductUrls(updated);
+                              markDirty();
+                            }}
+                            placeholder="Label (e.g. Catalog 2026)"
+                            className="w-[140px] text-xs"
+                          />
+                          <Input
+                            value={pu.url}
+                            onChange={(e) => {
+                              const updated = [...localProductUrls];
+                              updated[idx] = { ...updated[idx], url: e.target.value };
+                              setLocalProductUrls(updated);
+                              markDirty();
+                            }}
+                            placeholder="https://..."
+                            className="flex-1 text-xs"
+                          />
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 shrink-0"
+                            onClick={() => {
+                              setLocalProductUrls(localProductUrls.filter((_, i) => i !== idx));
+                              markDirty();
+                            }}
+                            data-testid={`button-remove-product-url-${idx}`}
+                          >
+                            <Trash2 className="w-3 h-3 text-destructive" />
+                          </Button>
+                        </div>
+                      ))}
+                      {localProductUrls.length === 0 && (
+                        <p className="text-[10px] text-muted-foreground italic">No product URLs added yet. Click "Add" to add one.</p>
+                      )}
+                    </div>
+
                     <div className="space-y-1">
                       <Label className="text-xs text-muted-foreground">Company Brochure URL</Label>
                       <Input
@@ -6596,6 +6674,65 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
       const bw = borderWidth;
       const br = borderRadius;
       const qrSize = 800;
+
+      // ── HEART: separate rendering path matching QRCodePanel ──────────────
+      if (qrStyle === "heart") {
+        const outerPad = 80;
+        const heartW = qrSize;
+        const heartH = Math.round(heartW * 1.0);
+        const textAreaH = (showScanText ? 50 : 0) + (customText.trim() ? 45 : 0);
+        const cW = heartW + outerPad * 2;
+        const cH = heartH + outerPad * 2 + brandingHeight + textAreaH;
+        canvas.width = cW;
+        canvas.height = cH;
+        if (ctx) {
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, cW, cH);
+          ctx.save();
+          ctx.translate(outerPad, outerPad);
+          ctx.scale(heartW / 100, heartH / 100);
+          ctx.fillStyle = qrColor;
+          ctx.fill(new Path2D("M50 88 C25 65, 2 45, 2 28 C2 14, 14 2, 28 2 C36 2, 44 6, 50 14 C56 6, 64 2, 72 2 C86 2, 98 14, 98 28 C98 45, 75 65, 50 88Z"));
+          ctx.restore();
+          const wbW = heartW * 0.55;
+          const wbH = wbW * 0.85;
+          const wbX = (cW - wbW) / 2;
+          const wbY = outerPad + heartH * 0.18;
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.roundRect(wbX, wbY, wbW, wbH, 20);
+          ctx.fill();
+          const qrPad = 24;
+          const qrFit = Math.min(wbW, wbH) - qrPad * 2;
+          ctx.drawImage(img, wbX + (wbW - qrFit) / 2, wbY + (wbH - qrFit) / 2, qrFit, qrFit);
+          let textY = wbY + wbH + 40;
+          if (showScanText) {
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 36px Arial, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("SCAN ME", cW / 2, textY);
+            textY += 45;
+          }
+          if (customText.trim()) {
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 32px Arial, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText(customText.trim(), cW / 2, textY);
+          }
+          if (!isWhiteLabel) {
+            ctx.fillStyle = "#9ca3af";
+            ctx.font = "500 26px Arial, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("Powered by VisiCardly", cW / 2, cH - 22);
+          }
+        }
+        const pngUrl = canvas.toDataURL("image/png");
+        const a = document.createElement("a");
+        a.href = pngUrl; a.download = "qrcode.png"; a.click();
+        toast({ title: "QR code downloaded!" });
+        return;
+      }
+
       const totalWidth = qrSize + (padding * 2) + (bw * 2);
       const qrBoxHeight = qrSize + (padding * 2) + (bw * 2);
       const totalHeight = qrBoxHeight + scanH + customH + brandingHeight;
@@ -6695,30 +6832,6 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
           ctx.beginPath();
           ctx.roundRect(Math.max(bw, 3), Math.max(bw, 3), boxW - Math.max(bw, 3) * 2, boxH - Math.max(bw, 3) * 2, Math.max(0, (br || 20) - Math.max(bw, 3) / 2));
           ctx.fill();
-        } else if (qrStyle === "heart") {
-          const cx = boxW / 2;
-          const cy = boxH / 2;
-          const w = boxW * 0.45;
-          const h = boxH * 0.45;
-          ctx.fillStyle = qrColor;
-          ctx.beginPath();
-          ctx.moveTo(cx, cy + h * 0.7);
-          ctx.bezierCurveTo(cx - w * 1.2, cy - h * 0.1, cx - w * 0.6, cy - h * 0.9, cx, cy - h * 0.3);
-          ctx.bezierCurveTo(cx + w * 0.6, cy - h * 0.9, cx + w * 1.2, cy - h * 0.1, cx, cy + h * 0.7);
-          ctx.fill();
-          ctx.fillStyle = "#ffffff";
-          const inset = Math.max(bw, 4);
-          const s = 1 - (inset * 2) / boxW;
-          ctx.save();
-          ctx.translate(cx, cy);
-          ctx.scale(s, s);
-          ctx.translate(-cx, -cy);
-          ctx.beginPath();
-          ctx.moveTo(cx, cy + h * 0.7);
-          ctx.bezierCurveTo(cx - w * 1.2, cy - h * 0.1, cx - w * 0.6, cy - h * 0.9, cx, cy - h * 0.3);
-          ctx.bezierCurveTo(cx + w * 0.6, cy - h * 0.9, cx + w * 1.2, cy - h * 0.1, cx, cy + h * 0.7);
-          ctx.fill();
-          ctx.restore();
         } else if (qrStyle === "bubble") {
           const r = br || 20;
           ctx.strokeStyle = qrColor;
@@ -6785,29 +6898,6 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
           const qrX = cx - fitSize / 2;
           const qrY = cy - fitSize / 2;
           ctx.drawImage(img, qrX, qrY, fitSize, fitSize);
-        } else if (qrStyle === "heart") {
-          const cx = boxW / 2;
-          const cy = boxH / 2;
-          const heartW = boxW * 0.45;
-          const fitSize = heartW * 0.95;
-          const qrX = cx - fitSize / 2;
-          const qrY = cy - fitSize * 0.55;
-          ctx.save();
-          const hw = boxW * 0.45;
-          const hh = boxH * 0.45;
-          const inset = Math.max(bw, 4);
-          const s = 1 - (inset * 2) / boxW;
-          ctx.beginPath();
-          ctx.translate(cx, cy);
-          ctx.scale(s, s);
-          ctx.translate(-cx, -cy);
-          ctx.moveTo(cx, cy + hh * 0.7);
-          ctx.bezierCurveTo(cx - hw * 1.2, cy - hh * 0.1, cx - hw * 0.6, cy - hh * 0.9, cx, cy - hh * 0.3);
-          ctx.bezierCurveTo(cx + hw * 0.6, cy - hh * 0.9, cx + hw * 1.2, cy - hh * 0.1, cx, cy + hh * 0.7);
-          ctx.clip();
-          ctx.setTransform(1, 0, 0, 1, 0, 0);
-          ctx.drawImage(img, qrX, qrY, fitSize, fitSize);
-          ctx.restore();
         } else {
           ctx.drawImage(img, bw + padding, bw + padding, qrSize, qrSize);
         }

@@ -61,6 +61,7 @@ type TeamBranding = {
   memberBranch?: BranchInfo;
   companyProfileUrl?: string;
   productProfileUrl?: string;
+  productUrls?: Array<{ label: string; url: string }>;
   companyBrochureUrl?: string;
 };
 
