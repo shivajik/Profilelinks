@@ -227,7 +227,7 @@ export default function PublicProfile(props?: any) {
 
   return (
     <div className={`min-h-screen ${template.bg}`}>
-      <div className="max-w-lg mx-auto px-6 py-12">
+      <div className="max-w-2xl mx-auto px-6 py-12">
         <div className="flex items-center justify-between gap-4 mb-6">
           <Button
             variant="ghost"
