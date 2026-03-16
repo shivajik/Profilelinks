@@ -481,7 +481,11 @@ export default function Dashboard() {
             <div className="px-4 py-4 flex flex-col gap-1">
               <img src={logoPath} alt="VisiCardly" className="w-14 h-10 object-contain" />
               <p className="text-xs text-foreground font-medium truncate" title={user.username}>{user.username}</p>
-              <Badge variant="secondary" className="text-[10px] w-fit capitalize">{planLimits?.planName || "Free"}</Badge>
+              {isTeamMember ? (
+                <Badge variant="outline" className="text-[10px] w-fit border-primary/30 text-primary">Team Member</Badge>
+              ) : (
+                <Badge variant="secondary" className="text-[10px] w-fit capitalize">{planLimits?.planName || "Free"}</Badge>
+              )}
             </div>
             <SidebarGroup>
               <SidebarGroupContent>
@@ -1080,7 +1084,7 @@ export default function Dashboard() {
               </div>
               )}
               {activeSection === "settings" && (
-                <SettingsPanel user={user} profileUrl={profileUrl} onLogout={handleLogout} onNavigateBilling={() => setActiveSection("billing")} />
+                <SettingsPanel user={user} profileUrl={profileUrl} onLogout={handleLogout} onNavigateBilling={() => setActiveSection("billing")} isTeamMember={!!isTeamMember} onNavigateBusinessProfile={() => setActiveSection("business-profile")} />
               )}
               {activeSection === "analytics" && (
                 planLimits?.analyticsEnabled === false ? (
@@ -1344,11 +1348,15 @@ function SettingsPanel({
   profileUrl,
   onLogout,
   onNavigateBilling,
+  isTeamMember = false,
+  onNavigateBusinessProfile,
 }: {
   user: { id: string; username: string; email: string; displayName: string | null; bio: string | null; profileImage: string | null; template: string | null; accountType: string };
   profileUrl: string;
   onLogout: () => void;
   onNavigateBilling?: () => void;
+  isTeamMember?: boolean;
+  onNavigateBusinessProfile?: () => void;
 }) {
   const { toast } = useToast();
   const [editUsername, setEditUsername] = useState(user.username);
@@ -1465,6 +1473,8 @@ function SettingsPanel({
                     toast({ title: "File too large", description: "Maximum file size is 1MB.", variant: "destructive" });
                     return;
                   }
+                  const label = document.getElementById('settings-avatar-upload-label');
+                  if (label) label.setAttribute('data-uploading', 'true');
                   const formData = new FormData();
                   formData.append("file", file);
                   try {
@@ -1478,24 +1488,35 @@ function SettingsPanel({
                   } catch {
                     toast({ title: "Upload failed", variant: "destructive" });
                   }
+                  if (label) label.removeAttribute('data-uploading');
                 }}
                 data-testid="input-settings-avatar-upload"
               />
-              <label htmlFor="settings-avatar-upload" className="cursor-pointer block">
+              <label htmlFor="settings-avatar-upload" id="settings-avatar-upload-label" className="cursor-pointer block relative [&[data-uploading]]:pointer-events-none">
                 <Avatar className="w-12 h-12 border border-border">
                   <AvatarImage src={user.profileImage || undefined} />
                   <AvatarFallback className="bg-primary/10 text-primary text-sm">
                     {(user.displayName || user.username).charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Camera className="w-3.5 h-3.5 text-white" />
+                <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity [label[data-uploading]>&]:opacity-100">
+                  <Loader2 className="w-3.5 h-3.5 text-white animate-spin hidden [label[data-uploading]>&]:block" />
+                  <Camera className="w-3.5 h-3.5 text-white [label[data-uploading]>&]:hidden" />
                 </div>
               </label>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{user.displayName || user.username}</p>
               <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+              {isTeamMember && (
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3 shrink-0" />
+                  <span>
+                    For your business card, update photo in{" "}
+                    <button type="button" onClick={() => onNavigateBusinessProfile?.()} className="underline font-medium hover:text-amber-700">Business Profile</button>
+                  </span>
+                </p>
+              )}
             </div>
           </div>
 
@@ -1599,7 +1620,7 @@ function SettingsPanel({
               variant="ghost"
               size="icon"
               className="h-7 w-7 shrink-0"
-              onClick={() => window.open(`/${user.username}`, "_blank")}
+              onClick={() => window.open(profileUrl, "_blank")}
               data-testid="button-settings-visit"
             >
               <ExternalLink className="w-3 h-3" />
@@ -1608,7 +1629,8 @@ function SettingsPanel({
         </CardContent>
       </Card>
 
-      {/* Theme Card */}
+      {/* Theme Card - hidden for team members */}
+      {!isTeamMember && (
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-2">
@@ -1642,6 +1664,7 @@ function SettingsPanel({
           </div>
         </CardContent>
       </Card>
+      )}
 
       </div>{/* end 2-col grid */}
 
@@ -1733,8 +1756,8 @@ function SettingsPanel({
       {/* Email Verification */}
       <EmailVerificationCard user={user} />
 
-      {/* White Label */}
-      <WhiteLabelCard onNavigateBilling={onNavigateBilling} />
+      {/* White Label - hidden for team members */}
+      {!isTeamMember && <WhiteLabelCard onNavigateBilling={onNavigateBilling} />}
 
       {/* API Access */}
       {user?.accountType === "team" && <ApiAccessCard />}
