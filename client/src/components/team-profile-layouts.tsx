@@ -296,6 +296,30 @@ function SocialRows({ activeSocials, normalizeUrl, useOriginalSocialColors, trac
   );
 }
 
+function hexToRgba(hex: string, alpha: number) {
+  const normalized = hex.replace("#", "");
+  const fullHex = normalized.length === 3
+    ? normalized.split("").map((char) => char + char).join("")
+    : normalized;
+
+  if (!/^[0-9a-fA-F]{6}$/.test(fullHex)) {
+    return `rgba(148, 163, 184, ${alpha})`;
+  }
+
+  const r = parseInt(fullHex.slice(0, 2), 16);
+  const g = parseInt(fullHex.slice(2, 4), 16);
+  const b = parseInt(fullHex.slice(4, 6), 16);
+
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function getNavSurfaceStyle(template: Template) {
+  return {
+    backgroundColor: hexToRgba(template.accent, 0.18),
+    borderColor: hexToRgba(template.accent, 0.32),
+  };
+}
+
 function PageNavSection({ pages, currentPage, setActivePageSlug, template }: {
   pages: PageInfo[];
   currentPage: PageInfo | null;
@@ -303,6 +327,8 @@ function PageNavSection({ pages, currentPage, setActivePageSlug, template }: {
   template: Template;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const navSurfaceStyle = getNavSurfaceStyle(template);
+
   return (
     <div className="flex flex-col items-center">
       <div className="hidden sm:flex items-center gap-2 flex-wrap justify-center" data-testid="page-nav">
@@ -311,7 +337,8 @@ function PageNavSection({ pages, currentPage, setActivePageSlug, template }: {
           return (
             <Button key={page.id} variant="ghost" size="sm"
               onClick={() => setActivePageSlug(page.isHome ? null : page.slug)}
-              className={`rounded-full px-4 ${isActive ? `${template.cardBg} ${template.cardTextColor}` : `${template.textColor} opacity-60 hover:opacity-100`}`}
+              className={`rounded-full px-4 border transition-colors ${isActive ? "text-foreground shadow-sm border-transparent" : "text-foreground/75 hover:text-foreground border-transparent"}`}
+              style={isActive ? navSurfaceStyle : undefined}
               data-testid={`page-tab-${page.slug}`}>
               {page.title}
             </Button>
@@ -320,19 +347,21 @@ function PageNavSection({ pages, currentPage, setActivePageSlug, template }: {
       </div>
       <div className="sm:hidden relative inline-block" data-testid="page-nav-mobile">
         <button onClick={() => setMobileOpen(!mobileOpen)}
-          className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium ${template.cardBg} ${template.cardTextColor}`}
+          className="flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium text-foreground border shadow-sm"
+          style={navSurfaceStyle}
           data-testid="button-page-nav-toggle">
           {currentPage?.title || "Home"}
           <ChevronDown className={`w-3.5 h-3.5 transition-transform ${mobileOpen ? "rotate-180" : ""}`} />
         </button>
         {mobileOpen && (
-          <div className={`absolute top-full mt-2 left-1/2 -translate-x-1/2 min-w-[140px] rounded-xl ${template.cardBg} backdrop-blur-md py-1 z-50 shadow-lg`}>
+          <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 min-w-[140px] rounded-xl bg-card/95 border border-border backdrop-blur-md py-1 z-50 shadow-lg">
             {pages.map((page) => {
               const isActive = currentPage?.slug === page.slug;
               return (
                 <button key={page.id}
                   onClick={() => { setActivePageSlug(page.isHome ? null : page.slug); setMobileOpen(false); }}
-                  className={`block w-full text-left px-4 py-2 text-sm ${isActive ? `${template.cardTextColor} font-medium` : `${template.cardTextColor} opacity-70`}`}
+                  className={`block w-full text-left px-4 py-2 text-sm ${isActive ? "text-foreground font-medium" : "text-foreground/70"}`}
+                  style={isActive ? navSurfaceStyle : undefined}
                   data-testid={`mobile-page-tab-${page.slug}`}>
                   {page.title}
                 </button>
@@ -348,13 +377,22 @@ function PageNavSection({ pages, currentPage, setActivePageSlug, template }: {
 function ContentSection(props: TeamLayoutProps) {
   const { hasBlocks, activeBlocks, activeLinks, template, isFetching, isLoading, trackClick, normalizeUrl, PublicBlock } = props;
   const btnClass = getButtonClass(template.buttonStyle);
-  const isOutline = template.buttonStyle === "outline";
+
+  // Team layouts render content inside bg-card containers (white/light),
+  // so override template colors to use card-safe foreground colors
+  const cardSafeTemplate = {
+    ...template,
+    textColor: "text-foreground",
+    cardTextColor: "text-foreground",
+    cardBg: "bg-muted/50",
+  };
+
   return (
     <div className="transition-opacity duration-300 ease-in-out" style={{ opacity: isFetching && !isLoading ? 0.5 : 1 }}>
       {hasBlocks ? (
         <div className="space-y-3 mt-4">
           {activeBlocks.map((block) => (
-            <PublicBlock key={block.id} block={block} template={template} onClickTrack={trackClick} />
+            <PublicBlock key={block.id} block={block} template={cardSafeTemplate} onClickTrack={trackClick} />
           ))}
         </div>
       ) : activeLinks.length > 0 ? (
@@ -362,12 +400,11 @@ function ContentSection(props: TeamLayoutProps) {
           {activeLinks.map((link) => (
             <a key={link.id} href={normalizeUrl(link.url)} target="_blank" rel="noopener noreferrer"
               onClick={() => trackClick(link.id)}
-              className={`block w-full ${btnClass} ${isOutline ? "bg-transparent border-current/20" : template.cardBg} p-4 text-center font-medium transition-all hover:scale-[1.02] hover:shadow-md group backdrop-blur-sm`}
-              style={isOutline ? { borderColor: template.accent + "40" } : undefined}
+              className={`block w-full ${btnClass} bg-muted/50 p-4 text-center font-medium transition-all hover:scale-[1.02] hover:shadow-md group`}
               data-testid={`link-card-${link.id}`}>
               <div className="flex items-center justify-center gap-2">
-                <span className={`truncate ${template.cardTextColor}`}>{link.title}</span>
-                <ExternalLink className={`w-3.5 h-3.5 ${template.cardTextColor} opacity-0 group-hover:opacity-100 transition-opacity shrink-0`} />
+                <span className="truncate text-foreground">{link.title}</span>
+                <ExternalLink className="w-3.5 h-3.5 text-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
               </div>
             </a>
           ))}

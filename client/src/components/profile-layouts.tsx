@@ -36,6 +36,30 @@ interface PersonalLayoutProps {
   PublicBlock: any;
 }
 
+function hexToRgba(hex: string, alpha: number) {
+  const normalized = hex.replace("#", "");
+  const fullHex = normalized.length === 3
+    ? normalized.split("").map((char) => char + char).join("")
+    : normalized;
+
+  if (!/^[0-9a-fA-F]{6}$/.test(fullHex)) {
+    return `rgba(148, 163, 184, ${alpha})`;
+  }
+
+  const r = parseInt(fullHex.slice(0, 2), 16);
+  const g = parseInt(fullHex.slice(2, 4), 16);
+  const b = parseInt(fullHex.slice(4, 6), 16);
+
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function getNavSurfaceStyle(template: Template) {
+  return {
+    backgroundColor: hexToRgba(template.accent, 0.18),
+    borderColor: hexToRgba(template.accent, 0.32),
+  };
+}
+
 function PageNav({ pages, currentPage, setActivePageSlug, template }: {
   pages: PageInfo[];
   currentPage: PageInfo | null;
@@ -43,6 +67,8 @@ function PageNav({ pages, currentPage, setActivePageSlug, template }: {
   template: Template;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const navSurfaceStyle = getNavSurfaceStyle(template);
+
   return (
     <>
       <div className="hidden sm:flex items-center gap-2 mt-5 flex-wrap justify-center" data-testid="page-nav">
@@ -54,11 +80,12 @@ function PageNav({ pages, currentPage, setActivePageSlug, template }: {
               variant="ghost"
               size="sm"
               onClick={() => setActivePageSlug(page.isHome ? null : page.slug)}
-              className={`rounded-full px-4 ${
+              className={`rounded-full px-4 border transition-colors ${
                 isActive
-                  ? `${template.cardBg} ${template.cardTextColor}`
-                  : `${template.textColor} opacity-60 hover:opacity-100`
+                  ? "text-foreground shadow-sm border-transparent"
+                  : `${template.textColor} opacity-60 hover:opacity-100 border-transparent`
               }`}
+              style={isActive ? navSurfaceStyle : undefined}
               data-testid={`page-tab-${page.slug}`}
             >
               {page.title}
@@ -69,21 +96,23 @@ function PageNav({ pages, currentPage, setActivePageSlug, template }: {
       <div className="sm:hidden mt-5 relative inline-block" data-testid="page-nav-mobile">
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
-          className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium ${template.cardBg} ${template.cardTextColor}`}
+          className="flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium text-foreground border shadow-sm"
+          style={navSurfaceStyle}
           data-testid="button-page-nav-toggle"
         >
           {currentPage?.title || "Home"}
           <ChevronDown className={`w-3.5 h-3.5 transition-transform ${mobileOpen ? "rotate-180" : ""}`} />
         </button>
         {mobileOpen && (
-          <div className={`absolute top-full mt-2 left-1/2 -translate-x-1/2 min-w-[140px] rounded-xl ${template.cardBg} backdrop-blur-md py-1 z-50 shadow-lg`}>
+          <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 min-w-[140px] rounded-xl bg-card/95 border border-border backdrop-blur-md py-1 z-50 shadow-lg">
             {pages.map((page) => {
               const isActive = currentPage?.slug === page.slug;
               return (
                 <button
                   key={page.id}
                   onClick={() => { setActivePageSlug(page.isHome ? null : page.slug); setMobileOpen(false); }}
-                  className={`block w-full text-left px-4 py-2 text-sm ${isActive ? `${template.cardTextColor} font-medium` : `${template.cardTextColor} opacity-60`}`}
+                  className={`block w-full text-left px-4 py-2 text-sm ${isActive ? "text-foreground font-medium" : "text-foreground/70"}`}
+                  style={isActive ? navSurfaceStyle : undefined}
                   data-testid={`mobile-page-tab-${page.slug}`}
                 >
                   {page.title}
