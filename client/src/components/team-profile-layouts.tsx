@@ -326,13 +326,13 @@ function PageNavSection({ pages, currentPage, setActivePageSlug, template }: {
           <ChevronDown className={`w-3.5 h-3.5 transition-transform ${mobileOpen ? "rotate-180" : ""}`} />
         </button>
         {mobileOpen && (
-          <div className={`absolute top-full mt-2 left-1/2 -translate-x-1/2 min-w-[140px] rounded-xl bg-card backdrop-blur-md py-1 z-50 shadow-lg`}>
+          <div className={`absolute top-full mt-2 left-1/2 -translate-x-1/2 min-w-[140px] rounded-xl ${template.cardBg} backdrop-blur-md py-1 z-50 shadow-lg`}>
             {pages.map((page) => {
               const isActive = currentPage?.slug === page.slug;
               return (
                 <button key={page.id}
                   onClick={() => { setActivePageSlug(page.isHome ? null : page.slug); setMobileOpen(false); }}
-                  className={`block w-full text-left px-4 py-2 text-sm ${isActive ? "font-medium" : "opacity-60"}`}
+                  className={`block w-full text-left px-4 py-2 text-sm ${isActive ? `${template.cardTextColor} font-medium` : `${template.cardTextColor} opacity-70`}`}
                   data-testid={`mobile-page-tab-${page.slug}`}>
                   {page.title}
                 </button>

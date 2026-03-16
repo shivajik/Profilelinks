@@ -91,7 +91,11 @@ export default function PublicProfile(props?: any) {
       const basePath = companySlug
         ? `/api/profile/${companySlug}/${username}`
         : `/api/profile/${username}`;
-      const url = activePageSlug ? `${basePath}?page=${activePageSlug}` : basePath;
+      const isPreview = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("preview") === "1";
+      const params = new URLSearchParams();
+      if (activePageSlug) params.set("page", activePageSlug);
+      if (isPreview) params.set("preview", "1");
+      const url = params.toString() ? `${basePath}?${params.toString()}` : basePath;
       const res = await fetch(url);
       if (!res.ok) throw new Error("Not found");
       return res.json();

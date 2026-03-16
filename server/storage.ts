@@ -51,14 +51,21 @@ import {
 } from "@shared/schema";
 import "dotenv/config";
 
+const derivedDbUrl =
+  process.env.PGHOST && process.env.PGUSER && process.env.PGDATABASE
+    ? `postgresql://${encodeURIComponent(process.env.PGUSER)}:${encodeURIComponent(process.env.PGPASSWORD || "")}` +
+      `@${process.env.PGHOST}:${process.env.PGPORT || "5432"}/${process.env.PGDATABASE}`
+    : undefined;
+
 const dbUrl =
   process.env.SUPABASE_DB_URL ||
   process.env.SUPABASE_POOLER_URL ||
-  process.env.DATABASE_URL;
+  process.env.DATABASE_URL ||
+  derivedDbUrl;
 
 if (!dbUrl) {
   throw new Error(
-    "No database URL found. Set SUPABASE_DB_URL, SUPABASE_POOLER_URL, or DATABASE_URL environment variable."
+    "No database URL found. Set SUPABASE_DB_URL, SUPABASE_POOLER_URL, DATABASE_URL, or standard PGHOST/PGUSER/PGDATABASE variables."
   );
 }
 
@@ -722,7 +729,7 @@ export class DatabaseStorage implements IStorage {
     return rows.map(r => ({ ...r.member, team: r.team }));
   }
 
-  async createTeamInvites(invites: { teamId: string; email: string; role: string; invitedById: string; token: string }[]): Promise<TeamInvite[]> {
+  async createTeamInvites(invites: { teamId: string; email: string; role: string; invitedById: string; token: string; branchId?: string }[]): Promise<TeamInvite[]> {
     const created = await db.insert(teamInvites).values(invites).returning();
     return created;
   }

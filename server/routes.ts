@@ -1169,7 +1169,7 @@ export async function registerRoutes(
       if (!result.success) {
         return res.status(400).json({ message: fromZodError(result.error).message });
       }
-      const { displayName, email, jobTitle, memberRole, phone, bio } = result.data;
+      const { displayName, email, jobTitle, memberRole, phone, bio, branchId } = result.data;
       const normalizedEmail = email.toLowerCase().trim();
       const existingUser = await storage.getUserByEmail(normalizedEmail);
       if (existingUser) {
@@ -1186,6 +1186,7 @@ export async function registerRoutes(
           businessName: displayName || existingUser.displayName || null,
           businessPhone: phone || null,
           businessBio: bio || null,
+          branchId: branchId || null,
         });
         await storage.updateUser(existingUser.id, { teamId: req.params.teamId as string, accountType: "team" });
         // Create invite record as "accepted" (existing user)
@@ -1195,6 +1196,7 @@ export async function registerRoutes(
           role: memberRole || "member",
           invitedById: req.session.userId!,
           token: crypto.randomUUID(),
+          branchId: branchId || undefined,
         }]);
         // Mark as accepted immediately for existing users
         if (inviteRecords[0]) {
@@ -1247,6 +1249,7 @@ export async function registerRoutes(
         businessName: displayName || null,
         businessPhone: phone || null,
         businessBio: bio || null,
+        branchId: branchId || null,
       });
       // Create invite record as "pending" (new user with temp password)
       await storage.createTeamInvites([{
@@ -1255,6 +1258,7 @@ export async function registerRoutes(
         role: memberRole || "member",
         invitedById: req.session.userId!,
         token: crypto.randomUUID(),
+        branchId: branchId || undefined,
       }]);
       const homePage = await storage.createPage({
         userId: newUser.id,
@@ -1448,6 +1452,7 @@ export async function registerRoutes(
         userId: req.session.userId!,
         role: invite.role,
         status: "activated",
+        branchId: invite.branchId || null,
       });
       await storage.updateTeamInviteStatus(invite.id, "accepted");
       await storage.updateUser(req.session.userId!, { teamId: invite.teamId, accountType: "team" });
@@ -1517,6 +1522,7 @@ export async function registerRoutes(
         userId: newUser.id,
         role: invite.role,
         status: "activated",
+        branchId: invite.branchId || null,
       });
       await storage.createPage({
         userId: newUser.id,
@@ -2115,7 +2121,11 @@ export async function registerRoutes(
       if (member?.businessBio) (publicUser as any).bio = member.businessBio;
       if (tData.template) (publicUser as any).template = tData.template;
 
-      res.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+      if (req.query.preview === "1") {
+        res.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+      } else {
+        res.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+      }
       res.json({
         user: publicUser,
         links: userLinks,
@@ -2262,9 +2272,15 @@ export async function registerRoutes(
         }
       }
 
-      res.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
-      res.set("CDN-Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
-      res.set("Vercel-CDN-Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+      if (req.query.preview === "1") {
+        res.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+        res.set("CDN-Cache-Control", "no-store");
+        res.set("Vercel-CDN-Cache-Control", "no-store");
+      } else {
+        res.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+        res.set("CDN-Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+        res.set("Vercel-CDN-Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+      }
 
       res.json({
         user: publicUser,
