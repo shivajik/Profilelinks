@@ -383,6 +383,13 @@ export default function Dashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      // Auto-refresh iframe preview for team accounts
+      setTimeout(() => {
+        const iframe = document.querySelector('iframe[title="Profile Preview"]') as HTMLIFrameElement | null;
+        if (iframe) {
+          iframe.src = iframe.src.split('?')[0] + `?preview=1&t=${Date.now()}`;
+        }
+      }, 300);
       toast({ title: "Template updated!" });
     },
   });
@@ -5155,85 +5162,133 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
             <DialogDescription id="create-member-desc">Create an account and add them to the team directly.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="create-name">Full Name</Label>
-              <Input
-                id="create-name"
-                value={createName}
-                onChange={(e) => setCreateName(e.target.value)}
-                placeholder="John Doe"
-                data-testid="input-create-name"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="create-email">Email</Label>
-              <Input
-                id="create-email"
-                type="email"
-                value={createEmail}
-                onChange={(e) => setCreateEmail(e.target.value)}
-                placeholder="john@company.com"
-                data-testid="input-create-email"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="create-jobtitle">Job Title</Label>
-              <Input
-                id="create-jobtitle"
-                value={createJobTitle}
-                onChange={(e) => setCreateJobTitle(e.target.value)}
-                placeholder="Software Engineer"
-                data-testid="input-create-jobtitle"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="create-role">Role</Label>
-              <Select value={createRole} onValueChange={setCreateRole}>
-                <SelectTrigger data-testid="select-create-role">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="member">Member</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {templates.length > 1 && (
-              <div className="space-y-1.5">
-                <Label htmlFor="create-template">Assign Template</Label>
-                <Select value={createTemplateId || (defaultTemplate?.id ?? "")} onValueChange={setCreateTemplateId}>
-                  <SelectTrigger data-testid="select-create-template">
-                    <SelectValue placeholder="Select a template" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {templates.map((t: any) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.name} {t.isDefault ? "(Default)" : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">Choose which business card template to assign to this member.</p>
+            {/* Basic Info */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <UserIcon className="w-3.5 h-3.5" />
+                Basic Information
+              </h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="create-name" className="text-xs">Full Name</Label>
+                  <Input
+                    id="create-name"
+                    value={createName}
+                    onChange={(e) => setCreateName(e.target.value)}
+                    placeholder="John Doe"
+                    className="h-9"
+                    data-testid="input-create-name"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="create-email" className="text-xs">Email</Label>
+                  <Input
+                    id="create-email"
+                    type="email"
+                    value={createEmail}
+                    onChange={(e) => setCreateEmail(e.target.value)}
+                    placeholder="john@company.com"
+                    className="h-9"
+                    data-testid="input-create-email"
+                  />
+                </div>
               </div>
-            )}
-            {branches.length > 0 && (
-              <div className="space-y-1.5">
-                <Label htmlFor="create-branch">Branch</Label>
-                <Select value={createBranchId || "none"} onValueChange={(v) => setCreateBranchId(v === "none" ? "" : v)}>
-                  <SelectTrigger data-testid="select-create-branch">
-                    <SelectValue placeholder="Select branch" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No branch</SelectItem>
-                    {branches.map((b: any) => (
-                      <SelectItem key={b.id} value={b.id}>
-                        {b.name} {b.isHeadBranch ? "(Head Office)" : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="create-jobtitle" className="text-xs">Job Title</Label>
+                  <Input
+                    id="create-jobtitle"
+                    value={createJobTitle}
+                    onChange={(e) => setCreateJobTitle(e.target.value)}
+                    placeholder="Software Engineer"
+                    className="h-9"
+                    data-testid="input-create-jobtitle"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="create-phone" className="text-xs">Phone Number</Label>
+                  <Input
+                    id="create-phone"
+                    value={(window as any).__createPhone || ""}
+                    onChange={(e) => { (window as any).__createPhone = e.target.value; }}
+                    placeholder="+91 1234567890"
+                    className="h-9"
+                    data-testid="input-create-phone"
+                  />
+                </div>
               </div>
-            )}
+              <div className="space-y-1.5">
+                <Label htmlFor="create-bio" className="text-xs">Bio</Label>
+                <Textarea
+                  id="create-bio"
+                  defaultValue=""
+                  placeholder="Short bio for business card..."
+                  rows={2}
+                  className="resize-none text-sm"
+                  data-testid="input-create-bio"
+                  onChange={(e) => { (window as any).__createBio = e.target.value; }}
+                />
+              </div>
+            </div>
+
+            {/* Permissions & Assignment */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Shield className="w-3.5 h-3.5" />
+                Permissions & Assignment
+              </h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="create-role" className="text-xs">Role</Label>
+                  <Select value={createRole} onValueChange={setCreateRole}>
+                    <SelectTrigger className="h-9" data-testid="select-create-role">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="member">Member</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {branches.length > 0 && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="create-branch" className="text-xs">Branch</Label>
+                    <Select value={createBranchId || "none"} onValueChange={(v) => setCreateBranchId(v === "none" ? "" : v)}>
+                      <SelectTrigger className="h-9" data-testid="select-create-branch">
+                        <SelectValue placeholder="Select branch" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No branch</SelectItem>
+                        {branches.map((b: any) => (
+                          <SelectItem key={b.id} value={b.id}>
+                            {b.name} {b.isHeadBranch ? "(Head Office)" : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+              {templates.length > 1 && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="create-template" className="text-xs">Assign Template</Label>
+                  <Select value={createTemplateId || (defaultTemplate?.id ?? "")} onValueChange={setCreateTemplateId}>
+                    <SelectTrigger className="h-9" data-testid="select-create-template">
+                      <SelectValue placeholder="Select a template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {templates.map((t: any) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.name} {t.isDefault ? "(Default)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Choose which business card template to assign.</p>
+                </div>
+              )}
+            </div>
+
             <Button
               className="w-full"
               disabled={!createName || !createEmail || createMemberMutation.isPending}

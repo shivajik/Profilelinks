@@ -2535,26 +2535,47 @@ function RazorpaySettingsSection({ admin }: { admin: { name: string; email: stri
   };
 
   return (
-    <div className="space-y-4 max-w-xl">
+    <div className="space-y-6 max-w-3xl">
       <div>
         <h2 className="text-2xl font-bold text-foreground">Settings</h2>
-        <p className="text-muted-foreground text-sm">Manage your admin account and payment integrations.</p>
+        <p className="text-muted-foreground text-sm mt-1">Manage your admin account, payment gateway, and integrations.</p>
       </div>
-      <Card>
-        <CardHeader><CardTitle className="text-base">Admin Account</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
-          <div><Label className="text-xs text-muted-foreground">Name</Label><p className="font-medium text-foreground">{admin.name}</p></div>
-          <div><Label className="text-xs text-muted-foreground">Email</Label><p className="font-medium text-foreground">{admin.email}</p></div>
+
+      {/* Admin Account - enhanced */}
+      <Card className="border-l-4 border-l-primary">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Shield className="w-4 h-4 text-primary" />
+            Admin Account
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Name</Label>
+              <p className="font-medium text-foreground text-sm">{admin.name}</p>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Email</Label>
+              <p className="font-medium text-foreground text-sm">{admin.email}</p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
+      {/* Razorpay - enhanced */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Razorpay Integration</CardTitle></CardHeader>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <CreditCard className="w-4 h-4" />
+            Razorpay Integration
+          </CardTitle>
+        </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1.5">
-            <Label className="text-xs">Environment</Label>
+            <Label className="text-xs font-medium">Environment</Label>
             <Select value={environment} onValueChange={setEnvironment}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger className="max-w-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="test">Test (Sandbox)</SelectItem>
                 <SelectItem value="live">Live (Production)</SelectItem>
@@ -2565,32 +2586,35 @@ function RazorpaySettingsSection({ admin }: { admin: { name: string; email: stri
             </p>
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs">Razorpay Key ID</Label>
-            {maskedKeys.razorpay_key_id && (
-              <p className="text-xs text-muted-foreground mb-1">Current: <code className="bg-muted px-1 rounded">{maskedKeys.razorpay_key_id}</code></p>
-            )}
-            <Input
-              value={keyId}
-              onChange={(e) => setKeyId(e.target.value)}
-              placeholder={maskedKeys.razorpay_key_id ? "Leave empty to keep current" : "rzp_test_xxxxx or rzp_live_xxxxx"}
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Razorpay Key ID</Label>
+              {maskedKeys.razorpay_key_id && (
+                <p className="text-xs text-muted-foreground">Current: <code className="bg-muted px-1.5 py-0.5 rounded text-[11px]">{maskedKeys.razorpay_key_id}</code></p>
+              )}
+              <Input
+                value={keyId}
+                onChange={(e) => setKeyId(e.target.value)}
+                placeholder={maskedKeys.razorpay_key_id ? "Leave empty to keep current" : "rzp_test_xxxxx or rzp_live_xxxxx"}
+                className="h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Razorpay Key Secret</Label>
+              {maskedKeys.razorpay_key_secret && (
+                <p className="text-xs text-muted-foreground">Current: <code className="bg-muted px-1.5 py-0.5 rounded text-[11px]">{maskedKeys.razorpay_key_secret}</code></p>
+              )}
+              <Input
+                type="password"
+                value={keySecret}
+                onChange={(e) => setKeySecret(e.target.value)}
+                placeholder={maskedKeys.razorpay_key_secret ? "Leave empty to keep current" : "Enter secret key"}
+                className="h-9 text-sm"
+              />
+            </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs">Razorpay Key Secret</Label>
-            {maskedKeys.razorpay_key_secret && (
-              <p className="text-xs text-muted-foreground mb-1">Current: <code className="bg-muted px-1 rounded">{maskedKeys.razorpay_key_secret}</code></p>
-            )}
-            <Input
-              type="password"
-              value={keySecret}
-              onChange={(e) => setKeySecret(e.target.value)}
-              placeholder={maskedKeys.razorpay_key_secret ? "Leave empty to keep current" : "Enter secret key"}
-            />
-          </div>
-
-          <Button onClick={handleSave} disabled={saving} className="w-full">
+          <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
             {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
             Save Payment Gateway Settings
           </Button>
@@ -2601,12 +2625,17 @@ function RazorpaySettingsSection({ admin }: { admin: { name: string; email: stri
       <SendGridSettings />
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Legal Pages</CardTitle></CardHeader>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileText className="w-4 h-4" />
+            Legal Pages
+          </CardTitle>
+        </CardHeader>
         <CardContent className="space-y-2">
           <p className="text-sm text-muted-foreground">Your platform's legal documents are publicly accessible:</p>
-          <div className="flex gap-2 flex-wrap">
-            <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">Terms of Service ↗</a>
-            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">Privacy Policy ↗</a>
+          <div className="flex gap-3 flex-wrap">
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline font-medium">Terms of Service ↗</a>
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline font-medium">Privacy Policy ↗</a>
           </div>
         </CardContent>
       </Card>

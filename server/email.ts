@@ -117,28 +117,39 @@ export async function sendInviteEmail(opts: {
   inviteLink: string;
   role: string;
 }): Promise<boolean> {
+  const appUrl = process.env.APP_URL || 'https://visicardly.com';
   return sendEmailViaNodemailer({
     to: opts.to,
     subject: `You've been invited to join ${opts.teamName}`,
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #333;">You're Invited! 🎉</h2>
-        <p style="color: #555; font-size: 16px;">
-          <strong>${opts.inviterName}</strong> has invited you to join <strong>${opts.teamName}</strong> as a <strong>${opts.role}</strong>.
-        </p>
-        <div style="margin: 30px 0; text-align: center;">
-          <a href="${opts.inviteLink}" 
-             style="background-color: #6C5CE7; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold;">
-            Accept Invitation
-          </a>
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
+        <div style="background: linear-gradient(135deg, #6C5CE7, #a855f7); padding: 32px 24px; text-align: center;">
+          <h1 style="color: #ffffff; font-size: 24px; margin: 0 0 8px 0; font-weight: 700;">You're Invited! 🎉</h1>
+          <p style="color: rgba(255,255,255,0.85); font-size: 14px; margin: 0;">Join <strong>${opts.teamName}</strong> on VisiCardly</p>
         </div>
-        <p style="color: #888; font-size: 14px;">
-          Or copy this link: <a href="${opts.inviteLink}" style="color: #6C5CE7;">${opts.inviteLink}</a>
-        </p>
-        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
-        <p style="color: #aaa; font-size: 12px;">
-          If you didn't expect this invitation, you can safely ignore this email.
-        </p>
+        <div style="padding: 32px 24px;">
+          <div style="background: #f8f7ff; border-radius: 12px; padding: 20px; margin-bottom: 24px; border-left: 4px solid #6C5CE7;">
+            <p style="color: #374151; font-size: 15px; margin: 0; line-height: 1.6;">
+              <strong>${opts.inviterName}</strong> has invited you to join <strong>${opts.teamName}</strong> as a <strong style="color: #6C5CE7;">${opts.role}</strong>.
+            </p>
+          </div>
+          <div style="text-align: center; margin: 28px 0;">
+            <a href="${opts.inviteLink}" 
+               style="display: inline-block; background: linear-gradient(135deg, #6C5CE7, #a855f7); color: white; padding: 14px 36px; text-decoration: none; border-radius: 10px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 14px rgba(108,92,231,0.35);">
+              Accept Invitation →
+            </a>
+          </div>
+          <p style="color: #9ca3af; font-size: 13px; text-align: center; margin: 16px 0 0;">
+            Or copy this link: <a href="${opts.inviteLink}" style="color: #6C5CE7; word-break: break-all;">${opts.inviteLink}</a>
+          </p>
+        </div>
+        <div style="border-top: 1px solid #f3f4f6; padding: 20px 24px; text-align: center; background: #fafafa;">
+          <p style="color: #9ca3af; font-size: 12px; margin: 0 0 8px 0;">
+            If you didn't expect this invitation, you can safely ignore this email.
+          </p>
+          <a href="${appUrl}" style="color: #6C5CE7; font-size: 12px; text-decoration: none; font-weight: 600;">VisiCardly</a>
+          <span style="color: #d1d5db; font-size: 12px;"> — Digital Business Cards</span>
+        </div>
       </div>
     `,
   });
@@ -150,30 +161,49 @@ export async function sendCredentialsEmail(opts: {
   loginUrl: string;
   tempPassword: string;
 }): Promise<boolean> {
+  const appUrl = process.env.APP_URL || 'https://visicardly.com';
   return sendEmailViaNodemailer({
     to: opts.to,
     subject: `Your account for ${opts.teamName} has been created`,
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #333;">Welcome to ${opts.teamName}! 🎉</h2>
-        <p style="color: #555; font-size: 16px;">
-          An account has been created for you. Here are your login credentials:
-        </p>
-        <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 20px 0;">
-          <p style="margin: 5px 0;"><strong>Email:</strong> ${opts.to}</p>
-          <p style="margin: 5px 0;"><strong>Temporary Password:</strong> ${opts.tempPassword}</p>
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
+        <div style="background: linear-gradient(135deg, #6C5CE7, #a855f7); padding: 32px 24px; text-align: center;">
+          <h1 style="color: #ffffff; font-size: 24px; margin: 0 0 8px 0; font-weight: 700;">Welcome to ${opts.teamName}! 🎉</h1>
+          <p style="color: rgba(255,255,255,0.85); font-size: 14px; margin: 0;">Your account is ready to use</p>
         </div>
-        <p style="color: #e74c3c; font-size: 14px;">⚠️ You will be asked to change your password on first login.</p>
-        <div style="margin: 30px 0; text-align: center;">
-          <a href="${opts.loginUrl}" 
-             style="background-color: #6C5CE7; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold;">
-            Log In Now
-          </a>
+        <div style="padding: 32px 24px;">
+          <p style="color: #374151; font-size: 15px; margin: 0 0 20px; line-height: 1.6;">
+            An account has been created for you. Here are your login credentials:
+          </p>
+          <div style="background: #f8f7ff; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e9e5ff;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 8px 0; color: #6b7280; font-size: 13px; font-weight: 600; width: 140px;">Email:</td>
+                <td style="padding: 8px 0; color: #111827; font-size: 14px;"><a href="mailto:${opts.to}" style="color: #6C5CE7; text-decoration: none;">${opts.to}</a></td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #6b7280; font-size: 13px; font-weight: 600;">Temporary Password:</td>
+                <td style="padding: 8px 0;"><code style="background: #e9e5ff; color: #6C5CE7; padding: 4px 10px; border-radius: 6px; font-size: 14px; font-weight: 600;">${opts.tempPassword}</code></td>
+              </tr>
+            </table>
+          </div>
+          <div style="background: #fef3c7; border-radius: 10px; padding: 14px 16px; margin-bottom: 24px; border-left: 4px solid #f59e0b;">
+            <p style="color: #92400e; font-size: 13px; margin: 0; font-weight: 500;">⚠️ You will be asked to change your password on first login.</p>
+          </div>
+          <div style="text-align: center; margin: 28px 0;">
+            <a href="${opts.loginUrl}" 
+               style="display: inline-block; background: linear-gradient(135deg, #6C5CE7, #a855f7); color: white; padding: 14px 36px; text-decoration: none; border-radius: 10px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 14px rgba(108,92,231,0.35);">
+              Log In Now →
+            </a>
+          </div>
         </div>
-        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
-        <p style="color: #aaa; font-size: 12px;">
-          If you didn't expect this, please contact your team administrator.
-        </p>
+        <div style="border-top: 1px solid #f3f4f6; padding: 20px 24px; text-align: center; background: #fafafa;">
+          <p style="color: #9ca3af; font-size: 12px; margin: 0 0 8px 0;">
+            If you didn't expect this, please contact your team administrator.
+          </p>
+          <a href="${appUrl}" style="color: #6C5CE7; font-size: 12px; text-decoration: none; font-weight: 600;">VisiCardly</a>
+          <span style="color: #d1d5db; font-size: 12px;"> — Digital Business Cards</span>
+        </div>
       </div>
     `,
   });
@@ -187,15 +217,21 @@ export async function sendVerificationOTP(opts: {
     to: opts.to,
     subject: `Your VisiCardly Verification Code: ${opts.otp}`,
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #333;">Email Verification 🔐</h2>
-        <p style="color: #555; font-size: 16px;">Your verification code is:</p>
-        <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
-          <p style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #6C5CE7; margin: 0;">${opts.otp}</p>
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
+        <div style="background: linear-gradient(135deg, #6C5CE7, #a855f7); padding: 28px 24px; text-align: center;">
+          <h1 style="color: #ffffff; font-size: 22px; margin: 0; font-weight: 700;">Email Verification 🔐</h1>
         </div>
-        <p style="color: #888; font-size: 14px;">This code expires in 10 minutes. If you didn't request this, you can safely ignore it.</p>
-        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
-        <p style="color: #aaa; font-size: 12px;">VisiCardly — Your Digital Business Card</p>
+        <div style="padding: 32px 24px; text-align: center;">
+          <p style="color: #374151; font-size: 15px; margin: 0 0 20px;">Your verification code is:</p>
+          <div style="background: #f8f7ff; border-radius: 12px; padding: 24px; margin: 0 0 20px; border: 2px dashed #6C5CE7;">
+            <p style="font-size: 36px; font-weight: 800; letter-spacing: 10px; color: #6C5CE7; margin: 0; font-family: monospace;">${opts.otp}</p>
+          </div>
+          <p style="color: #9ca3af; font-size: 13px;">This code expires in 10 minutes.</p>
+        </div>
+        <div style="border-top: 1px solid #f3f4f6; padding: 16px 24px; text-align: center; background: #fafafa;">
+          <a href="${process.env.APP_URL || 'https://visicardly.com'}" style="color: #6C5CE7; font-size: 12px; text-decoration: none; font-weight: 600;">VisiCardly</a>
+          <span style="color: #d1d5db; font-size: 12px;"> — Digital Business Cards</span>
+        </div>
       </div>
     `,
   });
@@ -209,15 +245,21 @@ export async function sendPasswordResetOTP(opts: {
     to: opts.to,
     subject: `Password Reset Code: ${opts.otp}`,
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #333;">Password Reset 🔑</h2>
-        <p style="color: #555; font-size: 16px;">You requested a password reset. Use this code to verify your identity:</p>
-        <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
-          <p style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #6C5CE7; margin: 0;">${opts.otp}</p>
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
+        <div style="background: linear-gradient(135deg, #6C5CE7, #a855f7); padding: 28px 24px; text-align: center;">
+          <h1 style="color: #ffffff; font-size: 22px; margin: 0; font-weight: 700;">Password Reset 🔑</h1>
         </div>
-        <p style="color: #888; font-size: 14px;">This code expires in 10 minutes. If you didn't request this, you can safely ignore it.</p>
-        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
-        <p style="color: #aaa; font-size: 12px;">VisiCardly — Your Digital Business Card</p>
+        <div style="padding: 32px 24px; text-align: center;">
+          <p style="color: #374151; font-size: 15px; margin: 0 0 20px;">Use this code to reset your password:</p>
+          <div style="background: #f8f7ff; border-radius: 12px; padding: 24px; margin: 0 0 20px; border: 2px dashed #6C5CE7;">
+            <p style="font-size: 36px; font-weight: 800; letter-spacing: 10px; color: #6C5CE7; margin: 0; font-family: monospace;">${opts.otp}</p>
+          </div>
+          <p style="color: #9ca3af; font-size: 13px;">This code expires in 10 minutes. If you didn't request this, ignore this email.</p>
+        </div>
+        <div style="border-top: 1px solid #f3f4f6; padding: 16px 24px; text-align: center; background: #fafafa;">
+          <a href="${process.env.APP_URL || 'https://visicardly.com'}" style="color: #6C5CE7; font-size: 12px; text-decoration: none; font-weight: 600;">VisiCardly</a>
+          <span style="color: #d1d5db; font-size: 12px;"> — Digital Business Cards</span>
+        </div>
       </div>
     `,
   });
@@ -231,15 +273,21 @@ export async function sendSignupOTP(opts: {
     to: opts.to,
     subject: `Verify Your Email: ${opts.otp}`,
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #333;">Welcome to VisiCardly!</h2>
-        <p style="color: #555; font-size: 16px;">Please verify your email address with this code:</p>
-        <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
-          <p style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #6C5CE7; margin: 0;">${opts.otp}</p>
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
+        <div style="background: linear-gradient(135deg, #6C5CE7, #a855f7); padding: 28px 24px; text-align: center;">
+          <h1 style="color: #ffffff; font-size: 22px; margin: 0; font-weight: 700;">Welcome to VisiCardly! 👋</h1>
         </div>
-        <p style="color: #888; font-size: 14px;">This code expires in 10 minutes.</p>
-        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
-        <p style="color: #aaa; font-size: 12px;">VisiCardly — Your Digital Business Card</p>
+        <div style="padding: 32px 24px; text-align: center;">
+          <p style="color: #374151; font-size: 15px; margin: 0 0 20px;">Please verify your email address with this code:</p>
+          <div style="background: #f8f7ff; border-radius: 12px; padding: 24px; margin: 0 0 20px; border: 2px dashed #6C5CE7;">
+            <p style="font-size: 36px; font-weight: 800; letter-spacing: 10px; color: #6C5CE7; margin: 0; font-family: monospace;">${opts.otp}</p>
+          </div>
+          <p style="color: #9ca3af; font-size: 13px;">This code expires in 10 minutes.</p>
+        </div>
+        <div style="border-top: 1px solid #f3f4f6; padding: 16px 24px; text-align: center; background: #fafafa;">
+          <a href="${process.env.APP_URL || 'https://visicardly.com'}" style="color: #6C5CE7; font-size: 12px; text-decoration: none; font-weight: 600;">VisiCardly</a>
+          <span style="color: #d1d5db; font-size: 12px;"> — Digital Business Cards</span>
+        </div>
       </div>
     `,
   });
@@ -254,14 +302,22 @@ export async function sendPackageUpgradeEmail(opts: {
     to: opts.to,
     subject: `Plan Upgraded to ${opts.planName}!`,
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #333;">Plan Upgrade Confirmed! 🎉</h2>
-        <p style="color: #555; font-size: 16px;">
-          Your VisiCardly plan has been upgraded from <strong>${opts.previousPlan}</strong> to <strong>${opts.planName}</strong>.
-        </p>
-        <p style="color: #555; font-size: 14px;">You now have access to all features included in your new plan. Enjoy!</p>
-        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
-        <p style="color: #aaa; font-size: 12px;">VisiCardly — Your Digital Business Card</p>
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
+        <div style="background: linear-gradient(135deg, #10b981, #059669); padding: 28px 24px; text-align: center;">
+          <h1 style="color: #ffffff; font-size: 22px; margin: 0; font-weight: 700;">Plan Upgrade Confirmed! 🎉</h1>
+        </div>
+        <div style="padding: 32px 24px;">
+          <div style="background: #ecfdf5; border-radius: 12px; padding: 20px; margin-bottom: 20px; border-left: 4px solid #10b981;">
+            <p style="color: #374151; font-size: 15px; margin: 0; line-height: 1.6;">
+              Your plan has been upgraded from <strong>${opts.previousPlan}</strong> to <strong style="color: #059669;">${opts.planName}</strong>.
+            </p>
+          </div>
+          <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">You now have access to all features included in your new plan. Enjoy!</p>
+        </div>
+        <div style="border-top: 1px solid #f3f4f6; padding: 16px 24px; text-align: center; background: #fafafa;">
+          <a href="${process.env.APP_URL || 'https://visicardly.com'}" style="color: #6C5CE7; font-size: 12px; text-decoration: none; font-weight: 600;">VisiCardly</a>
+          <span style="color: #d1d5db; font-size: 12px;"> — Digital Business Cards</span>
+        </div>
       </div>
     `,
   });
@@ -272,24 +328,33 @@ export async function sendPackageExpiryEmail(opts: {
   planName: string;
   expiryDate: string;
 }): Promise<boolean> {
+  const appUrl = process.env.APP_URL || 'https://visicardly.com';
   return sendEmailViaNodemailer({
     to: opts.to,
     subject: `Your ${opts.planName} plan is expiring soon`,
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #333;">Plan Expiry Notice</h2>
-        <p style="color: #555; font-size: 16px;">
-          Your <strong>${opts.planName}</strong> plan will expire on <strong>${opts.expiryDate}</strong>.
-        </p>
-        <p style="color: #555; font-size: 14px;">To continue enjoying all features, please renew your plan before the expiry date.</p>
-        <div style="margin: 30px 0; text-align: center;">
-          <a href="${process.env.APP_URL || 'https://visicardly.com'}/dashboard" 
-             style="background-color: #6C5CE7; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold;">
-            Renew Now
-          </a>
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
+        <div style="background: linear-gradient(135deg, #f59e0b, #d97706); padding: 28px 24px; text-align: center;">
+          <h1 style="color: #ffffff; font-size: 22px; margin: 0; font-weight: 700;">Plan Expiry Notice ⏳</h1>
         </div>
-        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
-        <p style="color: #aaa; font-size: 12px;">VisiCardly — Your Digital Business Card</p>
+        <div style="padding: 32px 24px;">
+          <div style="background: #fef3c7; border-radius: 12px; padding: 20px; margin-bottom: 24px; border-left: 4px solid #f59e0b;">
+            <p style="color: #374151; font-size: 15px; margin: 0; line-height: 1.6;">
+              Your <strong>${opts.planName}</strong> plan will expire on <strong style="color: #d97706;">${opts.expiryDate}</strong>.
+            </p>
+          </div>
+          <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin-bottom: 24px;">Renew now to keep all your features active.</p>
+          <div style="text-align: center;">
+            <a href="${appUrl}/dashboard?section=billing" 
+               style="display: inline-block; background: linear-gradient(135deg, #6C5CE7, #a855f7); color: white; padding: 14px 36px; text-decoration: none; border-radius: 10px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 14px rgba(108,92,231,0.35);">
+              Renew Now →
+            </a>
+          </div>
+        </div>
+        <div style="border-top: 1px solid #f3f4f6; padding: 16px 24px; text-align: center; background: #fafafa;">
+          <a href="${appUrl}" style="color: #6C5CE7; font-size: 12px; text-decoration: none; font-weight: 600;">VisiCardly</a>
+          <span style="color: #d1d5db; font-size: 12px;"> — Digital Business Cards</span>
+        </div>
       </div>
     `,
   });
