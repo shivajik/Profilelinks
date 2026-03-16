@@ -4634,6 +4634,8 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
   const [createName, setCreateName] = useState("");
   const [createEmail, setCreateEmail] = useState("");
   const [createJobTitle, setCreateJobTitle] = useState("");
+  const [createPhone, setCreatePhone] = useState("");
+  const [createBio, setCreateBio] = useState("");
   const [createRole, setCreateRole] = useState("member");
   const [createTemplateId, setCreateTemplateId] = useState<string>("");
   const [createBranchId, setCreateBranchId] = useState("");
@@ -4713,7 +4715,7 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
   });
 
   const createMemberMutation = useMutation({
-    mutationFn: async (data: { displayName: string; email: string; jobTitle?: string; memberRole: string }) => {
+    mutationFn: async (data: { displayName: string; email: string; jobTitle?: string; memberRole: string; phone?: string; bio?: string; branchId?: string }) => {
       const res = await apiRequest("POST", `/api/teams/${teamId}/members/create`, data);
       return await res.json();
     },
@@ -4724,6 +4726,8 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
       setCreateName("");
       setCreateEmail("");
       setCreateJobTitle("");
+      setCreatePhone("");
+      setCreateBio("");
       setCreateRole("member");
       if (data.tempPassword) {
         setCreatedCredentials({ email: data.tempEmail, password: data.tempPassword, username: data.tempUsername });
@@ -4906,11 +4910,11 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
                 </TableCell>
                 <TableCell>
                   <Badge
-                    variant={member.status === "activated" ? "secondary" : member.status === "deactivated" ? "destructive" : "default"}
-                    className={member.status === "activated" ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 no-default-hover-elevate" : member.status === "deactivated" ? "" : ""}
+                    variant={member.status === "activated" ? "secondary" : member.status === "deactivated" ? "destructive" : "outline"}
+                    className={member.status === "activated" ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 no-default-hover-elevate" : member.status === "pending" ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-amber-300" : ""}
                     data-testid={`badge-member-status-${member.id}`}
                   >
-                    {member.status === "activated" ? "Active" : member.status === "deactivated" ? "Deactivated" : "Invited"}
+                    {member.status === "activated" ? "Joined" : member.status === "deactivated" ? "Deactivated" : "Not Joined"}
                   </Badge>
                 </TableCell>
                 <TableCell>
@@ -5209,8 +5213,8 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
                   <Label htmlFor="create-phone" className="text-xs">Phone Number</Label>
                   <Input
                     id="create-phone"
-                    value={(window as any).__createPhone || ""}
-                    onChange={(e) => { (window as any).__createPhone = e.target.value; }}
+                    value={createPhone}
+                    onChange={(e) => setCreatePhone(e.target.value)}
                     placeholder="+91 1234567890"
                     className="h-9"
                     data-testid="input-create-phone"
@@ -5221,12 +5225,12 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
                 <Label htmlFor="create-bio" className="text-xs">Bio</Label>
                 <Textarea
                   id="create-bio"
-                  defaultValue=""
+                  value={createBio}
+                  onChange={(e) => setCreateBio(e.target.value)}
                   placeholder="Short bio for business card..."
                   rows={2}
                   className="resize-none text-sm"
                   data-testid="input-create-bio"
-                  onChange={(e) => { (window as any).__createBio = e.target.value; }}
                 />
               </div>
             </div>
@@ -5292,7 +5296,7 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
             <Button
               className="w-full"
               disabled={!createName || !createEmail || createMemberMutation.isPending}
-              onClick={() => createMemberMutation.mutate({ displayName: createName, email: createEmail, jobTitle: createJobTitle || undefined, memberRole: createRole, ...(createBranchId ? { branchId: createBranchId } : {}) })}
+              onClick={() => createMemberMutation.mutate({ displayName: createName, email: createEmail, jobTitle: createJobTitle || undefined, memberRole: createRole, phone: createPhone || undefined, bio: createBio || undefined, ...(createBranchId ? { branchId: createBranchId } : {}) })}
               data-testid="button-submit-create-member"
             >
               {createMemberMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -5348,7 +5352,8 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
             <div className="rounded-md border border-primary/20 bg-primary/5 p-3 space-y-1">
               <p className="text-xs font-medium text-primary">How to login</p>
               <p className="text-xs text-muted-foreground">
-                The team member can log in at{" "}
+                We have sent an email to <span className="font-medium text-foreground">{createdCredentials?.email}</span> with the login credentials and temporary password.
+                The team member can also log in at{" "}
                 <span className="font-mono font-medium text-foreground">{window.location.origin}/auth</span>{" "}
                 using the email and temporary password above. They can change their password after logging in via Settings.
               </p>

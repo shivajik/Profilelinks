@@ -442,6 +442,16 @@ export async function registerRoutes(
 
       await storage.ensureHomePage(user.id);
 
+      // Activate pending team memberships on first login
+      try {
+        const memberships = await storage.getTeamMembershipsByUserId(user.id);
+        for (const m of memberships) {
+          if (m.status === "pending") {
+            await storage.updateTeamMember(m.id, m.teamId, { status: "activated" });
+          }
+        }
+      } catch (_) { /* non-critical */ }
+
       req.session.userId = user.id;
       const { password: _, ...safeUser } = user;
       res.json(safeUser);
@@ -1159,7 +1169,7 @@ export async function registerRoutes(
       if (!result.success) {
         return res.status(400).json({ message: fromZodError(result.error).message });
       }
-      const { displayName, email, jobTitle, memberRole } = result.data;
+      const { displayName, email, jobTitle, memberRole, phone, bio } = result.data;
       const normalizedEmail = email.toLowerCase().trim();
       const existingUser = await storage.getUserByEmail(normalizedEmail);
       if (existingUser) {
@@ -1172,8 +1182,10 @@ export async function registerRoutes(
           userId: existingUser.id,
           role: memberRole || "member",
           jobTitle: jobTitle || null,
-          status: "activated",
+          status: "pending",
           businessName: displayName || existingUser.displayName || null,
+          businessPhone: phone || null,
+          businessBio: bio || null,
         });
         await storage.updateUser(existingUser.id, { teamId: req.params.teamId as string, accountType: "team" });
         // Create invite record as "accepted" (existing user)
@@ -1231,8 +1243,10 @@ export async function registerRoutes(
         userId: newUser.id,
         role: memberRole || "member",
         jobTitle: jobTitle || null,
-        status: "activated",
+        status: "pending",
         businessName: displayName || null,
+        businessPhone: phone || null,
+        businessBio: bio || null,
       });
       // Create invite record as "pending" (new user with temp password)
       await storage.createTeamInvites([{

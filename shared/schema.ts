@@ -482,6 +482,8 @@ export const createTeamMemberSchema = z.object({
   jobTitle: z.string().max(100).optional().or(z.literal("")),
   memberRole: z.enum(["admin", "member"]).optional().default("member"),
   branchId: z.string().optional(),
+  phone: z.string().max(50).optional().or(z.literal("")),
+  bio: z.string().max(500).optional().or(z.literal("")),
 });
 
 // Branch schemas

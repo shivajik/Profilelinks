@@ -456,30 +456,27 @@ function ModernTeamLayout(props: TeamLayoutProps) {
     <div className="mb-10">
       <div className="rounded-2xl overflow-hidden shadow-xl border" style={{ borderColor: brandColor + "20" }} data-testid="corporate-profile-card">
         <div className="flex flex-col sm:flex-row">
-          <div className="sm:w-1/3 p-6 flex flex-col items-center justify-center text-center" style={{ backgroundColor: brandColor + "10" }}>
+          <div className="sm:w-2/5 p-6 flex flex-col items-center justify-center text-center" style={{ backgroundColor: brandColor + "10" }}>
             <Avatar className={`w-24 h-24 border-4 shadow-lg mb-3 ${avatarCls}`} style={{ borderColor: brandColor + "40" }}>
               <AvatarImage src={user.profileImage || undefined} alt={displayName} />
               <AvatarFallback className="text-2xl font-bold" style={{ backgroundColor: brandColor + "30", color: brandColor }}>
                 {displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <h1 className="text-lg font-bold text-foreground flex items-center gap-1.5" data-testid="text-profile-name">{displayName}{user.emailVerified && <BadgeCheck className="w-4 h-4 text-blue-500 shrink-0" />}</h1>
-            {teamBranding.jobTitle && <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-profile-jobtitle">{teamBranding.jobTitle}</p>}
-            <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-profile-username">@{user.username}</p>
+            <h1 className="text-lg font-bold text-foreground flex items-center gap-1.5 flex-wrap justify-center" data-testid="text-profile-name">{displayName}{user.emailVerified && <BadgeCheck className="w-4 h-4 text-blue-500 shrink-0" />}</h1>
+            {teamBranding.jobTitle && <p className="text-xs text-muted-foreground mt-0.5 break-words w-full" data-testid="text-profile-jobtitle">{teamBranding.jobTitle}</p>}
+            <p className="text-xs text-muted-foreground mt-0.5 break-words" data-testid="text-profile-username">@{user.username}</p>
             {teamBranding.companyLogo && (
-              <div className="mt-3 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background/80 border shadow-sm">
-                <img src={teamBranding.companyLogo} alt="Company" className="w-6 h-6 object-contain" data-testid="img-company-logo-badge" />
-                <span className="text-xs font-semibold">{teamBranding.companyName}</span>
+              <div className="mt-3 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background/80 border shadow-sm max-w-full">
+                <img src={teamBranding.companyLogo} alt="Company" className="w-6 h-6 object-contain shrink-0" data-testid="img-company-logo-badge" />
+                <span className="text-xs font-semibold truncate">{teamBranding.companyName}</span>
               </div>
             )}
             {!teamBranding.companyLogo && teamBranding.companyName && (
-              <p className="text-xs font-semibold mt-2" style={{ color: brandColor }} data-testid="text-team-brand">{teamBranding.companyName}</p>
+              <p className="text-xs font-semibold mt-2 break-words w-full" style={{ color: brandColor }} data-testid="text-team-brand">{teamBranding.companyName}</p>
             )}
-            {/* <div className="mt-3">
-              <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
-            </div> */}
           </div>
-          <div className="sm:w-2/3 p-6 bg-card/90">
+          <div className="sm:w-3/5 p-6 bg-card/90">
             {user.bio && <p className="text-sm text-muted-foreground leading-relaxed mb-4" data-testid="text-profile-bio">{user.bio}</p>}
             <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} cardStyle="accent" useOriginalSocialColors={user.useOriginalSocialColors} />
             {hasMultiplePages && <div className="mt-4"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} /></div>}
