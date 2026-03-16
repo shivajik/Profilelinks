@@ -948,14 +948,63 @@ router.post("/api/admin/email-blast", requireAdminAuth, async (req: Request, res
 
     if (recipients.length === 0) return res.status(400).json({ message: "No recipients found" });
 
-    // Send emails using existing email service
+    // Send emails via SendGrid (email blast only)
     const { sendBulkTemplateEmail } = await import("./email");
     const results = await sendBulkTemplateEmail({ subject, body, recipients });
 
-    res.json({ message: `Email sent to ${results.sent} of ${results.total} recipients.`, sent: results.sent, failed: results.failed });
+    const message = results.sent === 0 && results.errors.length > 0
+      ? `Failed to send emails: ${results.errors[0]}`
+      : `Email sent to ${results.sent} of ${results.total} recipients.${results.failed > 0 ? ` (${results.failed} failed)` : ""}`;
+
+    res.json({
+      message,
+      sent: results.sent,
+      failed: results.failed,
+      errors: results.errors,
+    });
   } catch (error: any) {
     console.error("Email blast error:", error);
     res.status(500).json({ message: "Failed to send emails" });
+  }
+});
+
+// ─── SendGrid Settings ──────────────────────────────────────────────────────
+router.get("/api/admin/settings/sendgrid", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const result = await db.execute(sql`SELECT key, value FROM app_settings WHERE key IN ('sendgrid_api_key', 'sendgrid_from_email', 'sendgrid_from_name')`);
+    const rows = result.rows as any[];
+    const settings: Record<string, string> = {};
+    for (const row of rows) {
+      if (row.key === 'sendgrid_api_key') {
+        const v = row.value;
+        settings.apiKey = v.length > 8 ? v.substring(0, 4) + '****' + v.substring(v.length - 4) : (v ? '********' : '');
+        settings.isSet = v ? 'true' : 'false';
+      } else {
+        settings[row.key] = row.value;
+      }
+    }
+    res.json(settings);
+  } catch {
+    res.status(500).json({ message: "Failed to fetch SendGrid settings" });
+  }
+});
+
+router.post("/api/admin/settings/sendgrid", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const { apiKey, fromEmail, fromName } = req.body;
+    if (apiKey !== undefined) {
+      await db.execute(sql`INSERT INTO app_settings (key, value, updated_at) VALUES ('sendgrid_api_key', ${apiKey}, now()) ON CONFLICT (key) DO UPDATE SET value = ${apiKey}, updated_at = now()`);
+    }
+    if (fromEmail) {
+      await db.execute(sql`INSERT INTO app_settings (key, value, updated_at) VALUES ('sendgrid_from_email', ${fromEmail}, now()) ON CONFLICT (key) DO UPDATE SET value = ${fromEmail}, updated_at = now()`);
+    }
+    if (fromName) {
+      await db.execute(sql`INSERT INTO app_settings (key, value, updated_at) VALUES ('sendgrid_from_name', ${fromName}, now()) ON CONFLICT (key) DO UPDATE SET value = ${fromName}, updated_at = now()`);
+    }
+    res.json({ message: "SendGrid settings saved successfully" });
+  } catch (error: any) {
+    console.error("SendGrid settings error:", error);
+    res.status(500).json({ message: "Failed to save SendGrid settings" });
   }
 });
 

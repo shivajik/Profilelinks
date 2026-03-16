@@ -2330,7 +2330,21 @@ function EmailBlastSection({ plans }: { plans: PricingPlan[] }) {
       });
       const j = await r.json();
       if (!r.ok) throw new Error(j.message);
-      toast({ title: "Emails sent!", description: j.message });
+      const isPartialFailure = j.failed > 0 && j.sent > 0;
+      const isFullFailure = j.sent === 0 && j.failed > 0;
+      if (isFullFailure) {
+        toast({
+          title: "Email blast failed",
+          description: j.errors?.[0] || j.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: isPartialFailure ? "Partially sent" : "Emails sent!",
+          description: j.message,
+          variant: isPartialFailure ? "destructive" : "default",
+        });
+      }
     } catch (err: any) {
       toast({ title: "Send failed", description: err.message, variant: "destructive" });
     }
@@ -2584,6 +2598,7 @@ function RazorpaySettingsSection({ admin }: { admin: { name: string; email: stri
       </Card>
 
       <CleanSignupsSettings />
+      <SendGridSettings />
 
       <Card>
         <CardHeader><CardTitle className="text-base">Legal Pages</CardTitle></CardHeader>
@@ -2822,5 +2837,160 @@ function AffiliateEmailSearch({
         Add
       </Button>
     </div>
+  );
+}
+
+// ── SendGrid Settings ──────────────────────────────────────────────────────
+function SendGridSettings() {
+  const { toast } = useToast();
+  const [apiKey, setApiKey] = useState("");
+  const [fromEmail, setFromEmail] = useState("");
+  const [fromName, setFromName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [maskedKey, setMaskedKey] = useState("");
+  const [isSet, setIsSet] = useState(false);
+  const [currentFromEmail, setCurrentFromEmail] = useState("");
+  const [currentFromName, setCurrentFromName] = useState("");
+
+  useEffect(() => {
+    fetch("/api/admin/settings/sendgrid")
+      .then(r => r.ok ? r.json() : {})
+      .then((data: any) => {
+        if (data.apiKey) setMaskedKey(data.apiKey);
+        setIsSet(data.isSet === 'true');
+        if (data.sendgrid_from_email) setCurrentFromEmail(data.sendgrid_from_email);
+        if (data.sendgrid_from_name) setCurrentFromName(data.sendgrid_from_name);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const body: Record<string, string> = {};
+      if (apiKey.trim()) body.apiKey = apiKey.trim();
+      if (fromEmail.trim()) body.fromEmail = fromEmail.trim();
+      if (fromName.trim()) body.fromName = fromName.trim();
+      const r = await fetch("/api/admin/settings/sendgrid", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.message);
+      toast({ title: "SendGrid settings saved!" });
+      setApiKey("");
+      // Refresh
+      const r2 = await fetch("/api/admin/settings/sendgrid");
+      if (r2.ok) {
+        const d = await r2.json();
+        setMaskedKey(d.apiKey || "");
+        setIsSet(d.isSet === 'true');
+        if (d.sendgrid_from_email) setCurrentFromEmail(d.sendgrid_from_email);
+        if (d.sendgrid_from_name) setCurrentFromName(d.sendgrid_from_name);
+      }
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    }
+    setSaving(false);
+  };
+
+  const handleDisable = async () => {
+    setSaving(true);
+    try {
+      const r = await fetch("/api/admin/settings/sendgrid", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey: "" }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.message);
+      toast({ title: "SendGrid disabled.", description: "Email Blast will be unavailable until a new API key is configured." });
+      setMaskedKey("");
+      setIsSet(false);
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    }
+    setSaving(false);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Mail className="h-4 w-4" />
+          SendGrid SMTP
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="text-xs text-muted-foreground space-y-1">
+          <p>
+            <strong>Email Blast only.</strong> SendGrid is used exclusively for the Email Blast feature in the admin panel.
+            All other emails (OTP, invites, credentials, plan alerts) always use Gmail / Nodemailer.
+          </p>
+          {!isSet && (
+            <p className="text-amber-600">⚠ No SendGrid key set — Email Blast is currently disabled.</p>
+          )}
+        </div>
+
+        <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-md p-3 text-xs space-y-1 text-blue-800 dark:text-blue-300">
+          <p className="font-semibold">SendGrid requirements (common reasons for 401 errors):</p>
+          <ul className="list-disc list-inside space-y-0.5 pl-1">
+            <li>The API key must have <strong>Mail Send</strong> permission (not just read).</li>
+            <li>The "From Email" must be <strong>verified</strong> in SendGrid → Settings → Sender Authentication. Unverified senders cause 403 errors.</li>
+            <li>Free trial accounts expire after 60 days — upgrade your SendGrid plan if the trial ended.</li>
+          </ul>
+        </div>
+
+        {isSet && maskedKey && (
+          <div className="bg-muted/50 p-3 rounded-md text-xs space-y-1">
+            <p>API Key: <code className="bg-muted px-1 rounded">{maskedKey}</code></p>
+            {currentFromEmail && <p>From Email: <strong>{currentFromEmail}</strong></p>}
+            {currentFromName && <p>From Name: <strong>{currentFromName}</strong></p>}
+          </div>
+        )}
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">SendGrid API Key</Label>
+          <Input
+            type="password"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder={isSet ? "Leave empty to keep current" : "SG.xxxxxxxxxxxxx"}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">From Email</Label>
+            <Input
+              value={fromEmail}
+              onChange={(e) => setFromEmail(e.target.value)}
+              placeholder={currentFromEmail || "noreply@yourdomain.com"}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">From Name</Label>
+            <Input
+              value={fromName}
+              onChange={(e) => setFromName(e.target.value)}
+              placeholder={currentFromName || "VisiCardly"}
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <Button onClick={handleSave} disabled={saving} className="flex-1">
+            {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            {isSet ? "Update SendGrid" : "Enable SendGrid"}
+          </Button>
+          {isSet && (
+            <Button variant="outline" onClick={handleDisable} disabled={saving}>
+              Disable
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
