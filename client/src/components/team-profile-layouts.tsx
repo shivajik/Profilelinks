@@ -437,9 +437,9 @@ function ClassicTeamLayout(props: TeamLayoutProps) {
           </div>
           {user.bio && <p className="text-sm text-muted-foreground leading-relaxed mb-4" data-testid="text-profile-bio">{user.bio}</p>}
           <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
-          <div className="mt-3">
+          {/* <div className="mt-3">
             <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
-          </div>
+          </div> */}
           {hasMultiplePages && <div className="mt-4"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} /></div>}
           <ContentSection {...props} />
         </div>
@@ -475,9 +475,9 @@ function ModernTeamLayout(props: TeamLayoutProps) {
             {!teamBranding.companyLogo && teamBranding.companyName && (
               <p className="text-xs font-semibold mt-2" style={{ color: brandColor }} data-testid="text-team-brand">{teamBranding.companyName}</p>
             )}
-            <div className="mt-3">
+            {/* <div className="mt-3">
               <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
-            </div>
+            </div> */}
           </div>
           <div className="sm:w-2/3 p-6 bg-card/90">
             {user.bio && <p className="text-sm text-muted-foreground leading-relaxed mb-4" data-testid="text-profile-bio">{user.bio}</p>}
@@ -533,9 +533,9 @@ function BoldTeamLayout(props: TeamLayoutProps) {
           </div>
           {user.bio && <p className="text-sm text-muted-foreground leading-relaxed mb-4" data-testid="text-profile-bio">{user.bio}</p>}
           <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} cardStyle="bordered" useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
-          <div className="mt-3">
+          {/* <div className="mt-3">
             <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
-          </div>
+          </div> */}
           {hasMultiplePages && <div className="mt-4"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} /></div>}
           <ContentSection {...props} />
         </div>
@@ -623,9 +623,9 @@ function HeroTeamLayout(props: TeamLayoutProps) {
           </div>
           {user.bio && <p className="text-sm text-muted-foreground leading-relaxed mb-4 text-center" data-testid="text-profile-bio">{user.bio}</p>}
           <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} cardStyle="accent" useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
-          <div className="mt-3 flex justify-center">
+          {/* <div className="mt-3 flex justify-center">
             <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
-          </div>
+          </div> */}
           {hasMultiplePages && (
             <div className="mt-4 pt-3 border-t border-border/50">
               <PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} />
