@@ -522,7 +522,7 @@ function ModernTeamLayout(props: TeamLayoutProps) {
             </div>
           </div>
         </div>
-        <div className="mt-3">
+        <div className="mt-3 rounded-xl bg-card/90 backdrop-blur-md p-4 shadow-sm border border-white/10">
           {user.bio && <p className="text-sm text-muted-foreground leading-relaxed mb-3" data-testid="text-profile-bio">{user.bio}</p>}
           <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} cardStyle="accent" useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
           {hasMultiplePages && <div className="mt-3"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} /></div>}
