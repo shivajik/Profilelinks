@@ -661,7 +661,7 @@ export default function AdminDashboard() {
                       const d = await r.json();
                       const rows = (d.users || []).map((u: UserRow) => [
                         u.displayName || u.username, u.email, u.accountType, u.subscription?.planName || "Free",
-                        u.isLtd ? "Yes" : "No",
+                        u.isLtd ? (u.subscription?.status === "active" ? "Yes" : "Unpaid") : "No",
                         u.isDisabled ? "Disabled" : (u.subscription?.status || "N/A"),
                         u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "N/A"
                       ]);
@@ -797,7 +797,8 @@ export default function AdminDashboard() {
                           <td className="p-3">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <Badge variant="outline" className="text-xs capitalize">{u.accountType}</Badge>
-                              {u.isLtd && <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100">LTD</Badge>}
+                              {u.isLtd && u.subscription?.status === "active" && <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100">LTD</Badge>}
+                              {u.isLtd && u.subscription?.status !== "active" && <Badge className="text-xs bg-red-100 text-red-700 border-red-200 hover:bg-red-100">LTD (Unpaid)</Badge>}
                             </div>
                           </td>
                           <td className="p-3 text-muted-foreground">{u.subscription?.planName ?? "Free"}</td>

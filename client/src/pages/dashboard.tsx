@@ -493,7 +493,7 @@ export default function Dashboard() {
               ) : (
                 <div className="flex items-center gap-1 flex-wrap">
                   <Badge variant="secondary" className="text-[10px] w-fit capitalize">{planLimits?.planName || "Free"}</Badge>
-                  {(user as any).isLtd && (
+                  {(user as any).isLtd && planLimits?.hasActivePlan && (
                     <Badge className="text-[10px] w-fit bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100">Lifetime</Badge>
                   )}
                 </div>
