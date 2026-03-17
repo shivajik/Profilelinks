@@ -2378,6 +2378,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
   const [customText, setCustomText] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [templateCategory, setTemplateCategory] = useState<QRTemplateCategory>("all");
+  const [downloadingQrId, setDownloadingQrId] = useState<string | null>(null);
 
   const applyTemplate = (template: QRTemplate) => {
     setSelectedTemplateId(template.id);
@@ -2484,9 +2485,10 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
     deleteQrMutation.mutate(id);
   };
 
-  const downloadQR = async (elementId: string, filename: string, _qrConfig?: SavedQRCode) => {
+  const downloadQR = async (elementId: string, filename: string, _qrConfig?: SavedQRCode, trackingId?: string) => {
     const container = document.getElementById(`qr-download-wrap-${elementId}`);
     if (!container) return;
+    if (trackingId) setDownloadingQrId(trackingId);
     try {
       const dataUrl = await toPng(container, {
         pixelRatio: 4,
@@ -2501,6 +2503,8 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
     } catch (err) {
       console.error("QR download failed", err);
       toast({ title: "Download failed", description: "Please try again" });
+    } finally {
+      if (trackingId) setDownloadingQrId(null);
     }
   };
 
@@ -3057,10 +3061,11 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
                   <Button
                     size="icon"
                     variant="outline"
-                    onClick={() => downloadQR(`qr-saved-${qr.id}`, `${username}-qrcode-${qr.id}.png`, qr)}
+                    onClick={() => downloadQR(`qr-saved-${qr.id}`, `${username}-qrcode-${qr.id}.png`, qr, qr.id)}
+                    disabled={downloadingQrId === qr.id}
                     data-testid={`button-download-qr-${qr.id}`}
                   >
-                    <Download className="w-4 h-4" />
+                    {downloadingQrId === qr.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                   </Button>
                   <Button size="icon" variant="outline" onClick={() => handleDelete(qr.id)} data-testid={`button-delete-qr-${qr.id}`}>
                     <Trash2 className="w-4 h-4" />
@@ -6433,6 +6438,7 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
   const [generated, setGenerated] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [templateCategory, setTemplateCategory] = useState<QRTemplateCategory>("all");
+  const [generatorDownloading, setGeneratorDownloading] = useState(false);
 
   const applyTemplate = (template: QRTemplate) => {
     setSelectedTemplateId(template.id);
@@ -6636,6 +6642,7 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
   const downloadQR = async () => {
     const container = document.getElementById("url-qr-download-wrap");
     if (!container) return;
+    setGeneratorDownloading(true);
     try {
       const dataUrl = await toPng(container, {
         pixelRatio: 4,
@@ -6650,6 +6657,8 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
     } catch (err) {
       console.error("QR download failed", err);
       toast({ title: "Download failed", description: "Please try again" });
+    } finally {
+      setGeneratorDownloading(false);
     }
   };
 
@@ -6907,8 +6916,8 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
                 {!isWhiteLabel && <p style={{ color: "#9ca3af", fontSize: "8px", textAlign: "center", marginTop: "6px" }}>Powered by VisiCardly</p>}
               </div>
               <div className="flex items-center gap-2 w-full">
-                <Button variant="outline" className="flex-1" onClick={downloadQR} disabled={!isValidUrl}>
-                  <Download className="w-4 h-4 mr-1" /> Download
+                <Button variant="outline" className="flex-1" onClick={downloadQR} disabled={!isValidUrl || generatorDownloading}>
+                  {generatorDownloading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />} Download
                 </Button>
                 <Button variant="outline" className="flex-1" disabled={!isValidUrl} onClick={() => { navigator.clipboard.writeText(url); toast({ title: "URL copied!" }); }}>
                   <Copy className="w-4 h-4 mr-1" /> Copy URL
