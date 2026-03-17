@@ -126,6 +126,7 @@ import { PlanUsageBanner, canPerformAction, LimitReachedDialog } from "@/compone
 import { usePlanLimits, type PlanLimits } from "@/hooks/use-plan-limits";
 import { MenuBuilder } from "@/components/menu-builder";
 import { BusinessProfileSection } from "@/components/business-profile-section";
+import { TeamProfileLayout } from "@/components/team-profile-layouts";
 
 function normalizeUrl(url: string): string {
   if (!url) return "#";
@@ -267,6 +268,18 @@ export default function Dashboard() {
     enabled: !!user,
   });
 
+  // Fetch team templates for live preview (team owners)
+  const { data: teamTemplatesForPreview } = useQuery<any[]>({
+    queryKey: ["/api/teams", user?.teamId, "templates"],
+    queryFn: async () => {
+      if (!user?.teamId) return [];
+      const res = await fetch(`/api/teams/${user.teamId}/templates`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!user?.teamId,
+  });
+
   const [isAffiliate, setIsAffiliate] = useState(false);
   const [affiliateData, setAffiliateData] = useState<any>(null);
 
@@ -383,13 +396,6 @@ export default function Dashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-      // Auto-refresh iframe preview for team accounts
-      setTimeout(() => {
-        const iframe = document.querySelector('iframe[title="Profile Preview"]') as HTMLIFrameElement | null;
-        if (iframe) {
-          iframe.src = iframe.src.split('?')[0] + `?preview=1&t=${Date.now()}`;
-        }
-      }, 300);
       toast({ title: "Template updated!" });
     },
   });
@@ -444,6 +450,21 @@ export default function Dashboard() {
   const isTeamOwner = isTeamAccount && teamData && teamData.ownerId === user.id;
   const isTeamMember = isTeamAccount && !isTeamOwner;
   const isRestaurant = teamData?.businessType?.toLowerCase() === "restaurant";
+
+  // Build branding data for team owner live preview
+  const defaultTeamTemplate = teamTemplatesForPreview?.find((t: any) => t.isDefault) || teamTemplatesForPreview?.[0];
+  const ownerMember = businessProfileData?.member;
+  const teamOwnerBusinessData = isTeamOwner ? {
+    templateData: defaultTeamTemplate?.templateData || {},
+    team: { id: teamData?.id, name: teamData?.name, logoUrl: teamData?.logoUrl, websiteUrl: teamData?.websiteUrl },
+    member: {
+      businessName: ownerMember?.businessName || user.displayName,
+      businessProfileImage: ownerMember?.businessProfileImage || null,
+      businessBio: ownerMember?.businessBio || user.bio,
+      jobTitle: ownerMember?.jobTitle,
+      businessPhone: ownerMember?.businessPhone,
+    },
+  } : null;
 
   // Build profile URL based on team membership
   const teamSlug = teamData?.slug;
@@ -1129,56 +1150,101 @@ export default function Dashboard() {
             <div className={`${activeSection === "design" ? "hidden md:flex" : "hidden"} flex-1 bg-muted/30 items-center justify-center p-6`}>
               <div className="flex flex-col items-center gap-3">
               {isTeamAccount ? (
-                  /* Team accounts (owner & member) see their actual public profile via iframe */
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setPreviewMode("mobile")}
-                        className={`toggle-elevate ${previewMode === "mobile" ? "toggle-elevated" : ""}`}
-                      >
-                        <Smartphone className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setPreviewMode("desktop")}
-                        className={`toggle-elevate ${previewMode === "desktop" ? "toggle-elevated" : ""}`}
-                      >
-                        <Monitor className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          const iframe = document.querySelector('iframe[title="Profile Preview"]') as HTMLIFrameElement | null;
-                          if (iframe) {
-                            iframe.src = iframe.src;
-                          }
-                          queryClient.invalidateQueries({ queryKey: ["/api/blocks"] });
-                          queryClient.invalidateQueries({ queryKey: ["/api/socials"] });
-                          queryClient.invalidateQueries({ queryKey: ["/api/pages"] });
-                          queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-                          toast({ title: "Preview refreshed!" });
-                        }}
-                        title="Refresh preview"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
-                      </Button>
-                    </div>
-                    <div
-                      className={`rounded-2xl overflow-hidden border shadow-lg bg-background ${
-                        previewMode === "mobile" ? "w-[375px] h-[700px]" : "w-[900px] h-[700px]"
-                      }`}
-                    >
-                      <iframe
-                        src={`${isTeamOwner && teamSlug ? `/${teamSlug}` : isTeamMember && teamSlug ? `/${teamSlug}/${user.username}` : `/${user.username}`}?preview=1`}
-                        className="w-full h-full border-0"
-                        title="Profile Preview"
+                  isTeamMember ? (
+                    /* Team members get live template preview */
+                    <>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setPreviewMode("mobile")}
+                          className={`toggle-elevate ${previewMode === "mobile" ? "toggle-elevated" : ""}`}
+                        >
+                          <Smartphone className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setPreviewMode("desktop")}
+                          className={`toggle-elevate ${previewMode === "desktop" ? "toggle-elevated" : ""}`}
+                        >
+                          <Monitor className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            queryClient.invalidateQueries({ queryKey: ["/api/blocks"] });
+                            queryClient.invalidateQueries({ queryKey: ["/api/socials"] });
+                            queryClient.invalidateQueries({ queryKey: ["/api/pages"] });
+                            queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+                            queryClient.invalidateQueries({ queryKey: ["/api/auth/business-profile"] });
+                            toast({ title: "Preview refreshed!" });
+                          }}
+                          title="Refresh preview"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+                        </Button>
+                      </div>
+                      <TeamPhonePreview
+                        template={currentTemplate}
+                        user={user}
+                        businessProfileData={businessProfileData}
+                        socials={userSocials}
+                        blocks={sortedBlocks}
+                        pages={userPages}
+                        currentPage={currentPage || null}
+                        mode={previewMode}
                       />
-                    </div>
-                  </div>
+                    </>
+                  ) : (
+                    /* Team owners also get live template preview */
+                    <>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setPreviewMode("mobile")}
+                          className={`toggle-elevate ${previewMode === "mobile" ? "toggle-elevated" : ""}`}
+                        >
+                          <Smartphone className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setPreviewMode("desktop")}
+                          className={`toggle-elevate ${previewMode === "desktop" ? "toggle-elevated" : ""}`}
+                        >
+                          <Monitor className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            queryClient.invalidateQueries({ queryKey: ["/api/blocks"] });
+                            queryClient.invalidateQueries({ queryKey: ["/api/socials"] });
+                            queryClient.invalidateQueries({ queryKey: ["/api/pages"] });
+                            queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+                            queryClient.invalidateQueries({ queryKey: ["/api/teams", user.teamId, "templates"] });
+                            toast({ title: "Preview refreshed!" });
+                          }}
+                          title="Refresh preview"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+                        </Button>
+                      </div>
+                      <TeamPhonePreview
+                        template={currentTemplate}
+                        user={user}
+                        businessProfileData={teamOwnerBusinessData}
+                        socials={userSocials}
+                        blocks={sortedBlocks}
+                        pages={userPages}
+                        currentPage={currentPage || null}
+                        mode={previewMode}
+                      />
+                    </>
+                  )
                 ) : (
                   <>
                     <div className="flex items-center gap-2">
@@ -1312,7 +1378,7 @@ export default function Dashboard() {
                 currentTemplateId={user.template || "minimal"}
                 onSelectTemplate={(id) => templateMutation.mutate(id)}
                 saving={templateMutation.isPending}
-                disabled={!!isTeamMember}
+                disabled={false}
               />
             </div>
           </div>
@@ -3194,18 +3260,23 @@ function DesignPanel({
                   </>
                 ) : t.layout === "modern" ? (
                   <>
-                    <div className={`w-full ${t.cardBg} rounded-md p-1.5 mb-1`}>
-                      <div className="flex items-center gap-1.5">
-                        <div className={`w-5 h-5 ${avatarShape} bg-white/30 shrink-0`} />
-                        <div className="flex-1">
-                          <div className={`h-1 w-8 rounded-full ${t.cardTextColor} opacity-40 bg-current mb-0.5`} />
-                          <div className={`h-1 w-5 rounded-full ${t.cardTextColor} opacity-20 bg-current`} />
+                    {/* Split-panel card thumbnail */}
+                    <div className="w-full rounded-md overflow-hidden mb-1" style={{ border: `1px solid ${t.accent}25` }}>
+                      <div className="flex h-10">
+                        <div className={`w-2/5 flex flex-col items-center justify-center gap-0.5 ${t.cardBg} relative`}>
+                          <div className="absolute top-0 left-0 right-0 h-0.5" style={{ backgroundColor: t.accent }} />
+                          <div className={`w-4 h-4 ${avatarShape} bg-white/30 border border-white/20`} />
+                          <div className={`h-0.5 w-5 rounded-full opacity-40 bg-current ${t.cardTextColor}`} />
+                        </div>
+                        <div className="w-3/5 p-1.5 flex flex-col justify-center gap-0.5" style={{ backgroundColor: `${t.accent}08` }}>
+                          <div className={`h-1 w-7 rounded-full opacity-50 bg-current ${t.cardTextColor}`} />
+                          <div className={`h-0.5 w-5 rounded-full opacity-30 bg-current ${t.cardTextColor}`} />
+                          <div className="mt-0.5 h-1.5 rounded-sm w-full opacity-25" style={{ backgroundColor: t.accent }} />
                         </div>
                       </div>
                     </div>
                     <span className={`text-[9px] font-semibold ${t.textColor}`}>{t.name}</span>
                     <div className="mt-1 space-y-0.5 w-full">
-                      <div className={`h-2.5 ${btnShape} ${t.buttonStyle === "outline" ? "" : t.cardBg} w-full`} />
                       <div className={`h-2.5 ${btnShape} ${t.buttonStyle === "outline" ? "" : t.cardBg} w-full`} />
                     </div>
                   </>
@@ -3548,6 +3619,132 @@ function PhonePreview({
           <div className="mt-6 text-center">
             <p className={`text-[10px] ${template.textColor} opacity-50`}>VisiCardly</p>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TeamPhonePreview({
+  template,
+  user,
+  businessProfileData,
+  socials,
+  blocks,
+  pages,
+  currentPage,
+  mode,
+}: {
+  template: (typeof TEMPLATES)[0];
+  user: { displayName: string | null; username: string; profileImage: string | null; bio: string | null; useOriginalSocialColors?: boolean };
+  businessProfileData: any;
+  socials: Social[];
+  blocks: Block[];
+  pages: Page[];
+  currentPage: Page | null;
+  mode: "mobile" | "desktop";
+}) {
+  const tData = businessProfileData?.templateData || {};
+  const team = businessProfileData?.team || {};
+  const member = businessProfileData?.member || {};
+
+  const teamBranding = {
+    companyLogo: tData.companyLogo || team.logoUrl,
+    coverPhoto: tData.coverPhoto,
+    companyName: tData.companyName || team.name,
+    companyPhone: tData.companyPhone,
+    companyEmail: tData.companyEmail,
+    companyWebsite: tData.companyWebsite || team.websiteUrl,
+    companyAddress: tData.companyAddress,
+    companyContact: tData.companyContact,
+    themeColor: tData.themeColor,
+    font: tData.font,
+    jobTitle: member.jobTitle,
+    memberPhone: member.businessPhone,
+    companySocials: tData.companySocials,
+    headBranch: tData.headBranch,
+    memberBranch: tData.memberBranch,
+    companyProfileUrl: tData.companyProfileUrl,
+    productProfileUrl: tData.productProfileUrl,
+    productUrls: tData.productUrls,
+    companyBrochureUrl: tData.companyBrochureUrl,
+  };
+
+  const brandColor = teamBranding.themeColor || template.accent;
+  const activeSocials = socials.filter((s) => s.url);
+  const activeBlocks = blocks.filter((b) => b.active);
+  const hasBlocks = activeBlocks.length > 0;
+  const hasMultiplePages = pages.length > 1;
+
+  const previewUser = {
+    displayName: member.businessName || user.displayName,
+    username: user.username,
+    profileImage: member.businessProfileImage || user.profileImage,
+    bio: member.businessBio || user.bio,
+    useOriginalSocialColors: user.useOriginalSocialColors,
+  };
+
+  const resolveUrl = (url: string) =>
+    url && !url.startsWith("http") ? `https://${url}` : url;
+
+  const TeamPreviewBlock = ({ block, template: t }: { block: Block; template: (typeof TEMPLATES)[0] }) => {
+    const content = block.content as any;
+    const btnCls =
+      t.buttonStyle === "rounded"
+        ? "rounded-full"
+        : t.buttonStyle === "sharp"
+        ? "rounded-none"
+        : t.buttonStyle === "outline"
+        ? "rounded-xl border-2"
+        : "rounded-xl";
+    if (block.type === "divider") return <div className="border-t border-border/50 my-2" />;
+    const title = content?.title || content?.url || block.type;
+    return (
+      <div className={`${btnCls} bg-muted/50 py-2.5 px-4 text-center`}>
+        <span className="text-xs font-medium text-foreground">{title}</span>
+      </div>
+    );
+  };
+
+  const pageInfos = pages.map((p) => ({
+    id: String(p.id),
+    title: p.title,
+    slug: p.slug,
+    isHome: p.isHome,
+  }));
+  const currentPageInfo = currentPage
+    ? { id: String(currentPage.id), title: currentPage.title, slug: currentPage.slug, isHome: currentPage.isHome }
+    : null;
+
+  const containerWidth = mode === "mobile" ? 375 : 900;
+
+  return (
+    <div
+      className="rounded-2xl overflow-hidden border shadow-lg"
+      style={{ width: containerWidth, height: 700 }}
+    >
+      <div className={`${template.bg} h-full overflow-y-auto`}>
+        <div className="max-w-2xl mx-auto px-6 py-12">
+          <TeamProfileLayout
+            user={previewUser}
+            template={template}
+            teamBranding={teamBranding}
+            brandColor={brandColor}
+            activeSocials={activeSocials}
+            activeLinks={[]}
+            activeBlocks={activeBlocks}
+            hasBlocks={hasBlocks}
+            pages={pageInfos}
+            hasMultiplePages={hasMultiplePages}
+            currentPage={currentPageInfo}
+            setActivePageSlug={() => {}}
+            isFetching={false}
+            isLoading={false}
+            normalizeUrl={resolveUrl}
+            trackClick={() => {}}
+            PublicBlock={TeamPreviewBlock}
+            mode={mode}
+          />
         </div>
       </div>
     </div>

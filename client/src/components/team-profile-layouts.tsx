@@ -66,6 +66,7 @@ interface TeamLayoutProps {
   normalizeUrl: (url: string, platform?: string) => string;
   trackClick: (blockId?: string) => void;
   PublicBlock: any;
+  mode?: "mobile" | "desktop";
 }
 
 function ContactSection({ teamBranding, brandColor, normalizeUrl, activeSocials, cardStyle = "default", useOriginalSocialColors, trackClick }: {
@@ -416,25 +417,27 @@ function ContentSection(props: TeamLayoutProps) {
 
 function CompanyBadge({ teamBranding, template, compact = false }: { teamBranding: TeamBranding; template: Template; compact?: boolean }) {
   if (!teamBranding.companyName) return null;
+  const brandColor = teamBranding.themeColor || template.accent;
 
   const wrapperClass = compact
-    ? `mt-3 flex items-center gap-2 px-3 py-1.5 rounded-lg border shadow-sm max-w-full ${template.cardBg}`
-    : `flex items-center gap-3 px-4 py-2 rounded-full border shadow-md max-w-full ${template.cardBg}`;
+    ? "mt-3 flex items-center gap-2 px-3 py-1.5 rounded-lg max-w-full"
+    : "flex items-center gap-3 px-4 py-2 rounded-full max-w-full";
+  const wrapperStyle = {
+    border: `1px solid ${brandColor}35`,
+    backgroundColor: `${brandColor}12`,
+  };
   const logoWrapClass = compact
-    ? "w-6 h-6 rounded-md overflow-hidden bg-card/80 flex items-center justify-center shrink-0 border"
-    : "w-11 h-11 rounded-lg overflow-hidden bg-card/80 flex items-center justify-center shrink-0 border shadow-sm";
-  const textClass = compact
-    ? `text-xs font-semibold truncate ${template.cardTextColor}`
-    : `text-sm font-bold truncate ${template.cardTextColor}`;
+    ? "w-6 h-6 rounded-md overflow-hidden bg-card/80 flex items-center justify-center shrink-0"
+    : "w-11 h-11 rounded-lg overflow-hidden bg-card/80 flex items-center justify-center shrink-0 shadow-sm";
 
   return (
-    <div className={wrapperClass} data-testid="text-team-brand">
+    <div className={wrapperClass} style={wrapperStyle} data-testid="text-team-brand">
       {teamBranding.companyLogo && (
         <div className={logoWrapClass} data-testid="img-company-logo-badge">
           <img src={teamBranding.companyLogo} alt="Company" className={compact ? "w-5 h-5 object-contain" : "w-9 h-9 object-contain"} />
         </div>
       )}
-      <span className={textClass}>{teamBranding.companyName}</span>
+      <span className={compact ? "text-xs font-semibold truncate" : "text-sm font-bold truncate"} style={{ color: brandColor }}>{teamBranding.companyName}</span>
     </div>
   );
 }
@@ -490,14 +493,17 @@ function ClassicTeamLayout(props: TeamLayoutProps) {
 }
 
 function ModernTeamLayout(props: TeamLayoutProps) {
-  const { user, template, teamBranding, brandColor, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick } = props;
+  const { user, template, teamBranding, brandColor, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick, mode } = props;
   const displayName = user.displayName || user.username;
   const avatarCls = getAvatarClass(template.avatarStyle);
+  const splitRow = mode === "mobile" ? "flex-col" : mode === "desktop" ? "flex-row" : "sm:flex-row";
+  const leftWidth = mode === "mobile" ? "w-full" : mode === "desktop" ? "w-2/5" : "sm:w-2/5";
+  const rightWidth = mode === "mobile" ? "w-full" : mode === "desktop" ? "w-3/5" : "sm:w-3/5";
   return (
     <div className="mb-10">
       <div className="rounded-2xl overflow-hidden shadow-xl border" style={{ borderColor: brandColor + "20" }} data-testid="corporate-profile-card">
-        <div className="flex flex-col sm:flex-row">
-          <div className={`sm:w-2/5 p-6 flex flex-col items-center justify-center text-center ${template.cardBg}`}>
+        <div className={`flex ${splitRow}`}>
+          <div className={`${leftWidth} p-6 flex flex-col items-center justify-center text-center ${template.cardBg}`}>
             <div className="w-full h-1 rounded-full mb-4" style={{ backgroundColor: brandColor }} />
             <Avatar className={`w-24 h-24 border-4 shadow-lg mb-3 ${avatarCls}`} style={{ borderColor: brandColor + "40" }}>
               <AvatarImage src={user.profileImage || undefined} alt={displayName} />
@@ -510,7 +516,7 @@ function ModernTeamLayout(props: TeamLayoutProps) {
             <p className={`text-xs ${template.cardTextColor} opacity-70 mt-0.5 break-words`} data-testid="text-profile-username">@{user.username}</p>
             <CompanyBadge teamBranding={teamBranding} template={template} compact />
           </div>
-          <div className="sm:w-3/5 p-6 bg-card/90">
+          <div className={`${rightWidth} p-6 bg-card/90`}>
             {user.bio && <p className="text-sm text-muted-foreground leading-relaxed mb-4" data-testid="text-profile-bio">{user.bio}</p>}
             <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} cardStyle="accent" useOriginalSocialColors={user.useOriginalSocialColors} />
             {hasMultiplePages && <div className="mt-4"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} /></div>}

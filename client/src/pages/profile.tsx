@@ -192,7 +192,7 @@ export default function PublicProfile(props?: any) {
   const template = getTemplate(user.template);
   const hasMultiplePages = pages.length > 1;
   const hasBlocks = activeBlocks.length > 0;
-  const isTeamProfile = !!(teamBranding && (teamBranding.companyLogo || teamBranding.companyName));
+  const isTeamProfile = !!(teamBranding && typeof teamBranding === "object");
   const brandColor = teamBranding?.themeColor || template.accent;
 
   const profileUrl = typeof window !== "undefined" ? `${window.location.origin}/${username}` : `/${username}`;

@@ -2119,7 +2119,8 @@ export async function registerRoutes(
       if (member?.businessName) (publicUser as any).displayName = member.businessName;
       if (member?.businessProfileImage) (publicUser as any).profileImage = member.businessProfileImage;
       if (member?.businessBio) (publicUser as any).bio = member.businessBio;
-      if (tData.template) (publicUser as any).template = tData.template;
+      // Member's personal template takes precedence; team default template only used as fallback
+      if (tData.template && !(publicUser as any).template) (publicUser as any).template = tData.template;
 
       if (req.query.preview === "1") {
         res.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
@@ -2267,7 +2268,8 @@ export async function registerRoutes(
           (publicUser as any).bio = member.businessBio;
         }
 
-        if (tData.template) {
+        // Member's personal template takes precedence; team default template only used as fallback
+        if (tData.template && !(publicUser as any).template) {
           (publicUser as any).template = tData.template;
         }
       }
