@@ -158,15 +158,28 @@ export default function PublicProfile(props?: any) {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-6">
-        <div className="text-center">
-          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-            <span className="text-2xl text-muted-foreground">?</span>
+      <div className="min-h-screen bg-gradient-to-b from-[#1a1625] via-[#2d1f4e] to-[#1a1625] flex items-center justify-center px-6">
+        <div className="text-center max-w-md">
+          <div className="w-20 h-20 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center mx-auto mb-6 border border-white/10 shadow-lg">
+            <span className="text-3xl">🔍</span>
           </div>
-          <h1 className="text-xl font-bold mb-2">Page not found</h1>
-          <p className="text-muted-foreground text-sm">
-            The profile <span className="font-medium">@{username}</span> doesn't exist yet.
+          <h1 className="text-2xl font-bold text-white mb-3">Profile Not Found</h1>
+          <p className="text-white/60 text-sm leading-relaxed mb-8">
+            The profile <span className="font-semibold text-white/80">@{username}</span> doesn't exist or may have been removed.
           </p>
+          <a
+            href="/"
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-all border border-white/10 backdrop-blur-sm"
+          >
+            ← Back to Home
+          </a>
+          <div className="mt-10">
+            <a href="/" className="text-xs transition-opacity hover:opacity-80">
+              <span className="text-white/40">Powered by </span>
+              <span className="text-purple-400/70">Visi</span>
+              <span className="text-white/40">Cardly</span>
+            </a>
+          </div>
         </div>
       </div>
     );

@@ -221,6 +221,7 @@ export default function AdminDashboard() {
   const [ltdCodes, setLtdCodes] = useState<LtdCodeRow[]>([]);
   const [ltdPageEnabled, setLtdPageEnabled] = useState(false);
   const [ltdPageLoading, setLtdPageLoading] = useState(false);
+  const [ltdPurchasePageLoading, setLtdPurchasePageLoading] = useState(false);
   const [ltdCreateDialog, setLtdCreateDialog] = useState(false);
   const [ltdNewCode, setLtdNewCode] = useState("");
   const [ltdNewPlanId, setLtdNewPlanId] = useState("__none__");
@@ -1460,20 +1461,20 @@ export default function AdminDashboard() {
                         {ltdPurchasePageEnabled ? "Enabled" : "Disabled"}
                       </span>
                       <button
-                        disabled={ltdPageLoading}
+                        disabled={ltdPurchasePageLoading}
                         onClick={async () => {
-                          setLtdPageLoading(true);
+                          setLtdPurchasePageLoading(true);
                           try {
                             const r = await fetch("/api/admin/ltd/settings", {
                               method: "POST", headers: { "Content-Type": "application/json" },
                               body: JSON.stringify({ ltdPurchasePageEnabled: !ltdPurchasePageEnabled }),
                             });
                             if (r.ok) { setLtdPurchasePageEnabled(!ltdPurchasePageEnabled); toast({ title: !ltdPurchasePageEnabled ? "Purchase page enabled" : "Purchase page disabled" }); }
-                          } finally { setLtdPageLoading(false); }
+                          } finally { setLtdPurchasePageLoading(false); }
                         }}
                         className="focus:outline-none"
                       >
-                        {ltdPageLoading
+                        {ltdPurchasePageLoading
                           ? <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
                           : ltdPurchasePageEnabled
                             ? <ToggleRight className="h-10 w-10 text-primary cursor-pointer" />
