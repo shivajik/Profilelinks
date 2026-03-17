@@ -295,7 +295,7 @@ router.get("/api/admin/users", requireAdminAuth, async (req: Request, res: Respo
       return res.json({ users: [], total, page, limit });
     }
 
-    const userIds = paginatedUsers.map((u) => u.id);
+    const userIds = paginatedUsers.map((u: any) => u.id);
 
     const subscriptionRows = await db
       .select({
@@ -321,7 +321,7 @@ router.get("/api/admin/users", requireAdminAuth, async (req: Request, res: Respo
       }
     }
 
-    const usersWithSubs = paginatedUsers.map((userRow) => ({
+    const usersWithSubs = paginatedUsers.map((userRow: any) => ({
       ...userRow,
       subscription: latestSubscriptionByUserId.get(userRow.id) ?? null,
     }));
@@ -929,8 +929,8 @@ router.post("/api/admin/email-blast", requireAdminAuth, async (req: Request, res
         if (planFilter === "free") {
           // Filter out users with active subscriptions
           const usersWithSubs = await db.select({ userId: userSubscriptions.userId }).from(userSubscriptions).where(eq(userSubscriptions.status, "active"));
-          const subUserIds = new Set(usersWithSubs.map(s => s.userId));
-          recipients = allUsers.filter(u => !subUserIds.has(u.id));
+          const subUserIds = new Set(usersWithSubs.map((s: any) => s.userId));
+          recipients = allUsers.filter((u: any) => !subUserIds.has(u.id));
         } else {
           recipients = allUsers;
         }
@@ -938,9 +938,9 @@ router.post("/api/admin/email-blast", requireAdminAuth, async (req: Request, res
         // Filter by specific plan name
         const planRows = await db.select({ id: pricingPlans.id }).from(pricingPlans).where(eq(pricingPlans.name, planFilter));
         if (planRows.length > 0) {
-          const planIds = planRows.map(p => p.id);
+          const planIds = planRows.map((p: any) => p.id);
           const subs = await db.select({ userId: userSubscriptions.userId }).from(userSubscriptions).where(and(eq(userSubscriptions.status, "active"), inArray(userSubscriptions.planId, planIds)));
-          const userIds = subs.map(s => s.userId);
+          const userIds = subs.map((s: any) => s.userId);
           if (userIds.length > 0) {
             recipients = await db.select({ email: users.email, username: users.username, displayName: users.displayName }).from(users).where(inArray(users.id, userIds));
           }

@@ -259,8 +259,8 @@ router.get("/api/affiliate/dashboard", requireAuth as any, async (req: Request, 
       .orderBy(desc(affiliateReferrals.createdAt));
 
     const totalEarnings = parseFloat(affiliate.totalEarnings);
-    const pendingReferrals = referrals.filter(r => r.status === "pending").length;
-    const convertedReferrals = referrals.filter(r => r.status === "converted").length;
+    const pendingReferrals = referrals.filter((r: any) => r.status === "pending").length;
+    const convertedReferrals = referrals.filter((r: any) => r.status === "converted").length;
 
     res.json({
       affiliate: {

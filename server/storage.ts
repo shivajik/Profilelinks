@@ -726,7 +726,7 @@ export class DatabaseStorage implements IStorage {
       .from(teamMembers)
       .innerJoin(teams, eq(teams.id, teamMembers.teamId))
       .where(eq(teamMembers.userId, userId));
-    return rows.map(r => ({ ...r.member, team: r.team }));
+    return rows.map((r: any) => ({ ...r.member, team: r.team }));
   }
 
   async createTeamInvites(invites: { teamId: string; email: string; role: string; invitedById: string; token: string; branchId?: string }[]): Promise<TeamInvite[]> {
@@ -904,8 +904,8 @@ export class DatabaseStorage implements IStorage {
       .from(analyticsEvents)
       .where(and(eq(analyticsEvents.userId, userId), gte(analyticsEvents.createdAt, thirtyDaysAgo)));
 
-    const totalViews = allEvents.filter((e) => e.eventType === "page_view").length;
-    const totalClicks = allEvents.filter((e) => e.eventType === "click").length;
+    const totalViews = allEvents.filter((e: any) => e.eventType === "page_view").length;
+    const totalClicks = allEvents.filter((e: any) => e.eventType === "click").length;
 
     const viewsByDayMap = new Map<string, number>();
     const clicksByDayMap = new Map<string, number>();
@@ -938,10 +938,10 @@ export class DatabaseStorage implements IStorage {
       .slice(0, 10);
 
     const userBlocks = await db.select().from(blocks).where(eq(blocks.userId, userId));
-    const blockMap = new Map(userBlocks.map((b) => [b.id, b]));
+    const blockMap = new Map(userBlocks.map((b: any) => [b.id, b]));
 
     const topBlocks = topBlockIds.map(([blockId, clicks]) => {
-      const block = blockMap.get(blockId);
+      const block = blockMap.get(blockId) as any;
       const content = block?.content as any;
       let title = "Deleted block";
       if (block) {
