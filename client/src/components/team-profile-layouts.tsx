@@ -496,13 +496,50 @@ function ModernTeamLayout(props: TeamLayoutProps) {
   const { user, template, teamBranding, brandColor, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick, mode } = props;
   const displayName = user.displayName || user.username;
   const avatarCls = getAvatarClass(template.avatarStyle);
-  const splitRow = mode === "mobile" ? "flex-col" : mode === "desktop" ? "flex-row" : "sm:flex-row";
-  const leftWidth = mode === "mobile" ? "w-full" : mode === "desktop" ? "w-2/5" : "sm:w-2/5";
-  const rightWidth = mode === "mobile" ? "w-full" : mode === "desktop" ? "w-3/5" : "sm:w-3/5";
+
+  // Mobile: horizontal card (avatar LEFT + info RIGHT) matching the thumbnail & personal preview
+  if (mode === "mobile") {
+    return (
+      <div className="mb-6" data-testid="corporate-profile-card">
+        <div className={`${template.cardBg} rounded-xl shadow-lg border`} style={{ borderColor: brandColor + "20" }}>
+          <div className="h-1 w-full rounded-t-xl" style={{ backgroundColor: brandColor }} />
+          <div className="p-4">
+            <div className="flex items-start gap-3">
+              <Avatar className={`w-14 h-14 border-2 shadow-md shrink-0 ${avatarCls}`} style={{ borderColor: brandColor + "40" }}>
+                <AvatarImage src={user.profileImage || undefined} alt={displayName} />
+                <AvatarFallback className="text-lg font-bold" style={{ backgroundColor: brandColor + "30", color: brandColor }}>
+                  {displayName.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <h1 className={`text-sm font-bold ${template.cardTextColor} flex items-center gap-1 flex-wrap`} data-testid="text-profile-name">
+                  {displayName}{user.emailVerified && <BadgeCheck className="w-3.5 h-3.5 text-blue-500 shrink-0" />}
+                </h1>
+                {teamBranding.jobTitle && <p className={`text-[11px] ${template.cardTextColor} opacity-70 mt-0.5`} data-testid="text-profile-jobtitle">{teamBranding.jobTitle}</p>}
+                <p className={`text-[10px] ${template.cardTextColor} opacity-50 mt-0.5`} data-testid="text-profile-username">@{user.username}</p>
+                <CompanyBadge teamBranding={teamBranding} template={template} compact />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="mt-3">
+          {user.bio && <p className="text-sm text-muted-foreground leading-relaxed mb-3" data-testid="text-profile-bio">{user.bio}</p>}
+          <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} cardStyle="accent" useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
+          {hasMultiplePages && <div className="mt-3"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} /></div>}
+          <ContentSection {...props} />
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop & public profile: side-by-side two-panel card
+  const splitRow = mode === "desktop" ? "flex-row" : "sm:flex-row";
+  const leftWidth = mode === "desktop" ? "w-2/5" : "sm:w-2/5";
+  const rightWidth = mode === "desktop" ? "w-3/5" : "sm:w-3/5";
   return (
     <div className="mb-10">
       <div className="rounded-2xl overflow-hidden shadow-xl border" style={{ borderColor: brandColor + "20" }} data-testid="corporate-profile-card">
-        <div className={`flex ${splitRow}`}>
+        <div className={`flex flex-col ${splitRow}`}>
           <div className={`${leftWidth} p-6 flex flex-col items-center justify-center text-center ${template.cardBg}`}>
             <div className="w-full h-1 rounded-full mb-4" style={{ backgroundColor: brandColor }} />
             <Avatar className={`w-24 h-24 border-4 shadow-lg mb-3 ${avatarCls}`} style={{ borderColor: brandColor + "40" }}>
