@@ -631,6 +631,7 @@ export const pricingPlans = pgTable("pricing_plans", {
   menuBuilderEnabled: boolean("menu_builder_enabled").notNull().default(false),
   whiteLabelEnabled: boolean("white_label_enabled").notNull().default(false),
   planType: text("plan_type").notNull().default("individual"),
+  isLtd: boolean("is_ltd").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
   isFeatured: boolean("is_featured").notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
@@ -696,6 +697,7 @@ export const createPricingPlanSchema = z.object({
   menuBuilderEnabled: z.boolean().default(false),
   whiteLabelEnabled: z.boolean().default(false),
   planType: z.enum(["individual", "team"]).default("individual"),
+  isLtd: z.boolean().default(false),
   isActive: z.boolean().default(true),
   isFeatured: z.boolean().default(false),
   sortOrder: z.number().int().min(0).default(0),
@@ -720,6 +722,7 @@ export const updatePricingPlanSchema = z.object({
   menuBuilderEnabled: z.boolean().optional(),
   whiteLabelEnabled: z.boolean().optional(),
   planType: z.enum(["individual", "team"]).optional(),
+  isLtd: z.boolean().optional(),
   isActive: z.boolean().optional(),
   isFeatured: z.boolean().optional(),
   sortOrder: z.number().int().min(0).optional(),
@@ -831,6 +834,7 @@ export const ltdCodes = pgTable("ltd_codes", {
   maxUses: integer("max_uses").notNull().default(1),
   currentUses: integer("current_uses").notNull().default(0),
   isActive: boolean("is_active").notNull().default(true),
+  signupAccountType: text("signup_account_type").notNull().default("individual"),
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
@@ -839,12 +843,14 @@ export const createLtdCodeSchema = z.object({
   code: z.string().min(4, "Code must be at least 4 characters").max(50).regex(/^[A-Z0-9_-]+$/i, "Only letters, numbers, hyphens and underscores"),
   planId: z.string().optional(),
   maxUses: z.number().int().min(1).default(1),
+  signupAccountType: z.enum(["individual", "team"]).default("individual"),
   notes: z.string().optional(),
 });
 
 export const updateLtdCodeSchema = z.object({
   isActive: z.boolean().optional(),
   maxUses: z.number().int().min(1).optional(),
+  signupAccountType: z.enum(["individual", "team"]).optional(),
   notes: z.string().optional(),
 });
 

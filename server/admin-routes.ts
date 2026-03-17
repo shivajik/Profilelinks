@@ -229,6 +229,8 @@ router.get("/api/admin/users", requireAdminAuth, async (req: Request, res: Respo
 
     if (accountType === "disabled") {
       conditions.push(eq(users.isDisabled, true));
+    } else if (accountType === "ltd" || accountType === "LTD") {
+      conditions.push(eq(users.isLtd, true));
     } else if (accountType && accountType !== "all") {
       conditions.push(eq(users.accountType, accountType));
     }

@@ -5,8 +5,55 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle2, Lock, Mail, User, KeyRound, Zap, Infinity, Shield, Star, ChevronRight } from "lucide-react";
+import { Loader2, CheckCircle2, Lock, Mail, User, KeyRound, Zap, Infinity, Shield, Star, ChevronRight, ArrowRight, Home } from "lucide-react";
 import logoPath from "/favicon.png";
+import LegalLayout from "@/components/legal-layout";
+
+function LtdUnavailablePage() {
+  const [, navigate] = useLocation();
+  const [countdown, setCountdown] = useState(5);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          navigate("/pricing");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [navigate]);
+
+  return (
+    <LegalLayout>
+      <div className="min-h-[70vh] flex flex-col items-center justify-center gap-6 p-8 text-center">
+        <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center">
+          <Lock className="h-10 w-10 text-muted-foreground" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">LTD Registration Unavailable</h1>
+          <p className="text-muted-foreground max-w-md mx-auto">
+            Lifetime deal registration is not currently open. Check back later or contact support.
+          </p>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Redirecting to pricing in <span className="font-bold text-primary">{countdown}</span> seconds...
+        </p>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" onClick={() => navigate("/")}>
+            <Home className="h-4 w-4 mr-2" /> Home
+          </Button>
+          <Button onClick={() => navigate("/pricing")}>
+            <ArrowRight className="h-4 w-4 mr-2" /> View Pricing
+          </Button>
+        </div>
+      </div>
+    </LegalLayout>
+  );
+}
 
 const BENEFITS = [
   { icon: Infinity, text: "Lifetime access — pay once, use forever" },
@@ -99,18 +146,7 @@ export default function LtdRegisterPage() {
 
   if (!pageEnabled) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-8 text-center">
-        <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
-          <Lock className="h-8 w-8 text-muted-foreground" />
-        </div>
-        <h1 className="text-2xl font-bold text-foreground">LTD Registration Unavailable</h1>
-        <p className="text-muted-foreground max-w-md">
-          Lifetime deal registration is not currently open. Check back later or contact support.
-        </p>
-        <Button variant="outline" onClick={() => navigate("/")}>
-          Back to Home
-        </Button>
-      </div>
+      <LtdUnavailablePage />
     );
   }
 
@@ -262,9 +298,19 @@ export default function LtdRegisterPage() {
             )}
 
             {!codeValidated && (
-              <p className="text-xs text-center text-muted-foreground">
-                Enter and validate your redemption code to proceed with registration.
-              </p>
+              <div className="space-y-3">
+                <p className="text-xs text-center text-muted-foreground">
+                  Enter and validate your redemption code to proceed with registration.
+                </p>
+                <div className="border-t pt-3">
+                  <p className="text-sm text-center text-muted-foreground">
+                    Don't have a redemption code?{" "}
+                    <button onClick={() => navigate("/ltd-purchase")} className="text-primary hover:underline font-medium">
+                      Purchase a lifetime plan
+                    </button>
+                  </p>
+                </div>
+              </div>
             )}
           </form>
 

@@ -12,7 +12,7 @@ import {
   createPaymentOrderSchema,
   verifyPaymentSchema,
 } from "@shared/schema";
-import { eq, sql, desc } from "drizzle-orm";
+import { eq, and, sql, desc } from "drizzle-orm";
 import { fromZodError } from "zod-validation-error";
 
 const router = Router();
@@ -44,7 +44,7 @@ router.get("/api/pricing/plans", async (req: Request, res: Response) => {
     const plans = await db
       .select()
       .from(pricingPlans)
-      .where(eq(pricingPlans.isActive, true))
+      .where(and(eq(pricingPlans.isActive, true), eq(pricingPlans.isLtd, false)))
       .orderBy(pricingPlans.sortOrder);
     res.json(plans);
   } catch (error: any) {
@@ -395,9 +395,12 @@ router.post("/api/payments/verify", requireAuth as any, async (req: Request, res
     // If promo code was used, increment usage
     const promoCode = req.body.promoCode as string | undefined;
     if (promoCode) {
-      await db.update(promoCodes)
-        .set({ currentUses: sql`${promoCodes.currentUses} + 1` })
-        .where(eq(promoCodes.code, promoCode.toUpperCase()));
+      const [promoRecord] = await db.select().from(promoCodes).where(eq(promoCodes.code, promoCode.toUpperCase()));
+      if (promoRecord) {
+        await db.update(promoCodes)
+          .set({ currentUses: sql`${promoCodes.currentUses} + 1` })
+          .where(eq(promoCodes.code, promoCode.toUpperCase()));
+      }
     }
 
     // Track affiliate commission if user was referred

@@ -34,6 +34,7 @@ const GdprPage = lazy(() => import("@/pages/gdpr"));
 const RefundPolicyPage = lazy(() => import("@/pages/refund-policy"));
 const AffiliateDashboard = lazy(() => import("@/pages/affiliate-dashboard"));
 const LtdRegisterPage = lazy(() => import("@/pages/ltd-register"));
+const LtdPurchasePage = lazy(() => import("@/pages/ltd-purchase"));
 
 function PageLoader() {
   return (
@@ -63,6 +64,7 @@ function Router() {
         <Route path="/refund-policy" component={RefundPolicyPage} />
         <Route path="/affiliate" component={AffiliateDashboard} />
         <Route path="/ltd-register" component={LtdRegisterPage} />
+        <Route path="/ltd-purchase" component={LtdPurchasePage} />
         <Route path="/admin" component={AdminLogin} />
         <Route path="/admin/login" component={AdminLogin} />
         <Route path="/admin/dashboard" component={AdminDashboard} />

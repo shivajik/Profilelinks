@@ -491,7 +491,12 @@ export default function Dashboard() {
               {isTeamMember ? (
                 <Badge variant="outline" className="text-[10px] w-fit border-primary/30 text-primary">Team Member</Badge>
               ) : (
-                <Badge variant="secondary" className="text-[10px] w-fit capitalize">{planLimits?.planName || "Free"}</Badge>
+                <div className="flex items-center gap-1 flex-wrap">
+                  <Badge variant="secondary" className="text-[10px] w-fit capitalize">{planLimits?.planName || "Free"}</Badge>
+                  {(user as any).isLtd && (
+                    <Badge className="text-[10px] w-fit bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100">Lifetime</Badge>
+                  )}
+                </div>
               )}
             </div>
             <SidebarGroup>

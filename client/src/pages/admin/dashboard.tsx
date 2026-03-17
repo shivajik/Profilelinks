@@ -34,6 +34,7 @@ interface PricingPlan {
   maxTeamMembers: number; maxBlocks: number; maxSocials: number;
   qrCodeEnabled: boolean; analyticsEnabled: boolean; customTemplatesEnabled: boolean;
   menuBuilderEnabled: boolean; whiteLabelEnabled: boolean; planType: string;
+  isLtd: boolean;
   isActive: boolean; isFeatured: boolean; sortOrder: number;
 }
 interface AdminStats {
@@ -91,6 +92,7 @@ const planSchema = z.object({
   menuBuilderEnabled: z.boolean().default(false),
   whiteLabelEnabled: z.boolean().default(false),
   planType: z.enum(["individual", "team"]).default("individual"),
+  isLtd: z.boolean().default(false),
   isActive: z.boolean().default(true),
   isFeatured: z.boolean().default(false),
   sortOrder: z.coerce.number().int().min(0).default(0),
@@ -212,9 +214,10 @@ export default function AdminDashboard() {
   const [promoExpiry, setPromoExpiry] = useState("");
   const [savingPromo, setSavingPromo] = useState(false);
   const [deletingPromoId, setDeletingPromoId] = useState<string | null>(null);
+  const [promoSignupAccountType, setPromoSignupAccountType] = useState<"individual" | "team">("individual"); // kept for backwards compat but unused
 
   // LTD codes state
-  interface LtdCodeRow { id: string; code: string; planId: string | null; planName: string | null; maxUses: number; currentUses: number; isActive: boolean; notes: string | null; createdAt: string; }
+  interface LtdCodeRow { id: string; code: string; planId: string | null; planName: string | null; maxUses: number; currentUses: number; isActive: boolean; signupAccountType: "individual" | "team"; notes: string | null; createdAt: string; }
   const [ltdCodes, setLtdCodes] = useState<LtdCodeRow[]>([]);
   const [ltdPageEnabled, setLtdPageEnabled] = useState(false);
   const [ltdPageLoading, setLtdPageLoading] = useState(false);
@@ -230,6 +233,9 @@ export default function AdminDashboard() {
   const [ltdBulkPlanId, setLtdBulkPlanId] = useState("__none__");
   const [ltdBulkNotes, setLtdBulkNotes] = useState("");
   const [ltdBulkResult, setLtdBulkResult] = useState<string[] | null>(null);
+  const [ltdNewSignupType, setLtdNewSignupType] = useState<"individual" | "team">("individual");
+  const [ltdBulkSignupType, setLtdBulkSignupType] = useState<"individual" | "team">("individual");
+  const [ltdPurchasePageEnabled, setLtdPurchasePageEnabled] = useState(false);
 
   // ── Auth check ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -297,7 +303,7 @@ export default function AdminDashboard() {
   const fetchLtdData = useCallback(async () => {
     const [codesRes, settingsRes] = await Promise.all([fetch("/api/admin/ltd/codes"), fetch("/api/admin/ltd/settings")]);
     if (codesRes.ok) setLtdCodes(await codesRes.json());
-    if (settingsRes.ok) { const d = await settingsRes.json(); setLtdPageEnabled(d.ltdPageEnabled); }
+    if (settingsRes.ok) { const d = await settingsRes.json(); setLtdPageEnabled(d.ltdPageEnabled); setLtdPurchasePageEnabled(d.ltdPurchasePageEnabled); }
   }, []);
 
   const refreshAll = useCallback(() => {
@@ -380,11 +386,11 @@ export default function AdminDashboard() {
 
   // ── Plan CRUD ──────────────────────────────────────────────────────────────
   const openNewPlan = () => {
-    planForm.reset({ name: "", description: "", monthlyPrice: 0, yearlyPrice: 0, monthlyPriceUsd: 0, yearlyPriceUsd: 0, featuresText: "", maxLinks: 10, maxPages: 1, maxTeamMembers: 1, maxBlocks: 20, maxSocials: 5, qrCodeEnabled: false, analyticsEnabled: false, customTemplatesEnabled: false, menuBuilderEnabled: false, whiteLabelEnabled: false, planType: "individual", isActive: true, isFeatured: false, sortOrder: 0 });
+    planForm.reset({ name: "", description: "", monthlyPrice: 0, yearlyPrice: 0, monthlyPriceUsd: 0, yearlyPriceUsd: 0, featuresText: "", maxLinks: 10, maxPages: 1, maxTeamMembers: 1, maxBlocks: 20, maxSocials: 5, qrCodeEnabled: false, analyticsEnabled: false, customTemplatesEnabled: false, menuBuilderEnabled: false, whiteLabelEnabled: false, planType: "individual", isLtd: false, isActive: true, isFeatured: false, sortOrder: 0 });
     setPlanDialog({ open: true });
   };
   const openEditPlan = (plan: PricingPlan) => {
-    planForm.reset({ name: plan.name, description: plan.description ?? "", monthlyPrice: parseFloat(plan.monthlyPrice), yearlyPrice: parseFloat(plan.yearlyPrice), monthlyPriceUsd: parseFloat(plan.monthlyPriceUsd ?? "0"), yearlyPriceUsd: parseFloat(plan.yearlyPriceUsd ?? "0"), featuresText: (plan.features ?? []).join("\n"), maxLinks: plan.maxLinks, maxPages: plan.maxPages, maxTeamMembers: plan.maxTeamMembers, maxBlocks: plan.maxBlocks ?? 20, maxSocials: plan.maxSocials ?? 5, qrCodeEnabled: plan.qrCodeEnabled ?? false, analyticsEnabled: plan.analyticsEnabled ?? false, customTemplatesEnabled: plan.customTemplatesEnabled ?? false, menuBuilderEnabled: plan.menuBuilderEnabled ?? false, whiteLabelEnabled: (plan as any).whiteLabelEnabled ?? false, planType: (plan.planType as "individual" | "team") ?? "individual", isActive: plan.isActive, isFeatured: plan.isFeatured, sortOrder: plan.sortOrder });
+    planForm.reset({ name: plan.name, description: plan.description ?? "", monthlyPrice: parseFloat(plan.monthlyPrice), yearlyPrice: parseFloat(plan.yearlyPrice), monthlyPriceUsd: parseFloat(plan.monthlyPriceUsd ?? "0"), yearlyPriceUsd: parseFloat(plan.yearlyPriceUsd ?? "0"), featuresText: (plan.features ?? []).join("\n"), maxLinks: plan.maxLinks, maxPages: plan.maxPages, maxTeamMembers: plan.maxTeamMembers, maxBlocks: plan.maxBlocks ?? 20, maxSocials: plan.maxSocials ?? 5, qrCodeEnabled: plan.qrCodeEnabled ?? false, analyticsEnabled: plan.analyticsEnabled ?? false, customTemplatesEnabled: plan.customTemplatesEnabled ?? false, menuBuilderEnabled: plan.menuBuilderEnabled ?? false, whiteLabelEnabled: (plan as any).whiteLabelEnabled ?? false, planType: (plan.planType as "individual" | "team") ?? "individual", isLtd: plan.isLtd ?? false, isActive: plan.isActive, isFeatured: plan.isFeatured, sortOrder: plan.sortOrder });
     setPlanDialog({ open: true, plan });
   };
   const onSavePlan = async (data: PlanForm) => {
@@ -626,6 +632,7 @@ export default function AdminDashboard() {
                       <SelectItem value="all">All Users</SelectItem>
                       <SelectItem value="personal">Personal</SelectItem>
                       <SelectItem value="team">Team</SelectItem>
+                      <SelectItem value="ltd">LTD</SelectItem>
                       <SelectItem value="disabled">Disabled</SelectItem>
                     </SelectContent>
                   </Select>
@@ -903,6 +910,7 @@ export default function AdminDashboard() {
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-semibold text-foreground">{plan.name}</span>
                               {plan.isFeatured && <Badge variant="default" className="text-xs">Featured</Badge>}
+                              {plan.isLtd && <Badge variant="outline" className="text-xs">LTD</Badge>}
                               {!plan.isActive && <Badge variant="secondary" className="text-xs">Inactive</Badge>}
                               <Badge variant={plan.planType === "team" ? "default" : "outline"} className="text-xs capitalize">{plan.planType || "individual"}</Badge>
                             </div>
@@ -1281,6 +1289,7 @@ export default function AdminDashboard() {
                   setPromoDiscount("10");
                   setPromoMaxUses("0");
                   setPromoExpiry("");
+                  setPromoSignupAccountType("individual");
                   setPromoDialog({ open: true });
                 }}>
                   <Plus className="h-4 w-4 mr-2" /> New Promo Code
@@ -1366,7 +1375,7 @@ export default function AdminDashboard() {
                   <Button variant="outline" onClick={() => { setLtdBulkDialog(true); setLtdBulkCount("10"); setLtdBulkPrefix("LTD"); setLtdBulkPlanId("__none__"); setLtdBulkNotes(""); setLtdBulkResult(null); }} data-testid="button-bulk-ltd-codes">
                     <Download className="h-4 w-4 mr-2" /> Bulk Generate
                   </Button>
-                  <Button onClick={() => { setLtdCreateDialog(true); setLtdNewCode(""); setLtdNewPlanId("__none__"); setLtdNewNotes(""); }} data-testid="button-new-ltd-code">
+                  <Button onClick={() => { setLtdCreateDialog(true); setLtdNewCode(""); setLtdNewPlanId("__none__"); setLtdNewNotes(""); setLtdNewSignupType("individual"); }} data-testid="button-new-ltd-code">
                     <Plus className="h-4 w-4 mr-2" /> New Code
                   </Button>
                 </div>
@@ -1432,6 +1441,61 @@ export default function AdminDashboard() {
                 </CardContent>
               </Card>
 
+              {/* Purchase page toggle */}
+              <Card>
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <CreditCard className="h-4 w-4 text-primary" />
+                        <span className="font-semibold text-foreground">Purchase Page</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Controls whether <code className="text-xs bg-muted px-1 py-0.5 rounded">/ltd-purchase</code> is publicly accessible.
+                        Users without codes can buy LTD plans directly.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className={`text-sm font-medium ${ltdPurchasePageEnabled ? "text-green-600" : "text-muted-foreground"}`}>
+                        {ltdPurchasePageEnabled ? "Enabled" : "Disabled"}
+                      </span>
+                      <button
+                        disabled={ltdPageLoading}
+                        onClick={async () => {
+                          setLtdPageLoading(true);
+                          try {
+                            const r = await fetch("/api/admin/ltd/settings", {
+                              method: "POST", headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ ltdPurchasePageEnabled: !ltdPurchasePageEnabled }),
+                            });
+                            if (r.ok) { setLtdPurchasePageEnabled(!ltdPurchasePageEnabled); toast({ title: !ltdPurchasePageEnabled ? "Purchase page enabled" : "Purchase page disabled" }); }
+                          } finally { setLtdPageLoading(false); }
+                        }}
+                        className="focus:outline-none"
+                      >
+                        {ltdPageLoading
+                          ? <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
+                          : ltdPurchasePageEnabled
+                            ? <ToggleRight className="h-10 w-10 text-primary cursor-pointer" />
+                            : <ToggleLeft className="h-10 w-10 text-muted-foreground cursor-pointer" />}
+                      </button>
+                    </div>
+                  </div>
+                  {ltdPurchasePageEnabled && (
+                    <div className="mt-3 pt-3 border-t">
+                      <p className="text-xs text-muted-foreground">Purchase URL:</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <code className="text-xs bg-muted px-2 py-1 rounded flex-1">{window.location.origin}/ltd-purchase</code>
+                        <Button variant="ghost" size="sm" className="h-7 px-2"
+                          onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/ltd-purchase`); toast({ title: "URL copied!" }); }}>
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
               {/* Codes list */}
               <Card>
                 <div className="overflow-x-auto">
@@ -1440,6 +1504,7 @@ export default function AdminDashboard() {
                       <tr className="border-b bg-muted/50">
                         <th className="text-left p-3 font-medium text-muted-foreground">Code</th>
                         <th className="text-left p-3 font-medium text-muted-foreground">Plan</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Type</th>
                         <th className="text-left p-3 font-medium text-muted-foreground">Usage</th>
                         <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
                         <th className="text-left p-3 font-medium text-muted-foreground">Notes</th>
@@ -1448,7 +1513,7 @@ export default function AdminDashboard() {
                     </thead>
                     <tbody>
                       {ltdCodes.length === 0 ? (
-                        <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No LTD codes yet. Create one to get started.</td></tr>
+                        <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">No LTD codes yet. Create one to get started.</td></tr>
                       ) : ltdCodes.map(c => (
                         <tr key={c.id} className={`border-b last:border-0 hover:bg-muted/20 ${!c.isActive ? "opacity-60" : ""}`}>
                           <td className="p-3">
@@ -1461,6 +1526,7 @@ export default function AdminDashboard() {
                             </div>
                           </td>
                           <td className="p-3 text-muted-foreground">{c.planName ?? <span className="italic">None</span>}</td>
+                          <td className="p-3"><Badge variant="outline" className="text-xs capitalize">{c.signupAccountType}</Badge></td>
                           <td className="p-3">
                             <span className={`font-medium ${c.currentUses >= c.maxUses ? "text-destructive" : "text-foreground"}`}>
                               {c.currentUses}/{c.maxUses}
@@ -1540,6 +1606,16 @@ export default function AdminDashboard() {
                       <p className="text-xs text-muted-foreground">User will be subscribed to this plan for life on registration</p>
                     </div>
                     <div className="space-y-1.5">
+                      <Label>Signup Type</Label>
+                      <Select value={ltdNewSignupType} onValueChange={(v) => setLtdNewSignupType(v as "individual" | "team")}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="individual">Individual</SelectItem>
+                          <SelectItem value="team">Team (auto-creates team on signup)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
                       <Label>Notes (optional)</Label>
                       <Textarea placeholder="e.g. AppSumo batch 1" value={ltdNewNotes} onChange={e => setLtdNewNotes(e.target.value)} rows={2} data-testid="input-ltd-notes" />
                     </div>
@@ -1552,7 +1628,7 @@ export default function AdminDashboard() {
                         const resolvedPlanId = ltdNewPlanId && ltdNewPlanId !== "__none__" ? ltdNewPlanId : undefined;
                         const r = await fetch("/api/admin/ltd/codes", {
                           method: "POST", headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ code: ltdNewCode.trim(), planId: resolvedPlanId, notes: ltdNewNotes || undefined }),
+                          body: JSON.stringify({ code: ltdNewCode.trim(), planId: resolvedPlanId, signupAccountType: ltdNewSignupType, notes: ltdNewNotes || undefined }),
                         });
                         const d = await r.json();
                         if (!r.ok) throw new Error(d.message);
@@ -1625,6 +1701,16 @@ export default function AdminDashboard() {
                           </Select>
                         </div>
                         <div className="space-y-1.5">
+                          <Label>Signup Type</Label>
+                          <Select value={ltdBulkSignupType} onValueChange={(v) => setLtdBulkSignupType(v as "individual" | "team")}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="individual">Individual</SelectItem>
+                              <SelectItem value="team">Team</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
                           <Label>Notes (optional)</Label>
                           <Input value={ltdBulkNotes} onChange={e => setLtdBulkNotes(e.target.value)} placeholder="e.g. AppSumo batch 1" data-testid="input-bulk-notes" />
                         </div>
@@ -1637,7 +1723,7 @@ export default function AdminDashboard() {
                             const resolvedPlanId = ltdBulkPlanId && ltdBulkPlanId !== "__none__" ? ltdBulkPlanId : undefined;
                             const r = await fetch("/api/admin/ltd/codes/bulk", {
                               method: "POST", headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ count: parseInt(ltdBulkCount) || 1, prefix: ltdBulkPrefix || "LTD", planId: resolvedPlanId, notes: ltdBulkNotes || undefined }),
+                              body: JSON.stringify({ count: parseInt(ltdBulkCount) || 1, prefix: ltdBulkPrefix || "LTD", planId: resolvedPlanId, signupAccountType: ltdBulkSignupType, notes: ltdBulkNotes || undefined }),
                             });
                             const d = await r.json();
                             if (!r.ok) throw new Error(d.message);
@@ -2080,6 +2166,13 @@ export default function AdminDashboard() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">Team plans automatically convert individual users to team accounts upon purchase.</p>
+              </div>
+              <div className="col-span-2 flex items-center justify-between rounded-lg border border-border bg-card px-3 py-3">
+                <div>
+                  <Label>LTD Availability</Label>
+                  <p className="text-xs text-muted-foreground mt-1">Turn on only for lifetime-deal packages.</p>
+                </div>
+                <Switch checked={planForm.watch("isLtd")} onCheckedChange={(v) => planForm.setValue("isLtd", v)} />
               </div>
               <div className="col-span-2"><Separator className="my-2" /></div>
               <div className="flex items-center gap-3"><Switch checked={planForm.watch("isActive")} onCheckedChange={(v) => planForm.setValue("isActive", v)} /><Label>Active</Label></div>
