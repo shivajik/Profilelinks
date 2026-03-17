@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Lock, Mail, User, KeyRound, Infinity, Shield, Star, ChevronRight, ArrowLeft, Check, CreditCard, Zap, Crown } from "lucide-react";
+import { Loader2, Lock, Mail, User, KeyRound, Infinity, Shield, Star, ChevronRight, ArrowLeft, ArrowRight, Check, CreditCard, Zap, Crown, CheckCircle2, XCircle, Home } from "lucide-react";
 import logoPath from "/favicon.png";
 import LegalLayout from "@/components/legal-layout";
 
@@ -48,6 +48,22 @@ function loadRazorpayScript(): Promise<boolean> {
 
 function LtdPurchaseUnavailable() {
   const [, navigate] = useLocation();
+  const [countdown, setCountdown] = useState(5);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          navigate("/pricing");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [navigate]);
+
   return (
     <LegalLayout>
       <div className="min-h-[70vh] flex flex-col items-center justify-center gap-6 p-8 text-center">
@@ -60,9 +76,16 @@ function LtdPurchaseUnavailable() {
             Lifetime deal purchase is not currently open. Check back later or contact support.
           </p>
         </div>
+        <p className="text-sm text-muted-foreground">
+          Redirecting to pricing in <span className="font-bold text-primary">{countdown}</span> seconds...
+        </p>
         <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={() => navigate("/")}>Home</Button>
-          <Button onClick={() => navigate("/pricing")}>View Pricing</Button>
+          <Button variant="outline" onClick={() => navigate("/")}>
+            <Home className="h-4 w-4 mr-2" /> Home
+          </Button>
+          <Button onClick={() => navigate("/pricing")}>
+            <ArrowRight className="h-4 w-4 mr-2" /> View Pricing
+          </Button>
         </div>
       </div>
     </LegalLayout>
@@ -89,6 +112,26 @@ export default function LtdPurchasePage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [checkingUsername, setCheckingUsername] = useState(false);
+  const [usernameDebounce, setUsernameDebounce] = useState<ReturnType<typeof setTimeout> | null>(null);
+
+  const checkUsernameAvailability = (val: string) => {
+    if (usernameDebounce) clearTimeout(usernameDebounce);
+    if (val.length < 3) { setUsernameAvailable(null); return; }
+    setCheckingUsername(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/auth/username-available?username=${encodeURIComponent(val)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setUsernameAvailable(data.available);
+        }
+      } catch { /* ignore */ }
+      setCheckingUsername(false);
+    }, 500);
+    setUsernameDebounce(timer);
+  };
 
   // Payment
   const [processingPayment, setProcessingPayment] = useState(false);
@@ -374,9 +417,35 @@ export default function LtdPurchasePage() {
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">@</span>
                     <Input id="purchase-username" placeholder="yourname" value={username}
-                      onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+                      onChange={e => {
+                        const val = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, "");
+                        setUsername(val);
+                        setUsernameAvailable(null);
+                        checkUsernameAvailability(val);
+                      }}
                       required className="pl-7" />
+                    {checkingUsername && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                      </div>
+                    )}
+                    {!checkingUsername && usernameAvailable === true && username.length >= 3 && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <CheckCircle2 className="w-4 h-4 text-green-500" />
+                      </div>
+                    )}
+                    {!checkingUsername && usernameAvailable === false && username.length >= 3 && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <XCircle className="w-4 h-4 text-destructive" />
+                      </div>
+                    )}
                   </div>
+                  {!checkingUsername && usernameAvailable === true && username.length >= 3 && (
+                    <p className="text-xs text-green-600">Username is available</p>
+                  )}
+                  {!checkingUsername && usernameAvailable === false && username.length >= 3 && (
+                    <p className="text-xs text-destructive">Username is already taken</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="purchase-displayname">Display Name</Label>
@@ -404,7 +473,7 @@ export default function LtdPurchasePage() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" disabled={submitting}>
+              <Button type="submit" className="w-full" disabled={submitting || usernameAvailable === false}>
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ChevronRight className="h-4 w-4 mr-2" />}
                 Register & Proceed to Payment
               </Button>

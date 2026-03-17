@@ -2354,7 +2354,7 @@ interface SavedQRCode {
 
 function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: string }) {
   const { toast } = useToast();
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const { data: currentUser } = useQuery<any>({ queryKey: ["/api/auth/me"] });
   const isWhiteLabel = currentUser?.whiteLabelEnabled ?? false;
@@ -2403,7 +2403,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/qrcodes"] });
       toast({ title: "QR code created!" });
-      setShowCreateDialog(false);
+      setShowCreateForm(false);
       resetForm();
     },
   });
@@ -2416,7 +2416,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/qrcodes"] });
       toast({ title: "QR code updated!" });
-      setShowCreateDialog(false);
+      setShowCreateForm(false);
       resetForm();
     },
   });
@@ -2447,7 +2447,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
 
   const openCreate = () => {
     resetForm();
-    setShowCreateDialog(true);
+    setShowCreateForm(true);
   };
 
   const openEdit = (qr: SavedQRCode) => {
@@ -2460,7 +2460,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
     setScanText(qr.scanText || false);
     setCustomText(qr.label && qr.label !== "Profile QR" && qr.label !== "QR Code" ? qr.label : "");
     setEditingId(qr.id);
-    setShowCreateDialog(true);
+    setShowCreateForm(true);
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2790,6 +2790,229 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
           <Plus className="w-4 h-4" />
         </Button>
       </div>
+{showCreateForm && (
+        <Card className="border-primary/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-bold" data-testid="text-create-qr-title">{editingId ? "Edit QR Code" : "Create QR Code"}</h3>
+                <p className="text-sm text-muted-foreground">Choose a template or customize from scratch.</p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => { setShowCreateForm(false); resetForm(); }}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+
+          {/* Template Picker */}
+          <div className="space-y-3 mb-6">
+            <span className="text-xs font-medium text-muted-foreground block">Quick Templates</span>
+            <div className="flex flex-wrap gap-1.5">
+              {QR_TEMPLATE_CATEGORIES.map((cat) => (
+                <button
+                  key={cat.value}
+                  type="button"
+                  onClick={() => setTemplateCategory(cat.value)}
+                  className={`text-xs px-2.5 py-1 rounded-full transition-all border ${
+                    templateCategory === cat.value
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-muted text-muted-foreground border-transparent hover:bg-muted/80"
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2 max-h-[160px] overflow-y-auto pr-1">
+              <button
+                type="button"
+                onClick={clearTemplate}
+                className={`flex flex-col items-center gap-1 p-2 rounded-lg border-2 transition-all text-xs ${
+                  !selectedTemplateId
+                    ? "border-primary bg-primary/5"
+                    : "border-transparent hover:bg-muted"
+                }`}
+              >
+                <div className="w-10 h-10 rounded-md border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                  <Settings className="w-4 h-4 text-muted-foreground/50" />
+                </div>
+                <span className="font-medium text-muted-foreground truncate w-full text-center">Custom</span>
+              </button>
+              {filteredTemplates.map((t) => {
+                const getTemplateThumbStyle = (): React.CSSProperties => {
+                  const base: React.CSSProperties = { width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", transition: "all 0.2s ease" };
+                  if (t.style === "heart") return { ...base, background: "transparent", border: "none", color: t.color };
+                  if (t.style === "circle") return { ...base, borderRadius: "50%", border: `2px solid ${t.color}`, background: `${t.color}08`, boxShadow: `0 2px 8px ${t.color}20` };
+                  if (t.style === "full") return { ...base, borderRadius: "8px", background: t.color, color: "#fff", boxShadow: `0 3px 12px ${t.color}35` };
+                  if (t.style === "gradient") return { ...base, borderRadius: "8px", background: `linear-gradient(135deg, ${t.color}, ${t.color2})`, color: "#fff", boxShadow: `0 3px 12px ${t.color}30` };
+                  if (t.style === "elegant") return { ...base, borderRadius: "6px", border: `2px solid ${t.color}`, boxShadow: `0 0 0 3px white, 0 0 0 5px ${t.color}40, 0 2px 8px ${t.color}20` };
+                  if (t.style === "ticket") return { ...base, borderRadius: "6px", border: `2px dashed ${t.color}`, background: `${t.color}05` };
+                  if (t.style === "modern") return { ...base, borderRadius: "10px", border: `1px solid ${t.color}20`, boxShadow: `0 4px 16px ${t.color}20`, background: "white" };
+                  if (t.style === "badge") return { ...base, borderRadius: "10px", border: `2px solid ${t.color}`, background: `${t.color}06`, boxShadow: `0 2px 8px ${t.color}15` };
+                  if (t.style === "bubble") return { ...base, borderRadius: "10px", border: `2px solid ${t.color}`, background: `${t.color}06` };
+                  if (t.style === "tag") return { ...base, borderRadius: "50%", background: t.color, color: "#fff", boxShadow: `0 3px 12px ${t.color}35` };
+                  if (t.style === "stripe") return { ...base, borderRadius: "4px", borderTop: `3px solid ${t.color}`, borderBottom: `3px solid ${t.color}` };
+                  return { ...base, borderRadius: "6px", border: `2px solid ${t.color}`, background: `${t.color}08` };
+                };
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => applyTemplate(t)}
+                    className={`flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all text-xs group ${
+                      selectedTemplateId === t.id
+                        ? "border-primary bg-primary/5 shadow-sm"
+                        : "border-transparent hover:bg-muted/60 hover:shadow-sm"
+                    }`}
+                  >
+                    <div style={getTemplateThumbStyle()} className="group-hover:scale-110 transition-transform">
+                      {t.style === "heart" ? (
+                        <svg viewBox="0 0 40 40" width="40" height="40">
+                          <path d="M20 35 C10 25, 2 18, 2 12 C2 6, 7 2, 12 2 C15 2, 18 4, 20 8 C22 4, 25 2, 28 2 C33 2, 38 6, 38 12 C38 18, 30 25, 20 35Z" fill={t.color} />
+                          <text x="20" y="20" textAnchor="middle" dominantBaseline="central" fontSize="10" fill="white">{t.icon}</text>
+                        </svg>
+                      ) : t.style === "bubble" ? (
+                        <div style={{ position: "relative" }}>
+                          <span>{t.icon}</span>
+                          <div style={{ position: "absolute", bottom: "-6px", left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "4px solid transparent", borderRight: "4px solid transparent", borderTop: `5px solid ${t.color}` }} />
+                        </div>
+                      ) : t.style === "tag" ? (
+                        <div style={{ position: "relative" }}>
+                          <span>{t.icon}</span>
+                          <div style={{ position: "absolute", top: "-6px", left: "50%", transform: "translateX(-50%)", width: "8px", height: "8px", borderRadius: "50%", border: `2px solid rgba(255,255,255,0.8)` }} />
+                        </div>
+                      ) : (
+                        <span>{t.icon}</span>
+                      )}
+                    </div>
+                    <span className="font-medium text-foreground truncate w-full text-center">{t.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+            <div className="flex flex-col lg:flex-row gap-6">
+              {/* Controls */}
+              <div className="flex-1 space-y-4">
+                <div>
+                  <span className="text-xs font-medium text-muted-foreground mb-2 block">Frame Style</span>
+                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5" data-testid="tabs-qr-style">
+                    {styleOptions.map((opt) => (
+                      <button
+                        type="button"
+                        key={opt.value}
+                        onClick={() => setQrStyle(opt.value)}
+                        className={`flex flex-col items-center gap-0.5 text-xs py-2 px-1 rounded-lg transition-all border-2 ${
+                          qrStyle === opt.value
+                            ? "bg-primary/10 border-primary text-primary"
+                            : "border-transparent text-muted-foreground hover:bg-muted"
+                        }`}
+                        data-testid={`button-qr-style-${opt.value}`}
+                      >
+                        <span className="text-base leading-none">{opt.icon}</span>
+                        <span className="font-medium">{opt.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex items-center gap-3 p-3 rounded-md border">
+                    <span className="text-sm flex-1">Primary Color</span>
+                    <input type="color" value={qrColor} onChange={(e) => setQrColor(e.target.value)}
+                      className="w-8 h-8 rounded-full border-0 cursor-pointer" style={{ padding: 0, background: "transparent" }} data-testid="input-qr-color" />
+                  </div>
+                  {qrStyle === "gradient" && (
+                    <div className="flex items-center gap-3 p-3 rounded-md border">
+                      <span className="text-sm flex-1">Secondary Color</span>
+                      <input type="color" value={qrColor2} onChange={(e) => setQrColor2(e.target.value)}
+                        className="w-8 h-8 rounded-full border-0 cursor-pointer" style={{ padding: 0, background: "transparent" }} data-testid="input-qr-color2" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex items-center gap-3 p-3 rounded-md border">
+                    <span className="text-sm shrink-0">Radius</span>
+                    <Slider value={[borderRadius]} onValueChange={(val) => setBorderRadius(val[0])} min={0} max={50} step={1} className="flex-1" data-testid="slider-border-radius" />
+                  </div>
+                  <div className="flex items-center gap-3 p-3 rounded-md border">
+                    <span className="text-sm shrink-0">Width</span>
+                    <Slider value={[borderWidth]} onValueChange={(val) => setBorderWidth(val[0])} min={0} max={10} step={1} className="flex-1" data-testid="slider-border-width" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex items-center gap-3 p-3 rounded-md border">
+                    <span className="text-sm flex-1">Scan Me Text</span>
+                    <Switch checked={scanText} onCheckedChange={setScanText} data-testid="switch-scan-text" />
+                  </div>
+                  <div className="flex items-center gap-3 p-3 rounded-md border">
+                    <span className="text-sm flex-1">Logo</span>
+                    <label className="cursor-pointer" data-testid="button-upload-logo">
+                      <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+                      <div className="w-9 h-9 rounded-md border flex items-center justify-center hover:bg-muted transition-colors">
+                        <Upload className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {logoPreview && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <img src={logoPreview} alt="Logo preview" className="w-6 h-6 rounded object-cover" />
+                    <span>Logo added</span>
+                    <Button size="icon" variant="ghost" onClick={() => setLogoPreview(null)} data-testid="button-remove-logo">
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                )}
+
+                <div className="space-y-1.5 p-3 rounded-md border">
+                  <span className="text-sm">{qrStyle === "poster" ? "Poster Text (multi-line)" : "Custom Text (Name / Company)"}</span>
+                  {qrStyle === "poster" ? (
+                    <Textarea value={customText} onChange={(e) => setCustomText(e.target.value)}
+                      placeholder={"e.g.\nJohn Doe\nSoftware Engineer\n\nScan to connect!"} className="text-sm min-h-[80px]" maxLength={200} data-testid="input-qr-custom-text" />
+                  ) : (
+                    <Input value={customText} onChange={(e) => setCustomText(e.target.value)}
+                      placeholder="e.g. John Doe or Acme Inc." className="text-sm" maxLength={50} data-testid="input-qr-custom-text" />
+                  )}
+                </div>
+
+                <Button onClick={handleCreate} className="w-full" data-testid="button-save-qr">
+                  {editingId ? "Save Changes" : "Create"}
+                </Button>
+              </div>
+
+              {/* Live Preview */}
+              <div className="flex items-start justify-center lg:w-[280px] lg:sticky lg:top-4">
+                <div className="rounded-2xl bg-gradient-to-br from-muted/40 to-muted/20 p-6 flex items-center justify-center">
+                  {qrStyle === "heart" ? (
+                    renderHeartQR(
+                      <QRCodeSVG id="create-qr-preview" {...getQRProps({ style: qrStyle, color: qrColor, logoUrl: logoPreview })} size={100} data-testid="preview-qr-code" />,
+                      { color: qrColor, scanText, customText: customText.trim() || undefined }, 100
+                    )
+                  ) : qrStyle === "poster" ? (
+                    renderPosterQR(
+                      <QRCodeSVG id="create-qr-preview" {...getQRProps({ style: qrStyle, color: qrColor, logoUrl: logoPreview })} size={120} data-testid="preview-qr-code" />,
+                      { color: qrColor, scanText, customText: customText.trim() || undefined }, 120
+                    )
+                  ) : (
+                    <div style={getContainerStyle({ style: qrStyle, borderRadius, borderWidth, color: qrColor, color2: qrColor2, scanText })} data-testid="preview-qr-container">
+                      <QRCodeSVG id="create-qr-preview" {...getQRProps({ style: qrStyle, color: qrColor, logoUrl: logoPreview })} size={160} data-testid="preview-qr-code" />
+                      {renderScanText({ style: qrStyle, color: qrColor, scanText }, 160)}
+                      {renderFrameDecorations({ style: qrStyle, color: qrColor, borderWidth })}
+                      {customText.trim() && (
+                        <div className="text-center font-bold mt-1" style={{ color: qrColor, fontSize: "10px" }}>{customText.trim()}</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {qrLoading ? (
         <div className="space-y-4">
@@ -2881,284 +3104,6 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
         ))}
       </div>
 
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="sm:max-w-[700px]">
-          <DialogHeader>
-            <DialogTitle data-testid="text-create-qr-title">{editingId ? "Edit QR Code" : "Create QR Code"}</DialogTitle>
-            <p className="text-sm text-muted-foreground">Choose a template or customize from scratch.</p>
-          </DialogHeader>
-
-          {/* Template Picker */}
-          <div className="space-y-3">
-            <span className="text-xs font-medium text-muted-foreground block">Quick Templates</span>
-            <div className="flex flex-wrap gap-1.5">
-              {QR_TEMPLATE_CATEGORIES.map((cat) => (
-                <button
-                  key={cat.value}
-                  type="button"
-                  onClick={() => setTemplateCategory(cat.value)}
-                  className={`text-xs px-2.5 py-1 rounded-full transition-all border ${
-                    templateCategory === cat.value
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-muted text-muted-foreground border-transparent hover:bg-muted/80"
-                  }`}
-                >
-                  {cat.label}
-                </button>
-              ))}
-            </div>
-            <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[140px] overflow-y-auto pr-1">
-              <button
-                type="button"
-                onClick={clearTemplate}
-                className={`flex flex-col items-center gap-1 p-2 rounded-lg border-2 transition-all text-xs ${
-                  !selectedTemplateId
-                    ? "border-primary bg-primary/5"
-                    : "border-transparent hover:bg-muted"
-                }`}
-              >
-                <div className="w-10 h-10 rounded-md border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
-                  <Settings className="w-4 h-4 text-muted-foreground/50" />
-                </div>
-                <span className="font-medium text-muted-foreground truncate w-full text-center">Custom</span>
-              </button>
-              {filteredTemplates.map((t) => {
-                const getTemplateThumbStyle = (): React.CSSProperties => {
-                  const base: React.CSSProperties = { width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", transition: "all 0.2s ease" };
-                  if (t.style === "heart") return { ...base, background: "transparent", border: "none", color: t.color };
-                  if (t.style === "circle") return { ...base, borderRadius: "50%", border: `2px solid ${t.color}`, background: `${t.color}08`, boxShadow: `0 2px 8px ${t.color}20` };
-                  if (t.style === "full") return { ...base, borderRadius: "8px", background: t.color, color: "#fff", boxShadow: `0 3px 12px ${t.color}35` };
-                  if (t.style === "gradient") return { ...base, borderRadius: "8px", background: `linear-gradient(135deg, ${t.color}, ${t.color2})`, color: "#fff", boxShadow: `0 3px 12px ${t.color}30` };
-                  if (t.style === "elegant") return { ...base, borderRadius: "6px", border: `2px solid ${t.color}`, boxShadow: `0 0 0 3px white, 0 0 0 5px ${t.color}40, 0 2px 8px ${t.color}20` };
-                  if (t.style === "ticket") return { ...base, borderRadius: "6px", border: `2px dashed ${t.color}`, background: `${t.color}05` };
-                  if (t.style === "modern") return { ...base, borderRadius: "10px", border: `1px solid ${t.color}20`, boxShadow: `0 4px 16px ${t.color}20`, background: "white" };
-                  if (t.style === "badge") return { ...base, borderRadius: "10px", border: `2px solid ${t.color}`, background: `${t.color}06`, boxShadow: `0 2px 8px ${t.color}15` };
-                  if (t.style === "bubble") return { ...base, borderRadius: "10px", border: `2px solid ${t.color}`, background: `${t.color}06` };
-                  if (t.style === "tag") return { ...base, borderRadius: "50%", background: t.color, color: "#fff", boxShadow: `0 3px 12px ${t.color}35` };
-                  if (t.style === "stripe") return { ...base, borderRadius: "4px", borderTop: `3px solid ${t.color}`, borderBottom: `3px solid ${t.color}` };
-                  return { ...base, borderRadius: "6px", border: `2px solid ${t.color}`, background: `${t.color}08` };
-                };
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => applyTemplate(t)}
-                    className={`flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all text-xs group ${
-                      selectedTemplateId === t.id
-                        ? "border-primary bg-primary/5 shadow-sm"
-                        : "border-transparent hover:bg-muted/60 hover:shadow-sm"
-                    }`}
-                  >
-                    <div style={getTemplateThumbStyle()} className="group-hover:scale-110 transition-transform">
-                      {t.style === "heart" ? (
-                        <svg viewBox="0 0 40 40" width="40" height="40">
-                          <path d="M20 35 C10 25, 2 18, 2 12 C2 6, 7 2, 12 2 C15 2, 18 4, 20 8 C22 4, 25 2, 28 2 C33 2, 38 6, 38 12 C38 18, 30 25, 20 35Z" fill={t.color} />
-                          <text x="20" y="20" textAnchor="middle" dominantBaseline="central" fontSize="10" fill="white">{t.icon}</text>
-                        </svg>
-                      ) : t.style === "bubble" ? (
-                        <div style={{ position: "relative" }}>
-                          <span>{t.icon}</span>
-                          <div style={{ position: "absolute", bottom: "-6px", left: "50%", transform: "translateX(-50)", width: 0, height: 0, borderLeft: "4px solid transparent", borderRight: "4px solid transparent", borderTop: `5px solid ${t.color}` }} />
-                        </div>
-                      ) : t.style === "tag" ? (
-                        <div style={{ position: "relative" }}>
-                          <span>{t.icon}</span>
-                          <div style={{ position: "absolute", top: "-6px", left: "50%", transform: "translateX(-50%)", width: "8px", height: "8px", borderRadius: "50%", border: `2px solid rgba(255,255,255,0.8)` }} />
-                        </div>
-                      ) : (
-                        <span>{t.icon}</span>
-                      )}
-                    </div>
-                    <span className="font-medium text-foreground truncate w-full text-center">{t.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-6 mt-2">
-            <div className="flex-1 space-y-5 max-h-[45vh] overflow-y-auto pr-1">
-              <div>
-                <span className="text-xs font-medium text-muted-foreground mb-2 block">Frame Style</span>
-                <div className="grid grid-cols-3 gap-1.5" data-testid="tabs-qr-style">
-                  {styleOptions.map((opt) => (
-                    <button
-                      type="button"
-                      key={opt.value}
-                      onClick={() => setQrStyle(opt.value)}
-                      className={`flex flex-col items-center gap-0.5 text-xs py-2 px-1 rounded-lg transition-all border-2 ${
-                        qrStyle === opt.value
-                          ? "bg-primary/10 border-primary text-primary"
-                          : "border-transparent text-muted-foreground hover:bg-muted"
-                      }`}
-                      data-testid={`button-qr-style-${opt.value}`}
-                    >
-                      <span className="text-base leading-none">{opt.icon}</span>
-                      <span className="font-medium">{opt.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 p-3 rounded-md border">
-                <span className="text-sm flex-1">Primary Color</span>
-                <input
-                  type="color"
-                  value={qrColor}
-                  onChange={(e) => setQrColor(e.target.value)}
-                  className="w-8 h-8 rounded-full border-0 cursor-pointer"
-                  style={{ padding: 0, background: "transparent" }}
-                  data-testid="input-qr-color"
-                />
-              </div>
-
-              {qrStyle === "gradient" && (
-                <div className="flex items-center gap-3 p-3 rounded-md border">
-                  <span className="text-sm flex-1">Secondary Color</span>
-                  <input
-                    type="color"
-                    value={qrColor2}
-                    onChange={(e) => setQrColor2(e.target.value)}
-                    className="w-8 h-8 rounded-full border-0 cursor-pointer"
-                    style={{ padding: 0, background: "transparent" }}
-                    data-testid="input-qr-color2"
-                  />
-                </div>
-              )}
-
-              <div className="flex items-center gap-3 p-3 rounded-md border">
-                <span className="text-sm shrink-0 w-28">Border Radius</span>
-                <Slider
-                  value={[borderRadius]}
-                  onValueChange={(val) => setBorderRadius(val[0])}
-                  min={0}
-                  max={50}
-                  step={1}
-                  className="flex-1"
-                  data-testid="slider-border-radius"
-                />
-              </div>
-
-              <div className="flex items-center gap-3 p-3 rounded-md border">
-                <span className="text-sm shrink-0 w-28">Border Width</span>
-                <Slider
-                  value={[borderWidth]}
-                  onValueChange={(val) => setBorderWidth(val[0])}
-                  min={0}
-                  max={10}
-                  step={1}
-                  className="flex-1"
-                  data-testid="slider-border-width"
-                />
-              </div>
-
-              <div className="flex items-center gap-3 p-3 rounded-md border">
-                <span className="text-sm flex-1">Scan Me Text</span>
-                <Switch checked={scanText} onCheckedChange={setScanText} data-testid="switch-scan-text" />
-              </div>
-
-              <div className="space-y-1.5 p-3 rounded-md border">
-                <span className="text-sm">{qrStyle === "poster" ? "Poster Text (multi-line)" : "Custom Text (Name / Company)"}</span>
-                {qrStyle === "poster" ? (
-                  <Textarea
-                    value={customText}
-                    onChange={(e) => setCustomText(e.target.value)}
-                    placeholder={"e.g.\nJohn Doe\nSoftware Engineer\n\nScan to connect!"}
-                    className="text-sm min-h-[80px]"
-                    maxLength={200}
-                    data-testid="input-qr-custom-text"
-                  />
-                ) : (
-                  <Input
-                    value={customText}
-                    onChange={(e) => setCustomText(e.target.value)}
-                    placeholder="e.g. John Doe or Acme Inc."
-                    className="text-sm"
-                    maxLength={50}
-                    data-testid="input-qr-custom-text"
-                  />
-                )}
-              </div>
-
-              <div className="flex items-center gap-3 p-3 rounded-md border">
-                <span className="text-sm flex-1">Logo</span>
-                <label className="cursor-pointer" data-testid="button-upload-logo">
-                  <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
-                  <div className="w-9 h-9 rounded-md border flex items-center justify-center hover-elevate">
-                    <Upload className="w-4 h-4 text-muted-foreground" />
-                  </div>
-                </label>
-              </div>
-
-              {logoPreview && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <img src={logoPreview} alt="Logo preview" className="w-6 h-6 rounded object-cover" />
-                  <span>Logo added</span>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => setLogoPreview(null)}
-                    data-testid="button-remove-logo"
-                  >
-                    <X className="w-3 h-3" />
-                  </Button>
-                </div>
-              )}
-
-              <Button onClick={handleCreate} className="w-full" data-testid="button-save-qr">
-                {editingId ? "Save Changes" : "Create"}
-              </Button>
-            </div>
-
-            <div className="flex items-center justify-center sm:w-[240px]">
-              <div className="rounded-2xl bg-gradient-to-br from-muted/40 to-muted/20 p-6 flex items-center justify-center">
-                {qrStyle === "heart" ? (
-                  renderHeartQR(
-                    <QRCodeSVG
-                      id="create-qr-preview"
-                      {...getQRProps({ style: qrStyle, color: qrColor, logoUrl: logoPreview })}
-                      size={100}
-                      data-testid="preview-qr-code"
-                    />,
-                    { color: qrColor, scanText, customText: customText.trim() || undefined },
-                    100
-                  )
-                ) : qrStyle === "poster" ? (
-                  renderPosterQR(
-                    <QRCodeSVG
-                      id="create-qr-preview"
-                      {...getQRProps({ style: qrStyle, color: qrColor, logoUrl: logoPreview })}
-                      size={120}
-                      data-testid="preview-qr-code"
-                    />,
-                    { color: qrColor, scanText, customText: customText.trim() || undefined },
-                    120
-                  )
-                ) : (
-                  <div
-                    style={getContainerStyle({ style: qrStyle, borderRadius, borderWidth, color: qrColor, color2: qrColor2, scanText })}
-                    data-testid="preview-qr-container"
-                  >
-                    <QRCodeSVG
-                      id="create-qr-preview"
-                      {...getQRProps({ style: qrStyle, color: qrColor, logoUrl: logoPreview })}
-                      size={160}
-                      data-testid="preview-qr-code"
-                    />
-                    {renderScanText({ style: qrStyle, color: qrColor, scanText }, 160)}
-                    {renderFrameDecorations({ style: qrStyle, color: qrColor, borderWidth })}
-                    {customText.trim() && (
-                      <div className="text-center font-bold mt-1" style={{ color: qrColor, fontSize: "10px" }}>
-                        {customText.trim()}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
@@ -6709,256 +6654,275 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
   };
 
   const isValidUrl = url.trim().length > 0;
+  const qrValue = url.startsWith("http") ? url : `https://${url}`;
+
+  // Helper to render QR preview (reused for live preview and download)
+  const renderQRPreview = (size: number, id: string) => {
+    const qrProps = {
+      id,
+      value: qrValue || "https://example.com",
+      size,
+      level: "H" as const,
+      fgColor: qrStyle === "full" ? "#ffffff" : qrColor,
+      bgColor: "transparent",
+      imageSettings: logoPreview ? { src: logoPreview, height: Math.round(size * 0.2), width: Math.round(size * 0.2), excavate: true } : undefined,
+    };
+
+    if (qrStyle === "heart") {
+      return renderUrlHeartQR(<QRCodeSVG {...qrProps} />, size);
+    }
+    if (qrStyle === "poster") {
+      return renderUrlPosterQR(<QRCodeSVG {...qrProps} />, size);
+    }
+    return (
+      <div style={getContainerStyle()} data-qr-container>
+        <QRCodeSVG {...qrProps} />
+        {showScanText && (
+          <div className="text-center font-extrabold tracking-[0.15em] uppercase mt-2" style={{ color: qrStyle === "tag" ? "#ffffff" : qrColor, fontSize: `${Math.max(size * 0.06, 10)}px` }}>
+            SCAN ME
+          </div>
+        )}
+        {qrStyle === "bubble" && (
+          <div style={{ position: "absolute", bottom: "-14px", left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "14px solid transparent", borderRight: "14px solid transparent", borderTop: `14px solid ${qrColor}`, filter: `drop-shadow(0 2px 4px ${qrColor}30)` }} />
+        )}
+        {qrStyle === "tag" && (
+          <div style={{ position: "absolute", top: "-12px", left: "50%", transform: "translateX(-50%)", width: "20px", height: "20px", borderRadius: "50%", border: `3px solid ${qrColor}`, background: "white", boxShadow: `0 2px 8px ${qrColor}30` }} />
+        )}
+        {customText.trim() && (
+          <div className="text-center font-bold mt-1" style={{ color: qrStyle === "tag" ? "#ffffff" : qrColor, fontSize: `${Math.max(size * 0.055, 9)}px` }}>
+            {customText.trim()}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="p-4 space-y-6 max-w-2xl mx-auto">
+    <div className="p-4 space-y-6">
       <SectionHeader title="QR Generator" />
       <div className="text-center space-y-1">
         <h2 className="text-lg font-bold">URL QR Code Generator</h2>
         <p className="text-sm text-muted-foreground">Enter any website link and generate a branded QR code instantly.</p>
       </div>
 
-      <Card>
-        <CardContent className="p-4 space-y-4">
-          <div className="space-y-2">
-            <Label>Website URL</Label>
-            <Input
-              value={url}
-              onChange={(e) => { setUrl(e.target.value); setGenerated(false); }}
-              placeholder="https://example.com"
-              data-testid="input-qr-url"
-            />
-          </div>
-
-          {/* Template Picker for URL QR */}
-          <div className="space-y-2">
-            <Label className="text-xs">Quick Templates</Label>
-            <div className="flex flex-wrap gap-1 mb-2">
-              {QR_TEMPLATE_CATEGORIES.map((cat) => (
-                <button
-                  key={cat.value}
-                  type="button"
-                  onClick={() => setTemplateCategory(cat.value)}
-                  className={`text-[10px] px-2 py-0.5 rounded-full transition-all border ${
-                    templateCategory === cat.value
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-muted text-muted-foreground border-transparent hover:bg-muted/80"
-                  }`}
-                >
-                  {cat.label}
-                </button>
-              ))}
-            </div>
-            <div className="grid grid-cols-5 gap-1.5 max-h-[120px] overflow-y-auto">
-              {filteredUrlTemplates.map((t) => {
-                const getThumbStyle = (): React.CSSProperties => {
-                  const base: React.CSSProperties = { width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", transition: "all 0.2s ease" };
-                  if (t.style === "heart") return { ...base, background: "transparent", border: "none", color: t.color };
-                  if (t.style === "circle") return { ...base, borderRadius: "50%", border: `2px solid ${t.color}`, background: `${t.color}08`, boxShadow: `0 2px 6px ${t.color}20` };
-                  if (t.style === "full") return { ...base, borderRadius: "6px", background: t.color, color: "#fff", boxShadow: `0 2px 8px ${t.color}35` };
-                  if (t.style === "gradient") return { ...base, borderRadius: "6px", background: `linear-gradient(135deg, ${t.color}, ${t.color2})`, color: "#fff", boxShadow: `0 2px 8px ${t.color}30` };
-                  if (t.style === "elegant") return { ...base, borderRadius: "4px", border: `2px solid ${t.color}`, boxShadow: `0 0 0 2px white, 0 0 0 4px ${t.color}40` };
-                  if (t.style === "ticket") return { ...base, borderRadius: "4px", border: `2px dashed ${t.color}` };
-                  if (t.style === "modern") return { ...base, borderRadius: "8px", border: `1px solid ${t.color}20`, boxShadow: `0 3px 12px ${t.color}20` };
-                  if (t.style === "tag") return { ...base, borderRadius: "50%", background: t.color, color: "#fff", boxShadow: `0 2px 8px ${t.color}35` };
-                  return { ...base, borderRadius: "4px", border: `2px solid ${t.color}`, background: `${t.color}08` };
-                };
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => applyTemplate(t)}
-                    className={`flex flex-col items-center gap-0.5 p-1.5 rounded-xl border-2 transition-all text-[10px] group ${
-                      selectedTemplateId === t.id
-                        ? "border-primary bg-primary/5 shadow-sm"
-                        : "border-transparent hover:bg-muted/60"
-                    }`}
-                  >
-                    <div style={getThumbStyle()} className="group-hover:scale-110 transition-transform">
-                      {t.style === "heart" ? (
-                        <svg viewBox="0 0 32 32" width="32" height="32">
-                          <path d="M16 28 C8 20, 2 15, 2 10 C2 5, 6 2, 10 2 C12 2, 14 3, 16 6 C18 3, 20 2, 22 2 C26 2, 30 5, 30 10 C30 15, 24 20, 16 28Z" fill={t.color} />
-                          <text x="16" y="15" textAnchor="middle" dominantBaseline="central" fontSize="8" fill="white">{t.icon}</text>
-                        </svg>
-                      ) : (
-                        <span>{t.icon}</span>
-                      )}
-                    </div>
-                    <span className="font-medium text-foreground truncate w-full text-center leading-tight">{t.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-xs">Frame Style</Label>
-            <Select value={qrStyle} onValueChange={(v: any) => setQrStyle(v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {urlStyleOptions.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-xs">Primary Color</Label>
-              <div className="flex items-center gap-2">
-                <input type="color" value={qrColor} onChange={(e) => setQrColor(e.target.value)} className="w-8 h-8 rounded cursor-pointer border-0" />
-                <Input value={qrColor} onChange={(e) => setQrColor(e.target.value)} className="font-mono text-xs flex-1" />
-              </div>
-            </div>
-            {qrStyle === "gradient" ? (
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Left: Controls */}
+        <div className="flex-1 space-y-4">
+          <Card>
+            <CardContent className="p-4 space-y-4">
               <div className="space-y-2">
-                <Label className="text-xs">Secondary Color</Label>
-                <div className="flex items-center gap-2">
-                  <input type="color" value={qrColor2} onChange={(e) => setQrColor2(e.target.value)} className="w-8 h-8 rounded cursor-pointer border-0" />
-                  <Input value={qrColor2} onChange={(e) => setQrColor2(e.target.value)} className="font-mono text-xs flex-1" />
-                </div>
+                <Label>Website URL</Label>
+                <Input
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://example.com"
+                  data-testid="input-qr-url"
+                />
               </div>
-            ) : (
-              <div className="space-y-2">
-                <Label className="text-xs">Border Width: {borderWidth}px</Label>
-                <Slider value={[borderWidth]} onValueChange={([v]) => setBorderWidth(v)} min={0} max={8} step={1} />
-              </div>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-xs">Border Radius: {borderRadius}px</Label>
-              <Slider value={[borderRadius]} onValueChange={([v]) => setBorderRadius(v)} min={0} max={30} step={1} />
-            </div>
-            <div className="flex items-center gap-2 pt-5">
-              <Switch checked={scanText} onCheckedChange={setScanText} data-testid="switch-url-scan-text" />
-              <Label className="text-xs">Scan Me Text</Label>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label className="text-xs">Logo (optional)</Label>
-            <div className="flex items-center gap-3">
-              {logoPreview ? (
-                <img src={logoPreview} alt="Logo" className="w-10 h-10 rounded object-cover border" />
-              ) : (
-                <div className="w-10 h-10 rounded bg-muted flex items-center justify-center border">
-                  <ImageIcon className="w-4 h-4 text-muted-foreground" />
-                </div>
-              )}
-              <input type="file" accept="image/*" className="hidden" id="url-qr-logo" onChange={handleLogoUpload} />
-              <Button variant="outline" size="sm" onClick={() => document.getElementById("url-qr-logo")?.click()}>
-                <Upload className="w-3.5 h-3.5 mr-1" /> Upload
-              </Button>
-              {logoPreview && <Button variant="ghost" size="sm" onClick={() => setLogoPreview(null)}>Remove</Button>}
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label className="text-xs">{qrStyle === "poster" ? "Poster Text (multi-line)" : "Custom Text (Name / Company)"}</Label>
-            {qrStyle === "poster" ? (
-              <Textarea
-                value={customText}
-                onChange={(e) => setCustomText(e.target.value)}
-                placeholder={"e.g.\nJohn Doe\nSoftware Engineer\n\nScan to connect!"}
-                className="text-sm min-h-[80px]"
-                maxLength={200}
-                data-testid="input-url-qr-custom-text"
-              />
-            ) : (
-              <Input
-                value={customText}
-                onChange={(e) => setCustomText(e.target.value)}
-                placeholder="e.g. John Doe or Acme Inc."
-                maxLength={50}
-                data-testid="input-url-qr-custom-text"
-              />
-            )}
-          </div>
-          <Button className="w-full" disabled={!isValidUrl} onClick={() => {
-            setGenerated(true);
-            setTimeout(() => {
-              document.getElementById("url-qr-result")?.scrollIntoView({ behavior: "smooth", block: "center" });
-            }, 100);
-          }}>
-            Generate QR Code
-          </Button>
-        </CardContent>
-      </Card>
 
-      {generated && isValidUrl && (
-        <Card id="url-qr-result">
-          <CardContent className="p-6 flex flex-col items-center gap-4">
-            <div id="url-qr-download-wrap" style={{ display: "inline-block", padding: "16px", background: "#ffffff" }}>
-              {qrStyle === "heart" ? (
-                renderUrlHeartQR(
-                  <QRCodeSVG
-                    id="url-qr-code"
-                    value={url.startsWith("http") ? url : `https://${url}`}
-                    size={120}
-                    level="H"
-                    fgColor={qrColor}
-                    bgColor="transparent"
-                    imageSettings={logoPreview ? { src: logoPreview, height: 30, width: 30, excavate: true } : undefined}
-                  />,
-                  120
-                )
-              ) : qrStyle === "poster" ? (
-                renderUrlPosterQR(
-                  <QRCodeSVG
-                    id="url-qr-code"
-                    value={url.startsWith("http") ? url : `https://${url}`}
-                    size={150}
-                    level="H"
-                    fgColor={qrColor}
-                    bgColor="transparent"
-                    imageSettings={logoPreview ? { src: logoPreview, height: 30, width: 30, excavate: true } : undefined}
-                  />,
-                  150
-                )
-              ) : (
-                <div style={getContainerStyle()} data-qr-container>
-                  <QRCodeSVG
-                    id="url-qr-code"
-                    value={url.startsWith("http") ? url : `https://${url}`}
-                    size={180}
-                    level="H"
-                    fgColor={qrStyle === "full" ? "#ffffff" : qrColor}
-                    bgColor="transparent"
-                    imageSettings={logoPreview ? { src: logoPreview, height: 30, width: 30, excavate: true } : undefined}
-                  />
-                  {showScanText && (
-                    <div className="text-center font-extrabold tracking-[0.15em] uppercase mt-2" style={{ color: qrStyle === "tag" ? "#ffffff" : qrColor, fontSize: "12px" }}>
-                      SCAN ME
-                    </div>
-                  )}
-                  {qrStyle === "bubble" && (
-                    <div style={{ position: "absolute", bottom: "-14px", left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "14px solid transparent", borderRight: "14px solid transparent", borderTop: `14px solid ${qrColor}`, filter: `drop-shadow(0 2px 4px ${qrColor}30)` }} />
-                  )}
-                  {qrStyle === "tag" && (
-                    <div style={{ position: "absolute", top: "-12px", left: "50%", transform: "translateX(-50%)", width: "20px", height: "20px", borderRadius: "50%", border: `3px solid ${qrColor}`, background: "white", boxShadow: `0 2px 8px ${qrColor}30` }} />
-                  )}
-                  {customText.trim() && (
-                    <div className="text-center font-bold mt-1" style={{ color: qrStyle === "tag" ? "#ffffff" : qrColor, fontSize: "11px" }}>
-                      {customText.trim()}
-                    </div>
-                  )}
+              {/* Template Picker */}
+              <div className="space-y-2">
+                <Label className="text-xs">Quick Templates</Label>
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {QR_TEMPLATE_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat.value}
+                      type="button"
+                      onClick={() => setTemplateCategory(cat.value)}
+                      className={`text-[10px] px-2 py-0.5 rounded-full transition-all border ${
+                        templateCategory === cat.value
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-muted text-muted-foreground border-transparent hover:bg-muted/80"
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
                 </div>
-              )}
-              {!isWhiteLabel && <p style={{ color: "#9ca3af", fontSize: "8px", textAlign: "center", marginTop: "6px" }}>Powered by VisiCardly</p>}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={downloadQR}>
-                <Download className="w-4 h-4 mr-1" /> Download
-              </Button>
-              <Button variant="outline" onClick={() => { navigator.clipboard.writeText(url); toast({ title: "URL copied!" }); }}>
-                <Copy className="w-4 h-4 mr-1" /> Copy URL
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                <div className="grid grid-cols-5 sm:grid-cols-6 gap-1.5 max-h-[120px] overflow-y-auto">
+                  {filteredUrlTemplates.map((t) => {
+                    const getThumbStyle = (): React.CSSProperties => {
+                      const base: React.CSSProperties = { width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", transition: "all 0.2s ease" };
+                      if (t.style === "heart") return { ...base, background: "transparent", border: "none", color: t.color };
+                      if (t.style === "circle") return { ...base, borderRadius: "50%", border: `2px solid ${t.color}`, background: `${t.color}08`, boxShadow: `0 2px 6px ${t.color}20` };
+                      if (t.style === "full") return { ...base, borderRadius: "6px", background: t.color, color: "#fff", boxShadow: `0 2px 8px ${t.color}35` };
+                      if (t.style === "gradient") return { ...base, borderRadius: "6px", background: `linear-gradient(135deg, ${t.color}, ${t.color2})`, color: "#fff", boxShadow: `0 2px 8px ${t.color}30` };
+                      if (t.style === "elegant") return { ...base, borderRadius: "4px", border: `2px solid ${t.color}`, boxShadow: `0 0 0 2px white, 0 0 0 4px ${t.color}40` };
+                      if (t.style === "ticket") return { ...base, borderRadius: "4px", border: `2px dashed ${t.color}` };
+                      if (t.style === "modern") return { ...base, borderRadius: "8px", border: `1px solid ${t.color}20`, boxShadow: `0 3px 12px ${t.color}20` };
+                      if (t.style === "tag") return { ...base, borderRadius: "50%", background: t.color, color: "#fff", boxShadow: `0 2px 8px ${t.color}35` };
+                      return { ...base, borderRadius: "4px", border: `2px solid ${t.color}`, background: `${t.color}08` };
+                    };
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => applyTemplate(t)}
+                        className={`flex flex-col items-center gap-0.5 p-1.5 rounded-xl border-2 transition-all text-[10px] group ${
+                          selectedTemplateId === t.id
+                            ? "border-primary bg-primary/5 shadow-sm"
+                            : "border-transparent hover:bg-muted/60"
+                        }`}
+                      >
+                        <div style={getThumbStyle()} className="group-hover:scale-110 transition-transform">
+                          {t.style === "heart" ? (
+                            <svg viewBox="0 0 32 32" width="32" height="32">
+                              <path d="M16 28 C8 20, 2 15, 2 10 C2 5, 6 2, 10 2 C12 2, 14 3, 16 6 C18 3, 20 2, 22 2 C26 2, 30 5, 30 10 C30 15, 24 20, 16 28Z" fill={t.color} />
+                              <text x="16" y="15" textAnchor="middle" dominantBaseline="central" fontSize="8" fill="white">{t.icon}</text>
+                            </svg>
+                          ) : (
+                            <span>{t.icon}</span>
+                          )}
+                        </div>
+                        <span className="font-medium text-foreground truncate w-full text-center leading-tight">{t.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Visual Frame Style Picker */}
+              <div className="space-y-2">
+                <Label className="text-xs">Frame Style</Label>
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5">
+                  {urlStyleOptions.map((opt) => {
+                    const getStyleThumb = (): React.CSSProperties => {
+                      const base: React.CSSProperties = { width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s ease" };
+                      const c = qrColor;
+                      switch (opt.value) {
+                        case "circle": return { ...base, borderRadius: "50%", border: `2px solid ${c}`, background: `${c}10` };
+                        case "square": return { ...base, borderRadius: "4px", border: `2px solid ${c}`, background: `${c}10` };
+                        case "stripe": return { ...base, borderRadius: "4px", borderTop: `3px solid ${c}`, borderBottom: `3px solid ${c}` };
+                        case "full": return { ...base, borderRadius: "6px", background: c };
+                        case "gradient": return { ...base, borderRadius: "6px", background: `linear-gradient(135deg, ${c}, ${qrColor2})` };
+                        case "elegant": return { ...base, borderRadius: "4px", border: `2px solid ${c}`, boxShadow: `0 0 0 2px white, 0 0 0 3px ${c}60` };
+                        case "badge": return { ...base, borderRadius: "8px", border: `2px solid ${c}`, background: `${c}08` };
+                        case "modern": return { ...base, borderRadius: "8px", boxShadow: `0 3px 12px ${c}30`, border: `1px solid ${c}20` };
+                        case "ticket": return { ...base, borderRadius: "6px", border: `2px dashed ${c}` };
+                        case "heart": return { ...base, background: "transparent" };
+                        case "bubble": return { ...base, borderRadius: "8px", border: `2px solid ${c}`, background: `${c}08` };
+                        case "tag": return { ...base, borderRadius: "50%", background: c };
+                        case "poster": return { ...base, borderRadius: "4px", border: `2px solid ${c}`, background: `linear-gradient(90deg, ${c}10, white)` };
+                        default: return base;
+                      }
+                    };
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setQrStyle(opt.value as any)}
+                        className={`flex flex-col items-center gap-0.5 text-[10px] py-1.5 px-1 rounded-lg transition-all border-2 ${
+                          qrStyle === opt.value
+                            ? "bg-primary/10 border-primary text-primary"
+                            : "border-transparent text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        <div style={getStyleThumb()}>
+                          {opt.value === "heart" ? (
+                            <svg viewBox="0 0 24 24" width="20" height="20">
+                              <path d="M12 21 C6 15, 2 11, 2 7 C2 4, 4 2, 7 2 C9 2, 11 3, 12 5 C13 3, 15 2, 17 2 C20 2, 22 4, 22 7 C22 11, 18 15, 12 21Z" fill={qrColor} />
+                            </svg>
+                          ) : (
+                            <div style={{ width: 12, height: 12, background: opt.value === "full" || opt.value === "tag" ? "white" : qrColor, borderRadius: 2, opacity: opt.value === "full" || opt.value === "tag" ? 0.9 : 0.4 }} />
+                          )}
+                        </div>
+                        <span className="font-medium">{opt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs">Primary Color</Label>
+                  <div className="flex items-center gap-2">
+                    <input type="color" value={qrColor} onChange={(e) => setQrColor(e.target.value)} className="w-8 h-8 rounded cursor-pointer border-0" />
+                    <Input value={qrColor} onChange={(e) => setQrColor(e.target.value)} className="font-mono text-xs flex-1" />
+                  </div>
+                </div>
+                {qrStyle === "gradient" ? (
+                  <div className="space-y-2">
+                    <Label className="text-xs">Secondary Color</Label>
+                    <div className="flex items-center gap-2">
+                      <input type="color" value={qrColor2} onChange={(e) => setQrColor2(e.target.value)} className="w-8 h-8 rounded cursor-pointer border-0" />
+                      <Input value={qrColor2} onChange={(e) => setQrColor2(e.target.value)} className="font-mono text-xs flex-1" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label className="text-xs">Border Width: {borderWidth}px</Label>
+                    <Slider value={[borderWidth]} onValueChange={([v]) => setBorderWidth(v)} min={0} max={8} step={1} />
+                  </div>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs">Border Radius: {borderRadius}px</Label>
+                  <Slider value={[borderRadius]} onValueChange={([v]) => setBorderRadius(v)} min={0} max={30} step={1} />
+                </div>
+                <div className="flex items-center gap-2 pt-5">
+                  <Switch checked={scanText} onCheckedChange={setScanText} data-testid="switch-url-scan-text" />
+                  <Label className="text-xs">Scan Me Text</Label>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">Logo (optional)</Label>
+                <div className="flex items-center gap-3">
+                  {logoPreview ? (
+                    <img src={logoPreview} alt="Logo" className="w-10 h-10 rounded object-cover border" />
+                  ) : (
+                    <div className="w-10 h-10 rounded bg-muted flex items-center justify-center border">
+                      <ImageIcon className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                  )}
+                  <input type="file" accept="image/*" className="hidden" id="url-qr-logo" onChange={handleLogoUpload} />
+                  <Button variant="outline" size="sm" onClick={() => document.getElementById("url-qr-logo")?.click()}>
+                    <Upload className="w-3.5 h-3.5 mr-1" /> Upload
+                  </Button>
+                  {logoPreview && <Button variant="ghost" size="sm" onClick={() => setLogoPreview(null)}>Remove</Button>}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">{qrStyle === "poster" ? "Poster Text (multi-line)" : "Custom Text (Name / Company)"}</Label>
+                {qrStyle === "poster" ? (
+                  <Textarea value={customText} onChange={(e) => setCustomText(e.target.value)}
+                    placeholder={"e.g.\nJohn Doe\nSoftware Engineer\n\nScan to connect!"} className="text-sm min-h-[80px]" maxLength={200} data-testid="input-url-qr-custom-text" />
+                ) : (
+                  <Input value={customText} onChange={(e) => setCustomText(e.target.value)}
+                    placeholder="e.g. John Doe or Acme Inc." maxLength={50} data-testid="input-url-qr-custom-text" />
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right: Live Preview */}
+        <div className="lg:w-[320px] lg:sticky lg:top-4 self-start">
+          <Card>
+            <CardContent className="p-6 flex flex-col items-center gap-4">
+              <h3 className="text-sm font-semibold text-muted-foreground">Live Preview</h3>
+              <div id="url-qr-download-wrap" style={{ display: "inline-block", padding: "16px", background: "#ffffff" }}>
+                {renderQRPreview(160, "url-qr-code")}
+                {!isWhiteLabel && <p style={{ color: "#9ca3af", fontSize: "8px", textAlign: "center", marginTop: "6px" }}>Powered by VisiCardly</p>}
+              </div>
+              <div className="flex items-center gap-2 w-full">
+                <Button variant="outline" className="flex-1" onClick={downloadQR} disabled={!isValidUrl}>
+                  <Download className="w-4 h-4 mr-1" /> Download
+                </Button>
+                <Button variant="outline" className="flex-1" disabled={!isValidUrl} onClick={() => { navigator.clipboard.writeText(url); toast({ title: "URL copied!" }); }}>
+                  <Copy className="w-4 h-4 mr-1" /> Copy URL
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
+
+
 
 function ContactsPanel({ teamId, userId, isTeamMember = false }: { teamId: string; userId: string; isTeamMember?: boolean }) {
   const { toast } = useToast();

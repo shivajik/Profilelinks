@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle2, Lock, Mail, User, KeyRound, Zap, Infinity, Shield, Star, ChevronRight, ArrowRight, Home } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Lock, Mail, User, KeyRound, Zap, Infinity, Shield, Star, ChevronRight, ArrowRight, Home } from "lucide-react";
 import logoPath from "/favicon.png";
 import LegalLayout from "@/components/legal-layout";
 
@@ -78,6 +78,26 @@ export default function LtdRegisterPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [checkingUsername, setCheckingUsername] = useState(false);
+  const [usernameDebounce, setUsernameDebounce] = useState<ReturnType<typeof setTimeout> | null>(null);
+
+  const checkUsernameAvailability = (val: string) => {
+    if (usernameDebounce) clearTimeout(usernameDebounce);
+    if (val.length < 3) { setUsernameAvailable(null); return; }
+    setCheckingUsername(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/auth/username-available?username=${encodeURIComponent(val)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setUsernameAvailable(data.available);
+        }
+      } catch { /* ignore */ }
+      setCheckingUsername(false);
+    }, 500);
+    setUsernameDebounce(timer);
+  };
 
   useEffect(() => {
     fetch("/api/ltd/status")
@@ -211,6 +231,12 @@ export default function LtdRegisterPage() {
                     placeholder="e.g. VISI-LTD-2024"
                     value={code}
                     onChange={e => { setCode(e.target.value.toUpperCase()); setCodeValidated(false); setCodeInfo(null); }}
+                    onKeyDown={e => {
+                      if (e.key === "Enter" && !codeValidated) {
+                        e.preventDefault();
+                        validateCode();
+                      }
+                    }}
                     className="pl-9 uppercase"
                     disabled={codeValidated}
                     data-testid="input-ltd-code"
@@ -251,9 +277,35 @@ export default function LtdRegisterPage() {
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">@</span>
                       <Input id="ltd-username" placeholder="yourname" value={username}
-                        onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+                        onChange={e => {
+                          const val = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, "");
+                          setUsername(val);
+                          setUsernameAvailable(null);
+                          checkUsernameAvailability(val);
+                        }}
                         required className="pl-7" data-testid="input-username" />
+                      {checkingUsername && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                        </div>
+                      )}
+                      {!checkingUsername && usernameAvailable === true && username.length >= 3 && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <CheckCircle2 className="w-4 h-4 text-green-500" />
+                        </div>
+                      )}
+                      {!checkingUsername && usernameAvailable === false && username.length >= 3 && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <XCircle className="w-4 h-4 text-destructive" />
+                        </div>
+                      )}
                     </div>
+                    {!checkingUsername && usernameAvailable === true && username.length >= 3 && (
+                      <p className="text-xs text-green-600">Username is available</p>
+                    )}
+                    {!checkingUsername && usernameAvailable === false && username.length >= 3 && (
+                      <p className="text-xs text-destructive">Username is already taken</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="ltd-displayname">Display Name</Label>
@@ -283,7 +335,7 @@ export default function LtdRegisterPage() {
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full" disabled={submitting} data-testid="button-create-ltd-account">
+                <Button type="submit" className="w-full" disabled={submitting || usernameAvailable === false} data-testid="button-create-ltd-account">
                   {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ChevronRight className="h-4 w-4 mr-2" />}
                   Create Lifetime Account
                 </Button>
@@ -305,7 +357,7 @@ export default function LtdRegisterPage() {
                 <div className="border-t pt-3">
                   <p className="text-sm text-center text-muted-foreground">
                     Don't have a redemption code?{" "}
-                    <button onClick={() => navigate("/ltd-purchase")} className="text-primary hover:underline font-medium">
+                    <button type="button" onClick={() => navigate("/ltd-purchase")} className="text-primary hover:underline font-medium">
                       Purchase a lifetime plan
                     </button>
                   </p>
