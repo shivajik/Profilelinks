@@ -2744,111 +2744,236 @@ function RazorpaySettingsSection({ admin }: { admin: { name: string; email: stri
   };
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-foreground">Settings</h2>
-        <p className="text-muted-foreground text-sm mt-1">Manage your admin account, payment gateway, and integrations.</p>
+        <p className="text-muted-foreground text-sm mt-1">Manage your admin account, payment gateway, analytics, and integrations.</p>
       </div>
 
-      {/* Admin Account - enhanced */}
-      <Card className="border-l-4 border-l-primary">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Shield className="w-4 h-4 text-primary" />
-            Admin Account
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Name</Label>
-              <p className="font-medium text-foreground text-sm">{admin.name}</p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Admin Account - enhanced */}
+        <Card className="border-l-4 border-l-primary">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Shield className="w-4 h-4 text-primary" />
+              Admin Account
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Name</Label>
+                <p className="font-medium text-foreground text-sm">{admin.name}</p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Email</Label>
+                <p className="font-medium text-foreground text-sm">{admin.email}</p>
+              </div>
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Email</Label>
-              <p className="font-medium text-foreground text-sm">{admin.email}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Razorpay - enhanced */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <CreditCard className="w-4 h-4" />
-            Razorpay Integration
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium">Environment</Label>
-            <Select value={environment} onValueChange={setEnvironment}>
-              <SelectTrigger className="max-w-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="test">Test (Sandbox)</SelectItem>
-                <SelectItem value="live">Live (Production)</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              {environment === "test" ? "Use test keys for development. No real payments." : "⚠️ Live mode — real payments will be processed."}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Razorpay - enhanced */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CreditCard className="w-4 h-4" />
+              Razorpay Integration
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Razorpay Key ID</Label>
-              {maskedKeys.razorpay_key_id && (
-                <p className="text-xs text-muted-foreground">Current: <code className="bg-muted px-1.5 py-0.5 rounded text-[11px]">{maskedKeys.razorpay_key_id}</code></p>
-              )}
-              <Input
-                value={keyId}
-                onChange={(e) => setKeyId(e.target.value)}
-                placeholder={maskedKeys.razorpay_key_id ? "Leave empty to keep current" : "rzp_test_xxxxx or rzp_live_xxxxx"}
-                className="h-9 text-sm"
-              />
+              <Label className="text-xs font-medium">Environment</Label>
+              <Select value={environment} onValueChange={setEnvironment}>
+                <SelectTrigger className="max-w-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="test">Test (Sandbox)</SelectItem>
+                  <SelectItem value="live">Live (Production)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {environment === "test" ? "Use test keys for development. No real payments." : "⚠️ Live mode — real payments will be processed."}
+              </p>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Razorpay Key Secret</Label>
-              {maskedKeys.razorpay_key_secret && (
-                <p className="text-xs text-muted-foreground">Current: <code className="bg-muted px-1.5 py-0.5 rounded text-[11px]">{maskedKeys.razorpay_key_secret}</code></p>
-              )}
-              <Input
-                type="password"
-                value={keySecret}
-                onChange={(e) => setKeySecret(e.target.value)}
-                placeholder={maskedKeys.razorpay_key_secret ? "Leave empty to keep current" : "Enter secret key"}
-                className="h-9 text-sm"
-              />
+
+            <div className="grid grid-cols-1 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Razorpay Key ID</Label>
+                {maskedKeys.razorpay_key_id && (
+                  <p className="text-xs text-muted-foreground">Current: <code className="bg-muted px-1.5 py-0.5 rounded text-[11px]">{maskedKeys.razorpay_key_id}</code></p>
+                )}
+                <Input
+                  value={keyId}
+                  onChange={(e) => setKeyId(e.target.value)}
+                  placeholder={maskedKeys.razorpay_key_id ? "Leave empty to keep current" : "rzp_test_xxxxx or rzp_live_xxxxx"}
+                  className="h-9 text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Razorpay Key Secret</Label>
+                {maskedKeys.razorpay_key_secret && (
+                  <p className="text-xs text-muted-foreground">Current: <code className="bg-muted px-1.5 py-0.5 rounded text-[11px]">{maskedKeys.razorpay_key_secret}</code></p>
+                )}
+                <Input
+                  type="password"
+                  value={keySecret}
+                  onChange={(e) => setKeySecret(e.target.value)}
+                  placeholder={maskedKeys.razorpay_key_secret ? "Leave empty to keep current" : "Enter secret key"}
+                  className="h-9 text-sm"
+                />
+              </div>
             </div>
-          </div>
 
-          <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
-            {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-            Save Payment Gateway Settings
-          </Button>
-        </CardContent>
-      </Card>
+            <Button onClick={handleSave} disabled={saving} size="sm">
+              {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Save Payment Settings
+            </Button>
+          </CardContent>
+        </Card>
 
-      <CleanSignupsSettings />
-      <SendGridSettings />
+        <TrackingSettings />
+        <CleanSignupsSettings />
+        <SendGridSettings />
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <FileText className="w-4 h-4" />
-            Legal Pages
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <p className="text-sm text-muted-foreground">Your platform's legal documents are publicly accessible:</p>
-          <div className="flex gap-3 flex-wrap">
-            <a href="/terms" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline font-medium">Terms of Service ↗</a>
-            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline font-medium">Privacy Policy ↗</a>
-          </div>
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              Legal Pages
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-sm text-muted-foreground">Your platform's legal documents are publicly accessible:</p>
+            <div className="flex gap-3 flex-wrap">
+              <a href="/terms" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline font-medium">Terms of Service ↗</a>
+              <a href="/privacy" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline font-medium">Privacy Policy ↗</a>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
+  );
+}
+
+// ── Tracking Settings (GA4 & Facebook Pixel) ──────────────────────────────
+function TrackingSettings() {
+  const { toast } = useToast();
+  const [ga4Id, setGa4Id] = useState("");
+  const [fbPixelId, setFbPixelId] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [currentGa4, setCurrentGa4] = useState("");
+  const [currentFb, setCurrentFb] = useState("");
+
+  useEffect(() => {
+    fetch("/api/admin/settings/tracking")
+      .then(r => r.ok ? r.json() : {})
+      .then((data: any) => {
+        if (data.ga4_measurement_id) setCurrentGa4(data.ga4_measurement_id);
+        if (data.fb_pixel_id) setCurrentFb(data.fb_pixel_id);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const body: Record<string, string> = {};
+      if (ga4Id.trim()) body.ga4MeasurementId = ga4Id.trim();
+      if (fbPixelId.trim()) body.fbPixelId = fbPixelId.trim();
+      const r = await fetch("/api/admin/settings/tracking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.message);
+      toast({ title: "Tracking settings saved!" });
+      setGa4Id("");
+      setFbPixelId("");
+      const r2 = await fetch("/api/admin/settings/tracking");
+      if (r2.ok) {
+        const d = await r2.json();
+        setCurrentGa4(d.ga4_measurement_id || "");
+        setCurrentFb(d.fb_pixel_id || "");
+      }
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    }
+    setSaving(false);
+  };
+
+  const handleClear = async (key: "ga4" | "fb") => {
+    setSaving(true);
+    try {
+      const body = key === "ga4" ? { ga4MeasurementId: "" } : { fbPixelId: "" };
+      const r = await fetch("/api/admin/settings/tracking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) throw new Error("Failed");
+      toast({ title: key === "ga4" ? "GA4 tracking disabled" : "Facebook Pixel disabled" });
+      if (key === "ga4") setCurrentGa4("");
+      else setCurrentFb("");
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    }
+    setSaving(false);
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <BarChart3 className="h-4 w-4" />
+          Analytics Tracking
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-xs text-muted-foreground">
+          Configure Google Analytics (GA4) and Facebook Pixel for tracking page views and conversions across your platform.
+        </p>
+
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Google Analytics (GA4) Measurement ID</Label>
+            {currentGa4 && (
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-muted-foreground">Current: <code className="bg-muted px-1.5 py-0.5 rounded text-[11px]">{currentGa4}</code></p>
+                <button onClick={() => handleClear("ga4")} className="text-xs text-destructive hover:underline">Remove</button>
+              </div>
+            )}
+            <Input
+              value={ga4Id}
+              onChange={(e) => setGa4Id(e.target.value)}
+              placeholder={currentGa4 ? "Leave empty to keep current" : "G-XXXXXXXXXX"}
+              className="h-9 text-sm"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Facebook Pixel ID</Label>
+            {currentFb && (
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-muted-foreground">Current: <code className="bg-muted px-1.5 py-0.5 rounded text-[11px]">{currentFb}</code></p>
+                <button onClick={() => handleClear("fb")} className="text-xs text-destructive hover:underline">Remove</button>
+              </div>
+            )}
+            <Input
+              value={fbPixelId}
+              onChange={(e) => setFbPixelId(e.target.value)}
+              placeholder={currentFb ? "Leave empty to keep current" : "YOUR_PIXEL_ID"}
+              className="h-9 text-sm"
+            />
+          </div>
+        </div>
+
+        <Button onClick={handleSave} disabled={saving} size="sm">
+          {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+          Save Tracking Settings
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 

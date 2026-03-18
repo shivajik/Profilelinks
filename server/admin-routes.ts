@@ -1115,4 +1115,48 @@ router.post("/api/admin/settings/sendgrid", requireAdminAuth, async (req: Reques
   }
 });
 
+// ─── Tracking Settings (GA4 & Facebook Pixel) ──────────────────────────────
+router.get("/api/admin/settings/tracking", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const result = await db.execute(sql`SELECT key, value FROM app_settings WHERE key IN ('ga4_measurement_id', 'fb_pixel_id')`);
+    const settings: Record<string, string> = {};
+    for (const row of (result.rows as any[])) {
+      settings[row.key] = row.value;
+    }
+    res.json(settings);
+  } catch {
+    res.status(500).json({ message: "Failed to fetch tracking settings" });
+  }
+});
+
+router.post("/api/admin/settings/tracking", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const { ga4MeasurementId, fbPixelId } = req.body;
+    if (ga4MeasurementId !== undefined) {
+      await db.execute(sql`INSERT INTO app_settings (key, value, updated_at) VALUES ('ga4_measurement_id', ${ga4MeasurementId}, now()) ON CONFLICT (key) DO UPDATE SET value = ${ga4MeasurementId}, updated_at = now()`);
+    }
+    if (fbPixelId !== undefined) {
+      await db.execute(sql`INSERT INTO app_settings (key, value, updated_at) VALUES ('fb_pixel_id', ${fbPixelId}, now()) ON CONFLICT (key) DO UPDATE SET value = ${fbPixelId}, updated_at = now()`);
+    }
+    res.json({ message: "Tracking settings saved" });
+  } catch (error: any) {
+    console.error("Tracking settings error:", error);
+    res.status(500).json({ message: "Failed to save tracking settings" });
+  }
+});
+
+// ─── Public Tracking IDs (no auth needed, for injecting into HTML) ──────────
+router.get("/api/settings/tracking", async (req: Request, res: Response) => {
+  try {
+    const result = await db.execute(sql`SELECT key, value FROM app_settings WHERE key IN ('ga4_measurement_id', 'fb_pixel_id') AND value != ''`);
+    const settings: Record<string, string> = {};
+    for (const row of (result.rows as any[])) {
+      settings[row.key] = row.value;
+    }
+    res.json(settings);
+  } catch {
+    res.json({});
+  }
+});
+
 export default router;

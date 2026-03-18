@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest, getQueryFn } from "./queryClient";
 import type { User } from "@shared/schema";
@@ -15,10 +15,28 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+// Routes that are purely public and never need auth/me
+const PUBLIC_ONLY_PREFIXES = ["/terms", "/privacy", "/docs", "/about", "/contact", "/support", "/gdpr", "/refund-policy", "/restaurant"];
+
+function isPublicOnlyRoute(): boolean {
+  const path = window.location.pathname;
+  if (PUBLIC_ONLY_PREFIXES.some(p => path.startsWith(p))) return true;
+  // Public profile routes: /{username} or /{company}/{username} or /{username}/menu
+  // But NOT /auth, /dashboard, /onboarding, /pricing, /affiliate, /invite, /change-password
+  const knownAppRoutes = ["/", "/auth", "/dashboard", "/onboarding", "/pricing", "/affiliate", "/invite", "/change-password"];
+  if (knownAppRoutes.some(r => path === r || (r !== "/" && path.startsWith(r)))) return false;
+  // If none of the known app routes match, it's a public profile
+  if (/^\/[a-zA-Z0-9_-]+/.test(path)) return true;
+  return false;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const skipAuth = useMemo(() => isPublicOnlyRoute(), []);
+
   const { data: user, isLoading } = useQuery<AuthUser | null>({
     queryKey: ["/api/auth/me"],
     queryFn: getQueryFn({ on401: "returnNull" }),
+    enabled: !skipAuth,
   });
 
   const loginMutation = useMutation({
@@ -62,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user: user ?? null, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user: user ?? null, isLoading: skipAuth ? false : isLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
