@@ -46,6 +46,9 @@ export default function Onboarding() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const searchStr = typeof window !== 'undefined' ? window.location.search : '';
+  const urlParams = new URLSearchParams(searchStr);
+  const pendingPlanId = urlParams.get("planId");
   const [step, setStep] = useState(0);
   const [accountType, setAccountType] = useState<"personal" | "team">("personal");
   const [selectedTemplate, setSelectedTemplate] = useState("minimal");
@@ -146,7 +149,14 @@ export default function Onboarding() {
       await queryClient.invalidateQueries({ queryKey: ["/api/socials"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/pages"] });
       await queryClient.refetchQueries({ queryKey: ["/api/auth/me"] });
-      navigate(accountType === "team" ? "/dashboard?section=team-templates" : "/dashboard");
+      // If user had selected a plan from pricing, navigate to billing with that plan
+      if (pendingPlanId) {
+        navigate(accountType === "team"
+          ? `/dashboard?section=billing&planId=${pendingPlanId}`
+          : `/dashboard?section=billing&planId=${pendingPlanId}`);
+      } else {
+        navigate(accountType === "team" ? "/dashboard?section=team-templates" : "/dashboard");
+      }
     } catch (e: any) {
       toast({ title: "Something went wrong", description: e.message, variant: "destructive" });
     } finally {

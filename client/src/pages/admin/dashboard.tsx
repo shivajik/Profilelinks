@@ -46,6 +46,7 @@ interface UserRow {
   accountType: string; onboardingCompleted: boolean; isDisabled: boolean; isLtd: boolean;
   createdAt?: string; businessPhone?: string | null;
   subscription?: { status: string; billingCycle: string; planName?: string } | null;
+  isTeamOwner?: boolean; teamName?: string | null; teamMemberCount?: number;
 }
 interface PaymentRow {
   id: string; amount: string; currency: string; status: string;
@@ -61,6 +62,14 @@ interface UserDetail {
     maxBlocks: number; maxSocials: number; currentLinks: number; currentPages: number;
     currentBlocks: number; currentSocials: number; currentTeamMembers: number; hasActivePlan: boolean;
   };
+  teamInfo?: {
+    teamId: string;
+    teamName: string;
+    members: Array<{
+      id: string; userId: string; username?: string; email?: string;
+      displayName?: string; jobTitle?: string; status: string;
+    }>;
+  } | null;
 }
 interface AffiliateRow {
   id: string; userId: string; referralCode: string; commissionRate: string;
@@ -797,6 +806,10 @@ export default function AdminDashboard() {
                           <td className="p-3">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <Badge variant="outline" className="text-xs capitalize">{u.accountType}</Badge>
+                              {u.isTeamOwner && <Badge className="text-xs bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100">Team Owner</Badge>}
+                              {u.isTeamOwner && (u.teamMemberCount ?? 0) > 0 && (
+                                <span className="text-xs text-muted-foreground">({u.teamMemberCount} members)</span>
+                              )}
                               {u.isLtd && u.subscription?.status === "active" && <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100">LTD</Badge>}
                               {u.isLtd && u.subscription?.status !== "active" && <Badge className="text-xs bg-red-100 text-red-700 border-red-200 hover:bg-red-100">LTD (Unpaid)</Badge>}
                             </div>
@@ -1111,6 +1124,47 @@ export default function AdminDashboard() {
                         </CardContent>
                       </Card>
                     </div>
+
+                    {/* Team Members (if team owner) */}
+                    {d.teamInfo && d.teamInfo.members.length > 0 && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <Users className="h-4 w-4 text-primary" />
+                            Team Members — {d.teamInfo.teamName}
+                            <Badge variant="outline" className="text-xs ml-auto">{d.teamInfo.members.length} members</Badge>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="border-b bg-muted/50">
+                                  <th className="text-left p-3 font-medium text-muted-foreground">Name</th>
+                                  <th className="text-left p-3 font-medium text-muted-foreground">Email</th>
+                                  <th className="text-left p-3 font-medium text-muted-foreground">Job Title</th>
+                                  <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {d.teamInfo.members.map((m) => (
+                                  <tr key={m.id} className="border-b last:border-0 hover:bg-muted/30">
+                                    <td className="p-3">
+                                      <button className="text-left hover:underline text-primary font-medium" onClick={() => m.userId && openUserDetail(m.userId)}>
+                                        {m.displayName || m.username || "—"}
+                                      </button>
+                                    </td>
+                                    <td className="p-3 text-muted-foreground text-xs">{m.email || "—"}</td>
+                                    <td className="p-3 text-muted-foreground">{m.jobTitle || "—"}</td>
+                                    <td className="p-3"><StatusBadge status={m.status} /></td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
 
                     {/* Payment History */}
                     <Card>

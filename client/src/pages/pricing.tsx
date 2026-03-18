@@ -93,8 +93,10 @@ export default function PricingPage() {
   };
 
   const handleSelectPlan = useCallback(async (plan: PricingPlan) => {
-    if (!user) { navigate("/auth"); return; }
-    if (currentPlanId === plan.id) return;
+    if (!user) {
+      navigate(`/auth?tab=register&planId=${plan.id}&planName=${encodeURIComponent(plan.name)}`);
+      return;
+    }
 
     setPayingPlanId(plan.id);
     try {

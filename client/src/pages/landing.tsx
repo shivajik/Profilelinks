@@ -535,7 +535,9 @@ export default function Landing() {
           </div>
           <div className="border-t border-border pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 flex-wrap">
             <span className="text-sm text-muted-foreground">
-              VisiCardly. All rights reserved.
+              © 2026 VisiCardly powered by{" "}
+              <a href="https://ksoftsolution.com" target="_blank" rel="noopener noreferrer" className="hover:text-foreground underline">KSoft Solution</a>
+              . All rights reserved.
             </span>
             <div className="flex items-center gap-4">
               <a href="https://www.facebook.com/visicardly/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="link-footer-facebook"><SiFacebook className="w-4 h-4" /></a>

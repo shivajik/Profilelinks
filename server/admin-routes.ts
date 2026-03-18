@@ -9,6 +9,8 @@ import {
   pricingPlans,
   payments,
   userSubscriptions,
+  teams,
+  teamMembers,
   adminLoginSchema,
   createAdminSchema,
   createPricingPlanSchema,
@@ -321,10 +323,48 @@ router.get("/api/admin/users", requireAdminAuth, async (req: Request, res: Respo
       }
     }
 
-    const usersWithSubs = paginatedUsers.map((userRow: any) => ({
-      ...userRow,
-      subscription: latestSubscriptionByUserId.get(userRow.id) ?? null,
-    }));
+    // Check if users are team owners (have teams they own)
+    const teamOwnerRows = await db
+      .select({
+        ownerId: teams.ownerId,
+        teamId: teams.id,
+        teamName: teams.name,
+      })
+      .from(teams)
+      .where(inArray(teams.ownerId, userIds));
+
+    const teamOwnerMap = new Map<string, { teamId: string; teamName: string }>();
+    for (const row of teamOwnerRows) {
+      teamOwnerMap.set(row.ownerId, { teamId: row.teamId, teamName: row.teamName });
+    }
+
+    // Get team member counts for team owners
+    const teamIds = teamOwnerRows.map(r => r.teamId);
+    let memberCountMap = new Map<string, number>();
+    if (teamIds.length > 0) {
+      const memberCounts = await db
+        .select({
+          teamId: teamMembers.teamId,
+          count: count(),
+        })
+        .from(teamMembers)
+        .where(inArray(teamMembers.teamId, teamIds))
+        .groupBy(teamMembers.teamId);
+      for (const mc of memberCounts) {
+        memberCountMap.set(mc.teamId, Number(mc.count));
+      }
+    }
+
+    const usersWithSubs = paginatedUsers.map((userRow: any) => {
+      const teamOwner = teamOwnerMap.get(userRow.id);
+      return {
+        ...userRow,
+        subscription: latestSubscriptionByUserId.get(userRow.id) ?? null,
+        isTeamOwner: !!teamOwner,
+        teamName: teamOwner?.teamName ?? null,
+        teamMemberCount: teamOwner ? (memberCountMap.get(teamOwner.teamId) ?? 0) : 0,
+      };
+    });
 
     res.json({ users: usersWithSubs, total, page, limit });
   } catch (error: any) {
@@ -530,11 +570,48 @@ router.get("/api/admin/users/:id", requireAdminAuth, async (req: Request, res: R
     const { getUserPlanLimits } = await import("./plan-limits");
     const limits = await getUserPlanLimits(userId as string);
 
+    // Check if user is a team owner and get team members
+    let teamInfo: any = null;
+    const ownedTeams = await db.select().from(teams).where(sql`${teams.ownerId} = ${userId}`).limit(1);
+    if (ownedTeams.length > 0) {
+      const team = ownedTeams[0];
+      const members = await db
+        .select({
+          id: teamMembers.id,
+          userId: teamMembers.userId,
+          teamId: teamMembers.teamId,
+          status: teamMembers.status,
+          jobTitle: teamMembers.jobTitle,
+          businessPhone: teamMembers.businessPhone,
+          userName: users.username,
+          userEmail: users.email,
+          userDisplayName: users.displayName,
+        })
+        .from(teamMembers)
+        .leftJoin(users, sql`${teamMembers.userId} = ${users.id}`)
+        .where(sql`${teamMembers.teamId} = ${team.id}`);
+
+      teamInfo = {
+        teamId: team.id,
+        teamName: team.name,
+        members: members.map(m => ({
+          id: m.id,
+          userId: m.userId,
+          username: m.userName,
+          email: m.userEmail,
+          displayName: m.userDisplayName,
+          jobTitle: m.jobTitle,
+          status: m.status,
+        })),
+      };
+    }
+
     res.json({
       user: { ...user, businessPhone: resolvedBusinessPhone },
       subscription: subs[0] ?? null,
       payments: userPayments,
       usage: limits,
+      teamInfo,
     });
   } catch (error: any) {
     console.error("User detail error:", error);

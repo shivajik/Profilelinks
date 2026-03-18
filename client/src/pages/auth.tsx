@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Eye, EyeOff, ArrowLeft, Loader2, Sparkles, Link2, Palette, Globe, User, Users, CheckCircle2, XCircle, Mail } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, Loader2, Sparkles, Link2, Palette, Globe, User, Users, CheckCircle2, XCircle, Mail, CreditCard } from "lucide-react";
 import { Link as WouterLink } from "wouter";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
@@ -78,7 +78,9 @@ export default function AuthPage() {
   const params = new URLSearchParams(search);
   const initialTab = params.get("tab") === "register" ? "register" : "login";
   const refCode = params.get("ref");
-  const [tab, setTab] = useState<"login" | "register">(refCode ? "register" : initialTab);
+  const selectedPlanId = params.get("planId");
+  const selectedPlanName = params.get("planName");
+  const [tab, setTab] = useState<"login" | "register">(refCode || selectedPlanId ? "register" : initialTab);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [, navigate] = useLocation();
   const { login, register, user } = useAuth();
@@ -104,7 +106,11 @@ export default function AuthPage() {
     if ((user as any).teamId && (user as any).accountType === "team") {
       return <Redirect to="/dashboard" />;
     }
-    return <Redirect to={user.onboardingCompleted ? "/dashboard" : "/onboarding"} />;
+    // If user selected a plan from pricing, redirect to billing after onboarding
+    if (selectedPlanId && user.onboardingCompleted) {
+      return <Redirect to={`/dashboard?section=billing&planId=${selectedPlanId}`} />;
+    }
+    return <Redirect to={user.onboardingCompleted ? "/dashboard" : `/onboarding${selectedPlanId ? `?planId=${selectedPlanId}` : ""}`} />;
   }
 
   return (
@@ -169,6 +175,14 @@ export default function AuthPage() {
                       ? "Log in to manage your VisiCardly page."
                       : "Get started for free. No credit card required."}
                   </p>
+                  {tab === "register" && selectedPlanName && (
+                    <div className="mt-3 flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-lg px-3 py-2">
+                      <CreditCard className="h-4 w-4 text-primary shrink-0" />
+                      <span className="text-sm text-foreground">
+                        Selected plan: <span className="font-semibold text-primary">{decodeURIComponent(selectedPlanName)}</span>
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex mb-6 bg-muted rounded-md p-1 gap-1 flex-wrap">

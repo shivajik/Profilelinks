@@ -85,7 +85,7 @@ function StatusChip({ status }: { status: string }) {
     history?: PaymentHistory[];
   } = {};
 
-export function BillingSection() {
+export function BillingSection({ autoSelectPlanId }: { autoSelectPlanId?: string | null }) {
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -95,6 +95,7 @@ export function BillingSection() {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const [currency, setCurrency] = useState<"INR" | "USD">("INR");
   const [payingPlanId, setPayingPlanId] = useState<string | null>(null);
+  const [autoTriggered, setAutoTriggered] = useState(false);
 
   // Transaction history
   const [history, setHistory] = useState<PaymentHistory[]>([]);
@@ -170,6 +171,17 @@ export function BillingSection() {
     fetchData();
     fetchHistory();
   }, []);
+
+  // Auto-trigger payment for selected plan from pricing page
+  useEffect(() => {
+    if (autoSelectPlanId && !autoTriggered && !loading && plans.length > 0) {
+      const targetPlan = plans.find(p => p.id === autoSelectPlanId);
+      if (targetPlan) {
+        setAutoTriggered(true);
+        handleSelectPlan(targetPlan);
+      }
+    }
+  }, [autoSelectPlanId, autoTriggered, loading, plans]);
 
 
   const validatePromo = async () => {
@@ -571,9 +583,11 @@ export function BillingSection() {
               <div className="space-y-5">
                 {/* Invoice header */}
                 <div className="flex items-start justify-between border-b pb-4">
-                  <div>
-                    <p className="font-bold text-lg text-foreground">VisiCardly</p>
-                    <p className="text-xs text-muted-foreground">visicardly.com</p>
+                  <div className="flex items-center gap-2">
+                    <img src="/logo.png" alt="VisiCardly" className="w-12 h-9 object-contain" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">visicardly.com</p>
+                    </div>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-semibold text-foreground">{invoiceNo}</p>
@@ -635,6 +649,16 @@ export function BillingSection() {
                     </div>
                   </>
                 )}
+
+                {/* Powered by */}
+                <div className="text-center pt-3 border-t">
+                  <p className="text-xs text-muted-foreground">
+                    Powered by{" "}
+                    <a href="https://ksoftsolution.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
+                      KSoft Solution
+                    </a>
+                  </p>
+                </div>
               </div>
             );
           })()}

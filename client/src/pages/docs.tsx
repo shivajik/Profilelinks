@@ -1,7 +1,7 @@
 import { Link as WouterLink } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import logoPath from "/logo.png";
+import LegalLayout from "@/components/legal-layout";
 
 import {
   BookOpen,
@@ -15,10 +15,7 @@ import {
   Settings,
   Share2,
   Layers,
-  Globe,
   ChevronRight,
-  Menu,
-  X,
   Camera,
   Zap,
   Building2,
@@ -26,10 +23,7 @@ import {
   Eye,
 } from "lucide-react";
 
-import { useAuth } from "@/lib/auth";
 import { useState } from "react";
-
-import { SiFacebook, SiX, SiInstagram, SiPinterest, SiTumblr } from "react-icons/si";
 
 function ScreenshotPlaceholder({
   title,
@@ -346,8 +340,6 @@ const DOC_SECTIONS = [
 ];
 
 export default function DocsPage() {
-  const { user } = useAuth();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredSections = searchQuery.trim()
@@ -362,8 +354,8 @@ export default function DocsPage() {
     : DOC_SECTIONS;
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="pt-24 pb-20 px-6">
+    <LegalLayout>
+      <div className="pt-8 pb-20 px-6">
         <div className="max-w-5xl mx-auto">
 
           <div className="text-center mb-12">
@@ -376,7 +368,7 @@ export default function DocsPage() {
               placeholder="Search documentation..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full max-w-md mx-auto px-4 py-2 border rounded-lg"
+              className="w-full max-w-md mx-auto px-4 py-2 border rounded-lg bg-background text-foreground"
             />
           </div>
 
@@ -439,7 +431,7 @@ export default function DocsPage() {
             </div>
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </LegalLayout>
   );
 }
