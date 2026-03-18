@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/lib/auth";
 import { Loader2 } from "lucide-react";
+import { AnalyticsInjector } from "@/components/analytics-injector";
 
 // Eagerly loaded (critical path)
 import Landing from "@/pages/landing";
@@ -84,6 +85,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
+          <AnalyticsInjector />
           <Toaster />
           <Router />
         </AuthProvider>
