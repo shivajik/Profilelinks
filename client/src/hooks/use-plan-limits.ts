@@ -13,6 +13,7 @@ export interface PlanLimits {
   customTemplatesEnabled: boolean;
   menuBuilderEnabled: boolean;
   whiteLabelEnabled: boolean;
+  themeCategories: string[];
   currentLinks: number;
   currentPages: number;
   currentBlocks: number;

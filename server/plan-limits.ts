@@ -14,6 +14,7 @@ export interface PlanLimits {
   customTemplatesEnabled: boolean;
   menuBuilderEnabled: boolean;
   whiteLabelEnabled: boolean;
+  themeCategories: string[];
   currentLinks: number;
   currentPages: number;
   currentBlocks: number;
@@ -34,6 +35,7 @@ const FREE_LIMITS = {
   customTemplatesEnabled: false,
   menuBuilderEnabled: false,
   whiteLabelEnabled: false,
+  themeCategories: ["starter"],
 };
 
 // Simple in-memory cache to avoid redundant DB queries within same request cycle
@@ -61,6 +63,7 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
       customTemplatesEnabled: pricingPlans.customTemplatesEnabled,
       menuBuilderEnabled: pricingPlans.menuBuilderEnabled,
       whiteLabelEnabled: pricingPlans.whiteLabelEnabled,
+      themeCategories: pricingPlans.themeCategories,
     })
     .from(userSubscriptions)
     .innerJoin(pricingPlans, eq(userSubscriptions.planId, pricingPlans.id))
@@ -137,6 +140,7 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
     customTemplatesEnabled: limits.customTemplatesEnabled ?? FREE_LIMITS.customTemplatesEnabled,
     menuBuilderEnabled: limits.menuBuilderEnabled ?? FREE_LIMITS.menuBuilderEnabled,
     whiteLabelEnabled: (limits.whiteLabelEnabled ?? FREE_LIMITS.whiteLabelEnabled) || ownerWhiteLabel,
+    themeCategories: ((plan as any)?.themeCategories ?? FREE_LIMITS.themeCategories) as string[],
     currentLinks: Number(linksResult[0]?.count ?? 0),
     currentPages: Number(pagesResult[0]?.count ?? 0),
     currentBlocks: Number(blocksResult[0]?.count ?? 0),

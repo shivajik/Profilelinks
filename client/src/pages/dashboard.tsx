@@ -5,8 +5,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
 import logoPath from "/logo.png";
-import { TEMPLATES, getTemplate, LAYOUT_LABELS } from "@/lib/templates";
-import type { LayoutType } from "@/lib/templates";
+import { TEMPLATES, getTemplate, LAYOUT_LABELS, THEME_CATEGORIES } from "@/lib/templates";
+import type { LayoutType, ThemeCategory } from "@/lib/templates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -1443,6 +1443,7 @@ function SettingsPanel({
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [checkingUsername, setCheckingUsername] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(user.template || "minimal");
+  const { data: settingsPlanLimits } = usePlanLimits();
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -1717,7 +1718,10 @@ function SettingsPanel({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-            {TEMPLATES.map((t) => {
+            {TEMPLATES.filter((t) => {
+              const allowedCategories = settingsPlanLimits?.themeCategories ?? ["starter"];
+              return allowedCategories.includes(t.category);
+            }).map((t) => {
               const layoutLabel = LAYOUT_LABELS[t.layout as LayoutType] || "Classic";
               return (
                 <button
@@ -1736,6 +1740,7 @@ function SettingsPanel({
                     <span className="absolute bottom-0.5 left-0.5 text-[6px] font-bold px-1 py-px rounded-full bg-black/30 text-white backdrop-blur-sm">{layoutLabel}</span>
                   </div>
                   <p className="text-[10px] font-medium mt-1 truncate">{t.name}</p>
+                  <span className="absolute top-0.5 right-0.5 text-[5px] font-bold px-1 py-px rounded-full bg-primary/10 text-primary capitalize">{t.category}</span>
                 </button>
               );
             })}
@@ -3191,6 +3196,8 @@ function DesignPanel({
   disabled?: boolean;
 }) {
   const currentTemplate = getTemplate(currentTemplateId);
+  const { data: designPlanLimits } = usePlanLimits();
+  const allowedThemeCategories = designPlanLimits?.themeCategories ?? ["starter"];
 
   return (
     <div className="p-4 space-y-6">
@@ -3226,7 +3233,7 @@ function DesignPanel({
       <div className="border-t pt-4">
         <h3 className="text-sm font-semibold mb-3">Theme</h3>
         <div className="grid grid-cols-3 gap-2">
-          {TEMPLATES.map((t) => {
+          {TEMPLATES.filter((t) => allowedThemeCategories.includes(t.category)).map((t) => {
             const layoutLabel = LAYOUT_LABELS[t.layout as LayoutType] || "Classic";
             const avatarShape = t.avatarStyle === "circle" ? "rounded-full" : t.avatarStyle === "rounded" ? "rounded-md" : "rounded-sm";
             const btnShape = t.buttonStyle === "rounded" ? "rounded-full" : t.buttonStyle === "sharp" ? "rounded-none" : t.buttonStyle === "outline" ? "rounded-md border border-current/20 bg-transparent" : "rounded-lg";

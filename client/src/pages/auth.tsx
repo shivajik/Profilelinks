@@ -234,7 +234,10 @@ export default function AuthPage() {
                 )}
 
                 <p className="text-xs text-muted-foreground text-center mt-8">
-                  By continuing, you agree to our Terms of Service and Privacy Policy.
+                  By continuing, you agree to our{" "}
+                  <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">Terms of Service</a>
+                  {" "}and{" "}
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">Privacy Policy</a>.
                 </p>
               </>
             )}

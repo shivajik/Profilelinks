@@ -580,7 +580,7 @@ export function BillingSection({ autoSelectPlanId }: { autoSelectPlanId?: string
             const invoiceNo = `INV-${tx.id.slice(0, 8).toUpperCase()}`;
             const date = new Date(tx.createdAt);
             return (
-              <div className="space-y-5">
+              <div className="space-y-5" id="invoice-print-area">
                 {/* Invoice header */}
                 <div className="flex items-start justify-between border-b pb-4">
                   <div className="flex items-center gap-2">
@@ -593,6 +593,14 @@ export function BillingSection({ autoSelectPlanId }: { autoSelectPlanId?: string
                     <p className="text-sm font-semibold text-foreground">{invoiceNo}</p>
                     <p className="text-xs text-muted-foreground">{date.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })}</p>
                   </div>
+                </div>
+
+                {/* Company Address */}
+                <div className="text-xs text-muted-foreground leading-relaxed">
+                  <p className="font-semibold text-foreground text-sm">KSoft Solution</p>
+                  <p>T-16, Software Technology Parks of India,</p>
+                  <p>Chikhalthana MIDC, Chhatrapati Sambhaji Nagar,</p>
+                  <p>431008, Maharashtra.</p>
                 </div>
 
                 {/* Billed to */}

@@ -360,6 +360,140 @@ export async function sendPackageExpiryEmail(opts: {
   });
 }
 
+export async function sendWelcomeEmail(opts: {
+  to: string;
+  username: string;
+}): Promise<boolean> {
+  const appUrl = process.env.APP_URL || 'https://visicardly.com';
+  return sendEmailViaNodemailer({
+    to: opts.to,
+    subject: `Welcome to VisiCardly, ${opts.username}! 🎉`,
+    html: `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
+        <div style="background: linear-gradient(135deg, #6C5CE7, #a855f7); padding: 32px 24px; text-align: center;">
+          <h1 style="color: #ffffff; font-size: 24px; margin: 0 0 8px 0; font-weight: 700;">Welcome to VisiCardly! 🎉</h1>
+          <p style="color: rgba(255,255,255,0.85); font-size: 14px; margin: 0;">Your digital business card is ready</p>
+        </div>
+        <div style="padding: 32px 24px;">
+          <p style="color: #374151; font-size: 15px; line-height: 1.6; margin: 0 0 16px;">
+            Hi <strong>${opts.username}</strong>, thanks for joining VisiCardly!
+          </p>
+          <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin: 0 0 24px;">
+            You can now create your stunning digital business card, add links, social profiles, and share your online presence with one custom link.
+          </p>
+          <div style="background: #f8f7ff; border-radius: 12px; padding: 20px; margin-bottom: 24px; border-left: 4px solid #6C5CE7;">
+            <p style="color: #374151; font-size: 14px; margin: 0 0 12px; font-weight: 600;">Here's what you can do:</p>
+            <ul style="color: #6b7280; font-size: 13px; margin: 0; padding-left: 16px; line-height: 2;">
+              <li>Add unlimited links and social profiles</li>
+              <li>Choose from 30+ beautiful themes</li>
+              <li>Share your profile with a QR code</li>
+              <li>Track visitors with analytics</li>
+            </ul>
+          </div>
+          <div style="text-align: center; margin: 28px 0;">
+            <a href="${appUrl}/dashboard"
+               style="display: inline-block; background: linear-gradient(135deg, #6C5CE7, #a855f7); color: white; padding: 14px 36px; text-decoration: none; border-radius: 10px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 14px rgba(108,92,231,0.35);">
+              Go to Dashboard →
+            </a>
+          </div>
+        </div>
+        <div style="border-top: 1px solid #f3f4f6; padding: 20px 24px; text-align: center; background: #fafafa;">
+          <p style="color: #9ca3af; font-size: 12px; margin: 0 0 4px;">
+            Your profile: <a href="${appUrl}/${opts.username}" style="color: #6C5CE7; font-weight: 600;">${appUrl}/${opts.username}</a>
+          </p>
+          <a href="${appUrl}" style="color: #6C5CE7; font-size: 12px; text-decoration: none; font-weight: 600;">VisiCardly</a>
+          <span style="color: #d1d5db; font-size: 12px;"> — Digital Business Cards</span>
+        </div>
+      </div>
+    `,
+  });
+}
+
+export async function sendPaymentConfirmationEmail(opts: {
+  to: string;
+  username: string;
+  planName: string;
+  amount: string;
+  currency: string;
+  billingCycle: string;
+  invoiceNo: string;
+  date: string;
+  orderId?: string;
+  paymentId?: string;
+}): Promise<boolean> {
+  const appUrl = process.env.APP_URL || 'https://visicardly.com';
+  return sendEmailViaNodemailer({
+    to: opts.to,
+    subject: `Payment Confirmation — ${opts.planName} Plan`,
+    html: `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
+        <div style="background: linear-gradient(135deg, #10b981, #059669); padding: 32px 24px; text-align: center;">
+          <h1 style="color: #ffffff; font-size: 24px; margin: 0 0 8px 0; font-weight: 700;">Payment Successful! ✅</h1>
+          <p style="color: rgba(255,255,255,0.85); font-size: 14px; margin: 0;">Thank you for your purchase</p>
+        </div>
+        <div style="padding: 32px 24px;">
+          <p style="color: #374151; font-size: 15px; line-height: 1.6; margin: 0 0 20px;">
+            Hi <strong>${opts.username}</strong>, your payment has been received successfully.
+          </p>
+
+          <!-- Invoice -->
+          <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 24px; border: 1px solid #e5e7eb;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 16px; border-bottom: 1px solid #e5e7eb; padding-bottom: 12px;">
+              <div>
+                <p style="font-weight: 700; font-size: 16px; margin: 0; color: #111827;">VisiCardly</p>
+                <p style="font-size: 11px; color: #9ca3af; margin: 4px 0 0;">visicardly.com</p>
+              </div>
+              <div style="text-align: right;">
+                <p style="font-size: 13px; font-weight: 600; margin: 0; color: #111827;">${opts.invoiceNo}</p>
+                <p style="font-size: 11px; color: #9ca3af; margin: 4px 0 0;">${opts.date}</p>
+              </div>
+            </div>
+
+            <p style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af; font-weight: 600; margin: 0 0 6px;">From</p>
+            <p style="font-size: 12px; color: #374151; margin: 0; font-weight: 600;">KSoft Solution</p>
+            <p style="font-size: 11px; color: #6b7280; margin: 2px 0;">T-16, Software Technology Parks of India,</p>
+            <p style="font-size: 11px; color: #6b7280; margin: 2px 0;">Chikhalthana MIDC, Chhatrapati Sambhaji Nagar, 431008, Maharashtra.</p>
+
+            <div style="margin-top: 16px; border-top: 1px solid #e5e7eb; padding-top: 12px;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr style="border-bottom: 1px solid #e5e7eb;">
+                  <td style="padding: 8px 0; font-size: 12px; color: #6b7280;">Plan</td>
+                  <td style="padding: 8px 0; font-size: 12px; color: #111827; text-align: right; font-weight: 600;">${opts.planName}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #e5e7eb;">
+                  <td style="padding: 8px 0; font-size: 12px; color: #6b7280;">Billing Cycle</td>
+                  <td style="padding: 8px 0; font-size: 12px; color: #111827; text-align: right; text-transform: capitalize;">${opts.billingCycle}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; font-size: 14px; color: #111827; font-weight: 700;">Total</td>
+                  <td style="padding: 10px 0; font-size: 16px; color: #059669; text-align: right; font-weight: 700;">₹${opts.amount} ${opts.currency}</td>
+                </tr>
+              </table>
+            </div>
+
+            ${opts.orderId ? `<p style="font-size: 10px; color: #9ca3af; margin: 12px 0 0;">Order ID: ${opts.orderId}</p>` : ''}
+            ${opts.paymentId ? `<p style="font-size: 10px; color: #9ca3af; margin: 2px 0 0;">Payment ID: ${opts.paymentId}</p>` : ''}
+          </div>
+
+          <div style="text-align: center; margin: 28px 0;">
+            <a href="${appUrl}/dashboard?section=billing"
+               style="display: inline-block; background: linear-gradient(135deg, #6C5CE7, #a855f7); color: white; padding: 14px 36px; text-decoration: none; border-radius: 10px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 14px rgba(108,92,231,0.35);">
+              View Dashboard →
+            </a>
+          </div>
+        </div>
+        <div style="border-top: 1px solid #f3f4f6; padding: 16px 24px; text-align: center; background: #fafafa;">
+          <p style="color: #9ca3af; font-size: 11px; margin: 0 0 4px;">
+            Powered by <a href="https://ksoftsolution.com" target="_blank" style="color: #6C5CE7; text-decoration: none; font-weight: 600;">KSoft Solution</a>
+          </p>
+          <a href="${appUrl}" style="color: #6C5CE7; font-size: 12px; text-decoration: none; font-weight: 600;">VisiCardly</a>
+          <span style="color: #d1d5db; font-size: 12px;"> — Digital Business Cards</span>
+        </div>
+      </div>
+    `,
+  });
+}
+
 // ── Email Blast — uses SendGrid exclusively ───────────────────────────────
 
 export async function sendBulkTemplateEmail(opts: {

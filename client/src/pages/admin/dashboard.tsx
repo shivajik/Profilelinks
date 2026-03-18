@@ -34,7 +34,7 @@ interface PricingPlan {
   maxTeamMembers: number; maxBlocks: number; maxSocials: number;
   qrCodeEnabled: boolean; analyticsEnabled: boolean; customTemplatesEnabled: boolean;
   menuBuilderEnabled: boolean; whiteLabelEnabled: boolean; planType: string;
-  isLtd: boolean;
+  isLtd: boolean; themeCategories: string[];
   isActive: boolean; isFeatured: boolean; sortOrder: number;
 }
 interface AdminStats {
@@ -102,6 +102,7 @@ const planSchema = z.object({
   whiteLabelEnabled: z.boolean().default(false),
   planType: z.enum(["individual", "team"]).default("individual"),
   isLtd: z.boolean().default(false),
+  themeCategories: z.array(z.string()).default(["starter", "professional", "creative", "premium"]),
   isActive: z.boolean().default(true),
   isFeatured: z.boolean().default(false),
   sortOrder: z.coerce.number().int().min(0).default(0),
@@ -396,11 +397,11 @@ export default function AdminDashboard() {
 
   // ── Plan CRUD ──────────────────────────────────────────────────────────────
   const openNewPlan = () => {
-    planForm.reset({ name: "", description: "", monthlyPrice: 0, yearlyPrice: 0, monthlyPriceUsd: 0, yearlyPriceUsd: 0, featuresText: "", maxLinks: 10, maxPages: 1, maxTeamMembers: 1, maxBlocks: 20, maxSocials: 5, qrCodeEnabled: false, analyticsEnabled: false, customTemplatesEnabled: false, menuBuilderEnabled: false, whiteLabelEnabled: false, planType: "individual", isLtd: false, isActive: true, isFeatured: false, sortOrder: 0 });
+    planForm.reset({ name: "", description: "", monthlyPrice: 0, yearlyPrice: 0, monthlyPriceUsd: 0, yearlyPriceUsd: 0, featuresText: "", maxLinks: 10, maxPages: 1, maxTeamMembers: 1, maxBlocks: 20, maxSocials: 5, qrCodeEnabled: false, analyticsEnabled: false, customTemplatesEnabled: false, menuBuilderEnabled: false, whiteLabelEnabled: false, planType: "individual", isLtd: false, themeCategories: ["starter", "professional", "creative", "premium"], isActive: true, isFeatured: false, sortOrder: 0 });
     setPlanDialog({ open: true });
   };
   const openEditPlan = (plan: PricingPlan) => {
-    planForm.reset({ name: plan.name, description: plan.description ?? "", monthlyPrice: parseFloat(plan.monthlyPrice), yearlyPrice: parseFloat(plan.yearlyPrice), monthlyPriceUsd: parseFloat(plan.monthlyPriceUsd ?? "0"), yearlyPriceUsd: parseFloat(plan.yearlyPriceUsd ?? "0"), featuresText: (plan.features ?? []).join("\n"), maxLinks: plan.maxLinks, maxPages: plan.maxPages, maxTeamMembers: plan.maxTeamMembers, maxBlocks: plan.maxBlocks ?? 20, maxSocials: plan.maxSocials ?? 5, qrCodeEnabled: plan.qrCodeEnabled ?? false, analyticsEnabled: plan.analyticsEnabled ?? false, customTemplatesEnabled: plan.customTemplatesEnabled ?? false, menuBuilderEnabled: plan.menuBuilderEnabled ?? false, whiteLabelEnabled: (plan as any).whiteLabelEnabled ?? false, planType: (plan.planType as "individual" | "team") ?? "individual", isLtd: plan.isLtd ?? false, isActive: plan.isActive, isFeatured: plan.isFeatured, sortOrder: plan.sortOrder });
+    planForm.reset({ name: plan.name, description: plan.description ?? "", monthlyPrice: parseFloat(plan.monthlyPrice), yearlyPrice: parseFloat(plan.yearlyPrice), monthlyPriceUsd: parseFloat(plan.monthlyPriceUsd ?? "0"), yearlyPriceUsd: parseFloat(plan.yearlyPriceUsd ?? "0"), featuresText: (plan.features ?? []).join("\n"), maxLinks: plan.maxLinks, maxPages: plan.maxPages, maxTeamMembers: plan.maxTeamMembers, maxBlocks: plan.maxBlocks ?? 20, maxSocials: plan.maxSocials ?? 5, qrCodeEnabled: plan.qrCodeEnabled ?? false, analyticsEnabled: plan.analyticsEnabled ?? false, customTemplatesEnabled: plan.customTemplatesEnabled ?? false, menuBuilderEnabled: plan.menuBuilderEnabled ?? false, whiteLabelEnabled: (plan as any).whiteLabelEnabled ?? false, planType: (plan.planType as "individual" | "team") ?? "individual", isLtd: plan.isLtd ?? false, themeCategories: (plan.themeCategories as string[]) ?? ["starter", "professional", "creative", "premium"], isActive: plan.isActive, isFeatured: plan.isFeatured, sortOrder: plan.sortOrder });
     setPlanDialog({ open: true, plan });
   };
   const onSavePlan = async (data: PlanForm) => {
@@ -2042,6 +2043,14 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
+                {/* Company Address */}
+                <div className="text-xs text-muted-foreground leading-relaxed">
+                  <p className="font-semibold text-foreground text-sm">KSoft Solution</p>
+                  <p>T-16, Software Technology Parks of India,</p>
+                  <p>Chikhalthana MIDC, Chhatrapati Sambhaji Nagar,</p>
+                  <p>431008, Maharashtra.</p>
+                </div>
+
                 {/* Billed to */}
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
@@ -2229,6 +2238,47 @@ export default function AdminDashboard() {
                   <p className="text-xs text-muted-foreground mt-1">Turn on only for lifetime-deal packages.</p>
                 </div>
                 <Switch checked={planForm.watch("isLtd")} onCheckedChange={(v) => planForm.setValue("isLtd", v)} />
+              </div>
+              <div className="col-span-2"><Separator className="my-2" /><p className="text-sm font-medium text-foreground mb-3">Theme Access</p></div>
+              <div className="col-span-2 space-y-2">
+                <Label>Theme Categories</Label>
+                <p className="text-xs text-muted-foreground">Select which theme categories users on this plan can access.</p>
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  {[
+                    { value: "starter", label: "Starter", desc: "8 clean & simple themes" },
+                    { value: "professional", label: "Professional", desc: "6 business-ready themes" },
+                    { value: "creative", label: "Creative", desc: "8 vibrant & artistic themes" },
+                    { value: "premium", label: "Premium", desc: "8 luxury & exclusive themes" },
+                  ].map((cat) => {
+                    const cats = planForm.watch("themeCategories") || [];
+                    const isChecked = cats.includes(cat.value);
+                    return (
+                      <button
+                        key={cat.value}
+                        type="button"
+                        onClick={() => {
+                          const current = planForm.getValues("themeCategories") || [];
+                          if (current.includes(cat.value)) {
+                            planForm.setValue("themeCategories", current.filter((c: string) => c !== cat.value));
+                          } else {
+                            planForm.setValue("themeCategories", [...current, cat.value]);
+                          }
+                        }}
+                        className={`p-2.5 rounded-lg border-2 text-left transition-all ${
+                          isChecked ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className={`w-4 h-4 rounded border flex items-center justify-center ${isChecked ? "bg-primary border-primary" : "border-muted-foreground/30"}`}>
+                            {isChecked && <Check className="w-3 h-3 text-primary-foreground" />}
+                          </div>
+                          <span className="text-sm font-medium">{cat.label}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1 ml-6">{cat.desc}</p>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <div className="col-span-2"><Separator className="my-2" /></div>
               <div className="flex items-center gap-3"><Switch checked={planForm.watch("isActive")} onCheckedChange={(v) => planForm.setValue("isActive", v)} /><Label>Active</Label></div>

@@ -428,6 +428,30 @@ router.post("/api/payments/verify", requireAuth as any, async (req: Request, res
       }
     }
 
+    // Send payment confirmation email
+    const user = await storage.getUser(req.session.userId!);
+    if (user) {
+      const [paymentRecord] = await db.select().from(payments).where(sql`${payments.razorpayOrderId} = ${razorpayOrderId}`);
+      const planRows2 = await db.select().from(pricingPlans).where(sql`${pricingPlans.id} = ${planId}`);
+      const planForEmail = planRows2[0];
+      if (paymentRecord) {
+        import("./email").then(({ sendPaymentConfirmationEmail }) => {
+          sendPaymentConfirmationEmail({
+            to: user.email,
+            username: user.username,
+            planName: planForEmail?.name ?? "Subscription",
+            amount: parseFloat(paymentRecord.amount).toLocaleString(),
+            currency: paymentRecord.currency,
+            billingCycle,
+            invoiceNo: `INV-${paymentRecord.id.slice(0, 8).toUpperCase()}`,
+            date: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" }),
+            orderId: razorpayOrderId,
+            paymentId: razorpayPaymentId,
+          }).catch(() => {});
+        });
+      }
+    }
+
     res.json({ success: true, message: "Payment verified and subscription activated" });
   } catch (error: any) {
     console.error("Verify payment error:", error);

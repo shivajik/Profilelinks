@@ -301,6 +301,11 @@ export async function registerRoutes(
 
       signupOtpStore.delete(email);
 
+      // Send welcome email (fire-and-forget)
+      import("./email").then(({ sendWelcomeEmail }) => {
+        sendWelcomeEmail({ to: email, username: user.username }).catch(() => {});
+      });
+
       req.session.userId = user.id;
       const { password: _, ...safeUser } = user;
       res.status(201).json(safeUser);
