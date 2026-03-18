@@ -1099,7 +1099,7 @@ export default function Dashboard() {
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {sortedBlocks.map((block) => (
+                        {sortedBlocks.map((block, index) => (
                           <InlineBlockCard
                             key={block.id}
                             block={block}
@@ -1108,6 +1108,8 @@ export default function Dashboard() {
                             onStopEdit={() => setEditingBlockId(null)}
                             onDelete={() => deleteBlockMutation.mutate(block.id)}
                             onToggle={(active) => toggleBlockMutation.mutate({ id: block.id, active })}
+                            onMoveUp={index > 0 ? () => moveBlock(index, "up") : undefined}
+                            onMoveDown={index < sortedBlocks.length - 1 ? () => moveBlock(index, "down") : undefined}
                           />
                         ))}
                       </div>
@@ -4173,6 +4175,8 @@ function InlineBlockCard({
   onStopEdit,
   onDelete,
   onToggle,
+  onMoveUp,
+  onMoveDown,
 }: {
   block: Block;
   isEditing: boolean;
@@ -4180,6 +4184,8 @@ function InlineBlockCard({
   onStopEdit: () => void;
   onDelete: () => void;
   onToggle: (active: boolean) => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
 }) {
   const content = block.content as BlockContent;
   const [editContent, setEditContent] = useState<BlockContent>({ ...content });
@@ -4223,7 +4229,28 @@ function InlineBlockCard({
           <div className={`w-1 self-stretch shrink-0 rounded-l-md ${!block.active ? "bg-muted-foreground/20" : "bg-primary"}`} />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 py-2.5 px-3">
-              <GripVertical className="w-4 h-4 text-muted-foreground/40 shrink-0 cursor-grab" />
+              <div className="flex flex-col gap-0.5 shrink-0">
+                <button
+                  type="button"
+                  className={`p-0.5 rounded hover:bg-muted transition-colors ${!onMoveUp ? "opacity-20 cursor-not-allowed" : "cursor-pointer"}`}
+                  onClick={onMoveUp}
+                  disabled={!onMoveUp}
+                  title="Move up"
+                  data-testid={`button-move-up-${block.id}`}
+                >
+                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground rotate-180" />
+                </button>
+                <button
+                  type="button"
+                  className={`p-0.5 rounded hover:bg-muted transition-colors ${!onMoveDown ? "opacity-20 cursor-not-allowed" : "cursor-pointer"}`}
+                  onClick={onMoveDown}
+                  disabled={!onMoveDown}
+                  title="Move down"
+                  data-testid={`button-move-down-${block.id}`}
+                >
+                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                </button>
+              </div>
               <div className="flex-1 min-w-0">
                 <Button
                   variant="ghost"

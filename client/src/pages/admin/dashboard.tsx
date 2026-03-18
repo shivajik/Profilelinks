@@ -2092,6 +2092,16 @@ export default function AdminDashboard() {
                   {p.razorpayOrderId && <div className="flex gap-2"><Hash className="h-3.5 w-3.5 shrink-0 mt-0.5" /><span>Order ID: <span className="font-mono">{p.razorpayOrderId}</span></span></div>}
                   {p.razorpayPaymentId && <div className="flex gap-2"><Hash className="h-3.5 w-3.5 shrink-0 mt-0.5" /><span>Payment ID: <span className="font-mono">{p.razorpayPaymentId}</span></span></div>}
                 </div>
+
+                {/* Powered by */}
+                <div className="text-center pt-3 border-t">
+                  <p className="text-xs text-muted-foreground">
+                    Powered by{" "}
+                    <a href="https://ksoftsolution.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
+                      KSoft Solution
+                    </a>
+                  </p>
+                </div>
               </div>
             );
           })()}
