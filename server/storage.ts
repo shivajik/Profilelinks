@@ -63,21 +63,23 @@ const dbUrl =
   process.env.DATABASE_URL ||
   derivedDbUrl;
 
-if (!dbUrl) {
-  throw new Error(
-    "No database URL found. Set SUPABASE_DB_URL, SUPABASE_POOLER_URL, DATABASE_URL, or standard PGHOST/PGUSER/PGDATABASE variables."
-  );
+let pool: pg.Pool | null = null;
+let _db: ReturnType<typeof drizzle> | null = null;
+
+if (dbUrl) {
+  pool = new pg.Pool({
+    connectionString: dbUrl,
+    ssl: { rejectUnauthorized: false },
+  });
+  _db = drizzle(pool);
+} else {
+  console.warn("⚠️  No database URL found. Server will start but database operations will fail.");
 }
 
-const pool = new pg.Pool({
-  connectionString: dbUrl,
-  ssl: { rejectUnauthorized: false },
-});
-
-export const db = drizzle(pool);
+export const db = _db as ReturnType<typeof drizzle>;
 
 // ── Auto-migrate: add missing columns ─────────────────────────────────────
-pool.query(`
+if (pool) pool.query(`
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS is_disabled boolean NOT NULL DEFAULT false;
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS created_at timestamp DEFAULT now();
   ALTER TABLE IF EXISTS pricing_plans ADD COLUMN IF NOT EXISTS max_blocks integer NOT NULL DEFAULT 20;
@@ -250,6 +252,7 @@ pool.query(`
 `).then(async () => {
   // Backfill slugs for existing teams that don't have one
   try {
+    if (!pool) return;
     const teamsWithoutSlug = await pool.query(`SELECT id, name FROM teams WHERE slug IS NULL OR slug = ''`);
     for (const row of teamsWithoutSlug.rows) {
       const slug = row.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').substring(0, 50) || 'team';
