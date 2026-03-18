@@ -50,21 +50,25 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
   }
 
   // Get active subscription with plan details
+  const planSelection = {
+    planName: pricingPlans.name,
+    monthlyPrice: pricingPlans.monthlyPrice,
+    yearlyPrice: pricingPlans.yearlyPrice,
+    maxLinks: pricingPlans.maxLinks,
+    maxPages: pricingPlans.maxPages,
+    maxTeamMembers: pricingPlans.maxTeamMembers,
+    maxBlocks: pricingPlans.maxBlocks,
+    maxSocials: pricingPlans.maxSocials,
+    qrCodeEnabled: pricingPlans.qrCodeEnabled,
+    analyticsEnabled: pricingPlans.analyticsEnabled,
+    customTemplatesEnabled: pricingPlans.customTemplatesEnabled,
+    menuBuilderEnabled: pricingPlans.menuBuilderEnabled,
+    whiteLabelEnabled: pricingPlans.whiteLabelEnabled,
+    themeCategories: pricingPlans.themeCategories,
+  };
+
   const subs = await db
-    .select({
-      planName: pricingPlans.name,
-      maxLinks: pricingPlans.maxLinks,
-      maxPages: pricingPlans.maxPages,
-      maxTeamMembers: pricingPlans.maxTeamMembers,
-      maxBlocks: pricingPlans.maxBlocks,
-      maxSocials: pricingPlans.maxSocials,
-      qrCodeEnabled: pricingPlans.qrCodeEnabled,
-      analyticsEnabled: pricingPlans.analyticsEnabled,
-      customTemplatesEnabled: pricingPlans.customTemplatesEnabled,
-      menuBuilderEnabled: pricingPlans.menuBuilderEnabled,
-      whiteLabelEnabled: pricingPlans.whiteLabelEnabled,
-      themeCategories: pricingPlans.themeCategories,
-    })
+    .select(planSelection)
     .from(userSubscriptions)
     .innerJoin(pricingPlans, eq(userSubscriptions.planId, pricingPlans.id))
     .where(and(eq(userSubscriptions.userId, userId), eq(userSubscriptions.status, "active")))
@@ -72,6 +76,18 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
 
   let plan = subs[0];
   let hasActivePlan = !!plan;
+  let freePlanConfig: (typeof subs)[number] | null = null;
+
+  if (!plan) {
+    const activePlans = await db
+      .select(planSelection)
+      .from(pricingPlans)
+      .where(and(eq(pricingPlans.isActive, true), eq(pricingPlans.isLtd, false)));
+
+    freePlanConfig = activePlans.find((candidate) => (
+      Number(candidate.monthlyPrice ?? 0) === 0 && Number(candidate.yearlyPrice ?? 0) === 0
+    )) ?? null;
+  }
 
   // If user has no plan, check if they're a team member and inherit owner's analytics/QR
   let ownerAnalytics = false;
@@ -107,7 +123,7 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
     }
   }
 
-  const limits = plan || FREE_LIMITS;
+  const limits = plan || freePlanConfig || FREE_LIMITS;
 
   // Get all current usage counts in parallel
   const [linksResult, pagesResult, blocksResult, socialsResult, menuSocialsResult] = await Promise.all([
@@ -129,7 +145,7 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
   } catch { /* no team */ }
 
   const result: PlanLimits = {
-    planName: plan?.planName ?? null,
+    planName: plan?.planName ?? freePlanConfig?.planName ?? null,
     maxLinks: limits.maxLinks,
     maxPages: limits.maxPages,
     maxTeamMembers: limits.maxTeamMembers,
@@ -140,7 +156,7 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
     customTemplatesEnabled: limits.customTemplatesEnabled ?? FREE_LIMITS.customTemplatesEnabled,
     menuBuilderEnabled: limits.menuBuilderEnabled ?? FREE_LIMITS.menuBuilderEnabled,
     whiteLabelEnabled: (limits.whiteLabelEnabled ?? FREE_LIMITS.whiteLabelEnabled) || ownerWhiteLabel,
-    themeCategories: ((plan as any)?.themeCategories ?? FREE_LIMITS.themeCategories) as string[],
+    themeCategories: (((limits as any)?.themeCategories) ?? FREE_LIMITS.themeCategories) as string[],
     currentLinks: Number(linksResult[0]?.count ?? 0),
     currentPages: Number(pagesResult[0]?.count ?? 0),
     currentBlocks: Number(blocksResult[0]?.count ?? 0),

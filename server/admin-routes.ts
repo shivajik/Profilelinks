@@ -628,14 +628,29 @@ router.post("/api/admin/users/:id/assign-plan", requireAdminAuth, async (req: Re
     if (!planId) return res.status(400).json({ message: "Plan ID is required" });
 
     // Verify user exists
-    const userResult = await db.select({ id: users.id }).from(users).where(sql`${users.id} = ${userId}`).limit(1);
+    const userResult = await db
+      .select({ id: users.id, email: users.email, username: users.username })
+      .from(users)
+      .where(sql`${users.id} = ${userId}`)
+      .limit(1);
     if (!userResult.length) return res.status(404).json({ message: "User not found" });
+
+    const targetUser = userResult[0];
+
+    const previousSubscription = await db
+      .select({ planName: pricingPlans.name })
+      .from(userSubscriptions)
+      .leftJoin(pricingPlans, eq(userSubscriptions.planId, pricingPlans.id))
+      .where(sql`${userSubscriptions.userId} = ${userId} AND ${userSubscriptions.status} = 'active'`)
+      .orderBy(desc(userSubscriptions.createdAt))
+      .limit(1);
 
     // Verify plan exists
     const planResult = await db.select().from(pricingPlans).where(sql`${pricingPlans.id} = ${planId}`).limit(1);
     if (!planResult.length) return res.status(404).json({ message: "Plan not found" });
 
     const plan = planResult[0];
+    const previousPlanName = previousSubscription[0]?.planName ?? "Free";
     const cycle = billingCycle || "monthly";
     const amount = cycle === "yearly" ? plan.yearlyPrice : plan.monthlyPrice;
 
@@ -677,6 +692,19 @@ router.post("/api/admin/users/:id/assign-plan", requireAdminAuth, async (req: Re
         const team = await storage.createTeam({ name: "My Team", ownerId: userId as string });
         await storage.addTeamMember({ teamId: team.id, userId: userId as string, role: "owner", status: "activated" });
         await storage.updateUser(userId as string, { accountType: "team", teamId: team.id });
+      }
+    }
+
+    if (targetUser.email) {
+      try {
+        const { sendPackageUpgradeEmail } = await import("./email");
+        await sendPackageUpgradeEmail({
+          to: targetUser.email,
+          planName: plan.name,
+          previousPlan: previousPlanName,
+        });
+      } catch (emailError) {
+        console.error(`Failed to send plan update email to ${targetUser.email}:`, emailError);
       }
     }
 

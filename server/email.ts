@@ -269,23 +269,38 @@ export async function sendSignupOTP(opts: {
   to: string;
   otp: string;
 }): Promise<boolean> {
+  const appUrl = process.env.APP_URL || 'https://visicardly.com';
   return sendEmailViaNodemailer({
     to: opts.to,
-    subject: `Verify Your Email: ${opts.otp}`,
+    subject: `Your VisiCardly sign up code: ${opts.otp}`,
     html: `
-      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
-        <div style="background: linear-gradient(135deg, #6C5CE7, #a855f7); padding: 28px 24px; text-align: center;">
-          <h1 style="color: #ffffff; font-size: 22px; margin: 0; font-weight: 700;">Welcome to VisiCardly! 👋</h1>
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 18px; overflow: hidden; box-shadow: 0 10px 30px rgba(17,24,39,0.08); border: 1px solid #ede9fe;">
+        <div style="background: linear-gradient(135deg, #6C5CE7, #8b5cf6); padding: 32px 24px; text-align: center;">
+          <p style="margin: 0 0 8px; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.75);">VisiCardly</p>
+          <h1 style="color: #ffffff; font-size: 26px; margin: 0 0 8px 0; font-weight: 800;">Confirm your email</h1>
+          <p style="color: rgba(255,255,255,0.88); font-size: 14px; margin: 0;">Use this one-time code to finish creating your account.</p>
         </div>
         <div style="padding: 32px 24px; text-align: center;">
-          <p style="color: #374151; font-size: 15px; margin: 0 0 20px;">Please verify your email address with this code:</p>
-          <div style="background: #f8f7ff; border-radius: 12px; padding: 24px; margin: 0 0 20px; border: 2px dashed #6C5CE7;">
-            <p style="font-size: 36px; font-weight: 800; letter-spacing: 10px; color: #6C5CE7; margin: 0; font-family: monospace;">${opts.otp}</p>
+          <p style="color: #374151; font-size: 15px; margin: 0 0 18px; line-height: 1.7;">
+            Welcome aboard! Enter the verification code below on the registration screen to continue.
+          </p>
+          <div style="background: #f8f7ff; border-radius: 16px; padding: 24px; margin: 0 0 18px; border: 2px dashed #6C5CE7;">
+            <p style="font-size: 38px; font-weight: 800; letter-spacing: 10px; color: #6C5CE7; margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">${opts.otp}</p>
           </div>
-          <p style="color: #9ca3af; font-size: 13px;">This code expires in 10 minutes.</p>
+          <div style="background: #f9fafb; border-radius: 14px; padding: 16px 18px; text-align: left; margin: 0 auto 18px; border: 1px solid #e5e7eb;">
+            <p style="margin: 0 0 8px; color: #111827; font-size: 14px; font-weight: 700;">Before you continue:</p>
+            <ul style="margin: 0; padding-left: 18px; color: #6b7280; font-size: 13px; line-height: 1.7;">
+              <li>This code expires in <strong>10 minutes</strong>.</li>
+              <li>Use the same email address you entered during sign up.</li>
+              <li>If you did not request this code, you can safely ignore this email.</li>
+            </ul>
+          </div>
+          <div style="text-align: center;">
+            <a href="${appUrl}" style="display: inline-block; padding: 12px 22px; border-radius: 10px; background: #6C5CE7; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 14px;">Open VisiCardly</a>
+          </div>
         </div>
         <div style="border-top: 1px solid #f3f4f6; padding: 16px 24px; text-align: center; background: #fafafa;">
-          <a href="${process.env.APP_URL || 'https://visicardly.com'}" style="color: #6C5CE7; font-size: 12px; text-decoration: none; font-weight: 600;">VisiCardly</a>
+          <a href="${appUrl}" style="color: #6C5CE7; font-size: 12px; text-decoration: none; font-weight: 600;">VisiCardly</a>
           <span style="color: #d1d5db; font-size: 12px;"> — Digital Business Cards</span>
         </div>
       </div>
@@ -298,24 +313,28 @@ export async function sendPackageUpgradeEmail(opts: {
   planName: string;
   previousPlan: string;
 }): Promise<boolean> {
+  const appUrl = process.env.APP_URL || 'https://visicardly.com';
   return sendEmailViaNodemailer({
     to: opts.to,
-    subject: `Plan Upgraded to ${opts.planName}!`,
+    subject: `Your VisiCardly plan is now ${opts.planName}`,
     html: `
       <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
         <div style="background: linear-gradient(135deg, #10b981, #059669); padding: 28px 24px; text-align: center;">
-          <h1 style="color: #ffffff; font-size: 22px; margin: 0; font-weight: 700;">Plan Upgrade Confirmed! 🎉</h1>
+          <h1 style="color: #ffffff; font-size: 22px; margin: 0; font-weight: 700;">Your package has been updated</h1>
         </div>
         <div style="padding: 32px 24px;">
           <div style="background: #ecfdf5; border-radius: 12px; padding: 20px; margin-bottom: 20px; border-left: 4px solid #10b981;">
             <p style="color: #374151; font-size: 15px; margin: 0; line-height: 1.6;">
-              Your plan has been upgraded from <strong>${opts.previousPlan}</strong> to <strong style="color: #059669;">${opts.planName}</strong>.
+              Your account package has changed from <strong>${opts.previousPlan}</strong> to <strong style="color: #059669;">${opts.planName}</strong>.
             </p>
           </div>
-          <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">You now have access to all features included in your new plan. Enjoy!</p>
+          <p style="color: #6b7280; font-size: 14px; line-height: 1.7; margin: 0 0 18px;">Your available features and theme access are now updated to match the new package.</p>
+          <div style="text-align: center;">
+            <a href="${appUrl}/dashboard" style="display: inline-block; background: #059669; color: #ffffff; padding: 12px 22px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 14px;">Open dashboard</a>
+          </div>
         </div>
         <div style="border-top: 1px solid #f3f4f6; padding: 16px 24px; text-align: center; background: #fafafa;">
-          <a href="${process.env.APP_URL || 'https://visicardly.com'}" style="color: #6C5CE7; font-size: 12px; text-decoration: none; font-weight: 600;">VisiCardly</a>
+          <a href="${appUrl}" style="color: #6C5CE7; font-size: 12px; text-decoration: none; font-weight: 600;">VisiCardly</a>
           <span style="color: #d1d5db; font-size: 12px;"> — Digital Business Cards</span>
         </div>
       </div>
