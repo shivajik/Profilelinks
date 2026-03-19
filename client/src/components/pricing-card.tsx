@@ -121,11 +121,11 @@ export function PricingCard({
                   {symbol}{originalPrice.toLocaleString(locale)}/year
                 </p>
               )}
-              {!discountPercent && inrMonthlyForSaving > 0 && inrYearlyForSaving > 0 && (
+              {/* {!discountPercent && inrMonthlyForSaving > 0 && inrYearlyForSaving > 0 && (
                 <p className="text-xs text-primary mt-0.5">
                   Save {Math.round(100 - (inrYearlyForSaving / (inrMonthlyForSaving * 12)) * 100)}% vs monthly
                 </p>
-              )}
+              )} */}
             </>
           ) : (
             <>
