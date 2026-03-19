@@ -23,6 +23,8 @@ const TEMPLATES = [
 export default function TemplateShowcase() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isPaused, setIsPaused] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStart = useRef({ x: 0, scrollLeft: 0 });
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -32,9 +34,8 @@ export default function TemplateShowcase() {
     let scrollSpeed = 0.8;
 
     const step = () => {
-      if (!isPaused && el) {
+      if (!isPaused && !isDragging && el) {
         el.scrollLeft += scrollSpeed;
-        // Reset scroll when reaching halfway (duplicated content)
         if (el.scrollLeft >= el.scrollWidth / 2) {
           el.scrollLeft = 0;
         }
@@ -44,7 +45,31 @@ export default function TemplateShowcase() {
 
     animationId = requestAnimationFrame(step);
     return () => cancelAnimationFrame(animationId);
-  }, [isPaused]);
+  }, [isPaused, isDragging]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setIsDragging(true);
+    setIsPaused(true);
+    dragStart.current = { x: e.pageX, scrollLeft: el.scrollLeft };
+    el.style.cursor = "grabbing";
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const dx = e.pageX - dragStart.current.x;
+    el.scrollLeft = dragStart.current.scrollLeft - dx;
+  };
+
+  const handleMouseUp = () => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    const el = scrollRef.current;
+    if (el) el.style.cursor = "grab";
+  };
 
   // Duplicate templates for infinite scroll effect
   const items = [...TEMPLATES, ...TEMPLATES];
@@ -64,9 +89,12 @@ export default function TemplateShowcase() {
 
       <div
         ref={scrollRef}
-        className="flex gap-6 overflow-x-hidden cursor-grab px-6"
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
+        className="flex gap-6 overflow-x-hidden cursor-grab px-6 select-none"
+        onMouseEnter={() => { if (!isDragging) setIsPaused(true); }}
+        onMouseLeave={() => { setIsPaused(false); handleMouseUp(); }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
         onTouchStart={() => setIsPaused(true)}
         onTouchEnd={() => setIsPaused(false)}
       >
@@ -77,6 +105,8 @@ export default function TemplateShowcase() {
             target="_blank"
             rel="noopener noreferrer"
             className="flex-shrink-0 group"
+            onClick={(e) => { if (isDragging) e.preventDefault(); }}
+            draggable={false}
           >
             <div className="w-[260px] h-[460px] rounded-2xl overflow-hidden border border-border bg-card shadow-sm transition-transform duration-300 group-hover:scale-[1.03] group-hover:shadow-lg">
               <img
