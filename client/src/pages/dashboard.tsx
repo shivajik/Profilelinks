@@ -579,7 +579,7 @@ export default function Dashboard() {
           <div className="flex-1 flex overflow-hidden">
              <div className={`flex-1 overflow-y-auto border-r bg-background w-full ${activeSection === "design" ? "md:min-w-[300px] md:max-w-[420px]" : ""} ${activeSection === "menu-setup" ? "md:min-w-[300px] md:max-w-[420px]" : ""} ${["team-members", "team-templates", "contacts", "billing", "usage", "affiliate", "business-profile"].includes(activeSection) ? "md:max-w-none" : ""}`}>
               {activeSection === "billing" && <BillingSection autoSelectPlanId={new URLSearchParams(search).get("planId")} />}
-              {activeSection === "business-profile" && <BusinessProfileSection />}
+              {activeSection === "business-profile" && <BusinessProfileSection onNavigateToTemplates={isTeamOwner ? () => setActiveSection("team-templates") : undefined} />}
               {activeSection === "affiliate" && affiliateData && (
                 <div className="p-6 max-w-4xl mx-auto space-y-6">
                   <div className="flex items-center gap-2 mb-2">

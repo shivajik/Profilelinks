@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Camera, Building2, Briefcase, Phone, Globe, MapPin, Mail } from "lucide-react";
+import { Loader2, Camera, Building2, Briefcase, Phone, Globe, MapPin, Mail, ExternalLink } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 
@@ -31,7 +31,7 @@ type BusinessProfileData = {
   templateData: Record<string, any>;
 };
 
-export function BusinessProfileSection() {
+export function BusinessProfileSection({ onNavigateToTemplates }: { onNavigateToTemplates?: () => void } = {}) {
   const { toast } = useToast();
   const [businessName, setBusinessName] = useState("");
   const [businessPhone, setBusinessPhone] = useState("");
@@ -145,7 +145,19 @@ export function BusinessProfileSection() {
             <CardTitle className="text-sm flex items-center gap-2">
               <Building2 className="w-4 h-4" />
               Company Info
-              <Badge variant="outline" className="ml-auto text-xs">Set by team admin</Badge>
+              {onNavigateToTemplates ? (
+                <button
+                  type="button"
+                  onClick={onNavigateToTemplates}
+                  className="ml-auto flex items-center gap-1 text-xs text-primary border border-primary/30 rounded-full px-2 py-0.5 hover:bg-primary/10 transition-colors"
+                  data-testid="button-go-to-team-templates"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Set in Team Templates
+                </button>
+              ) : (
+                <Badge variant="outline" className="ml-auto text-xs">Set by team admin</Badge>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">

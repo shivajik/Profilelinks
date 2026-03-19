@@ -392,9 +392,33 @@ function ContentSection(props: TeamLayoutProps) {
     <div className="transition-opacity duration-300 ease-in-out" style={{ opacity: isFetching && !isLoading ? 0.5 : 1 }}>
       {hasBlocks ? (
         <div className="space-y-3 mt-4">
-          {activeBlocks.map((block) => (
-            <PublicBlock key={block.id} block={block} template={cardSafeTemplate} onClickTrack={trackClick} />
-          ))}
+          {(() => {
+            const items: JSX.Element[] = [];
+            let i = 0;
+            while (i < activeBlocks.length) {
+              const block = activeBlocks[i];
+              if (block.type === "image") {
+                const group: typeof activeBlocks = [block];
+                while (i + 1 < activeBlocks.length && activeBlocks[i + 1].type === "image") {
+                  i++;
+                  group.push(activeBlocks[i]);
+                }
+                if (group.length === 1) {
+                  items.push(<PublicBlock key={group[0].id} block={group[0]} template={cardSafeTemplate} onClickTrack={trackClick} />);
+                } else {
+                  items.push(
+                    <div key={group[0].id} className="grid grid-cols-2 gap-1.5">
+                      {group.map((b) => <PublicBlock key={b.id} block={b} template={cardSafeTemplate} onClickTrack={trackClick} />)}
+                    </div>
+                  );
+                }
+              } else {
+                items.push(<PublicBlock key={block.id} block={block} template={cardSafeTemplate} onClickTrack={trackClick} />);
+              }
+              i++;
+            }
+            return items;
+          })()}
         </div>
       ) : activeLinks.length > 0 ? (
         <div className="space-y-3 mt-4">

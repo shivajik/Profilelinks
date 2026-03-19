@@ -617,18 +617,18 @@ function PublicBlock({ block, template, onClickTrack, onImageClick }: { block: B
       return (
         <button
           type="button"
-          className="block w-full rounded-xl overflow-hidden transition-all hover:scale-[1.02] hover:shadow-lg cursor-zoom-in group relative"
+          className="block w-full rounded-lg overflow-hidden transition-all hover:scale-[1.02] hover:shadow-lg cursor-zoom-in group relative aspect-[4/3]"
           data-testid={`block-image-${block.id}`}
           onClick={() => onImageClick?.(content.imageUrl!)}
         >
           <img
             src={content.imageUrl}
             alt={content.title || ""}
-            className="w-full max-h-52 object-cover"
+            className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
             <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-full p-1.5">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
+              <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
             </div>
           </div>
         </button>
