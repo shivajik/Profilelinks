@@ -588,7 +588,7 @@ function PublicBlock({ block, template, onClickTrack }: { block: Block; template
         <img
           src={content.imageUrl}
           alt={content.title || ""}
-          className="w-full h-auto rounded-xl"
+          className="w-full max-h-80 object-cover rounded-xl"
         />
       ) : (
         <div className={`w-full ${template.cardBg} rounded-xl p-8 text-center backdrop-blur-sm`}>

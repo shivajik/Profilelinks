@@ -240,6 +240,11 @@ function ModernLayout(props: PersonalLayoutProps) {
   return (
     <>
       <div className="mb-10">
+        {user.coverImage && (
+          <div className="w-full h-32 rounded-xl overflow-hidden mb-4 shadow-md" data-testid="personal-cover-image">
+            <img src={user.coverImage} alt="Cover" className="w-full h-full object-cover" />
+          </div>
+        )}
         <div className={`${template.cardBg} backdrop-blur-md rounded-2xl p-6 shadow-lg`}>
           <div className="flex items-start gap-5">
             <Avatar className={`w-20 h-20 border-2 shadow-md shrink-0 ${avatarClass}`} style={{ borderColor: template.accent + "40" }}>
@@ -311,6 +316,11 @@ function ElegantLayout(props: PersonalLayoutProps) {
   return (
     <>
       <div className="mb-10">
+        {user.coverImage && (
+          <div className="w-full h-36 rounded-xl overflow-hidden mb-4 shadow-md">
+            <img src={user.coverImage} alt="Cover" className="w-full h-full object-cover" />
+          </div>
+        )}
         <div className="h-1.5 rounded-full mb-8 shadow-sm" style={{ backgroundColor: template.accent }} />
         <div className={`${template.cardBg} backdrop-blur-md rounded-2xl overflow-hidden shadow-lg`}>
           <div className="h-1" style={{ backgroundColor: template.accent }} />

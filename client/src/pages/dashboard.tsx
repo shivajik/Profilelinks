@@ -921,7 +921,10 @@ export default function Dashboard() {
                       {isTeamMember && <p className="text-xs text-muted-foreground">Managed by team owner</p>}
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="header-bio" className="text-xs text-muted-foreground">Bio</Label>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="header-bio" className="text-xs text-muted-foreground">Bio</Label>
+                        <span className={`text-[11px] ${headerBio.length >= 450 ? "text-destructive" : "text-muted-foreground"}`}>{headerBio.length}/500</span>
+                      </div>
                       <Textarea
                         id="header-bio"
                         value={headerBio}
@@ -1197,6 +1200,7 @@ export default function Dashboard() {
                         pages={userPages}
                         currentPage={currentPage || null}
                         mode={previewMode}
+                        onPageChange={(pageId) => setSelectedPageId(pageId)}
                       />
                     </>
                   ) : (
@@ -1244,6 +1248,7 @@ export default function Dashboard() {
                         pages={userPages}
                         currentPage={currentPage || null}
                         mode={previewMode}
+                        onPageChange={(pageId) => setSelectedPageId(pageId)}
                       />
                     </>
                   )
@@ -1296,6 +1301,7 @@ export default function Dashboard() {
                       currentPage={currentPage || null}
                       mode={previewMode}
                       useOriginalSocialColors={user.useOriginalSocialColors}
+                      onPageChange={(pageId) => setSelectedPageId(pageId)}
                     />
                   </>
                 )}
@@ -1675,7 +1681,10 @@ function SettingsPanel({
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="settings-bio" className="text-xs text-muted-foreground">Bio</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="settings-bio" className="text-xs text-muted-foreground">Bio</Label>
+              <span className={`text-[11px] ${editBio.length >= 450 ? "text-destructive" : "text-muted-foreground"}`}>{editBio.length}/500</span>
+            </div>
             <Textarea
               id="settings-bio"
               value={editBio}
@@ -3369,10 +3378,12 @@ function PreviewPageNav({
   pages,
   currentPage,
   template,
+  onPageChange,
 }: {
   pages: Page[];
   currentPage: Page | null;
   template: (typeof TEMPLATES)[0];
+  onPageChange?: (pageId: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -3390,16 +3401,17 @@ function PreviewPageNav({
           {pages.map((page) => {
             const isActive = currentPage?.id === page.id;
             return (
-              <div
+              <button
                 key={page.id}
-                className={`px-3 py-1 text-[10px] cursor-default ${
+                onClick={() => { onPageChange?.(page.id); setOpen(false); }}
+                className={`block w-full text-left px-3 py-1 text-[10px] ${
                   isActive
                     ? `${template.cardTextColor} font-medium`
-                    : `${template.textColor} opacity-50`
+                    : `${template.textColor} opacity-50 hover:opacity-80`
                 }`}
               >
                 {page.title}
-              </div>
+              </button>
             );
           })}
         </div>
@@ -3421,6 +3433,7 @@ function PhonePreview({
   currentPage,
   mode,
   useOriginalSocialColors,
+  onPageChange,
 }: {
   template: (typeof TEMPLATES)[0];
   displayName: string;
@@ -3434,6 +3447,7 @@ function PhonePreview({
   currentPage: Page | null;
   mode: "mobile" | "desktop";
   useOriginalSocialColors?: boolean;
+  onPageChange?: (pageId: string) => void;
 }) {
   const activeBlocks = blocks.filter((b) => b.active);
   const activeSocials = socials.filter((s) => s.url);
@@ -3474,7 +3488,7 @@ function PhonePreview({
   );
 
   const pageNav = pages.length > 1 ? (
-    <PreviewPageNav pages={pages} currentPage={currentPage} template={template} />
+    <PreviewPageNav pages={pages} currentPage={currentPage} template={template} onPageChange={onPageChange} />
   ) : null;
 
   const renderClassic = () => (
@@ -3500,6 +3514,11 @@ function PhonePreview({
 
   const renderModern = () => (
     <div className="flex flex-col">
+      {coverImage && (
+        <div className="w-full h-20 rounded-lg overflow-hidden mb-3 shadow-sm">
+          <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
+        </div>
+      )}
       <div className={`${template.cardBg} backdrop-blur-md rounded-xl p-4 shadow-md`}>
         <div className="flex items-start gap-3">
           <Avatar className={`w-12 h-12 border-2 shadow-md shrink-0 ${avatarCls}`} style={{ borderColor: template.accent + "40" }}>
@@ -3553,6 +3572,11 @@ function PhonePreview({
 
   const renderElegant = () => (
     <div className="flex flex-col">
+      {coverImage && (
+        <div className="w-full h-20 rounded-lg overflow-hidden mb-3 shadow-sm">
+          <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
+        </div>
+      )}
       <div className="h-1 rounded-full mb-4 shadow-sm" style={{ backgroundColor: template.accent }} />
       <div className={`${template.cardBg} backdrop-blur-md rounded-xl overflow-hidden shadow-md`}>
         <div className="h-0.5" style={{ backgroundColor: template.accent }} />
@@ -3643,6 +3667,7 @@ function TeamPhonePreview({
   pages,
   currentPage,
   mode,
+  onPageChange,
 }: {
   template: (typeof TEMPLATES)[0];
   user: { displayName: string | null; username: string; profileImage: string | null; bio: string | null; useOriginalSocialColors?: boolean };
@@ -3652,6 +3677,7 @@ function TeamPhonePreview({
   pages: Page[];
   currentPage: Page | null;
   mode: "mobile" | "desktop";
+  onPageChange?: (pageId: string) => void;
 }) {
   const tData = businessProfileData?.templateData || {};
   const team = businessProfileData?.team || {};
@@ -3707,6 +3733,32 @@ function TeamPhonePreview({
         ? "rounded-xl border-2"
         : "rounded-xl";
     if (block.type === "divider") return <div className="border-t border-border/50 my-2" />;
+    if (block.type === "image" && content?.imageUrl) {
+      return (
+        <div className="rounded-xl overflow-hidden">
+          <img src={content.imageUrl} alt={content.title || ""} className="w-full max-h-48 object-cover" />
+        </div>
+      );
+    }
+    if (block.type === "video" && content?.url) {
+      const ytMatch = content.url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+      if (ytMatch) {
+        return (
+          <div className="rounded-lg overflow-hidden">
+            <iframe src={`https://www.youtube-nocookie.com/embed/${ytMatch[1]}`} className="w-full aspect-video rounded-lg" allowFullScreen title={content.title || "Video"} />
+          </div>
+        );
+      }
+    }
+    if (block.type === "text") {
+      return (
+        <div className="px-2 py-1.5">
+          <p className="text-xs text-foreground/80 text-left leading-relaxed">
+            {content?.text || "Text block"}
+          </p>
+        </div>
+      );
+    }
     const title = content?.title || content?.url || block.type;
     return (
       <div className={`${btnCls} bg-muted/50 py-2.5 px-4 text-center`}>
@@ -3746,7 +3798,10 @@ function TeamPhonePreview({
             pages={pageInfos}
             hasMultiplePages={hasMultiplePages}
             currentPage={currentPageInfo}
-            setActivePageSlug={() => {}}
+            setActivePageSlug={(slug) => {
+              const page = pages.find(p => slug === null ? p.isHome : p.slug === slug);
+              if (page && onPageChange) onPageChange(String(page.id));
+            }}
             isFetching={false}
             isLoading={false}
             normalizeUrl={resolveUrl}
@@ -3852,8 +3907,8 @@ function PreviewBlock({ block, template, btnCls = "rounded-lg", isOutline = fals
     case "image":
       if (content.imageUrl) {
         return (
-          <div className={`${btnCls} overflow-hidden`}>
-            <img src={content.imageUrl} alt={content.title || ""} className="w-full h-auto" />
+          <div className="rounded-xl overflow-hidden">
+            <img src={content.imageUrl} alt={content.title || ""} className="w-full max-h-48 object-cover" />
           </div>
         );
       }

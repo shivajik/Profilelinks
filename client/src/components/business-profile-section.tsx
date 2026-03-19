@@ -254,12 +254,16 @@ export function BusinessProfileSection() {
 
           {/* Business Bio */}
           <div className="space-y-1.5">
-            <Label htmlFor="businessBio">Bio</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="businessBio">Bio</Label>
+              <span className={`text-[11px] ${businessBio.length >= 450 ? "text-destructive" : "text-muted-foreground"}`}>{businessBio.length}/500</span>
+            </div>
             <Textarea
               id="businessBio"
               value={businessBio}
               onChange={(e) => setBusinessBio(e.target.value)}
               placeholder="A short bio for your business card..."
+              maxLength={500}
               rows={3}
             />
           </div>
