@@ -363,7 +363,58 @@ export default function LtdPurchasePage() {
       <LegalLayout>
         <section className="px-4 py-14">
           <div className="max-w-6xl mx-auto space-y-10">
-            <div className="text-center space-y-4">
+            <div className="max-w-4xl mx-auto">
+  <div className="border rounded-xl p-5 bg-muted/40 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+
+    {/* Left */}
+    <div className="space-y-1">
+      {/* <div className="flex items-center gap-2">
+        <WouterLink href="/">
+          <img src={logoPath} alt="VisiCardly" className="w-8 h-6 object-contain" />
+        </WouterLink>
+        <Badge variant="outline" className="text-xs">LTD</Badge>
+      </div> */}
+
+      <h1 className="text-2xl font-bold">LTD purchase plans</h1>
+      <p className="text-sm text-muted-foreground">
+        One-time payment. Lifetime access.
+      </p>
+    </div>
+
+    {/* Right (Coupon) */}
+    <div className="w-full md:w-auto">
+      {appliedPromo ? (
+        <div className="flex items-center justify-between bg-primary/10 rounded-md px-3 py-2 min-w-[260px]">
+          <div className="flex items-center gap-2">
+            <Check className="h-4 w-4 text-primary" />
+            <span className="font-semibold text-primary">{appliedPromo.code}</span>
+            <span className="text-xs text-muted-foreground">
+              {appliedPromo.discountPercent}% off
+            </span>
+          </div>
+          <Button variant="ghost" size="sm" onClick={removePromo} className="h-7 w-7 p-0">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      ) : (
+        <div className="flex gap-2 min-w-[260px]">
+          <Input
+            placeholder="Coupon code"
+            value={promoInput}
+            onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+            className="h-9"
+          />
+          <Button onClick={validatePromo} size="sm" className="h-9 px-4">
+            {promoValidating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+          </Button>
+        </div>
+      )}
+    </div>
+
+  </div>
+</div>
+            
+            {/* <div className="text-center space-y-4">
               <WouterLink href="/">
                 <img src={logoPath} alt="VisiCardly" className="w-14 h-10 mx-auto object-contain" />
               </WouterLink>
@@ -374,10 +425,10 @@ export default function LtdPurchasePage() {
                   Pick your plan, apply a coupon, and make a one-time payment.
                 </p>
               </div>
-            </div>
+            </div> */}
 
             {/* Coupon code section */}
-            <div className="max-w-md mx-auto w-full">
+            {/* <div className="max-w-md mx-auto w-full">
               <div className="bg-muted/50 border rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Tag className="h-4 w-4 text-primary" />
@@ -409,7 +460,7 @@ export default function LtdPurchasePage() {
                   </div>
                 )}
               </div>
-            </div>
+            </div> */}
 
             {plans.length === 0 ? (
               <div className="text-center text-muted-foreground py-16">
@@ -531,7 +582,13 @@ export default function LtdPurchasePage() {
                             placeholder="Enter coupon code"
                             value={promoInput}
                             onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
-                            onKeyDown={(e) => e.key === "Enter" && validatePromo()}
+                            // onKeyDown={(e) => e.key === "Enter" && validatePromo()}
+                             onKeyDown={(e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();   // ✅ important fix
+      validatePromo();
+    }
+  }}
                             className="uppercase border-primary-foreground/20 bg-primary-foreground/5 text-primary-foreground placeholder:text-primary-foreground/50"
                           />
                           <Button variant="secondary" onClick={validatePromo} disabled={promoValidating || !promoInput.trim()}>
@@ -702,7 +759,13 @@ export default function LtdPurchasePage() {
                           placeholder="Enter coupon code"
                           value={promoInput}
                           onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
-                          onKeyDown={(e) => e.key === "Enter" && validatePromo()}
+                          // onKeyDown={(e) => e.key === "Enter" && validatePromo()}
+                         onKeyDown={(e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();   // ✅ important fix
+      validatePromo();
+    }
+  }}
                           className="uppercase"
                         />
                         <Button onClick={validatePromo} disabled={promoValidating || !promoInput.trim()}>

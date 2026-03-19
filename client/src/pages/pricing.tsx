@@ -170,85 +170,97 @@ export default function PricingPage() {
 
   return (
     <LegalLayout>
-      <section className="py-16 text-center px-4">
-        <h1 className="text-4xl md:text-5xl font-extrabold text-foreground mb-4">
+      <section className="py-12 text-center px-4">
+        <h1 className="text-4xl md:text-5xl font-extrabold text-foreground mb-3">
           Simple, Transparent Pricing
         </h1>
-        <p className="text-lg text-muted-foreground max-w-xl mx-auto mb-8">
+        <p className="text-md text-muted-foreground max-w-xl mx-auto mb-6">
           Choose the plan that works for you. Upgrade, downgrade, or cancel anytime.
         </p>
 
-        <div className="flex flex-col items-center gap-3">
-          <div className="inline-flex items-center gap-1 bg-muted rounded-full p-1 text-sm">
+      {/* COMPACT CONTROL BAR */}
+      <div className="flex flex-col lg:flex-row items-center justify-center gap-3 flex-wrap">
+
+        {/* Billing Toggle */}
+        <div className="inline-flex items-center bg-muted rounded-full p-1 text-sm">
             <button
-              className={`px-4 py-1.5 rounded-full font-medium transition-all ${billingCycle === "monthly" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
+              className={`px-3 py-1.5 rounded-full font-medium transition ${
+                billingCycle === "monthly"
+                  ? "bg-background shadow text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
               onClick={() => setBillingCycle("monthly")}
             >
               Monthly
             </button>
             <button
-              className={`px-4 py-1.5 rounded-full font-medium transition-all ${billingCycle === "yearly" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
+              className={`px-3 py-1.5 rounded-full font-medium transition ${billingCycle === "yearly" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
               onClick={() => setBillingCycle("yearly")}
             >
               Yearly
-              <span className="ml-1.5 text-xs text-primary font-semibold">Save up to 20%</span>
+              <span className="ml-1 text-xs text-primary font-semibold">Save up to 20%</span>
             </button>
           </div>
 
-          {/* Currency toggle */}
-          <div className="inline-flex items-center gap-1 bg-muted rounded-full p-1 text-sm" data-testid="currency-toggle">
+          {/* Currency Toggle */}
+          <div className="inline-flex items-center bg-muted rounded-full p-1 text-sm">
             <button
-              className={`px-4 py-1.5 rounded-full font-medium transition-all flex items-center gap-1 ${currency === "INR" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
+              className={`px-3 py-1.5 rounded-full font-medium ${
+                currency === "INR"
+                  ? "bg-background shadow text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
               onClick={() => setCurrency("INR")}
-              data-testid="currency-inr"
             >
               ₹ INR
             </button>
             <button
-              className={`px-4 py-1.5 rounded-full font-medium transition-all flex items-center gap-1 ${currency === "USD" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
+              className={`px-3 py-1.5 rounded-full font-medium ${currency === "USD" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
               onClick={() => setCurrency("USD")}
-              data-testid="currency-usd"
             >
               $ USD
             </button>
           </div>
-        </div>
-      </section>
-
-      <section className="max-w-md mx-auto px-4 pb-8">
-        <div className="bg-muted/50 border rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Tag className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium text-foreground">Have a promo code?</span>
-          </div>
+            
+        {/* PROMO INLINE */}
+        <div className="flex items-center gap-2 bg-muted/50 border rounded-full px-3 py-1.5">
+          <Tag className="h-4 w-4 text-primary" />
+          
           {appliedPromo ? (
-            <div className="flex items-center justify-between bg-primary/10 rounded-md px-3 py-2">
-              <div className="flex items-center gap-2">
-                <Check className="h-4 w-4 text-primary" />
-                <span className="font-semibold text-primary">{appliedPromo.code}</span>
-                <span className="text-sm text-muted-foreground">— {appliedPromo.discountPercent}% off</span>
-              </div>
-              <Button variant="ghost" size="sm" onClick={removePromo} className="h-7 w-7 p-0">
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+            <>
+              <span className="text-sm font-medium text-primary">
+                {appliedPromo.code} (-{appliedPromo.discountPercent}%)
+              </span>
+              <button onClick={removePromo}>
+                <X className="h-4 w-4 text-muted-foreground hover:text-red-500" />
+              </button>
+            </>
           ) : (
-            <div className="flex gap-2">
+            <>
               <Input
-                placeholder="Enter promo code"
+                placeholder="Promo"
                 value={promoInput}
                 onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
                 onKeyDown={(e) => e.key === "Enter" && validatePromo()}
-                className="uppercase"
+                className="h-7 w-36 border-0 bg-transparent focus-visible:ring-0 text-sm uppercase"
               />
-              <Button onClick={validatePromo} disabled={promoValidating || !promoInput.trim()} size="sm">
-                {promoValidating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+              <Button
+                size="sm"
+                className="h-7 px-3"
+                onClick={validatePromo}
+                disabled={promoValidating || !promoInput.trim()}
+              >
+                {promoValidating ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  "Apply"
+                )}
               </Button>
-            </div>
+            </>
           )}
         </div>
-      </section>
-
+      </div>
+    </section>
       <section className="max-w-5xl mx-auto px-4 pb-20">
         {loading ? (
           <div className="flex items-center justify-center py-20">
