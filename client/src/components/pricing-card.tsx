@@ -160,7 +160,7 @@ export function PricingCard({
           ) : null}
           {isCurrentPlan
             ? "Current Plan"
-            : ctaLabel ?? (isFree ? "Get Started Free" : "Upgrade Now")}
+            : ctaLabel ?? (isFree ? "Get Started Free" : "Buy Now")}
         </Button>
       </CardContent>
     </Card>
