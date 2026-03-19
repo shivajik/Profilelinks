@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { Link as WouterLink } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -26,6 +26,7 @@ import {
 import { SiFacebook, SiX, SiInstagram, SiPinterest, SiTumblr } from "react-icons/si";
 import { useAuth } from "@/lib/auth";
 import heroPhoneImg from "@/assets/images/hero-phone.png";
+const TemplateShowcase = lazy(() => import("@/components/template-showcase"));
 
 const STATS = [
   { value: "10K+", label: "Creators" },
@@ -342,6 +343,11 @@ export default function Landing() {
             </div>
           </div>
         </section>
+
+
+        <Suspense fallback={null}>
+          <TemplateShowcase />
+        </Suspense>
 
         <section id="features" className="py-24 px-6 bg-card border-y border-border">
           <div className="max-w-5xl mx-auto">
