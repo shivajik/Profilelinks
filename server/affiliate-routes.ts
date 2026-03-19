@@ -20,6 +20,18 @@ import crypto from "crypto";
 
 const router = Router();
 
+async function ensurePromoCodeScopeColumns() {
+  try {
+    await db.execute(sql`ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS applies_to_ltd boolean NOT NULL DEFAULT false`);
+    await db.execute(sql`ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS applies_to_regular boolean NOT NULL DEFAULT true`);
+    await db.execute(sql`ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS plan_id varchar`);
+  } catch (error) {
+    console.error("Promo code scope column setup failed:", error);
+  }
+}
+
+void ensurePromoCodeScopeColumns();
+
 function requireAuth(req: Request, res: Response, next: () => void) {
   if (!req.session.userId) {
     return res.status(401).json({ message: "Unauthorized" });
@@ -152,7 +164,24 @@ router.get("/api/admin/affiliates/:id/referrals", requireAdminAuth, async (req: 
 
 router.get("/api/admin/promo-codes", requireAdminAuth, async (req: Request, res: Response) => {
   try {
-    const codes = await db.select().from(promoCodes).orderBy(desc(promoCodes.createdAt));
+    const codes = await db
+      .select({
+        id: promoCodes.id,
+        code: promoCodes.code,
+        discountPercent: promoCodes.discountPercent,
+        maxUses: promoCodes.maxUses,
+        currentUses: promoCodes.currentUses,
+        isActive: promoCodes.isActive,
+        appliesToLtd: promoCodes.appliesToLtd,
+        appliesToRegular: promoCodes.appliesToRegular,
+        planId: promoCodes.planId,
+        expiresAt: promoCodes.expiresAt,
+        createdAt: promoCodes.createdAt,
+        planName: pricingPlans.name,
+      })
+      .from(promoCodes)
+      .leftJoin(pricingPlans, eq(promoCodes.planId, pricingPlans.id))
+      .orderBy(desc(promoCodes.createdAt));
     res.json(codes);
   } catch {
     res.status(500).json({ message: "Failed to fetch promo codes" });
@@ -168,11 +197,25 @@ router.post("/api/admin/promo-codes", requireAdminAuth, async (req: Request, res
     const [existing] = await db.select().from(promoCodes).where(eq(promoCodes.code, result.data.code.toUpperCase()));
     if (existing) return res.status(400).json({ message: "Promo code already exists" });
 
+    if (!result.data.appliesToLtd && !result.data.appliesToRegular) {
+      return res.status(400).json({ message: "Select at least one coupon scope" });
+    }
+
+    if (result.data.planId) {
+      const [plan] = await db.select({ id: pricingPlans.id, isLtd: pricingPlans.isLtd }).from(pricingPlans).where(eq(pricingPlans.id, result.data.planId));
+      if (!plan) return res.status(400).json({ message: "Selected plan not found" });
+      if (result.data.appliesToLtd && !plan.isLtd) return res.status(400).json({ message: "LTD coupons can only target LTD plans" });
+      if (result.data.appliesToRegular && plan.isLtd) return res.status(400).json({ message: "Regular coupons can only target regular plans" });
+    }
+
     const [code] = await db.insert(promoCodes).values({
       code: result.data.code.toUpperCase(),
       discountPercent: result.data.discountPercent.toString(),
       maxUses: result.data.maxUses,
       expiresAt: result.data.expiresAt ? new Date(result.data.expiresAt) : null,
+      appliesToLtd: result.data.appliesToLtd,
+      appliesToRegular: result.data.appliesToRegular,
+      planId: result.data.planId || null,
     }).returning();
     res.status(201).json(code);
   } catch (error: any) {
@@ -192,6 +235,24 @@ router.patch("/api/admin/promo-codes/:id", requireAdminAuth, async (req: Request
     if (result.data.maxUses !== undefined) updateData.maxUses = result.data.maxUses;
     if (result.data.isActive !== undefined) updateData.isActive = result.data.isActive;
     if (result.data.expiresAt !== undefined) updateData.expiresAt = result.data.expiresAt ? new Date(result.data.expiresAt) : null;
+    if (result.data.appliesToLtd !== undefined) updateData.appliesToLtd = result.data.appliesToLtd;
+    if (result.data.appliesToRegular !== undefined) updateData.appliesToRegular = result.data.appliesToRegular;
+    if (result.data.planId !== undefined) updateData.planId = result.data.planId || null;
+
+    const nextLtd = updateData.appliesToLtd;
+    const nextRegular = updateData.appliesToRegular;
+    if (nextLtd === false && nextRegular === false) {
+      return res.status(400).json({ message: "Select at least one coupon scope" });
+    }
+
+    if (updateData.planId) {
+      const [plan] = await db.select({ id: pricingPlans.id, isLtd: pricingPlans.isLtd }).from(pricingPlans).where(eq(pricingPlans.id, updateData.planId));
+      if (!plan) return res.status(400).json({ message: "Selected plan not found" });
+      const scopeLtd = nextLtd ?? false;
+      const scopeRegular = nextRegular ?? false;
+      if (scopeLtd && !plan.isLtd) return res.status(400).json({ message: "LTD coupons can only target LTD plans" });
+      if (scopeRegular && plan.isLtd) return res.status(400).json({ message: "Regular coupons can only target regular plans" });
+    }
 
     const [updated] = await db.update(promoCodes).set(updateData).where(sql`${promoCodes.id} = ${req.params.id}`).returning();
     if (!updated) return res.status(404).json({ message: "Promo code not found" });
@@ -228,7 +289,21 @@ router.post("/api/promo-codes/validate", async (req: Request, res: Response) => 
     if (code.maxUses && code.maxUses > 0 && code.currentUses >= code.maxUses) return res.status(400).json({ message: "This promo code has reached its usage limit" });
     if (code.expiresAt && new Date(code.expiresAt) < new Date()) return res.status(400).json({ message: "This promo code has expired" });
 
-    res.json({ valid: true, discountPercent: parseFloat(code.discountPercent), code: code.code });
+    const isLtd = !!result.data.isLtd;
+    if (isLtd && !code.appliesToLtd) return res.status(400).json({ message: "This coupon is not valid for LTD plans" });
+    if (!isLtd && !code.appliesToRegular) return res.status(400).json({ message: "This coupon is not valid for regular plans" });
+    if (result.data.planId && code.planId && code.planId !== result.data.planId) {
+      return res.status(400).json({ message: "This coupon is not valid for the selected plan" });
+    }
+
+    res.json({
+      valid: true,
+      discountPercent: parseFloat(code.discountPercent),
+      code: code.code,
+      appliesToLtd: code.appliesToLtd,
+      appliesToRegular: code.appliesToRegular,
+      planId: code.planId,
+    });
   } catch {
     res.status(500).json({ message: "Failed to validate promo code" });
   }

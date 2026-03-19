@@ -735,6 +735,7 @@ export const createPaymentOrderSchema = z.object({
   planId: z.string().min(1, "Plan ID is required"),
   billingCycle: z.enum(["monthly", "yearly"]).default("monthly"),
   currency: z.enum(["INR", "USD"]).default("INR"),
+  promoCode: z.string().optional(),
 });
 
 export const verifyPaymentSchema = z.object({
@@ -743,6 +744,7 @@ export const verifyPaymentSchema = z.object({
   razorpaySignature: z.string(),
   planId: z.string(),
   billingCycle: z.enum(["monthly", "yearly"]).default("monthly"),
+  promoCode: z.string().optional(),
 });
 
 export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({ id: true, createdAt: true });
@@ -790,6 +792,9 @@ export const promoCodes = pgTable("promo_codes", {
   maxUses: integer("max_uses").default(0), // 0 = unlimited
   currentUses: integer("current_uses").notNull().default(0),
   isActive: boolean("is_active").notNull().default(true),
+  appliesToLtd: boolean("applies_to_ltd").notNull().default(false),
+  appliesToRegular: boolean("applies_to_regular").notNull().default(true),
+  planId: varchar("plan_id").references(() => pricingPlans.id, { onDelete: "cascade" }),
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
@@ -809,6 +814,9 @@ export const createPromoCodeSchema = z.object({
   discountPercent: z.number().min(1).max(100),
   maxUses: z.number().int().min(0).default(0),
   expiresAt: z.string().optional(),
+  appliesToLtd: z.boolean().default(false),
+  appliesToRegular: z.boolean().default(true),
+  planId: z.string().optional().nullable(),
 });
 
 export const updatePromoCodeSchema = z.object({
@@ -816,10 +824,15 @@ export const updatePromoCodeSchema = z.object({
   maxUses: z.number().int().min(0).optional(),
   isActive: z.boolean().optional(),
   expiresAt: z.string().optional().nullable(),
+  appliesToLtd: z.boolean().optional(),
+  appliesToRegular: z.boolean().optional(),
+  planId: z.string().optional().nullable(),
 });
 
 export const validatePromoCodeSchema = z.object({
   code: z.string().min(1),
+  planId: z.string().optional().nullable(),
+  isLtd: z.boolean().optional(),
 });
 
 export type Affiliate = typeof affiliates.$inferSelect;

@@ -79,6 +79,7 @@ interface AffiliateRow {
 interface PromoCodeRow {
   id: string; code: string; discountPercent: string; maxUses: number | null;
   currentUses: number; isActive: boolean; expiresAt?: string; createdAt: string;
+  appliesToLtd?: boolean; appliesToRegular?: boolean; planId?: string | null; planName?: string | null;
 }
 
 // ─── Plan Form Schema ────────────────────────────────────────────────────────
@@ -222,6 +223,9 @@ export default function AdminDashboard() {
   const [promoDiscount, setPromoDiscount] = useState("10");
   const [promoMaxUses, setPromoMaxUses] = useState("0");
   const [promoExpiry, setPromoExpiry] = useState("");
+  const [promoAppliesToLtd, setPromoAppliesToLtd] = useState(false);
+  const [promoAppliesToRegular, setPromoAppliesToRegular] = useState(true);
+  const [promoPlanId, setPromoPlanId] = useState<string>("all");
   const [savingPromo, setSavingPromo] = useState(false);
   const [deletingPromoId, setDeletingPromoId] = useState<string | null>(null);
   const [promoSignupAccountType, setPromoSignupAccountType] = useState<"individual" | "team">("individual"); // kept for backwards compat but unused
@@ -1346,6 +1350,9 @@ export default function AdminDashboard() {
                   setPromoDiscount("10");
                   setPromoMaxUses("0");
                   setPromoExpiry("");
+                  setPromoAppliesToLtd(false);
+                  setPromoAppliesToRegular(true);
+                  setPromoPlanId("all");
                   setPromoSignupAccountType("individual");
                   setPromoDialog({ open: true });
                 }}>
@@ -1360,6 +1367,8 @@ export default function AdminDashboard() {
                       <tr className="border-b bg-muted/50">
                         <th className="text-left p-3 font-medium text-muted-foreground">Code</th>
                         <th className="text-left p-3 font-medium text-muted-foreground">Discount</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Scope</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Plan</th>
                         <th className="text-left p-3 font-medium text-muted-foreground">Uses</th>
                         <th className="text-left p-3 font-medium text-muted-foreground">Expires</th>
                         <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
@@ -1368,11 +1377,15 @@ export default function AdminDashboard() {
                     </thead>
                     <tbody>
                       {adminPromoCodes.length === 0 ? (
-                        <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No promo codes yet</td></tr>
+                        <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">No promo codes yet</td></tr>
                       ) : adminPromoCodes.map((p) => (
                         <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
                           <td className="p-3"><code className="bg-muted px-2 py-0.5 rounded text-xs font-bold">{p.code}</code></td>
                           <td className="p-3 font-medium">{parseFloat(p.discountPercent)}%</td>
+                          <td className="p-3 text-muted-foreground text-xs">
+                            {[p.appliesToRegular ? "Regular" : null, p.appliesToLtd ? "LTD" : null].filter(Boolean).join(" + ") || "—"}
+                          </td>
+                          <td className="p-3 text-muted-foreground text-xs">{p.planName || "All matching plans"}</td>
                           <td className="p-3 text-muted-foreground">{p.currentUses}{p.maxUses ? ` / ${p.maxUses}` : " / ∞"}</td>
                           <td className="p-3 text-muted-foreground text-xs">{p.expiresAt ? new Date(p.expiresAt).toLocaleDateString("en-IN") : "Never"}</td>
                           <td className="p-3">
@@ -2321,6 +2334,41 @@ export default function AdminDashboard() {
               <Label>Discount Percentage (%)</Label>
               <Input type="number" min="1" max="100" value={promoDiscount} onChange={(e) => setPromoDiscount(e.target.value)} />
             </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="flex items-center gap-2 rounded-lg border border-border p-3 text-sm text-foreground">
+                <input type="checkbox" checked={promoAppliesToRegular} onChange={(e) => {
+                  setPromoAppliesToRegular(e.target.checked);
+                  setPromoPlanId("all");
+                }} />
+                Regular packages
+              </label>
+              <label className="flex items-center gap-2 rounded-lg border border-border p-3 text-sm text-foreground">
+                <input type="checkbox" checked={promoAppliesToLtd} onChange={(e) => {
+                  setPromoAppliesToLtd(e.target.checked);
+                  setPromoPlanId("all");
+                }} />
+                LTD packages
+              </label>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Specific Plan (optional)</Label>
+              <select
+                value={promoPlanId}
+                onChange={(e) => setPromoPlanId(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+              >
+                <option value="all">All matching plans</option>
+                {plans
+                  .filter((plan) => {
+                    if (promoAppliesToLtd && !promoAppliesToRegular) return !!plan.isLtd;
+                    if (promoAppliesToRegular && !promoAppliesToLtd) return !plan.isLtd;
+                    return true;
+                  })
+                  .map((plan) => (
+                    <option key={plan.id} value={plan.id}>{plan.name}{plan.isLtd ? " (LTD)" : ""}</option>
+                  ))}
+              </select>
+            </div>
             <div className="space-y-1.5">
               <Label>Max Uses (0 = unlimited)</Label>
               <Input type="number" min="0" value={promoMaxUses} onChange={(e) => setPromoMaxUses(e.target.value)} />
@@ -2333,7 +2381,7 @@ export default function AdminDashboard() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setPromoDialog({ open: false })}>Cancel</Button>
             <Button
-              disabled={savingPromo || !promoCode.trim()}
+              disabled={savingPromo || !promoCode.trim() || (!promoAppliesToLtd && !promoAppliesToRegular)}
               onClick={async () => {
                 setSavingPromo(true);
                 try {
@@ -2345,6 +2393,9 @@ export default function AdminDashboard() {
                       discountPercent: parseFloat(promoDiscount),
                       maxUses: parseInt(promoMaxUses),
                       expiresAt: promoExpiry || undefined,
+                      appliesToLtd: promoAppliesToLtd,
+                      appliesToRegular: promoAppliesToRegular,
+                      planId: promoPlanId === "all" ? undefined : promoPlanId,
                     }),
                   });
                   const j = await res.json();

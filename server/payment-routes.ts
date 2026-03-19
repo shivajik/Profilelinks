@@ -87,8 +87,7 @@ router.post("/api/payments/create-order", requireAuth as any, async (req: Reques
     if (!result.success) {
       return res.status(400).json({ message: fromZodError(result.error).message });
     }
-    const { planId, billingCycle, currency } = result.data;
-    const promoCode = req.body.promoCode as string | undefined;
+    const { planId, billingCycle, currency, promoCode } = result.data;
 
     const plans = await db.select().from(pricingPlans).where(sql`${pricingPlans.id} = ${planId}`);
     const plan = plans[0];
@@ -106,11 +105,17 @@ router.post("/api/payments/create-order", requireAuth as any, async (req: Reques
     let appliedPromoId: string | null = null;
     if (promoCode) {
       const [code] = await db.select().from(promoCodes).where(eq(promoCodes.code, promoCode.toUpperCase()));
-      if (code && code.isActive && (!code.maxUses || code.maxUses === 0 || code.currentUses < code.maxUses) && (!code.expiresAt || new Date(code.expiresAt) > new Date())) {
-        const discount = parseFloat(code.discountPercent);
-        price = Math.round(price * (1 - discount / 100));
-        appliedPromoId = code.id;
-      }
+      if (!code) return res.status(400).json({ message: "Invalid promo code" });
+      if (!code.isActive) return res.status(400).json({ message: "This promo code is no longer active" });
+      if (code.maxUses && code.maxUses > 0 && code.currentUses >= code.maxUses) return res.status(400).json({ message: "This promo code has reached its usage limit" });
+      if (code.expiresAt && new Date(code.expiresAt) <= new Date()) return res.status(400).json({ message: "This promo code has expired" });
+      if (plan.isLtd && !code.appliesToLtd) return res.status(400).json({ message: "This coupon is not valid for LTD plans" });
+      if (!plan.isLtd && !code.appliesToRegular) return res.status(400).json({ message: "This coupon is not valid for regular plans" });
+      if (code.planId && code.planId !== planId) return res.status(400).json({ message: "This coupon is not valid for the selected plan" });
+
+      const discount = parseFloat(code.discountPercent);
+      price = Math.max(0, Math.round(price * (1 - discount / 100)));
+      appliedPromoId = code.id;
     }
 
     if (price === 0) {
@@ -307,7 +312,7 @@ router.post("/api/payments/verify", requireAuth as any, async (req: Request, res
       return res.status(400).json({ message: fromZodError(result.error).message });
     }
 
-    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, planId, billingCycle } = result.data;
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, planId, billingCycle, promoCode } = result.data;
 
     const keySecretFromDb = await getAppSettingValue("razorpay_key_secret");
     const keySecret = keySecretFromDb ?? process.env.RAZORPAY_KEY_SECRET;
@@ -323,6 +328,18 @@ router.post("/api/payments/verify", requireAuth as any, async (req: Request, res
 
     if (expectedSignature !== razorpaySignature) {
       return res.status(400).json({ message: "Payment verification failed — invalid signature" });
+    }
+
+    if (promoCode) {
+      const [paymentPlan] = await db.select({ isLtd: pricingPlans.isLtd }).from(pricingPlans).where(eq(pricingPlans.id, planId));
+      const [code] = await db.select().from(promoCodes).where(eq(promoCodes.code, promoCode.toUpperCase()));
+      if (paymentPlan && code && code.isActive && (!code.maxUses || code.maxUses === 0 || code.currentUses < code.maxUses) && (!code.expiresAt || new Date(code.expiresAt) > new Date())) {
+        const scopeMatches = paymentPlan.isLtd ? code.appliesToLtd : code.appliesToRegular;
+        const planMatches = !code.planId || code.planId === planId;
+        if (scopeMatches && planMatches) {
+          await db.update(promoCodes).set({ currentUses: code.currentUses + 1 }).where(eq(promoCodes.id, code.id));
+        }
+      }
     }
 
     // Update payment record to success
@@ -389,17 +406,6 @@ router.post("/api/payments/verify", requireAuth as any, async (req: Request, res
           status: "activated",
         });
         await storage.updateUser(user.id, { accountType: "team", teamId: team.id });
-      }
-    }
-
-    // If promo code was used, increment usage
-    const promoCode = req.body.promoCode as string | undefined;
-    if (promoCode) {
-      const [promoRecord] = await db.select().from(promoCodes).where(eq(promoCodes.code, promoCode.toUpperCase()));
-      if (promoRecord) {
-        await db.update(promoCodes)
-          .set({ currentUses: sql`${promoCodes.currentUses} + 1` })
-          .where(eq(promoCodes.code, promoCode.toUpperCase()));
       }
     }
 
