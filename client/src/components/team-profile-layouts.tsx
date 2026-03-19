@@ -497,15 +497,22 @@ function ModernTeamLayout(props: TeamLayoutProps) {
   const displayName = user.displayName || user.username;
   const avatarCls = getAvatarClass(template.avatarStyle);
 
-  // Mobile: horizontal card (avatar LEFT + info RIGHT) matching the thumbnail & personal preview
+  // Mobile: horizontal card (avatar LEFT + info RIGHT)
   if (mode === "mobile") {
     return (
       <div className="mb-6" data-testid="corporate-profile-card">
-        <div className={`${template.cardBg} rounded-xl shadow-lg border`} style={{ borderColor: brandColor + "20" }}>
-          <div className="h-1 w-full rounded-t-xl" style={{ backgroundColor: brandColor }} />
+        <div className={`${template.cardBg} rounded-xl shadow-lg border overflow-hidden`} style={{ borderColor: brandColor + "20" }}>
+          {teamBranding.coverPhoto ? (
+            <div className="h-20 relative">
+              <img src={teamBranding.coverPhoto} alt="Cover" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/20" />
+            </div>
+          ) : (
+            <div className="h-1 w-full" style={{ backgroundColor: brandColor }} />
+          )}
           <div className="p-4">
             <div className="flex items-start gap-3">
-              <Avatar className={`w-14 h-14 border-2 shadow-md shrink-0 ${avatarCls}`} style={{ borderColor: brandColor + "40" }}>
+              <Avatar className={`w-14 h-14 border-2 shadow-md shrink-0 ${avatarCls} ${teamBranding.coverPhoto ? "-mt-8 ring-2 ring-card" : ""}`} style={{ borderColor: brandColor + "40" }}>
                 <AvatarImage src={user.profileImage || undefined} alt={displayName} />
                 <AvatarFallback className="text-lg font-bold" style={{ backgroundColor: brandColor + "30", color: brandColor }}>
                   {displayName.charAt(0).toUpperCase()}
@@ -533,16 +540,22 @@ function ModernTeamLayout(props: TeamLayoutProps) {
   }
 
   // Desktop & public profile: side-by-side two-panel card
-  const splitRow = mode === "desktop" ? "flex-row" : "sm:flex-row";
-  const leftWidth = mode === "desktop" ? "w-2/5" : "sm:w-2/5";
-  const rightWidth = mode === "desktop" ? "w-3/5" : "sm:w-3/5";
+  const isDesktop = mode === "desktop";
+  const leftWidth = isDesktop ? "w-2/5" : "sm:w-2/5";
+  const rightWidth = isDesktop ? "w-3/5" : "sm:w-3/5";
   return (
     <div className="mb-10">
       <div className="rounded-2xl overflow-hidden shadow-xl border" style={{ borderColor: brandColor + "20" }} data-testid="corporate-profile-card">
-        <div className={`flex flex-col ${splitRow}`}>
-          <div className={`${leftWidth} p-6 flex flex-col items-center justify-center text-center ${template.cardBg}`}>
-            <div className="w-full h-1 rounded-full mb-4" style={{ backgroundColor: brandColor }} />
-            <Avatar className={`w-24 h-24 border-4 shadow-lg mb-3 ${avatarCls}`} style={{ borderColor: brandColor + "40" }}>
+        {teamBranding.coverPhoto && (
+          <div className="relative h-36 w-full">
+            <img src={teamBranding.coverPhoto} alt="Cover" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+          </div>
+        )}
+        <div className={isDesktop ? "flex flex-row" : `flex flex-col sm:flex-row`}>
+          <div className={`${leftWidth} p-6 flex flex-col items-center justify-center text-center ${template.cardBg} ${teamBranding.coverPhoto ? "-mt-10 relative z-10" : ""}`}>
+            {!teamBranding.coverPhoto && <div className="w-full h-1 rounded-full mb-4" style={{ backgroundColor: brandColor }} />}
+            <Avatar className={`w-24 h-24 border-4 shadow-lg mb-3 ${avatarCls} ${teamBranding.coverPhoto ? "ring-2 ring-card" : ""}`} style={{ borderColor: brandColor + "40" }}>
               <AvatarImage src={user.profileImage || undefined} alt={displayName} />
               <AvatarFallback className="text-2xl font-bold" style={{ backgroundColor: brandColor + "30", color: brandColor }}>
                 {displayName.charAt(0).toUpperCase()}
@@ -626,10 +639,17 @@ function ElegantTeamLayout(props: TeamLayoutProps) {
     <div className="mb-10">
       <div className="h-1.5 rounded-full shadow-sm mb-6" style={{ backgroundColor: brandColor }} />
       <div className="rounded-2xl overflow-hidden shadow-lg bg-card/90 backdrop-blur-md border" style={{ borderColor: brandColor + "15" }} data-testid="corporate-profile-card">
-        <div className="h-1" style={{ backgroundColor: brandColor }} />
+        {teamBranding.coverPhoto ? (
+          <div className="relative h-32 overflow-hidden">
+            <img src={teamBranding.coverPhoto} alt="Cover" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/30" />
+          </div>
+        ) : (
+          <div className="h-1" style={{ backgroundColor: brandColor }} />
+        )}
         <div className="p-6">
           <div className="flex flex-col items-center text-center mb-6">
-            <Avatar className={`w-20 h-20 border-2 shadow-md mb-3 ${avatarCls}`} style={{ borderColor: brandColor + "50" }}>
+            <Avatar className={`w-20 h-20 border-2 shadow-md mb-3 ${avatarCls} ${teamBranding.coverPhoto ? "-mt-14 ring-2 ring-card" : ""}`} style={{ borderColor: brandColor + "50" }}>
               <AvatarImage src={user.profileImage || undefined} alt={displayName} />
               <AvatarFallback className="text-xl" style={{ backgroundColor: brandColor + "20", color: brandColor }}>
                 {displayName.charAt(0).toUpperCase()}

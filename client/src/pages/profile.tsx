@@ -84,6 +84,7 @@ export default function PublicProfile(props?: any) {
   const [contactOpen, setContactOpen] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   const { data, isLoading, isFetching, error } = useQuery<PublicProfile>({
     queryKey: ["/api/profile", companySlug, username, activePageSlug],
@@ -262,6 +263,28 @@ export default function PublicProfile(props?: any) {
           </Button>
         </div>
 
+        {/* Lightbox overlay */}
+        {lightboxUrl && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
+            onClick={() => setLightboxUrl(null)}
+          >
+            <button
+              type="button"
+              className="absolute top-4 right-4 text-white bg-black/50 rounded-full p-2 hover:bg-black/70 transition-colors"
+              onClick={() => setLightboxUrl(null)}
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+            <img
+              src={lightboxUrl}
+              alt="Full size"
+              className="max-w-[90vw] max-h-[90vh] object-contain rounded-xl shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        )}
+
         {isTeamProfile ? (
           <TeamProfileLayout
             user={user}
@@ -280,7 +303,7 @@ export default function PublicProfile(props?: any) {
             isLoading={isLoading}
             normalizeUrl={normalizeUrl}
             trackClick={trackClick}
-            PublicBlock={PublicBlock}
+            PublicBlock={(p: any) => <PublicBlock {...p} onImageClick={setLightboxUrl} />}
           />
         ) : (
           <PersonalProfileLayout
@@ -298,7 +321,7 @@ export default function PublicProfile(props?: any) {
             isLoading={isLoading}
             normalizeUrl={normalizeUrl}
             trackClick={trackClick}
-            PublicBlock={PublicBlock}
+            PublicBlock={(p: any) => <PublicBlock {...p} onImageClick={setLightboxUrl} />}
           />
         )}
 
@@ -449,7 +472,7 @@ function getSpotifyEmbedUrl(url: string): string | null {
   return null;
 }
 
-function PublicBlock({ block, template, onClickTrack }: { block: Block; template: ReturnType<typeof getTemplate>; onClickTrack?: (blockId: string) => void }) {
+function PublicBlock({ block, template, onClickTrack, onImageClick }: { block: Block; template: ReturnType<typeof getTemplate>; onClickTrack?: (blockId: string) => void; onImageClick?: (url: string) => void }) {
   const content = block.content as BlockContent;
 
   switch (block.type) {
@@ -584,35 +607,31 @@ function PublicBlock({ block, template, onClickTrack }: { block: Block; template
       );
     }
     case "image": {
-      const imgElement = content.imageUrl ? (
-        <img
-          src={content.imageUrl}
-          alt={content.title || ""}
-          className="w-full max-h-80 object-cover rounded-xl"
-        />
-      ) : (
-        <div className={`w-full ${template.cardBg} rounded-xl p-8 text-center backdrop-blur-sm`}>
-          <span className={`text-sm ${template.cardTextColor} opacity-60`}>Image</span>
-        </div>
-      );
-
-      if (content.linkUrl) {
+      if (!content.imageUrl) {
         return (
-          <a
-            href={normalizeUrl(content.linkUrl)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block rounded-xl overflow-hidden transition-all hover:scale-[1.02] hover:shadow-md"
-            data-testid={`block-image-${block.id}`}
-          >
-            {imgElement}
-          </a>
+          <div className={`w-full ${template.cardBg} rounded-xl p-8 text-center backdrop-blur-sm`} data-testid={`block-image-${block.id}`}>
+            <span className={`text-sm ${template.cardTextColor} opacity-60`}>Image</span>
+          </div>
         );
       }
       return (
-        <div className="rounded-xl overflow-hidden" data-testid={`block-image-${block.id}`}>
-          {imgElement}
-        </div>
+        <button
+          type="button"
+          className="block w-full rounded-xl overflow-hidden transition-all hover:scale-[1.02] hover:shadow-lg cursor-zoom-in group relative"
+          data-testid={`block-image-${block.id}`}
+          onClick={() => onImageClick?.(content.imageUrl!)}
+        >
+          <img
+            src={content.imageUrl}
+            alt={content.title || ""}
+            className="w-full max-h-52 object-cover"
+          />
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-full p-1.5">
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
+            </div>
+          </div>
+        </button>
       );
     }
     default:
