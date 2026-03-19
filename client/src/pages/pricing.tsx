@@ -41,7 +41,7 @@ export default function PricingPage() {
 
   const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("yearly");
   const [currency, setCurrency] = useState<"INR" | "USD">("INR");
   const [payingPlanId, setPayingPlanId] = useState<string | null>(null);
   const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);

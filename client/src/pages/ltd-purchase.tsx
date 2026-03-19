@@ -49,7 +49,6 @@ interface LtdPlan {
 }
 
 type Step = "plans" | "register" | "payment";
-type BillingCycle = "monthly" | "yearly";
 
 declare global {
   interface Window {
@@ -131,7 +130,6 @@ export default function LtdPurchasePage() {
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [step, setStep] = useState<Step>("plans");
-  const [billingCycle, setBillingCycle] = useState<BillingCycle>("yearly");
 
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -177,8 +175,8 @@ export default function LtdPurchasePage() {
   const selectedPlan = useMemo(() => plans.find((plan) => plan.id === selectedPlanId) ?? null, [plans, selectedPlanId]);
 
   const getBasePrice = (plan: LtdPlan) => {
-    const raw = billingCycle === "yearly" ? plan.yearlyPrice : plan.monthlyPrice;
-    return parseFloat(raw || "0");
+    // LTD uses yearlyPrice as the one-time price
+    return parseFloat(plan.yearlyPrice || plan.monthlyPrice || "0");
   };
 
   const getDiscountedPrice = (plan: LtdPlan) => {
@@ -186,8 +184,6 @@ export default function LtdPurchasePage() {
     if (!appliedPromo) return base;
     return Math.max(0, Math.round(base * (1 - appliedPromo.discountPercent / 100)));
   };
-
-  const getMonthlyEquivalent = (plan: LtdPlan) => Math.round(getDiscountedPrice(plan) / 12);
 
   const checkUsernameAvailability = (val: string) => {
     if (usernameDebounce) clearTimeout(usernameDebounce);
@@ -290,7 +286,7 @@ export default function LtdPurchasePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           planId: selectedPlanId,
-          billingCycle,
+          billingCycle: "yearly",
           currency: "INR",
           promoCode: appliedPromo?.code || undefined,
         }),
@@ -309,7 +305,7 @@ export default function LtdPurchasePage() {
         amount: data.amount,
         currency: data.currency,
         name: "VisiCardly",
-        description: `${data.planName} — ${billingCycle === "yearly" ? "Annual" : "Monthly"}${appliedPromo ? ` (${appliedPromo.discountPercent}% off)` : ""}`,
+        description: `${data.planName} — One-time${appliedPromo ? ` (${appliedPromo.discountPercent}% off)` : ""}`,
         order_id: data.orderId,
         handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
           try {
@@ -321,7 +317,7 @@ export default function LtdPurchasePage() {
                 razorpayPaymentId: response.razorpay_payment_id,
                 razorpaySignature: response.razorpay_signature,
                 planId: selectedPlanId,
-                billingCycle,
+                billingCycle: "yearly",
                 promoCode: appliedPromo?.code || undefined,
               }),
             });
@@ -371,34 +367,48 @@ export default function LtdPurchasePage() {
               <WouterLink href="/">
                 <img src={logoPath} alt="VisiCardly" className="w-14 h-10 mx-auto object-contain" />
               </WouterLink>
-              <Badge variant="outline" className="mx-auto">Annual selected by default</Badge>
+              <Badge variant="outline" className="mx-auto">Lifetime Deal</Badge>
               <div className="space-y-2">
                 <h1 className="text-4xl font-black text-foreground">LTD purchase plans</h1>
                 <p className="text-muted-foreground max-w-2xl mx-auto">
-                  Pick your plan, keep annual billing selected by default, and apply a coupon before checkout.
+                  Pick your plan, apply a coupon, and make a one-time payment.
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-col items-center gap-4">
-              <div className="inline-flex items-center gap-1 rounded-full bg-muted p-1 text-sm">
-                <button
-                  className={`px-4 py-1.5 rounded-full font-medium transition-all ${billingCycle === "monthly" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
-                  onClick={() => setBillingCycle("monthly")}
-                >
-                  Monthly
-                </button>
-                <button
-                  className={`px-4 py-1.5 rounded-full font-medium transition-all ${billingCycle === "yearly" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
-                  onClick={() => setBillingCycle("yearly")}
-                >
-                  Annual
-                  <span className="ml-1.5 text-xs font-semibold text-primary">Discounted</span>
-                </button>
+            {/* Coupon code section */}
+            <div className="max-w-md mx-auto w-full">
+              <div className="bg-muted/50 border rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Tag className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium text-foreground">Have a coupon code?</span>
+                </div>
+                {appliedPromo ? (
+                  <div className="flex items-center justify-between bg-primary/10 rounded-md px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-primary" />
+                      <span className="font-semibold text-primary">{appliedPromo.code}</span>
+                      <span className="text-sm text-muted-foreground">— {appliedPromo.discountPercent}% off</span>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={removePromo} className="h-7 w-7 p-0">
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter coupon code"
+                      value={promoInput}
+                      onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                      onKeyDown={(e) => e.key === "Enter" && validatePromo()}
+                      className="uppercase"
+                    />
+                    <Button onClick={validatePromo} disabled={promoValidating || !promoInput.trim()} size="sm">
+                      {promoValidating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+                    </Button>
+                  </div>
+                )}
               </div>
-              <p className="text-sm text-muted-foreground">
-                {billingCycle === "yearly" ? "Per month, billed annually." : "Billed every month."}
-              </p>
             </div>
 
             {plans.length === 0 ? (
@@ -411,10 +421,6 @@ export default function LtdPurchasePage() {
                 {plans.map((plan) => {
                   const basePrice = getBasePrice(plan);
                   const discountedPrice = getDiscountedPrice(plan);
-                  const monthlyEquivalent = getMonthlyEquivalent(plan);
-                  const savings = billingCycle === "yearly" && parseFloat(plan.monthlyPrice) > 0
-                    ? Math.max(0, Math.round(100 - (parseFloat(plan.yearlyPrice) / (parseFloat(plan.monthlyPrice) * 12)) * 100))
-                    : 0;
 
                   return (
                     <Card key={plan.id} className={`relative overflow-hidden transition-shadow hover:shadow-lg ${plan.isFeatured ? "border-primary ring-2 ring-primary/20" : ""}`}>
@@ -431,32 +437,14 @@ export default function LtdPurchasePage() {
                         </div>
 
                         <div className="space-y-1">
-                          {billingCycle === "yearly" ? (
-                            <>
-                              <div className="flex items-end gap-1">
-                                <span className="text-4xl font-black text-foreground">{formatInr(monthlyEquivalent)}</span>
-                                <span className="text-sm text-muted-foreground mb-1">/month</span>
-                              </div>
-                              <p className="text-sm text-muted-foreground">Billed annually at {formatInr(discountedPrice)}</p>
-                              {appliedPromo && basePrice > discountedPrice && (
-                                <p className="text-xs text-muted-foreground line-through">{formatInr(basePrice)} annual</p>
-                              )}
-                              {savings > 0 && !appliedPromo && <p className="text-xs text-primary">Save {savings}% vs monthly</p>}
-                            </>
-                          ) : (
-                            <>
-                              <div className="flex items-end gap-1">
-                                <span className="text-4xl font-black text-foreground">{formatInr(discountedPrice)}</span>
-                                <span className="text-sm text-muted-foreground mb-1">/month</span>
-                              </div>
-                              <p className="text-sm text-muted-foreground">Billed monthly</p>
-                              {appliedPromo && basePrice > discountedPrice && (
-                                <p className="text-xs text-muted-foreground line-through">{formatInr(basePrice)} /month</p>
-                              )}
-                            </>
+                          <div className="flex items-end gap-1">
+                            <span className="text-4xl font-black text-foreground">{formatInr(discountedPrice)}</span>
+                          </div>
+                          <p className="text-sm text-muted-foreground">One-time payment</p>
+                          {appliedPromo && basePrice > discountedPrice && (
+                            <p className="text-xs text-muted-foreground line-through">{formatInr(basePrice)}</p>
                           )}
                         </div>
-
                         <ul className="space-y-2 min-h-36">
                           {(plan.features as string[]).map((feature, index) => (
                             <li key={index} className="flex items-start gap-2 text-sm text-foreground">
@@ -517,17 +505,8 @@ export default function LtdPurchasePage() {
                       <div className="text-2xl font-bold">{selectedPlan.name}</div>
                     </div>
                     <div>
-                      {billingCycle === "yearly" ? (
-                        <>
-                          <div className="text-3xl font-black">{formatInr(getMonthlyEquivalent(selectedPlan))}<span className="text-base font-medium text-primary-foreground/70"> /month</span></div>
-                          <p className="text-sm text-primary-foreground/80">Billed annually at {formatInr(getDiscountedPrice(selectedPlan))}</p>
-                        </>
-                      ) : (
-                        <>
-                          <div className="text-3xl font-black">{formatInr(getDiscountedPrice(selectedPlan))}<span className="text-base font-medium text-primary-foreground/70"> /month</span></div>
-                          <p className="text-sm text-primary-foreground/80">Billed monthly</p>
-                        </>
-                      )}
+                      <div className="text-3xl font-black">{formatInr(getDiscountedPrice(selectedPlan))}</div>
+                      <p className="text-sm text-primary-foreground/80">One-time payment</p>
                       {selectedPlan.description && <p className="text-sm text-primary-foreground/70 mt-2">{selectedPlan.description}</p>}
                     </div>
 
@@ -566,7 +545,7 @@ export default function LtdPurchasePage() {
 
                 <div className="space-y-3">
                   {[
-                    { icon: Infinity, text: "Keep annual billing selected for the discounted rate" },
+                    { icon: Infinity, text: "One-time payment — no recurring charges" },
                     { icon: Zap, text: "Apply LTD-only coupons without affecting regular plans" },
                     { icon: Shield, text: "Complete payment securely via Razorpay" },
                   ].map(({ icon: Icon, text }) => (
@@ -692,7 +671,7 @@ export default function LtdPurchasePage() {
                   <div className="space-y-2">
                     <h1 className="text-2xl font-bold text-foreground">Ready to pay</h1>
                     <p className="text-muted-foreground">
-                      {selectedPlan ? `${selectedPlan.name} • ${billingCycle === "yearly" ? "Billed annually" : "Billed monthly"}` : "Open the payment window to continue."}
+                      {selectedPlan ? `${selectedPlan.name} • One-time payment` : "Open the payment window to continue."}
                     </p>
                     {selectedPlan && (
                       <p className="text-sm font-medium text-foreground">

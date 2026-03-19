@@ -101,25 +101,47 @@ export function PricingCard({
         </div>
 
         <div className="mt-4">
-          <div className="flex items-end gap-1">
-            <span className="text-4xl font-extrabold text-foreground">
-              {isFree ? "Free" : `${symbol}${price.toLocaleString(locale)}`}
-            </span>
-            {!isFree && (
-              <span className="text-muted-foreground text-sm mb-1">
-                /{billingCycle === "yearly" ? "year" : "month"}
-              </span>
-            )}
-          </div>
-          {discountPercent && originalPrice > 0 && (
-            <p className="text-xs text-muted-foreground mt-1 line-through">
-              {symbol}{originalPrice.toLocaleString(locale)}
-            </p>
-          )}
-          {!isFree && billingCycle === "yearly" && !discountPercent && inrMonthlyForSaving > 0 && inrYearlyForSaving > 0 && (
-            <p className="text-xs text-primary mt-1">
-              Save {Math.round(100 - (inrYearlyForSaving / (inrMonthlyForSaving * 12)) * 100)}% vs monthly
-            </p>
+          {isFree ? (
+            <div className="flex items-end gap-1">
+              <span className="text-4xl font-extrabold text-foreground">Free</span>
+            </div>
+          ) : billingCycle === "yearly" ? (
+            <>
+              <div className="flex items-end gap-1">
+                <span className="text-4xl font-extrabold text-foreground">
+                  {symbol}{Math.round(price / 12).toLocaleString(locale)}
+                </span>
+                <span className="text-muted-foreground text-sm mb-1">/month</span>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Billed annually{discountPercent ? "" : ` at ${symbol}${price.toLocaleString(locale)}`}
+              </p>
+              {discountPercent && originalPrice > 0 && (
+                <p className="text-xs text-muted-foreground mt-0.5 line-through">
+                  {symbol}{originalPrice.toLocaleString(locale)}/year
+                </p>
+              )}
+              {!discountPercent && inrMonthlyForSaving > 0 && inrYearlyForSaving > 0 && (
+                <p className="text-xs text-primary mt-0.5">
+                  Save {Math.round(100 - (inrYearlyForSaving / (inrMonthlyForSaving * 12)) * 100)}% vs monthly
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="flex items-end gap-1">
+                <span className="text-4xl font-extrabold text-foreground">
+                  {symbol}{price.toLocaleString(locale)}
+                </span>
+                <span className="text-muted-foreground text-sm mb-1">/month</span>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">Billed monthly</p>
+              {discountPercent && originalPrice > 0 && (
+                <p className="text-xs text-muted-foreground mt-0.5 line-through">
+                  {symbol}{originalPrice.toLocaleString(locale)}/month
+                </p>
+              )}
+            </>
           )}
         </div>
       </CardHeader>

@@ -92,7 +92,7 @@ export function BillingSection({ autoSelectPlanId }: { autoSelectPlanId?: string
   const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("yearly");
   const [currency, setCurrency] = useState<"INR" | "USD">("INR");
   const [payingPlanId, setPayingPlanId] = useState<string | null>(null);
   const [autoTriggered, setAutoTriggered] = useState(false);
