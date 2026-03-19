@@ -46,7 +46,16 @@ export function serveStatic(app: Express) {
         if (team) teamName = team.name;
       } else if (singleMatch) {
         const [, username] = singleMatch;
+        // First try as a username
         user = await storage.getUserByUsername(username);
+        // If not found, try as a team slug and use the team owner
+        if (!user) {
+          const team = await storage.getTeamBySlug(username);
+          if (team) {
+            teamName = team.name;
+            user = await storage.getUser(team.ownerId);
+          }
+        }
       }
 
       if (user) {

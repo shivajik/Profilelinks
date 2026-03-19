@@ -98,6 +98,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   SidebarProvider,
   SidebarTrigger,
@@ -200,6 +201,13 @@ export default function Dashboard() {
     }
   }, [search]);
   const [previewMode, setPreviewMode] = useState<"mobile" | "desktop">("mobile");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const handlePreviewMode = (mode: "mobile" | "desktop") => {
+    setPreviewMode(mode);
+    if (mode === "desktop") {
+      setSidebarOpen(false);
+    }
+  };
   const [headerName, setHeaderName] = useState("");
   const [headerBio, setHeaderBio] = useState("");
   const [headerDirty, setHeaderDirty] = useState(false);
@@ -502,7 +510,7 @@ export default function Dashboard() {
   };
 
   return (
-    <SidebarProvider style={sidebarStyle as React.CSSProperties}>
+    <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen} style={sidebarStyle as React.CSSProperties}>
       <div className="flex h-screen w-full">
         <Sidebar>
           <SidebarContent>
@@ -1162,7 +1170,7 @@ export default function Dashboard() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => setPreviewMode("mobile")}
+                          onClick={() => handlePreviewMode("mobile")}
                           className={`toggle-elevate ${previewMode === "mobile" ? "toggle-elevated" : ""}`}
                         >
                           <Smartphone className="w-4 h-4" />
@@ -1170,7 +1178,7 @@ export default function Dashboard() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => setPreviewMode("desktop")}
+                          onClick={() => handlePreviewMode("desktop")}
                           className={`toggle-elevate ${previewMode === "desktop" ? "toggle-elevated" : ""}`}
                         >
                           <Monitor className="w-4 h-4" />
@@ -1210,7 +1218,7 @@ export default function Dashboard() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => setPreviewMode("mobile")}
+                          onClick={() => handlePreviewMode("mobile")}
                           className={`toggle-elevate ${previewMode === "mobile" ? "toggle-elevated" : ""}`}
                         >
                           <Smartphone className="w-4 h-4" />
@@ -1218,7 +1226,7 @@ export default function Dashboard() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => setPreviewMode("desktop")}
+                          onClick={() => handlePreviewMode("desktop")}
                           className={`toggle-elevate ${previewMode === "desktop" ? "toggle-elevated" : ""}`}
                         >
                           <Monitor className="w-4 h-4" />
@@ -1258,7 +1266,7 @@ export default function Dashboard() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => setPreviewMode("mobile")}
+                        onClick={() => handlePreviewMode("mobile")}
                         className={`toggle-elevate ${previewMode === "mobile" ? "toggle-elevated" : ""}`}
                         data-testid="button-preview-mobile"
                       >
@@ -1267,7 +1275,7 @@ export default function Dashboard() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => setPreviewMode("desktop")}
+                        onClick={() => handlePreviewMode("desktop")}
                         className={`toggle-elevate ${previewMode === "desktop" ? "toggle-elevated" : ""}`}
                         data-testid="button-preview-desktop"
                       >
@@ -1316,7 +1324,7 @@ export default function Dashboard() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => setPreviewMode("mobile")}
+                    onClick={() => handlePreviewMode("mobile")}
                     className={`toggle-elevate ${previewMode === "mobile" ? "toggle-elevated" : ""}`}
                   >
                     <Smartphone className="w-4 h-4" />
@@ -1324,7 +1332,7 @@ export default function Dashboard() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => setPreviewMode("desktop")}
+                    onClick={() => handlePreviewMode("desktop")}
                     className={`toggle-elevate ${previewMode === "desktop" ? "toggle-elevated" : ""}`}
                   >
                     <Monitor className="w-4 h-4" />
@@ -1381,14 +1389,17 @@ export default function Dashboard() {
             </div>
             )}
 
-            <div className={`${activeSection === "design" ? "hidden lg:block" : "hidden"} w-[280px] border-l bg-background overflow-y-auto shrink-0`}>
-              <DesignPanel
-                currentTemplateId={user.template || "minimal"}
-                onSelectTemplate={(id) => templateMutation.mutate(id)}
-                saving={templateMutation.isPending}
-                disabled={false}
-              />
-            </div>
+            {/* Design panel - always visible when design section is active */}
+            {activeSection === "design" && (
+              <div className="w-[280px] border-l bg-background overflow-y-auto shrink-0">
+                <DesignPanel
+                  currentTemplateId={user.template || "minimal"}
+                  onSelectTemplate={(id) => templateMutation.mutate(id)}
+                  saving={templateMutation.isPending}
+                  disabled={false}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
