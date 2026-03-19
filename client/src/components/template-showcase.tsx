@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useCallback } from "react";
 
 import templateSpicegarden from "@/assets/images/template-spicegarden.png";
 import templateExploreworld from "@/assets/images/template-exploreworld.png";
@@ -20,59 +20,171 @@ const TEMPLATES = [
   { name: "Care Plus", image: templatecareplus, url: "https://visicardly.com/careplus" },
 ];
 
+// Triplicate so we always have room in both directions
+const items = [...TEMPLATES, ...TEMPLATES, ...TEMPLATES];
+
 export default function TemplateShowcase() {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [isPaused, setIsPaused] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const dragStart = useRef({ x: 0, scrollLeft: 0 });
 
+  // All drag state in refs to avoid re-renders
+  const drag = useRef({
+    active: false,
+    startX: 0,
+    startScroll: 0,
+    lastX: 0,
+    lastTime: 0,
+    velocity: 0,
+    wasDragged: false,
+  });
+  const autoScroll = useRef({ paused: false, speed: 0.8 });
+  const rafId = useRef<number>(0);
+  const inertiaRaf = useRef<number>(0);
+
+  // Clamp scroll to stay in the middle third so we always have buffer on both sides
+  const clampScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const third = el.scrollWidth / 3;
+    if (el.scrollLeft < third * 0.1) {
+      el.scrollLeft += third;
+    } else if (el.scrollLeft > third * 2.1) {
+      el.scrollLeft -= third;
+    }
+  }, []);
+
+  // Auto-scroll loop
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
 
-    let animationId: number;
-    let scrollSpeed = 0.8;
+    // Start in the middle third
+    el.scrollLeft = el.scrollWidth / 3;
 
     const step = () => {
-      if (!isPaused && !isDragging && el) {
-        el.scrollLeft += scrollSpeed;
-        if (el.scrollLeft >= el.scrollWidth / 2) {
-          el.scrollLeft = 0;
-        }
+      if (!autoScroll.current.paused && !drag.current.active && el) {
+        el.scrollLeft += autoScroll.current.speed;
+        clampScroll();
       }
-      animationId = requestAnimationFrame(step);
+      rafId.current = requestAnimationFrame(step);
     };
 
-    animationId = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(animationId);
-  }, [isPaused, isDragging]);
+    rafId.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafId.current);
+  }, [clampScroll]);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  // --- Mouse drag ---
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
     const el = scrollRef.current;
     if (!el) return;
-    setIsDragging(true);
-    setIsPaused(true);
-    dragStart.current = { x: e.pageX, scrollLeft: el.scrollLeft };
+    cancelAnimationFrame(inertiaRaf.current);
+    autoScroll.current.paused = true;
+    drag.current = {
+      active: true,
+      startX: e.pageX,
+      startScroll: el.scrollLeft,
+      lastX: e.pageX,
+      lastTime: Date.now(),
+      velocity: 0,
+      wasDragged: false,
+    };
     el.style.cursor = "grabbing";
-  };
+  }, []);
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
+  const onMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!drag.current.active) return;
     const el = scrollRef.current;
     if (!el) return;
-    const dx = e.pageX - dragStart.current.x;
-    el.scrollLeft = dragStart.current.scrollLeft - dx;
-  };
 
-  const handleMouseUp = () => {
-    if (!isDragging) return;
-    setIsDragging(false);
+    const now = Date.now();
+    const dt = now - drag.current.lastTime || 1;
+    drag.current.velocity = (drag.current.lastX - e.pageX) / dt;
+    drag.current.lastX = e.pageX;
+    drag.current.lastTime = now;
+
+    const dx = e.pageX - drag.current.startX;
+    if (Math.abs(dx) > 4) drag.current.wasDragged = true;
+    el.scrollLeft = drag.current.startScroll - dx;
+    clampScroll();
+  }, [clampScroll]);
+
+  const onMouseUp = useCallback(() => {
+    if (!drag.current.active) return;
     const el = scrollRef.current;
+    drag.current.active = false;
     if (el) el.style.cursor = "grab";
-  };
+    startInertia();
+  }, []);
 
-  // Duplicate templates for infinite scroll effect
-  const items = [...TEMPLATES, ...TEMPLATES];
+  const onMouseLeave = useCallback(() => {
+    if (!drag.current.active) return;
+    const el = scrollRef.current;
+    drag.current.active = false;
+    if (el) el.style.cursor = "grab";
+    startInertia();
+  }, []);
+
+  // --- Touch drag ---
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    cancelAnimationFrame(inertiaRaf.current);
+    autoScroll.current.paused = true;
+    const touch = e.touches[0];
+    drag.current = {
+      active: true,
+      startX: touch.pageX,
+      startScroll: el.scrollLeft,
+      lastX: touch.pageX,
+      lastTime: Date.now(),
+      velocity: 0,
+      wasDragged: false,
+    };
+  }, []);
+
+  const onTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!drag.current.active) return;
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const touch = e.touches[0];
+    const now = Date.now();
+    const dt = now - drag.current.lastTime || 1;
+    drag.current.velocity = (drag.current.lastX - touch.pageX) / dt;
+    drag.current.lastX = touch.pageX;
+    drag.current.lastTime = now;
+
+    const dx = touch.pageX - drag.current.startX;
+    if (Math.abs(dx) > 4) drag.current.wasDragged = true;
+    el.scrollLeft = drag.current.startScroll - dx;
+    clampScroll();
+  }, [clampScroll]);
+
+  const onTouchEnd = useCallback(() => {
+    drag.current.active = false;
+    startInertia();
+  }, []);
+
+  // Inertia after release — decelerates naturally
+  function startInertia() {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    let velocity = drag.current.velocity * 16; // px per frame (~60fps)
+    const friction = 0.92;
+
+    const tick = () => {
+      if (Math.abs(velocity) < 0.3) {
+        autoScroll.current.paused = false;
+        return;
+      }
+      el.scrollLeft += velocity;
+      clampScroll();
+      velocity *= friction;
+      inertiaRaf.current = requestAnimationFrame(tick);
+    };
+
+    inertiaRaf.current = requestAnimationFrame(tick);
+  }
 
   return (
     <section className="py-24 pt-4 px-0 overflow-hidden">
@@ -90,13 +202,13 @@ export default function TemplateShowcase() {
       <div
         ref={scrollRef}
         className="flex gap-6 overflow-x-hidden cursor-grab px-6 select-none"
-        onMouseEnter={() => { if (!isDragging) setIsPaused(true); }}
-        onMouseLeave={() => { setIsPaused(false); handleMouseUp(); }}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onTouchStart={() => setIsPaused(true)}
-        onTouchEnd={() => setIsPaused(false)}
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+        onMouseUp={onMouseUp}
+        onMouseLeave={onMouseLeave}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
       >
         {items.map((template, i) => (
           <a
@@ -105,7 +217,7 @@ export default function TemplateShowcase() {
             target="_blank"
             rel="noopener noreferrer"
             className="flex-shrink-0 group"
-            onClick={(e) => { if (isDragging) e.preventDefault(); }}
+            onClick={(e) => { if (drag.current.wasDragged) e.preventDefault(); }}
             draggable={false}
           >
             <div className="w-[260px] h-[460px] rounded-2xl overflow-hidden border border-border bg-card shadow-sm transition-transform duration-300 group-hover:scale-[1.03] group-hover:shadow-lg">
@@ -114,6 +226,7 @@ export default function TemplateShowcase() {
                 alt={`${template.name} template`}
                 className="w-full h-full object-cover object-top"
                 loading="lazy"
+                draggable={false}
               />
             </div>
             <p className="text-sm font-semibold text-foreground text-center mt-3">{template.name}</p>
