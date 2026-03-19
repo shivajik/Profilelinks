@@ -2,6 +2,7 @@ import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
 import { storage } from "./storage";
+import { getAnalyticsSnippets, injectAnalytics } from "./analytics";
 
 export function serveStatic(app: Express) {
   const distPath = path.resolve(__dirname, "public");
@@ -25,8 +26,13 @@ export function serveStatic(app: Express) {
 
     // Skip known routes
     const skipPrefixes = ["/auth", "/dashboard", "/onboarding", "/pricing", "/about", "/contact", "/docs", "/support", "/terms", "/privacy", "/gdpr", "/refund-policy", "/admin", "/change-password", "/invite", "/api"];
+
+    // Inject analytics scripts from DB (GA4 in <head>, FB noscript in <body>)
+    const analyticsSnippets = await getAnalyticsSnippets();
+    const baseHtml = injectAnalytics(indexHtml, analyticsSnippets);
+
     if (skipPrefixes.some(p => urlPath.startsWith(p))) {
-      return res.sendFile(path.resolve(distPath, "index.html"));
+      return res.send(baseHtml);
     }
 
     try {
@@ -53,7 +59,7 @@ export function serveStatic(app: Express) {
           ? `${displayName} — ${teamName} | VisiCardly`
           : `VisiCardly — ${displayName} (@${user.username})`;
 
-        const ogHtml = indexHtml
+        const ogHtml = baseHtml
           .replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(title)}</title>`)
           .replace(/<meta property="og:title"[^>]*>/, `<meta property="og:title" content="${escapeAttr(title)}" />`)
           .replace(/<meta property="og:description"[^>]*>/, `<meta property="og:description" content="${escapeAttr(bio)}" />`)
@@ -70,7 +76,7 @@ export function serveStatic(app: Express) {
       // Fall through to default
     }
 
-    res.sendFile(path.resolve(distPath, "index.html"));
+    res.send(baseHtml);
   });
 }
 

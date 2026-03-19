@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { db, storage } from "./storage";
 import { requireAdminAuth } from "./admin-auth";
 import { rateLimit } from "./rate-limit";
+import { invalidateAnalyticsCache } from "./analytics";
 import {
   adminUsers,
   users,
@@ -1138,6 +1139,7 @@ router.post("/api/admin/settings/tracking", requireAdminAuth, async (req: Reques
     if (fbPixelId !== undefined) {
       await db.execute(sql`INSERT INTO app_settings (key, value, updated_at) VALUES ('fb_pixel_id', ${fbPixelId}, now()) ON CONFLICT (key) DO UPDATE SET value = ${fbPixelId}, updated_at = now()`);
     }
+    invalidateAnalyticsCache();
     res.json({ message: "Tracking settings saved" });
   } catch (error: any) {
     console.error("Tracking settings error:", error);
