@@ -70,7 +70,8 @@ function loadRazorpayScript(): Promise<boolean> {
   });
 }
 
-function formatInr(value: number) {
+function formatPrice(value: number, currency: "INR" | "USD" = "INR") {
+  if (currency === "USD") return `$${value.toLocaleString("en-US")}`;
   return `₹${value.toLocaleString("en-IN")}`;
 }
 
@@ -145,6 +146,7 @@ export default function LtdPurchasePage() {
   const [promoValidating, setPromoValidating] = useState(false);
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPercent: number } | null>(null);
   const [processingPayment, setProcessingPayment] = useState(false);
+  const [currency, setCurrency] = useState<"INR" | "USD">("INR");
 
   useEffect(() => {
     fetch("/api/ltd/purchase-status")
@@ -175,8 +177,17 @@ export default function LtdPurchasePage() {
   const selectedPlan = useMemo(() => plans.find((plan) => plan.id === selectedPlanId) ?? null, [plans, selectedPlanId]);
 
   const getBasePrice = (plan: LtdPlan) => {
-    // LTD uses yearlyPrice as the one-time price
+    if (currency === "USD") {
+      const usdPrice = parseFloat(plan.yearlyPriceUsd || plan.monthlyPriceUsd || "0");
+      if (usdPrice > 0) return usdPrice;
+    }
     return parseFloat(plan.yearlyPrice || plan.monthlyPrice || "0");
+  };
+
+  const isShowingUsd = (plan: LtdPlan) => {
+    if (currency !== "USD") return false;
+    const usdPrice = parseFloat(plan.yearlyPriceUsd || plan.monthlyPriceUsd || "0");
+    return usdPrice > 0;
   };
 
   const getDiscountedPrice = (plan: LtdPlan) => {
@@ -209,17 +220,13 @@ export default function LtdPurchasePage() {
 
   const validatePromo = async () => {
     if (!promoInput.trim()) return;
-    if (!selectedPlanId) {
-      toast({ title: "Select a plan first", description: "Choose your LTD plan before applying a coupon.", variant: "destructive" });
-      return;
-    }
 
     setPromoValidating(true);
     try {
       const res = await fetch("/api/promo-codes/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: promoInput.trim(), planId: selectedPlanId, isLtd: true }),
+        body: JSON.stringify({ code: promoInput.trim(), planId: selectedPlanId || undefined, isLtd: true }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
@@ -240,8 +247,7 @@ export default function LtdPurchasePage() {
 
   const handleSelectPlan = (planId: string) => {
     setSelectedPlanId(planId);
-    setAppliedPromo(null);
-    setPromoInput("");
+    // Don't clear promo when selecting a plan - preserve applied coupon
     setStep("register");
   };
 
@@ -364,53 +370,72 @@ export default function LtdPurchasePage() {
         <section className="px-4 py-14">
           <div className="max-w-6xl mx-auto space-y-10">
             <div className="max-w-4xl mx-auto">
-  <div className="border rounded-xl p-5 bg-muted/40 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+  <div className="border rounded-xl p-5 bg-muted/40 flex flex-col gap-4">
+    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      {/* Left */}
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold">LTD purchase plans</h1>
+        <p className="text-sm text-muted-foreground">
+          One-time payment. Lifetime access.
+        </p>
+      </div>
 
-    {/* Left */}
-    <div className="space-y-1">
-      {/* <div className="flex items-center gap-2">
-        <WouterLink href="/">
-          <img src={logoPath} alt="VisiCardly" className="w-8 h-6 object-contain" />
-        </WouterLink>
-        <Badge variant="outline" className="text-xs">LTD</Badge>
-      </div> */}
+      {/* Right (Coupon + Currency) */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full md:w-auto">
+        {/* Currency Toggle */}
+        <div className="inline-flex items-center bg-muted rounded-full p-1 text-sm">
+          <button
+            className={`px-3 py-1.5 rounded-full font-medium transition ${
+              currency === "INR"
+                ? "bg-background shadow text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            onClick={() => setCurrency("INR")}
+          >
+            ₹ INR
+          </button>
+          <button
+            className={`px-3 py-1.5 rounded-full font-medium transition ${
+              currency === "USD"
+                ? "bg-background shadow text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            onClick={() => setCurrency("USD")}
+          >
+            $ USD
+          </button>
+        </div>
 
-      <h1 className="text-2xl font-bold">LTD purchase plans</h1>
-      <p className="text-sm text-muted-foreground">
-        One-time payment. Lifetime access.
-      </p>
-    </div>
-
-    {/* Right (Coupon) */}
-    <div className="w-full md:w-auto">
-      {appliedPromo ? (
-        <div className="flex items-center justify-between bg-primary/10 rounded-md px-3 py-2 min-w-[260px]">
-          <div className="flex items-center gap-2">
-            <Check className="h-4 w-4 text-primary" />
-            <span className="font-semibold text-primary">{appliedPromo.code}</span>
-            <span className="text-xs text-muted-foreground">
-              {appliedPromo.discountPercent}% off
-            </span>
+        {/* Coupon */}
+        {appliedPromo ? (
+          <div className="flex items-center justify-between bg-primary/10 rounded-md px-3 py-2 min-w-[260px]">
+            <div className="flex items-center gap-2">
+              <Check className="h-4 w-4 text-primary" />
+              <span className="font-semibold text-primary">{appliedPromo.code}</span>
+              <span className="text-xs text-muted-foreground">
+                {appliedPromo.discountPercent}% off
+              </span>
+            </div>
+            <Button variant="ghost" size="sm" onClick={removePromo} className="h-7 w-7 p-0">
+              <X className="h-4 w-4" />
+            </Button>
           </div>
-          <Button variant="ghost" size="sm" onClick={removePromo} className="h-7 w-7 p-0">
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-      ) : (
-        <div className="flex gap-2 min-w-[260px]">
-          <Input
-            placeholder="Coupon code"
-            value={promoInput}
-            onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
-            className="h-9"
-          />
-          <Button onClick={validatePromo} size="sm" className="h-9 px-4">
-            {promoValidating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
-          </Button>
-        </div>
-      )}
+        ) : (
+          <div className="flex gap-2 min-w-[260px]">
+            <Input
+              placeholder="Coupon code"
+              value={promoInput}
+              onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); validatePromo(); } }}
+              className="h-9"
+            />
+            <Button onClick={validatePromo} size="sm" className="h-9 px-4" disabled={promoValidating || !promoInput.trim()}>
+              {promoValidating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
-
   </div>
 </div>
             
@@ -489,11 +514,11 @@ export default function LtdPurchasePage() {
 
                         <div className="space-y-1">
                           <div className="flex items-end gap-1">
-                            <span className="text-4xl font-black text-foreground">{formatInr(discountedPrice)}</span>
+                            <span className="text-4xl font-black text-foreground">{formatPrice(discountedPrice, isShowingUsd(plan) ? "USD" : "INR")}</span>
                           </div>
                           <p className="text-sm text-muted-foreground">One-time payment</p>
                           {appliedPromo && basePrice > discountedPrice && (
-                            <p className="text-xs text-muted-foreground line-through">{formatInr(basePrice)}</p>
+                            <p className="text-xs text-muted-foreground line-through">{formatPrice(basePrice, isShowingUsd(plan) ? "USD" : "INR")}</p>
                           )}
                         </div>
                         <ul className="space-y-2 min-h-36">
@@ -556,7 +581,7 @@ export default function LtdPurchasePage() {
                       <div className="text-2xl font-bold">{selectedPlan.name}</div>
                     </div>
                     <div>
-                      <div className="text-3xl font-black">{formatInr(getDiscountedPrice(selectedPlan))}</div>
+                      <div className="text-3xl font-black">{formatPrice(getDiscountedPrice(selectedPlan), isShowingUsd(selectedPlan) ? "USD" : "INR")}</div>
                       <p className="text-sm text-primary-foreground/80">One-time payment</p>
                       {selectedPlan.description && <p className="text-sm text-primary-foreground/70 mt-2">{selectedPlan.description}</p>}
                     </div>
@@ -732,7 +757,7 @@ export default function LtdPurchasePage() {
                     </p>
                     {selectedPlan && (
                       <p className="text-sm font-medium text-foreground">
-                        Pay {formatInr(getDiscountedPrice(selectedPlan))}
+                        Pay {formatPrice(getDiscountedPrice(selectedPlan), isShowingUsd(selectedPlan) ? "USD" : "INR")}
                         {appliedPromo ? ` after ${appliedPromo.discountPercent}% coupon` : ""}
                       </p>
                     )}
