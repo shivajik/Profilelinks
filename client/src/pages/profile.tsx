@@ -149,6 +149,38 @@ export default function PublicProfile(props?: any) {
     }).catch(() => {});
   }, [username, currentPage?.slug]);
 
+  // Dynamic page title and meta tags — must be before conditional returns
+  useEffect(() => {
+    if (!data) return;
+    const { user: u, teamBranding: tb } = data;
+    const dn = u.displayName || u.username;
+    const tn = tb?.teamName || tb?.companyName;
+    const title = tn
+      ? `${dn} — ${tn} | VisiCardly`
+      : `${dn} (@${u.username}) | VisiCardly`;
+    document.title = title;
+
+    const bio = u.bio || `Check out ${dn}'s profile on VisiCardly`;
+    const pUrl = typeof window !== "undefined" ? `${window.location.origin}/${username}` : `/${username}`;
+    const updateMeta = (selector: string, attr: string, value: string) => {
+      const el = document.querySelector(selector);
+      if (el) el.setAttribute(attr, value);
+    };
+    updateMeta('meta[property="og:title"]', 'content', title);
+    updateMeta('meta[property="og:description"]', 'content', bio);
+    updateMeta('meta[property="og:url"]', 'content', pUrl);
+    updateMeta('meta[name="twitter:title"]', 'content', title);
+    updateMeta('meta[name="twitter:description"]', 'content', bio);
+    if (u.profileImage) {
+      const imgUrl = u.profileImage.startsWith('http') ? u.profileImage : `${window.location.origin}${u.profileImage}`;
+      updateMeta('meta[property="og:image"]', 'content', imgUrl);
+      updateMeta('meta[name="twitter:image"]', 'content', imgUrl);
+    }
+    updateMeta('meta[name="description"]', 'content', bio);
+
+    return () => { document.title = 'VisiCardly — Digital Business Cards & Link-in-Bio Pages'; };
+  }, [data, username]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
