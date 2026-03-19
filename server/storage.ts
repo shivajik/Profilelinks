@@ -267,7 +267,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateUser(id: string, data: Partial<Pick<User, "displayName" | "bio" | "profileImage" | "coverImage" | "username" | "onboardingCompleted" | "template" | "accountType" | "teamId" | "menuTemplate" | "menuDisplayName" | "menuProfileImage" | "menuAccentColor" | "menuDescription" | "menuPhone" | "menuEmail" | "menuAddress" | "menuGoogleMapsUrl" | "menuWhatsapp" | "menuWebsite" | "mustChangePassword" | "emailVerified" | "whiteLabelEnabled" | "apiKey" | "isLtd" | "useOriginalSocialColors">>): Promise<User | undefined>;
+  updateUser(id: string, data: Partial<Pick<User, "displayName" | "bio" | "profileImage" | "coverImage" | "username" | "onboardingCompleted" | "template" | "accountType" | "teamId" | "menuTemplate" | "menuDisplayName" | "menuProfileImage" | "menuAccentColor" | "menuDescription" | "menuPhone" | "menuEmail" | "menuAddress" | "menuGoogleMapsUrl" | "menuWhatsapp" | "menuWebsite" | "mustChangePassword" | "emailVerified" | "whiteLabelEnabled" | "apiKey" | "isLtd" | "useOriginalSocialColors" | "businessPhone">>): Promise<User | undefined>;
 
   getPagesByUserId(userId: string): Promise<Page[]>;
   getPageById(id: string): Promise<Page | undefined>;
@@ -408,7 +408,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async updateUser(id: string, data: Partial<Pick<User, "displayName" | "bio" | "profileImage" | "coverImage" | "username" | "onboardingCompleted" | "template" | "accountType" | "teamId" | "menuTemplate" | "menuDisplayName" | "menuProfileImage" | "menuAccentColor" | "menuDescription" | "menuPhone" | "menuEmail" | "menuAddress" | "menuGoogleMapsUrl" | "menuWhatsapp" | "menuWebsite" | "mustChangePassword" | "emailVerified" | "whiteLabelEnabled" | "apiKey" | "isLtd">>): Promise<User | undefined> {
+  async updateUser(id: string, data: Partial<Pick<User, "displayName" | "bio" | "profileImage" | "coverImage" | "username" | "onboardingCompleted" | "template" | "accountType" | "teamId" | "menuTemplate" | "menuDisplayName" | "menuProfileImage" | "menuAccentColor" | "menuDescription" | "menuPhone" | "menuEmail" | "menuAddress" | "menuGoogleMapsUrl" | "menuWhatsapp" | "menuWebsite" | "mustChangePassword" | "emailVerified" | "whiteLabelEnabled" | "apiKey" | "isLtd" | "useOriginalSocialColors" | "businessPhone">>): Promise<User | undefined> {
     const [user] = await db.update(users).set(data).where(eq(users.id, id)).returning();
     return user;
   }

@@ -509,13 +509,22 @@ export async function registerRoutes(
         return res.status(404).json({ message: "User not found" });
       }
 
-      if (result.data.displayName !== undefined) {
+      const shouldSyncBusinessProfile =
+        result.data.displayName !== undefined ||
+        result.data.bio !== undefined ||
+        result.data.businessPhone !== undefined ||
+        result.data.profileImage !== undefined;
+
+      if (shouldSyncBusinessProfile) {
         const memberships = await storage.getTeamMembershipsByUserId(req.session.userId!);
         const activeMembership = memberships.find(m => m.status === "activated");
         if (activeMembership) {
           await storage.updateTeamMember(activeMembership.id, activeMembership.teamId, {
-            businessName: result.data.displayName,
-          } as any);
+            ...(result.data.displayName !== undefined ? { businessName: result.data.displayName } : {}),
+            ...(result.data.bio !== undefined ? { businessBio: result.data.bio } : {}),
+            ...(result.data.businessPhone !== undefined ? { businessPhone: result.data.businessPhone } : {}),
+            ...(result.data.profileImage !== undefined ? { businessProfileImage: result.data.profileImage } : {}),
+          });
         }
       }
 
@@ -949,8 +958,23 @@ export async function registerRoutes(
       if (!result.success) {
         return res.status(400).json({ message: fromZodError(result.error).message });
       }
+
+      const currentUser = await storage.getUser(req.session.userId!);
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
       const team = await storage.createTeam({ ...result.data, ownerId: req.session.userId! });
-      await storage.addTeamMember({ teamId: team.id, userId: req.session.userId!, role: "owner", status: "activated" });
+      await storage.addTeamMember({
+        teamId: team.id,
+        userId: req.session.userId!,
+        role: "owner",
+        status: "activated",
+        businessName: currentUser.displayName || currentUser.username,
+        businessPhone: currentUser.businessPhone || null,
+        businessProfileImage: currentUser.profileImage || null,
+        businessBio: currentUser.bio || null,
+      });
       await storage.updateUser(req.session.userId!, { accountType: "team", teamId: team.id });
       try {
         await storage.createTeamTemplate({
