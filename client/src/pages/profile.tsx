@@ -362,10 +362,16 @@ export default function PublicProfile(props?: any) {
         )}
 
         {whiteLabelData !== undefined && !whiteLabelData.whiteLabelEnabled && (
-          <div className="mt-12 text-center">
-            <a href="/auth" target="_blank" rel="noopener noreferrer" className="text-xs transition-opacity hover:opacity-80">
+          <div className="mt-12 text-center space-y-1">
+            <p className="text-xs" style={{ opacity: 0.4 }}>
+              <span className={template.textColor}>Powered by </span>
+              <span style={{ color: template.accent }}>Visi</span>
+              <span className={template.textColor}>Cardly</span>
+            </p>
+            <a href="/auth" target="_blank" rel="noopener noreferrer" className="text-xs transition-opacity hover:opacity-80 block">
               <span className={`${template.textColor}`} style={{ opacity: 0.5 }}>
-                Create your own card on{" "}
+                Create your own digital business card
+                {/* Create your own card on{" "} */}
               </span>
               <span style={{ color: template.accent, opacity: 0.6 }}>Visi</span>
               <span className={`${template.textColor}`} style={{ opacity: 0.4 }}>Cardly</span>

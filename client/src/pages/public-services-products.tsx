@@ -140,9 +140,13 @@ export default function PublicServicesProducts({ type }: { type: "services" | "p
         )}
 
         {/* Footer */}
-        <div className="py-8 text-center">
-          <a href="/auth" className={`text-xs ${template.textColor} opacity-40 hover:opacity-60 transition-opacity`}>
+        <div className="py-8 text-center space-y-1">
+          <p className={`text-xs ${template.textColor} opacity-40`}>
             Powered by <span style={{ color: themeColor }}>VisiCardly</span>
+          </p>
+          <a href="/auth" className={`text-xs ${template.textColor} opacity-40 hover:opacity-60 transition-opacity block`}>
+           Create your own digital business card
+          {/* Create your own card on <span style={{ color: themeColor }}>VisiCardly</span> */}
           </a>
         </div>
       </div>

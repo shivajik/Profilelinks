@@ -442,9 +442,13 @@ export default function PublicMenu() {
 
         {/* Footer */}
         {whiteLabelData !== undefined && !whiteLabelData.whiteLabelEnabled && (
-          <div className={`text-center mt-10 ${template.textColor} opacity-40`}>
-            <a href="/auth" target="_blank" rel="noopener noreferrer" className="text-xs hover:opacity-60 transition-opacity">
-              Create your own card on <span className="font-semibold">VisiCardly</span>
+          <div className="text-center mt-10 space-y-1">
+            <p className={`text-xs ${template.textColor} opacity-40`}>
+              Powered by <span className="font-semibold" style={{ color: template.accent, opacity: 1 }}>VisiCardly</span>
+            </p>
+            <a href="/auth" target="_blank" rel="noopener noreferrer" className={`text-xs ${template.textColor} opacity-40 hover:opacity-60 transition-opacity block`}>
+              {/* Create your own card on <span className="font-semibold">VisiCardly</span> */}
+            Create your own digital business card
             </a>
           </div>
         )}

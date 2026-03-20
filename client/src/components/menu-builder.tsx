@@ -776,14 +776,16 @@ export function MenuAppearancePanel() {
   };
 
   return (
-    <div className="p-4 space-y-5">
-      <div className="flex items-center justify-between mb-4">
+    <div className="flex flex-col h-full">
+      {/* Sticky panel header */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b bg-background sticky top-0 z-10 shrink-0">
         <div className="flex items-center gap-2">
           <Palette className="w-4 h-4 text-primary" />
           <h3 className="text-sm font-semibold">Menu Appearance & Info</h3>
         </div>
         <Badge variant="secondary" className="text-xs">Independent styling</Badge>
       </div>
+    <div className="p-4 space-y-5 flex-1">
       <div className="space-y-5">
             <p className="text-xs text-muted-foreground">
               Customize how your menu looks independently from your portfolio profile.
@@ -1007,6 +1009,7 @@ export function MenuAppearancePanel() {
               Save Menu Appearance & Info
             </Button>
       </div>
+    </div>
     </div>
   );
 }
