@@ -249,6 +249,37 @@ if (pool) pool.query(`
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS is_ltd boolean NOT NULL DEFAULT false;
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS use_original_social_colors boolean NOT NULL DEFAULT false;
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS business_phone text;
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS contact_form_enabled boolean NOT NULL DEFAULT false;
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS contact_form_email text;
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS meeting_link text;
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS show_menu_on_profile boolean NOT NULL DEFAULT false;
+
+  CREATE TABLE IF NOT EXISTS team_services (
+    id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+    team_id varchar NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    title text NOT NULL,
+    description text,
+    price text,
+    image_url text,
+    position integer NOT NULL DEFAULT 0,
+    active boolean NOT NULL DEFAULT true,
+    created_at timestamp DEFAULT now()
+  );
+
+  CREATE TABLE IF NOT EXISTS team_products (
+    id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+    team_id varchar NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    title text NOT NULL,
+    description text,
+    price text,
+    image_url text,
+    position integer NOT NULL DEFAULT 0,
+    active boolean NOT NULL DEFAULT true,
+    created_at timestamp DEFAULT now()
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_team_services_team_id ON team_services(team_id);
+  CREATE INDEX IF NOT EXISTS idx_team_products_team_id ON team_products(team_id);
 `).then(async () => {
   // Backfill slugs for existing teams that don't have one
   try {

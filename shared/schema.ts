@@ -39,6 +39,7 @@ export const users = pgTable("users", {
   contactFormEnabled: boolean("contact_form_enabled").notNull().default(false),
   contactFormEmail: text("contact_form_email"),
   meetingLink: text("meeting_link"),
+  showMenuOnProfile: boolean("show_menu_on_profile").notNull().default(false),
 });
 
 // ── Menu Social Links ──────────────────────────────────────────────────────
@@ -281,6 +282,31 @@ export const savedQrCodes = pgTable("saved_qr_codes", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// ── Team Services & Products ──────────────────────────────────────────────
+export const teamServices = pgTable("team_services", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  teamId: varchar("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  price: text("price"),
+  imageUrl: text("image_url"),
+  position: integer("position").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const teamProducts = pgTable("team_products", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  teamId: varchar("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  price: text("price"),
+  imageUrl: text("image_url"),
+  position: integer("position").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
 });
@@ -315,6 +341,7 @@ export const updateProfileSchema = z.object({
   contactFormEnabled: z.boolean().optional(),
   contactFormEmail: z.string().email().max(200).optional().nullable(),
   meetingLink: z.string().max(500).optional().nullable(),
+  showMenuOnProfile: z.boolean().optional(),
 });
 
 export const updateMenuSettingsSchema = z.object({

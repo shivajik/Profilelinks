@@ -17,6 +17,7 @@ const Dashboard = lazy(() => import("@/pages/dashboard"));
 const Onboarding = lazy(() => import("@/pages/onboarding"));
 const PublicProfile = lazy(() => import("@/pages/profile"));
 const PublicMenu = lazy(() => import("@/pages/public-menu"));
+const PublicServicesProducts = lazy(() => import("@/pages/public-services-products"));
 const TeamMemberProfile = lazy(() => import("@/pages/team-member-profile"));
 const InviteAccept = lazy(() => import("@/pages/invite"));
 const ForceChangePassword = lazy(() => import("@/pages/change-password"));
@@ -71,6 +72,8 @@ function Router() {
         <Route path="/change-password" component={ForceChangePassword} />
         <Route path="/invite/:token" component={InviteAccept} />
         <Route path="/:username/menu" component={PublicMenu} />
+        <Route path="/:slug/service">{() => <PublicServicesProducts type="services" />}</Route>
+        <Route path="/:slug/product">{() => <PublicServicesProducts type="products" />}</Route>
         <Route path="/:companySlug/:username" component={TeamMemberProfile} />
         <Route path="/:username" component={PublicProfile} />
         <Route component={NotFound} />

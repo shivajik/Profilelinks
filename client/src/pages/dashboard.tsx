@@ -732,7 +732,7 @@ export default function Dashboard() {
                   <SidebarTrigger data-testid="button-sidebar-toggle" />
                   <div className="flex items-center gap-2 bg-muted rounded-md px-3 py-1.5 flex-1 min-w-0 cursor-pointer" onClick={copyUrl}>
                     <Link2 className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm text-muted-foreground truncate block overflow-hidden" data-testid="text-profile-url" title={profileUrl}>
+                    <span className="text-sm text-muted-foreground break-all line-clamp-2 block" data-testid="text-profile-url" title={profileUrl}>
                       {profileUrl}
                     </span>
                     <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); copyUrl(); }} className="shrink-0 ml-auto" data-testid="button-copy-url">
@@ -1178,6 +1178,12 @@ export default function Dashboard() {
               )}
               {activeSection === "contacts" && isTeamAccount && (
                 <ContactsPanel teamId={user.teamId!} userId={user.id} isTeamMember={!!isTeamMember} />
+              )}
+              {activeSection === "services" && isTeamAccount && !isRestaurant && isTeamOwner && (
+                <ServicesProductsPanel teamId={user.teamId!} teamSlug={teamSlug || ''} type="services" />
+              )}
+              {activeSection === "products" && isTeamAccount && !isRestaurant && isTeamOwner && (
+                <ServicesProductsPanel teamId={user.teamId!} teamSlug={teamSlug || ''} type="products" />
               )}
             </div>
 
@@ -1737,7 +1743,7 @@ function SettingsPanel({
           {/* Public URL inline */}
           <div className="flex items-center gap-2 p-2.5 rounded-md bg-muted/50 border">
             <Globe className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-            <p className="text-xs font-medium truncate flex-1" data-testid="text-settings-url">{profileUrl}</p>
+            <p className="text-xs font-medium break-all line-clamp-2 flex-1" data-testid="text-settings-url">{profileUrl}</p>
             <Button
               variant="ghost"
               size="icon"
@@ -7835,6 +7841,232 @@ function ContactsPanel({ teamId, userId, isTeamMember = false }: { teamId: strin
             >
               {editMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Save Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ── Services & Products Panel ──────────────────────────────────────────────
+function ServicesProductsPanel({ teamId, teamSlug, type }: { teamId: string; teamSlug: string; type: "services" | "products" }) {
+  const { toast } = useToast();
+  const label = type === "services" ? "Services" : "Products";
+  const Icon = type === "services" ? Briefcase : UtensilsCrossed;
+  const pageUrl = `${window.location.origin}/${teamSlug}/${type === "services" ? "service" : "product"}`;
+  const [copied, setCopied] = useState(false);
+
+  // Fetch the team's templates to get default branding
+  const { data: templates = [] } = useQuery<any[]>({
+    queryKey: ["/api/teams", teamId, "templates"],
+    queryFn: async () => {
+      const res = await fetch(`/api/teams/${teamId}/templates`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+  });
+
+  // Items state
+  const [items, setItems] = useState<Array<{ id: string; title: string; description: string; price?: string; imageUrl?: string; active: boolean }>>([]);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editItem, setEditItem] = useState<any>(null);
+  const [formTitle, setFormTitle] = useState("");
+  const [formDesc, setFormDesc] = useState("");
+  const [formPrice, setFormPrice] = useState("");
+  const [formImage, setFormImage] = useState("");
+
+  // Fetch items
+  const { data: fetchedItems = [], isLoading } = useQuery<any[]>({
+    queryKey: ["/api/teams", teamId, type],
+    queryFn: async () => {
+      const res = await fetch(`/api/teams/${teamId}/${type}`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  useEffect(() => {
+    setItems(fetchedItems);
+  }, [fetchedItems]);
+
+  const saveMutation = useMutation({
+    mutationFn: async (data: any) => {
+      if (data.id) {
+        await apiRequest("PATCH", `/api/teams/${teamId}/${type}/${data.id}`, data);
+      } else {
+        await apiRequest("POST", `/api/teams/${teamId}/${type}`, data);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, type] });
+      setAddDialogOpen(false);
+      setEditItem(null);
+      resetForm();
+      toast({ title: `${label.slice(0, -1)} saved!` });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/teams/${teamId}/${type}/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, type] });
+      toast({ title: `${label.slice(0, -1)} deleted` });
+    },
+  });
+
+  const resetForm = () => {
+    setFormTitle("");
+    setFormDesc("");
+    setFormPrice("");
+    setFormImage("");
+  };
+
+  const openAdd = () => {
+    resetForm();
+    setEditItem(null);
+    setAddDialogOpen(true);
+  };
+
+  const openEdit = (item: any) => {
+    setFormTitle(item.title);
+    setFormDesc(item.description || "");
+    setFormPrice(item.price || "");
+    setFormImage(item.imageUrl || "");
+    setEditItem(item);
+    setAddDialogOpen(true);
+  };
+
+  const handleSave = () => {
+    if (!formTitle.trim()) return;
+    saveMutation.mutate({
+      ...(editItem ? { id: editItem.id } : {}),
+      title: formTitle,
+      description: formDesc || undefined,
+      price: formPrice || undefined,
+      imageUrl: formImage || undefined,
+    });
+  };
+
+  const copyUrl = () => {
+    navigator.clipboard.writeText(pageUrl);
+    setCopied(true);
+    toast({ title: "Link copied!" });
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="p-6 max-w-2xl mx-auto space-y-6">
+      <div className="flex items-center gap-2 mb-2">
+        <SidebarTrigger />
+        <h2 className="text-xl font-semibold">{label}</h2>
+      </div>
+
+      {/* URL Bar */}
+      <div className="flex items-center gap-2 bg-muted rounded-md px-3 py-2">
+        <Link2 className="w-4 h-4 text-muted-foreground shrink-0" />
+        <span className="text-sm text-muted-foreground break-all line-clamp-2 flex-1">{pageUrl}</span>
+        <Button variant="ghost" size="icon" className="shrink-0" onClick={copyUrl}>
+          {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+        </Button>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Add your {type} to showcase on your public page.
+        </p>
+        <Button size="sm" onClick={openAdd}>
+          <Plus className="w-4 h-4 mr-1" />
+          Add {label.slice(0, -1)}
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : items.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <Icon className="w-6 h-6 text-primary" />
+            </div>
+            <h3 className="font-semibold mb-1">No {type} yet</h3>
+            <p className="text-sm text-muted-foreground mb-4 max-w-xs">
+              Add your first {type === "services" ? "service" : "product"} to get started.
+            </p>
+            <Button size="sm" onClick={openAdd}>
+              <Plus className="w-4 h-4 mr-1" /> Add {label.slice(0, -1)}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {items.map((item) => (
+            <Card key={item.id}>
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  {item.imageUrl && (
+                    <img src={item.imageUrl} alt={item.title} className="w-16 h-16 rounded-md object-cover shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="font-semibold text-sm">{item.title}</h3>
+                      {item.price && <span className="text-sm font-medium text-primary">{item.price}</span>}
+                    </div>
+                    {item.description && (
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.description}</p>
+                    )}
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(item)}>
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteMutation.mutate(item.id)}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Add/Edit Dialog */}
+      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editItem ? "Edit" : "Add"} {label.slice(0, -1)}</DialogTitle>
+            <DialogDescription>
+              {editItem ? "Update the details below." : `Add a new ${type === "services" ? "service" : "product"}.`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Title *</Label>
+              <Input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder={`${label.slice(0, -1)} name`} />
+            </div>
+            <div>
+              <Label>Description</Label>
+              <Textarea value={formDesc} onChange={(e) => setFormDesc(e.target.value)} placeholder="Brief description" rows={3} />
+            </div>
+            <div>
+              <Label>Price</Label>
+              <Input value={formPrice} onChange={(e) => setFormPrice(e.target.value)} placeholder="e.g. ₹999 or Free" />
+            </div>
+            <div>
+              <Label>Image URL</Label>
+              <Input value={formImage} onChange={(e) => setFormImage(e.target.value)} placeholder="https://..." />
+            </div>
+            <Button className="w-full" disabled={!formTitle.trim() || saveMutation.isPending} onClick={handleSave}>
+              {saveMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {editItem ? "Save Changes" : `Add ${label.slice(0, -1)}`}
             </Button>
           </div>
         </DialogContent>

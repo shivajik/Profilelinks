@@ -2,7 +2,7 @@ import express, { type Express, type Request, type Response, type NextFunction }
 import { createServer, type Server } from "http";
 import session from "express-session";
 import { storage, db } from "./storage";
-import { users } from "@shared/schema";
+import { users, teams, teamServices, teamProducts, teamTemplates } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema, createPageSchema, updatePageSchema, createBlockSchema, updateBlockSchema, changePasswordSchema, deleteAccountSchema, createTeamSchema, updateTeamSchema, updateTeamMemberSchema, createTeamInviteSchema, createTeamMemberSchema, createTeamTemplateSchema, updateTeamTemplateSchema, createContactSchema, updateContactSchema, createMenuSectionSchema, updateMenuSectionSchema, createMenuProductSchema, updateMenuProductSchema, updateMenuSettingsSchema, upsertOpeningHoursSchema, createMenuSocialSchema, updateMenuSocialSchema, updateBusinessProfileSchema, createBranchSchema, updateBranchSchema } from "@shared/schema";
@@ -1797,6 +1797,158 @@ export async function registerRoutes(
       res.json({ message: "Branch deleted" });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to delete branch" });
+    }
+  });
+
+  // ── Team Services CRUD ──────────────────────────────────────────────────
+  app.get("/api/teams/:teamId/services", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role) return res.status(403).json({ message: "Not authorized" });
+      const rows = await db.select().from(teamServices).where(eq(teamServices.teamId, req.params.teamId as string)).orderBy(teamServices.position);
+      res.json(rows);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to get services" });
+    }
+  });
+
+  app.post("/api/teams/:teamId/services", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role || !["owner", "admin"].includes(role)) return res.status(403).json({ message: "Not authorized" });
+      const { title, description, price, imageUrl } = req.body;
+      if (!title) return res.status(400).json({ message: "Title is required" });
+      const existing = await db.select().from(teamServices).where(eq(teamServices.teamId, req.params.teamId as string));
+      const [created] = await db.insert(teamServices).values({
+        teamId: req.params.teamId as string,
+        title,
+        description: description || null,
+        price: price || null,
+        imageUrl: imageUrl || null,
+        position: existing.length,
+      }).returning();
+      res.status(201).json(created);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to create service" });
+    }
+  });
+
+  app.patch("/api/teams/:teamId/services/:id", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role || !["owner", "admin"].includes(role)) return res.status(403).json({ message: "Not authorized" });
+      const { title, description, price, imageUrl } = req.body;
+      const [updated] = await db.update(teamServices)
+        .set({ title, description: description || null, price: price || null, imageUrl: imageUrl || null })
+        .where(eq(teamServices.id, req.params.id as string))
+        .returning();
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to update service" });
+    }
+  });
+
+  app.delete("/api/teams/:teamId/services/:id", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role || !["owner", "admin"].includes(role)) return res.status(403).json({ message: "Not authorized" });
+      await db.delete(teamServices).where(eq(teamServices.id, req.params.id as string));
+      res.json({ message: "Service deleted" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to delete service" });
+    }
+  });
+
+  // ── Team Products CRUD ──────────────────────────────────────────────────
+  app.get("/api/teams/:teamId/products", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role) return res.status(403).json({ message: "Not authorized" });
+      const rows = await db.select().from(teamProducts).where(eq(teamProducts.teamId, req.params.teamId as string)).orderBy(teamProducts.position);
+      res.json(rows);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to get products" });
+    }
+  });
+
+  app.post("/api/teams/:teamId/products", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role || !["owner", "admin"].includes(role)) return res.status(403).json({ message: "Not authorized" });
+      const { title, description, price, imageUrl } = req.body;
+      if (!title) return res.status(400).json({ message: "Title is required" });
+      const existing = await db.select().from(teamProducts).where(eq(teamProducts.teamId, req.params.teamId as string));
+      const [created] = await db.insert(teamProducts).values({
+        teamId: req.params.teamId as string,
+        title,
+        description: description || null,
+        price: price || null,
+        imageUrl: imageUrl || null,
+        position: existing.length,
+      }).returning();
+      res.status(201).json(created);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to create product" });
+    }
+  });
+
+  app.patch("/api/teams/:teamId/products/:id", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role || !["owner", "admin"].includes(role)) return res.status(403).json({ message: "Not authorized" });
+      const { title, description, price, imageUrl } = req.body;
+      const [updated] = await db.update(teamProducts)
+        .set({ title, description: description || null, price: price || null, imageUrl: imageUrl || null })
+        .where(eq(teamProducts.id, req.params.id as string))
+        .returning();
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to update product" });
+    }
+  });
+
+  app.delete("/api/teams/:teamId/products/:id", requireAuth, async (req, res) => {
+    try {
+      const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
+      if (!role || !["owner", "admin"].includes(role)) return res.status(403).json({ message: "Not authorized" });
+      await db.delete(teamProducts).where(eq(teamProducts.id, req.params.id as string));
+      res.json({ message: "Product deleted" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to delete product" });
+    }
+  });
+
+  // ── Public Services/Products endpoints ──────────────────────────────────
+  app.get("/api/public/:slug/services", async (req, res) => {
+    try {
+      const team = await db.select().from(teams).where(eq(teams.slug, req.params.slug as string)).then(r => r[0]);
+      if (!team) return res.status(404).json({ message: "Not found" });
+      const rows = await db.select().from(teamServices).where(eq(teamServices.teamId, team.id)).orderBy(teamServices.position);
+      const activeRows = rows.filter(r => r.active);
+      
+      // Get team template for branding
+      const tTemplates = await db.select().from(teamTemplates).where(eq(teamTemplates.teamId, team.id));
+      const defaultTemplate = tTemplates.find((t: any) => t.isDefault) || tTemplates[0];
+      
+      res.json({ team, items: activeRows, template: defaultTemplate?.templateData || {} });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed" });
+    }
+  });
+
+  app.get("/api/public/:slug/products", async (req, res) => {
+    try {
+      const team = await db.select().from(teams).where(eq(teams.slug, req.params.slug as string)).then(r => r[0]);
+      if (!team) return res.status(404).json({ message: "Not found" });
+      const rows = await db.select().from(teamProducts).where(eq(teamProducts.teamId, team.id)).orderBy(teamProducts.position);
+      const activeRows = rows.filter(r => r.active);
+      
+      const tTemplates = await db.select().from(teamTemplates).where(eq(teamTemplates.teamId, team.id));
+      const defaultTemplate = tTemplates.find((t: any) => t.isDefault) || tTemplates[0];
+      
+      res.json({ team, items: activeRows, template: defaultTemplate?.templateData || {} });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed" });
     }
   });
 
