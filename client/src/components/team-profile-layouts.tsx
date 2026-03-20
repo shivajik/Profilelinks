@@ -1,6 +1,9 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, ChevronDown, Phone, Mail, Globe, MapPin, Building2, FileText, Download, ImageIcon, BadgeCheck } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { ExternalLink, ChevronDown, Phone, Mail, Globe, MapPin, Building2, FileText, Download, ImageIcon, BadgeCheck, CalendarDays, Send, Loader2 } from "lucide-react";
 import { SocialIcon } from "@/components/social-icon";
 import { getPlatform } from "@/lib/social-platforms";
 import { getAvatarClass, getButtonClass } from "@/lib/templates";
@@ -39,6 +42,10 @@ type TeamBranding = {
   productProfileUrl?: string;
   productUrls?: Array<{ label: string; url: string }>;
   companyBrochureUrl?: string;
+  contactFormEnabled?: boolean;
+  contactFormFields?: string[];
+  meetingLink?: string;
+  meetingLinkLabel?: string;
 };
 
 interface TeamLayoutProps {
@@ -297,6 +304,131 @@ function SocialRows({ activeSocials, normalizeUrl, useOriginalSocialColors, trac
   );
 }
 
+function MeetingLinkSection({ teamBranding, brandColor }: { teamBranding: TeamBranding; brandColor: string }) {
+  if (!teamBranding.meetingLink) return null;
+  const label = teamBranding.meetingLinkLabel || "Book a Meeting";
+  return (
+    <div className="mt-4" data-testid="meeting-link-section">
+      <a
+        href={teamBranding.meetingLink}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl font-medium text-sm text-white transition-all hover:scale-[1.02] hover:shadow-md"
+        style={{ backgroundColor: brandColor }}
+      >
+        <CalendarDays className="w-4 h-4" />
+        {label}
+      </a>
+    </div>
+  );
+}
+
+function ContactFormSection({ teamBranding, brandColor }: { teamBranding: TeamBranding; brandColor: string }) {
+  const [open, setOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [formData, setFormData] = useState<Record<string, string>>({});
+
+  if (!teamBranding.contactFormEnabled) return null;
+
+  const fields = teamBranding.contactFormFields || ["name", "email", "message"];
+  const allFields = [
+    { key: "name", label: "Name", type: "text", required: true },
+    { key: "email", label: "Email", type: "email", required: true },
+    { key: "phone", label: "Phone", type: "tel", required: false },
+    { key: "subject", label: "Subject", type: "text", required: false },
+    { key: "message", label: "Message", type: "textarea", required: false },
+    { key: "company", label: "Company", type: "text", required: false },
+  ];
+  const activeFields = allFields.filter(f => fields.includes(f.key));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const companyEmail = teamBranding.companyEmail;
+      const companyName = teamBranding.companyName || "Company";
+      await fetch("/api/contact-form", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...formData, companyEmail, companyName }),
+      });
+      setSubmitted(true);
+      setFormData({});
+    } catch {
+      // silent fail
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <div className="mt-3" data-testid="contact-form-toggle">
+        <Button
+          variant="outline"
+          className="w-full gap-2"
+          onClick={() => setOpen(true)}
+          style={{ borderColor: brandColor + "40", color: brandColor }}
+        >
+          <Mail className="w-4 h-4" />
+          Contact Us
+        </Button>
+      </div>
+    );
+  }
+
+  if (submitted) {
+    return (
+      <div className="mt-3 p-4 rounded-xl border bg-muted/30 text-center" data-testid="contact-form-success">
+        <p className="text-sm font-medium text-foreground">Thank you! Your message has been sent.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 p-4 rounded-xl border bg-card/80 space-y-3" data-testid="contact-form">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-foreground">Contact Us</h3>
+        <button onClick={() => setOpen(false)} className="text-xs text-muted-foreground hover:text-foreground">✕</button>
+      </div>
+      <form onSubmit={handleSubmit} className="space-y-2.5">
+        {activeFields.map(field => (
+          <div key={field.key}>
+            <Label className="text-xs text-muted-foreground">{field.label}{field.required && " *"}</Label>
+            {field.type === "textarea" ? (
+              <Textarea
+                value={formData[field.key] || ""}
+                onChange={e => setFormData(prev => ({ ...prev, [field.key]: e.target.value }))}
+                required={field.required}
+                className="mt-1 text-sm"
+                rows={3}
+              />
+            ) : (
+              <Input
+                type={field.type}
+                value={formData[field.key] || ""}
+                onChange={e => setFormData(prev => ({ ...prev, [field.key]: e.target.value }))}
+                required={field.required}
+                className="mt-1 text-sm"
+              />
+            )}
+          </div>
+        ))}
+        <Button
+          type="submit"
+          disabled={submitting}
+          className="w-full gap-2 text-white"
+          style={{ backgroundColor: brandColor }}
+        >
+          {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          Send Message
+        </Button>
+      </form>
+    </div>
+  );
+}
+
 function hexToRgba(hex: string, alpha: number) {
   const normalized = hex.replace("#", "");
   const fullHex = normalized.length === 3
@@ -505,6 +637,8 @@ function ClassicTeamLayout(props: TeamLayoutProps) {
           </div>
           {user.bio && <p className="text-sm text-muted-foreground leading-relaxed mb-4" data-testid="text-profile-bio">{user.bio}</p>}
           <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
+          <MeetingLinkSection teamBranding={teamBranding} brandColor={brandColor} />
+          <ContactFormSection teamBranding={teamBranding} brandColor={brandColor} />
           {/* <div className="mt-3">
             <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
           </div> */}
@@ -556,6 +690,8 @@ function ModernTeamLayout(props: TeamLayoutProps) {
         <div className="mt-3 rounded-xl bg-card/90 backdrop-blur-md p-4 shadow-sm border border-white/10">
           {user.bio && <p className="text-sm text-muted-foreground leading-relaxed mb-3" data-testid="text-profile-bio">{user.bio}</p>}
           <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} cardStyle="accent" useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
+          <MeetingLinkSection teamBranding={teamBranding} brandColor={brandColor} />
+          <ContactFormSection teamBranding={teamBranding} brandColor={brandColor} />
           {hasMultiplePages && <div className="mt-3"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} /></div>}
           <ContentSection {...props} />
         </div>
@@ -593,6 +729,8 @@ function ModernTeamLayout(props: TeamLayoutProps) {
           <div className={`${rightWidth} p-6 bg-card/90`}>
             {user.bio && <p className="text-sm text-muted-foreground leading-relaxed mb-4" data-testid="text-profile-bio">{user.bio}</p>}
             <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} cardStyle="accent" useOriginalSocialColors={user.useOriginalSocialColors} />
+          <MeetingLinkSection teamBranding={teamBranding} brandColor={brandColor} />
+          <ContactFormSection teamBranding={teamBranding} brandColor={brandColor} />
             {hasMultiplePages && <div className="mt-4"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} /></div>}
             <ContentSection {...props} />
           </div>
@@ -644,6 +782,8 @@ function BoldTeamLayout(props: TeamLayoutProps) {
           </div>
           {user.bio && <p className="text-sm text-muted-foreground leading-relaxed mb-4" data-testid="text-profile-bio">{user.bio}</p>}
           <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} cardStyle="bordered" useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
+          <MeetingLinkSection teamBranding={teamBranding} brandColor={brandColor} />
+          <ContactFormSection teamBranding={teamBranding} brandColor={brandColor} />
           {/* <div className="mt-3">
             <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
           </div> */}
@@ -687,6 +827,8 @@ function ElegantTeamLayout(props: TeamLayoutProps) {
           </div>
           {user.bio && <p className="text-sm text-muted-foreground leading-relaxed mb-5 text-center max-w-md mx-auto" data-testid="text-profile-bio">{user.bio}</p>}
           <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} cardStyle="minimal" useOriginalSocialColors={user.useOriginalSocialColors} />
+          <MeetingLinkSection teamBranding={teamBranding} brandColor={brandColor} />
+          <ContactFormSection teamBranding={teamBranding} brandColor={brandColor} />
           {hasMultiplePages && <div className="mt-4"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} /></div>}
           <ContentSection {...props} />
         </div>
@@ -725,6 +867,8 @@ function HeroTeamLayout(props: TeamLayoutProps) {
           </div>
           {user.bio && <p className="text-sm text-muted-foreground leading-relaxed mb-4 text-center" data-testid="text-profile-bio">{user.bio}</p>}
           <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} cardStyle="accent" useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
+          <MeetingLinkSection teamBranding={teamBranding} brandColor={brandColor} />
+          <ContactFormSection teamBranding={teamBranding} brandColor={brandColor} />
           {/* <div className="mt-3 flex justify-center">
             <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
           </div> */}

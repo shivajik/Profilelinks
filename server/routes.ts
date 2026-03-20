@@ -2156,6 +2156,10 @@ export async function registerRoutes(
         productProfileUrl: tData.productProfileUrl || undefined,
         productUrls: tData.productUrls || undefined,
         companyBrochureUrl: tData.companyBrochureUrl || undefined,
+        contactFormEnabled: tData.contactFormEnabled || false,
+        contactFormFields: tData.contactFormFields || undefined,
+        meetingLink: tData.meetingLink || undefined,
+        meetingLinkLabel: tData.meetingLinkLabel || undefined,
       };
 
       if (member?.businessName) (publicUser as any).displayName = member.businessName;
@@ -2298,6 +2302,10 @@ export async function registerRoutes(
           productProfileUrl: tData.productProfileUrl || undefined,
           productUrls: tData.productUrls || undefined,
           companyBrochureUrl: tData.companyBrochureUrl || undefined,
+          contactFormEnabled: tData.contactFormEnabled || false,
+          contactFormFields: tData.contactFormFields || undefined,
+          meetingLink: tData.meetingLink || undefined,
+          meetingLinkLabel: tData.meetingLinkLabel || undefined,
         };
 
         if (member?.businessName) {
@@ -2392,6 +2400,36 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error: any) {
       console.error("Contact form error:", error);
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  // ── Team Contact Form Submission ──────────────────────────────────
+  app.post("/api/contact-form", rateLimit("contact-form", 5, 60000), async (req, res) => {
+    try {
+      const { name, email, phone, subject, message, company, companyEmail, companyName } = req.body;
+      if (!name || !email) {
+        return res.status(400).json({ message: "Name and email are required" });
+      }
+      if (!companyEmail) {
+        return res.status(400).json({ message: "Company email not configured" });
+      }
+      const { sendContactFormEmail } = await import("./email");
+      await sendContactFormEmail({
+        to: companyEmail,
+        senderName: name,
+        senderEmail: email,
+        subject: subject || `Contact from ${name}`,
+        message: [
+          phone ? `Phone: ${phone}` : "",
+          company ? `Company: ${company}` : "",
+          message || "",
+        ].filter(Boolean).join("\n"),
+        profileName: companyName || "Team Profile",
+      });
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Team contact form error:", error);
       res.status(500).json({ message: "Failed to send message" });
     }
   });
@@ -2909,7 +2947,14 @@ export async function registerRoutes(
   // ── Public Menu Endpoint ────────────────────────────────────────────────────
   app.get("/api/menu/:username", async (req, res) => {
     try {
-      const user = await storage.getUserByUsername(req.params.username);
+      // Resolve by username first, then by team slug
+      let user = await storage.getUserByUsername(req.params.username);
+      if (!user) {
+        const teamBySlug = await storage.getTeamBySlug(req.params.username);
+        if (teamBySlug) {
+          user = await storage.getUser(teamBySlug.ownerId);
+        }
+      }
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }

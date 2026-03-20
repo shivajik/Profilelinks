@@ -63,6 +63,10 @@ type TeamBranding = {
   productProfileUrl?: string;
   productUrls?: Array<{ label: string; url: string }>;
   companyBrochureUrl?: string;
+  contactFormEnabled?: boolean;
+  contactFormFields?: string[];
+  meetingLink?: string;
+  meetingLinkLabel?: string;
 };
 
 type PublicProfile = {

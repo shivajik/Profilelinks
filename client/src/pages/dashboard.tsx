@@ -497,6 +497,8 @@ export default function Dashboard() {
     { id: "design", label: "Design", icon: Palette, active: true },
     ...(isTeamAccount ? [{ id: "business-profile", label: "Business Profile", icon: Briefcase }] : []),
     ...(isTeamAccount && isRestaurant ? [{ id: "menu-setup", label: "Menu Setup", icon: UtensilsCrossed }] : []),
+    ...(isTeamAccount && !isRestaurant && isTeamOwner ? [{ id: "services", label: "Services", icon: Briefcase }] : []),
+    ...(isTeamAccount && !isRestaurant && isTeamOwner ? [{ id: "products", label: "Products", icon: UtensilsCrossed }] : []),
     { id: "settings", label: "Settings", icon: Settings },
     { id: "qrcodes", label: "QR Codes", icon: QrCode },
     { id: "qr-generator", label: "QR Generator", icon: Link2 },
@@ -5913,6 +5915,10 @@ interface TemplateData {
   productProfileUrl?: string;
   productUrls?: Array<{ label: string; url: string }>;
   companyBrochureUrl?: string;
+  contactFormEnabled?: boolean;
+  contactFormFields?: string[];
+  meetingLink?: string;
+  meetingLinkLabel?: string;
 }
 
 function TeamTemplatesPanel({ teamId }: { teamId: string }) {
@@ -6028,6 +6034,10 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
       productProfileUrl: localProductProfileUrl || undefined,
       productUrls: localProductUrls.filter(p => p.url.trim()) || undefined,
       companyBrochureUrl: localBrochureUrl || undefined,
+      contactFormEnabled: localContactFormEnabled,
+      contactFormFields: localContactFormFields,
+      meetingLink: localMeetingLink || undefined,
+      meetingLinkLabel: localMeetingLinkLabel || undefined,
     };
     const metaUpdates: Record<string, any> = { templateData: newTemplateData };
     if (localName.trim() && localName !== selectedTemplate.name) metaUpdates.name = localName;
@@ -6080,6 +6090,10 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
   const [localProductProfileUrl, setLocalProductProfileUrl] = useState("");
   const [localProductUrls, setLocalProductUrls] = useState<Array<{ label: string; url: string }>>([]);
   const [localBrochureUrl, setLocalBrochureUrl] = useState("");
+  const [localContactFormEnabled, setLocalContactFormEnabled] = useState(false);
+  const [localContactFormFields, setLocalContactFormFields] = useState<string[]>(["name", "email", "subject", "message"]);
+  const [localMeetingLink, setLocalMeetingLink] = useState("");
+  const [localMeetingLinkLabel, setLocalMeetingLinkLabel] = useState("");
 
   useEffect(() => {
     if (selectedTemplate) {
@@ -6096,8 +6110,12 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
       setLocalProductProfileUrl(tData.productProfileUrl || "");
       setLocalProductUrls(tData.productUrls || []);
       setLocalBrochureUrl(tData.companyBrochureUrl || "");
+      setLocalContactFormEnabled(tData.contactFormEnabled || false);
+      setLocalContactFormFields(tData.contactFormFields || ["name", "email", "subject", "message"]);
+      setLocalMeetingLink(tData.meetingLink || "");
+      setLocalMeetingLinkLabel(tData.meetingLinkLabel || "");
     }
-  }, [selectedTemplate?.id, selectedTemplate?.name, selectedTemplate?.description, tData.companyName, tData.companyPhone, tData.companyEmail, tData.companyWebsite, tData.companyAddress, tData.companyContact, JSON.stringify(tData.companySocials), tData.companyProfileUrl, tData.productProfileUrl, JSON.stringify(tData.productUrls), tData.companyBrochureUrl]);
+  }, [selectedTemplate?.id, selectedTemplate?.name, selectedTemplate?.description, tData.companyName, tData.companyPhone, tData.companyEmail, tData.companyWebsite, tData.companyAddress, tData.companyContact, JSON.stringify(tData.companySocials), tData.companyProfileUrl, tData.productProfileUrl, JSON.stringify(tData.productUrls), tData.companyBrochureUrl, tData.contactFormEnabled, JSON.stringify(tData.contactFormFields), tData.meetingLink, tData.meetingLinkLabel]);
 
   return (
     <div className="p-4 space-y-4">
@@ -6173,7 +6191,35 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                 ) : (
                   <div className="space-y-2">
                     {localSocials.map((social, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
+                      <div key={idx} className="flex items-center gap-1.5">
+                        <div className="flex flex-col gap-0.5 shrink-0">
+                          <button
+                            type="button"
+                            disabled={idx === 0}
+                            className="p-0.5 rounded hover:bg-muted disabled:opacity-30"
+                            onClick={() => {
+                              const updated = [...localSocials];
+                              [updated[idx - 1], updated[idx]] = [updated[idx], updated[idx - 1]];
+                              setLocalSocials(updated);
+                              markDirty();
+                            }}
+                          >
+                            <ChevronDown className="w-3 h-3 rotate-180" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={idx === localSocials.length - 1}
+                            className="p-0.5 rounded hover:bg-muted disabled:opacity-30"
+                            onClick={() => {
+                              const updated = [...localSocials];
+                              [updated[idx], updated[idx + 1]] = [updated[idx + 1], updated[idx]];
+                              setLocalSocials(updated);
+                              markDirty();
+                            }}
+                          >
+                            <ChevronDown className="w-3 h-3" />
+                          </button>
+                        </div>
                         <Select
                           value={social.platform}
                           onValueChange={(val) => {
@@ -6183,7 +6229,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                             markDirty();
                           }}
                         >
-                          <SelectTrigger className="w-[120px]">
+                          <SelectTrigger className="w-[110px]">
                             <SelectValue placeholder="Platform" />
                           </SelectTrigger>
                           <SelectContent>
@@ -6446,6 +6492,73 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                       />
                     </div>
                     <p className="text-[10px] text-muted-foreground">Paste links to hosted documents (Google Drive, Dropbox, etc.). These will appear on public profiles.</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Contact Form Settings */}
+              <Card>
+                <CardContent className="pt-4 space-y-3">
+                  <h3 className="text-sm font-medium text-muted-foreground">Contact Form</h3>
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-medium">Enable Contact Form</p>
+                      <p className="text-xs text-muted-foreground">Show a contact form on public profiles. Submissions will be emailed to the company email.</p>
+                    </div>
+                    <Switch
+                      checked={localContactFormEnabled}
+                      onCheckedChange={(v) => { setLocalContactFormEnabled(v); markDirty(); }}
+                      data-testid="switch-contact-form-enabled"
+                    />
+                  </div>
+                  {localContactFormEnabled && (
+                    <div className="space-y-2">
+                      <Label className="text-xs text-muted-foreground">Form Fields</Label>
+                      {["name", "email", "phone", "subject", "message", "company"].map((field) => (
+                        <label key={field} className="flex items-center gap-2 text-sm capitalize cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={localContactFormFields.includes(field)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setLocalContactFormFields([...localContactFormFields, field]);
+                              } else {
+                                setLocalContactFormFields(localContactFormFields.filter(f => f !== field));
+                              }
+                              markDirty();
+                            }}
+                            disabled={field === "name" || field === "email"}
+                          />
+                          {field} {(field === "name" || field === "email") && <span className="text-xs text-muted-foreground">(required)</span>}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Meeting / Booking Link */}
+              <Card>
+                <CardContent className="pt-4 space-y-3">
+                  <h3 className="text-sm font-medium text-muted-foreground">Meeting / Booking Link</h3>
+                  <p className="text-[10px] text-muted-foreground">Add your Calendly, Google Calendar, or any booking link. It will show on your public profile.</p>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Meeting URL</Label>
+                    <Input
+                      value={localMeetingLink}
+                      onChange={(e) => { setLocalMeetingLink(e.target.value); markDirty(); }}
+                      placeholder="https://calendly.com/your-name"
+                      data-testid="input-tpl-meeting-link"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Button Label</Label>
+                    <Input
+                      value={localMeetingLinkLabel}
+                      onChange={(e) => { setLocalMeetingLinkLabel(e.target.value); markDirty(); }}
+                      placeholder="Book a Meeting"
+                      data-testid="input-tpl-meeting-label"
+                    />
                   </div>
                 </CardContent>
               </Card>
