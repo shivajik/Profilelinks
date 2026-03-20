@@ -307,39 +307,8 @@ export function MenuBuilder() {
         </div>
       )}
 
-      {/* Show Menu on Profile Toggle */}
-      {isTeamAccount && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold">Show Menu on Profile</h3>
-                <p className="text-xs text-muted-foreground">Display a "View Our Menu" button on your business card profile</p>
-              </div>
-              <Switch
-                checked={user?.showMenuOnProfile || false}
-                onCheckedChange={async (checked) => {
-                  try {
-                    await fetch("/api/auth/profile", {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      credentials: "include",
-                      body: JSON.stringify({ showMenuOnProfile: checked }),
-                    });
-                    queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-                    toast({ title: checked ? "Menu will show on profile" : "Menu hidden from profile" });
-                  } catch {
-                    toast({ title: "Failed to update", variant: "destructive" });
-                  }
-                }}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Show Menu on Profile Toggle - moved to Design page */}
 
-      {/* Menu Appearance Panel */}
-      <MenuAppearancePanel />
 
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
@@ -640,7 +609,7 @@ export function MenuBuilder() {
   );
 }
 
-function MenuAppearancePanel() {
+export function MenuAppearancePanel() {
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
 

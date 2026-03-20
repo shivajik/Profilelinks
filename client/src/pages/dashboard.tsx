@@ -125,7 +125,7 @@ import { BranchManager } from "@/components/branch-manager";
 import { CsvImportExport } from "@/components/csv-import-export";
 import { PlanUsageBanner, canPerformAction, LimitReachedDialog } from "@/components/plan-usage-banner";
 import { usePlanLimits, type PlanLimits } from "@/hooks/use-plan-limits";
-import { MenuBuilder } from "@/components/menu-builder";
+import { MenuBuilder, MenuAppearancePanel } from "@/components/menu-builder";
 import { BusinessProfileSection } from "@/components/business-profile-section";
 import { TeamProfileLayout } from "@/components/team-profile-layouts";
 
@@ -485,11 +485,9 @@ export default function Dashboard() {
 
   // Build profile URL based on team membership
   const teamSlug = teamData?.slug;
-  const profileUrl = isTeamOwner && teamSlug
-    ? `${window.location.origin}/${teamSlug}`
-    : isTeamMember && teamSlug
-      ? `${window.location.origin}/${teamSlug}/${user.username}`
-      : `${window.location.origin}/${user.username}`;
+  const profileUrl = isTeamMember && teamSlug
+    ? `${window.location.origin}/${teamSlug}/${user.username}`
+    : `${window.location.origin}/${user.username}`;
 
   const isIndividual = !isTeamAccount;
 
@@ -965,6 +963,33 @@ export default function Dashboard() {
                   </div>
                 </CategorySection>
 
+                {/* Show Menu on Profile Toggle - for restaurant team owners */}
+                {isTeamAccount && isRestaurant && (
+                  <div className="border rounded-lg p-4 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold">Show Menu on Profile</h3>
+                      <p className="text-xs text-muted-foreground">Display a "View Our Menu" button on your business card profile</p>
+                    </div>
+                    <Switch
+                      checked={user?.showMenuOnProfile || false}
+                      onCheckedChange={async (checked) => {
+                        try {
+                          await fetch("/api/auth/profile", {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            credentials: "include",
+                            body: JSON.stringify({ showMenuOnProfile: checked }),
+                          });
+                          queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+                          toast({ title: checked ? "Menu will show on profile" : "Menu hidden from profile" });
+                        } catch {
+                          toast({ title: "Failed to update", variant: "destructive" });
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+
                 <CategorySection
                   id="socials"
                   label="Socials"
@@ -1343,74 +1368,81 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Menu Preview Panel - only show if menu builder is enabled */}
+            {/* Menu Setup Right Panel - Appearance + Preview */}
             {planLimits?.menuBuilderEnabled && (
-            <div className={`${activeSection === "menu-setup" ? "hidden md:flex" : "hidden"} flex-1 bg-muted/30 items-center justify-center p-6`}>
-              <div className="flex flex-col items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handlePreviewMode("mobile")}
-                    className={`toggle-elevate ${previewMode === "mobile" ? "toggle-elevated" : ""}`}
-                  >
-                    <Smartphone className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handlePreviewMode("desktop")}
-                    className={`toggle-elevate ${previewMode === "desktop" ? "toggle-elevated" : ""}`}
-                  >
-                    <Monitor className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      if (!isTeamAccount) {
-                        toast({ title: "Upgrade Required", description: "Copy menu link is available for team accounts.", variant: "destructive" });
-                        return;
-                      }
-                      navigator.clipboard.writeText(`${window.location.origin}/${teamSlug || user.username}/menu`);
-                      toast({ title: "Menu link copied!" });
-                    }}
-                    className={!isTeamAccount ? "opacity-50 cursor-not-allowed" : ""}
-                    title={!isTeamAccount ? "Upgrade to Team to copy menu link" : "Copy menu link"}
-                  >
-                    {!isTeamAccount ? (
-                      <Lock className="w-4 h-4 text-muted-foreground" />
-                    ) : (
-                      <Copy className="w-4 h-4" />
-                    )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      if (!isTeamAccount) {
-                        toast({ title: "Upgrade Required", description: "QR code is available for team accounts.", variant: "destructive" });
-                        return;
-                      }
-                      window.open(`/${teamSlug || user.username}/menu`, "_blank");
-                    }}
-                    className={!isTeamAccount ? "opacity-50 cursor-not-allowed" : ""}
-                    title={!isTeamAccount ? "Upgrade to Team to use QR code" : "Open menu in new tab"}
-                  >
-                    {!isTeamAccount ? (
-                      <Lock className="w-4 h-4 text-muted-foreground" />
-                    ) : (
-                      <ExternalLink className="w-4 h-4" />
-                    )}
-                  </Button>
-                </div>
-                <div className={`bg-background rounded-2xl shadow-lg overflow-hidden border ${previewMode === "mobile" ? "w-[375px]" : "w-full max-w-[800px]"}`} style={{ height: "70vh" }}>
-                  <iframe
-                    src={`/${teamSlug || user.username}/menu?embed=1`}
-                    className="w-full h-full border-0"
-                    title="Menu Preview"
-                    key={`menu-preview-${previewMode}`}
-                  />
+            <div className={`${activeSection === "menu-setup" ? "hidden md:flex" : "hidden"} flex-1 bg-muted/30 flex-col overflow-y-auto`}>
+              {/* Menu Appearance Panel in right column */}
+              <div className="p-4 border-b">
+                <MenuAppearancePanel />
+              </div>
+              {/* Menu Preview */}
+              <div className="flex-1 flex items-center justify-center p-6">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handlePreviewMode("mobile")}
+                      className={`toggle-elevate ${previewMode === "mobile" ? "toggle-elevated" : ""}`}
+                    >
+                      <Smartphone className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handlePreviewMode("desktop")}
+                      className={`toggle-elevate ${previewMode === "desktop" ? "toggle-elevated" : ""}`}
+                    >
+                      <Monitor className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        if (!isTeamAccount) {
+                          toast({ title: "Upgrade Required", description: "Copy menu link is available for team accounts.", variant: "destructive" });
+                          return;
+                        }
+                        navigator.clipboard.writeText(`${window.location.origin}/${teamSlug || user.username}/menu`);
+                        toast({ title: "Menu link copied!" });
+                      }}
+                      className={!isTeamAccount ? "opacity-50 cursor-not-allowed" : ""}
+                      title={!isTeamAccount ? "Upgrade to Team to copy menu link" : "Copy menu link"}
+                    >
+                      {!isTeamAccount ? (
+                        <Lock className="w-4 h-4 text-muted-foreground" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        if (!isTeamAccount) {
+                          toast({ title: "Upgrade Required", description: "QR code is available for team accounts.", variant: "destructive" });
+                          return;
+                        }
+                        window.open(`/${teamSlug || user.username}/menu`, "_blank");
+                      }}
+                      className={!isTeamAccount ? "opacity-50 cursor-not-allowed" : ""}
+                      title={!isTeamAccount ? "Upgrade to Team to use QR code" : "Open menu in new tab"}
+                    >
+                      {!isTeamAccount ? (
+                        <Lock className="w-4 h-4 text-muted-foreground" />
+                      ) : (
+                        <ExternalLink className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <div className={`bg-background rounded-2xl shadow-lg overflow-hidden border ${previewMode === "mobile" ? "w-[375px]" : "w-full max-w-[800px]"}`} style={{ height: "50vh" }}>
+                    <iframe
+                      src={`/${teamSlug || user.username}/menu?embed=1`}
+                      className="w-full h-full border-0"
+                      title="Menu Preview"
+                      key={`menu-preview-${previewMode}`}
+                    />
+                  </div>
                 </div>
               </div>
             </div>

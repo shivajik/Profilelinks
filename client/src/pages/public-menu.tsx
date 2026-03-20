@@ -84,6 +84,7 @@ export default function PublicMenu() {
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [userClicked, setUserClicked] = useState(false);
+  const activeTabRef = useRef<string | null>(null);
   const isEmbed = new URLSearchParams(window.location.search).get("embed") === "1";
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const tabsRef = useRef<HTMLDivElement | null>(null);
@@ -112,8 +113,22 @@ export default function PublicMenu() {
   useEffect(() => {
     if (sortedSections.length > 0 && !activeTab) {
       setActiveTab(sortedSections[0].id);
+      activeTabRef.current = sortedSections[0].id;
     }
   }, [sortedSections, activeTab]);
+
+  // Auto-scroll the tab strip to make the active tab visible
+  useEffect(() => {
+    if (!activeTab || !tabsRef.current) return;
+    const tabButton = tabsRef.current.querySelector(`[data-tab-id="${activeTab}"]`) as HTMLElement;
+    if (tabButton) {
+      const container = tabButton.parentElement;
+      if (container) {
+        const scrollLeft = tabButton.offsetLeft - container.offsetWidth / 2 + tabButton.offsetWidth / 2;
+        container.scrollTo({ left: scrollLeft, behavior: "smooth" });
+      }
+    }
+  }, [activeTab]);
 
   // Scroll spy: update active tab based on scroll position
   const handleScroll = useCallback(() => {
@@ -131,10 +146,11 @@ export default function PublicMenu() {
         closest = section.id;
       }
     }
-    if (closest && closest !== activeTab) {
+    if (closest && closest !== activeTabRef.current) {
       setActiveTab(closest);
+      activeTabRef.current = closest;
     }
-  }, [sortedSections, activeTab, userClicked]);
+  }, [sortedSections, userClicked]);
 
   useEffect(() => {
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -143,6 +159,7 @@ export default function PublicMenu() {
 
   const scrollToSection = (sectionId: string) => {
     setActiveTab(sectionId);
+    activeTabRef.current = sectionId;
     setUserClicked(true);
     const el = sectionRefs.current[sectionId];
     if (el) {
@@ -268,6 +285,7 @@ export default function PublicMenu() {
                   return (
                     <button
                       key={section.id}
+                      data-tab-id={section.id}
                       onClick={() => scrollToSection(section.id)}
                       className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-all shrink-0 ${
                         isActive
