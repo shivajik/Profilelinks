@@ -398,6 +398,15 @@ export default function Dashboard() {
     },
   });
 
+  const reorderSocialsMutation = useMutation({
+    mutationFn: async (socialIds: string[]) => {
+      await apiRequest("POST", "/api/socials/reorder", { socialIds });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/socials"] });
+    },
+  });
+
   const templateMutation = useMutation({
     mutationFn: async (template: string) => {
       await apiRequest("PATCH", "/api/auth/profile", { template });
@@ -719,12 +728,12 @@ export default function Dashboard() {
               <div className="p-4 space-y-4">
                 <div className="flex items-center gap-2 mb-2">
                   <SidebarTrigger data-testid="button-sidebar-toggle" />
-                  <div className="flex items-center gap-2 bg-muted rounded-md px-3 py-1.5 flex-1">
+                  <div className="flex items-center gap-2 bg-muted rounded-md px-3 py-1.5 flex-1 min-w-0 cursor-pointer" onClick={copyUrl}>
                     <Link2 className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm text-muted-foreground truncate" data-testid="text-profile-url">
+                    <span className="text-sm text-muted-foreground truncate block overflow-hidden" data-testid="text-profile-url" title={profileUrl}>
                       {profileUrl}
                     </span>
-                    <Button variant="ghost" size="icon" onClick={copyUrl} className="shrink-0 ml-auto" data-testid="button-copy-url">
+                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); copyUrl(); }} className="shrink-0 ml-auto" data-testid="button-copy-url">
                       {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
                     </Button>
                   </div>
@@ -971,12 +980,22 @@ export default function Dashboard() {
                   }
                 >
                   <div className="px-4 pb-4 pt-1 space-y-2">
-                    {userSocials.map((social) => (
+                    {[...userSocials].sort((a, b) => a.position - b.position).map((social, index, sorted) => (
                       <SocialLinkRow
                         key={social.id}
                         social={social}
                         onUpdate={(url) => updateSocialMutation.mutate({ id: social.id, url })}
                         onDelete={() => deleteSocialMutation.mutate(social.id)}
+                        onMoveUp={index > 0 ? () => {
+                          const newOrder = [...sorted];
+                          [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
+                          reorderSocialsMutation.mutate(newOrder.map(s => s.id));
+                        } : undefined}
+                        onMoveDown={index < sorted.length - 1 ? () => {
+                          const newOrder = [...sorted];
+                          [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+                          reorderSocialsMutation.mutate(newOrder.map(s => s.id));
+                        } : undefined}
                       />
                     ))}
                     <div className="border rounded-md">
@@ -4547,10 +4566,14 @@ function SocialLinkRow({
   social,
   onUpdate,
   onDelete,
+  onMoveUp,
+  onMoveDown,
 }: {
   social: Social;
   onUpdate: (url: string) => void;
   onDelete: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
 }) {
   const [url, setUrl] = useState(social.url);
   const [saving, setSaving] = useState(false);
@@ -4562,8 +4585,15 @@ function SocialLinkRow({
   }, [social.url]);
 
   return (
-    <div className="flex items-center gap-2 border rounded-md px-3 py-2">
-      <GripVertical className="w-4 h-4 text-muted-foreground/40 shrink-0 cursor-grab" />
+    <div className="flex items-center gap-1 border rounded-md px-2 py-2">
+      <div className="flex flex-col shrink-0">
+        <Button variant="ghost" size="icon" className="h-5 w-5" onClick={onMoveUp} disabled={!onMoveUp}>
+          <ChevronDown className="w-3 h-3 rotate-180" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-5 w-5" onClick={onMoveDown} disabled={!onMoveDown}>
+          <ChevronDown className="w-3 h-3" />
+        </Button>
+      </div>
       <Input
         value={url}
         onChange={(e) => setUrl(e.target.value)}
@@ -4582,16 +4612,6 @@ function SocialLinkRow({
       ) : (
         <SocialIcon platform={social.platform} className="w-5 h-5 text-muted-foreground shrink-0" />
       )}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => {
-          setUrl(social.url);
-        }}
-        data-testid={`button-edit-social-${social.id}`}
-      >
-        <Pencil className="w-3.5 h-3.5" />
-      </Button>
       <Button variant="ghost" size="icon" onClick={onDelete} data-testid={`button-delete-social-${social.id}`}>
         <Trash2 className="w-3.5 h-3.5 text-destructive" />
       </Button>

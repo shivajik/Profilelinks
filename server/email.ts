@@ -574,3 +574,35 @@ export async function sendBulkTemplateEmail(opts: {
 
   return { sent, failed, total: opts.recipients.length, errors };
 }
+
+// ── Contact Form Notification ──────────────────────────────────────
+export async function sendContactFormEmail(opts: {
+  to: string;
+  senderName: string;
+  senderEmail: string;
+  subject: string;
+  message: string;
+  profileName: string;
+}): Promise<boolean> {
+  return sendEmailViaNodemailer({
+    to: opts.to,
+    subject: `New Contact Form Submission — ${opts.subject}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #6C5CE7, #a855f7); padding: 20px; border-radius: 12px 12px 0 0;">
+          <h2 style="color: white; margin: 0;">📬 New Contact Form Submission</h2>
+          <p style="color: rgba(255,255,255,0.8); margin: 5px 0 0;">From your VisiCardly profile: ${opts.profileName}</p>
+        </div>
+        <div style="border: 1px solid #eee; border-top: none; padding: 20px; border-radius: 0 0 12px 12px;">
+          <p><strong>Name:</strong> ${opts.senderName}</p>
+          <p><strong>Email:</strong> <a href="mailto:${opts.senderEmail}">${opts.senderEmail}</a></p>
+          <p><strong>Subject:</strong> ${opts.subject}</p>
+          <p><strong>Message:</strong></p>
+          <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; white-space: pre-wrap;">${opts.message}</div>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+          <p style="color: #aaa; font-size: 12px;">This message was sent via the contact form on your VisiCardly profile.</p>
+        </div>
+      </div>
+    `,
+  });
+}

@@ -262,12 +262,13 @@ if (pool) pool.query(`
 }).catch(() => {/* Columns/tables may already exist */});
 
 
+
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateUser(id: string, data: Partial<Pick<User, "displayName" | "bio" | "profileImage" | "coverImage" | "username" | "onboardingCompleted" | "template" | "accountType" | "teamId" | "menuTemplate" | "menuDisplayName" | "menuProfileImage" | "menuAccentColor" | "menuDescription" | "menuPhone" | "menuEmail" | "menuAddress" | "menuGoogleMapsUrl" | "menuWhatsapp" | "menuWebsite" | "mustChangePassword" | "emailVerified" | "whiteLabelEnabled" | "apiKey" | "isLtd" | "useOriginalSocialColors" | "businessPhone">>): Promise<User | undefined>;
+  updateUser(id: string, data: Partial<Pick<User, "displayName" | "bio" | "profileImage" | "coverImage" | "username" | "onboardingCompleted" | "template" | "accountType" | "teamId" | "menuTemplate" | "menuDisplayName" | "menuProfileImage" | "menuAccentColor" | "menuDescription" | "menuPhone" | "menuEmail" | "menuAddress" | "menuGoogleMapsUrl" | "menuWhatsapp" | "menuWebsite" | "mustChangePassword" | "emailVerified" | "whiteLabelEnabled" | "apiKey" | "isLtd" | "useOriginalSocialColors" | "businessPhone" | "contactFormEnabled" | "contactFormEmail" | "meetingLink">>): Promise<User | undefined>;
 
   getPagesByUserId(userId: string): Promise<Page[]>;
   getPageById(id: string): Promise<Page | undefined>;
@@ -290,6 +291,7 @@ export interface IStorage {
   createSocial(social: InsertSocial & { userId: string }): Promise<Social>;
   updateSocial(id: string, userId: string, data: Partial<Pick<Social, "url" | "position">>): Promise<Social | undefined>;
   deleteSocial(id: string, userId: string): Promise<boolean>;
+  reorderSocials(userId: string, socialIds: string[]): Promise<void>;
 
   getBlocksByPageId(pageId: string): Promise<Block[]>;
   getBlocksByUserId(userId: string): Promise<Block[]>;
@@ -408,7 +410,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async updateUser(id: string, data: Partial<Pick<User, "displayName" | "bio" | "profileImage" | "coverImage" | "username" | "onboardingCompleted" | "template" | "accountType" | "teamId" | "menuTemplate" | "menuDisplayName" | "menuProfileImage" | "menuAccentColor" | "menuDescription" | "menuPhone" | "menuEmail" | "menuAddress" | "menuGoogleMapsUrl" | "menuWhatsapp" | "menuWebsite" | "mustChangePassword" | "emailVerified" | "whiteLabelEnabled" | "apiKey" | "isLtd" | "useOriginalSocialColors" | "businessPhone">>): Promise<User | undefined> {
+  async updateUser(id: string, data: Partial<Pick<User, "displayName" | "bio" | "profileImage" | "coverImage" | "username" | "onboardingCompleted" | "template" | "accountType" | "teamId" | "menuTemplate" | "menuDisplayName" | "menuProfileImage" | "menuAccentColor" | "menuDescription" | "menuPhone" | "menuEmail" | "menuAddress" | "menuGoogleMapsUrl" | "menuWhatsapp" | "menuWebsite" | "mustChangePassword" | "emailVerified" | "whiteLabelEnabled" | "apiKey" | "isLtd" | "useOriginalSocialColors" | "businessPhone" | "contactFormEnabled" | "contactFormEmail" | "meetingLink">>): Promise<User | undefined> {
     const [user] = await db.update(users).set(data).where(eq(users.id, id)).returning();
     return user;
   }
@@ -575,6 +577,17 @@ export class DatabaseStorage implements IStorage {
     if (!existing.length || existing[0].userId !== userId) return false;
     await db.delete(socials).where(eq(socials.id, id));
     return true;
+  }
+
+  async reorderSocials(userId: string, socialIds: string[]): Promise<void> {
+    const userSocials = await this.getSocialsByUserId(userId);
+    const userSocialIds = new Set(userSocials.map((s) => s.id));
+    for (const id of socialIds) {
+      if (!userSocialIds.has(id)) return;
+    }
+    for (let i = 0; i < socialIds.length; i++) {
+      await db.update(socials).set({ position: i }).where(eq(socials.id, socialIds[i]));
+    }
   }
 
   async getBlocksByPageId(pageId: string): Promise<Block[]> {

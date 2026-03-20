@@ -850,6 +850,19 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/socials/reorder", requireAuth, async (req, res) => {
+    try {
+      const { socialIds } = req.body;
+      if (!Array.isArray(socialIds)) {
+        return res.status(400).json({ message: "socialIds must be an array" });
+      }
+      await storage.reorderSocials(req.session.userId!, socialIds);
+      res.json({ message: "Reordered" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to reorder socials" });
+    }
+  });
+
   app.delete("/api/socials/:id", requireAuth, async (req, res) => {
     const deleted = await storage.deleteSocial(req.params.id as string, req.session.userId!);
     if (!deleted) {
@@ -2349,6 +2362,37 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Analytics track error:", error);
       res.status(500).json({ message: "Failed to record event" });
+    }
+  });
+
+  // ── Contact Form Submission ──────────────────────────────────────
+  app.post("/api/contact-form/:username", rateLimit("contact-form", 5, 60000), async (req, res) => {
+    try {
+      const { name, email, subject, message } = req.body;
+      if (!name || !email || !subject || !message) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+      if (name.length > 100 || email.length > 255 || subject.length > 200 || message.length > 2000) {
+        return res.status(400).json({ message: "Field length exceeded" });
+      }
+      const user = await storage.getUserByUsername(req.params.username as string);
+      if (!user || !user.contactFormEnabled) {
+        return res.status(404).json({ message: "Contact form not available" });
+      }
+      const recipientEmail = user.contactFormEmail || user.email;
+      const { sendContactFormEmail } = await import("./email");
+      await sendContactFormEmail({
+        to: recipientEmail,
+        senderName: name,
+        senderEmail: email,
+        subject,
+        message,
+        profileName: user.displayName || user.username,
+      });
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Contact form error:", error);
+      res.status(500).json({ message: "Failed to send message" });
     }
   });
 

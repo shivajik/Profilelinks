@@ -359,9 +359,9 @@ export default function PublicProfile(props?: any) {
 
         {whiteLabelData !== undefined && !whiteLabelData.whiteLabelEnabled && (
           <div className="mt-12 text-center">
-            <a href="/" className="text-xs transition-opacity hover:opacity-80">
+            <a href="/auth" target="_blank" rel="noopener noreferrer" className="text-xs transition-opacity hover:opacity-80">
               <span className={`${template.textColor}`} style={{ opacity: 0.5 }}>
-                Powered by{" "}
+                Create your own card on{" "}
               </span>
               <span style={{ color: template.accent, opacity: 0.6 }}>Visi</span>
               <span className={`${template.textColor}`} style={{ opacity: 0.4 }}>Cardly</span>

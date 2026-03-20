@@ -36,6 +36,9 @@ export const users = pgTable("users", {
   isLtd: boolean("is_ltd").notNull().default(false),
   useOriginalSocialColors: boolean("use_original_social_colors").notNull().default(false),
   businessPhone: text("business_phone"),
+  contactFormEnabled: boolean("contact_form_enabled").notNull().default(false),
+  contactFormEmail: text("contact_form_email"),
+  meetingLink: text("meeting_link"),
 });
 
 // ── Menu Social Links ──────────────────────────────────────────────────────
@@ -309,6 +312,9 @@ export const updateProfileSchema = z.object({
   menuAccentColor: z.string().optional().nullable(),
   useOriginalSocialColors: z.boolean().optional(),
   businessPhone: z.string().max(50).optional().nullable(),
+  contactFormEnabled: z.boolean().optional(),
+  contactFormEmail: z.string().email().max(200).optional().nullable(),
+  meetingLink: z.string().max(500).optional().nullable(),
 });
 
 export const updateMenuSettingsSchema = z.object({

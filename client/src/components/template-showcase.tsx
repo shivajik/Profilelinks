@@ -189,13 +189,13 @@ export default function TemplateShowcase() {
   return (
     <section className="py-24 pt-4 px-0 overflow-hidden">
       <div className="max-w-5xl mx-auto text-center mb-12 px-6">
-        <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-3">Templates</p>
+        <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-3">User Showcase</p>
         <h2 className="text-3xl md:text-4xl font-extrabold text-foreground mb-4">
-          Start with a{" "}
-          <span className="landing-gradient-text">template</span>
+          See how our users are using{" "}
+          <span className="landing-gradient-text">VisiCardly</span>
         </h2>
         <p className="text-muted-foreground text-lg max-w-md mx-auto">
-          Choose a professionally designed template and make it your own.
+          Real profiles built by real businesses and professionals on VisiCardly.
         </p>
       </div>
 
