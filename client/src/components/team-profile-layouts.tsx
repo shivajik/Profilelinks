@@ -46,6 +46,7 @@ type TeamBranding = {
   contactFormFields?: string[];
   meetingLink?: string;
   meetingLinkLabel?: string;
+  menuUrl?: string;
 };
 
 interface TeamLayoutProps {
@@ -318,6 +319,24 @@ function MeetingLinkSection({ teamBranding, brandColor }: { teamBranding: TeamBr
       >
         <CalendarDays className="w-4 h-4" />
         {label}
+      </a>
+    </div>
+  );
+}
+
+function MenuUrlSection({ teamBranding, brandColor }: { teamBranding: TeamBranding; brandColor: string }) {
+  if (!teamBranding.menuUrl) return null;
+  return (
+    <div className="mt-4" data-testid="menu-url-section">
+      <a
+        href={teamBranding.menuUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl font-medium text-sm transition-all hover:scale-[1.02] hover:shadow-md border"
+        style={{ borderColor: brandColor + "40", color: brandColor }}
+      >
+        <ExternalLink className="w-4 h-4" />
+        View Our Menu
       </a>
     </div>
   );
@@ -638,6 +657,7 @@ function ClassicTeamLayout(props: TeamLayoutProps) {
           {user.bio && <p className="text-sm text-muted-foreground leading-relaxed mb-4" data-testid="text-profile-bio">{user.bio}</p>}
           <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
           <MeetingLinkSection teamBranding={teamBranding} brandColor={brandColor} />
+          <MenuUrlSection teamBranding={teamBranding} brandColor={brandColor} />
           <ContactFormSection teamBranding={teamBranding} brandColor={brandColor} />
           {/* <div className="mt-3">
             <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
@@ -689,8 +709,9 @@ function ModernTeamLayout(props: TeamLayoutProps) {
         </div>
         <div className="mt-3 rounded-xl bg-card/90 backdrop-blur-md p-4 shadow-sm border border-white/10">
           {user.bio && <p className="text-sm text-muted-foreground leading-relaxed mb-3" data-testid="text-profile-bio">{user.bio}</p>}
-          <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} cardStyle="accent" useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
+           <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} cardStyle="accent" useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
           <MeetingLinkSection teamBranding={teamBranding} brandColor={brandColor} />
+          <MenuUrlSection teamBranding={teamBranding} brandColor={brandColor} />
           <ContactFormSection teamBranding={teamBranding} brandColor={brandColor} />
           {hasMultiplePages && <div className="mt-3"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} /></div>}
           <ContentSection {...props} />
@@ -730,6 +751,7 @@ function ModernTeamLayout(props: TeamLayoutProps) {
             {user.bio && <p className="text-sm text-muted-foreground leading-relaxed mb-4" data-testid="text-profile-bio">{user.bio}</p>}
             <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} cardStyle="accent" useOriginalSocialColors={user.useOriginalSocialColors} />
           <MeetingLinkSection teamBranding={teamBranding} brandColor={brandColor} />
+          <MenuUrlSection teamBranding={teamBranding} brandColor={brandColor} />
           <ContactFormSection teamBranding={teamBranding} brandColor={brandColor} />
             {hasMultiplePages && <div className="mt-4"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} /></div>}
             <ContentSection {...props} />
@@ -783,6 +805,7 @@ function BoldTeamLayout(props: TeamLayoutProps) {
           {user.bio && <p className="text-sm text-muted-foreground leading-relaxed mb-4" data-testid="text-profile-bio">{user.bio}</p>}
           <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} cardStyle="bordered" useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
           <MeetingLinkSection teamBranding={teamBranding} brandColor={brandColor} />
+          <MenuUrlSection teamBranding={teamBranding} brandColor={brandColor} />
           <ContactFormSection teamBranding={teamBranding} brandColor={brandColor} />
           {/* <div className="mt-3">
             <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
@@ -828,6 +851,7 @@ function ElegantTeamLayout(props: TeamLayoutProps) {
           {user.bio && <p className="text-sm text-muted-foreground leading-relaxed mb-5 text-center max-w-md mx-auto" data-testid="text-profile-bio">{user.bio}</p>}
           <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} cardStyle="minimal" useOriginalSocialColors={user.useOriginalSocialColors} />
           <MeetingLinkSection teamBranding={teamBranding} brandColor={brandColor} />
+          <MenuUrlSection teamBranding={teamBranding} brandColor={brandColor} />
           <ContactFormSection teamBranding={teamBranding} brandColor={brandColor} />
           {hasMultiplePages && <div className="mt-4"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} /></div>}
           <ContentSection {...props} />
@@ -868,6 +892,7 @@ function HeroTeamLayout(props: TeamLayoutProps) {
           {user.bio && <p className="text-sm text-muted-foreground leading-relaxed mb-4 text-center" data-testid="text-profile-bio">{user.bio}</p>}
           <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} cardStyle="accent" useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
           <MeetingLinkSection teamBranding={teamBranding} brandColor={brandColor} />
+          <MenuUrlSection teamBranding={teamBranding} brandColor={brandColor} />
           <ContactFormSection teamBranding={teamBranding} brandColor={brandColor} />
           {/* <div className="mt-3 flex justify-center">
             <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />

@@ -2458,6 +2458,7 @@ export async function registerRoutes(
           contactFormFields: tData.contactFormFields || undefined,
           meetingLink: tData.meetingLink || undefined,
           meetingLinkLabel: tData.meetingLinkLabel || undefined,
+          menuUrl: user.showMenuOnProfile && teamData?.slug ? `/${teamData.slug}/menu` : undefined,
         };
 
         if (member?.businessName) {

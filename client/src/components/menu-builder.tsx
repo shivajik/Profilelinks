@@ -91,6 +91,19 @@ export function MenuBuilder() {
   const [, navigate] = useLocation();
   const { data: planLimits } = usePlanLimits();
 
+  // Fetch team data to get slug for menu URL
+  const { data: teamData } = useQuery<any>({
+    queryKey: ["/api/teams", user?.teamId],
+    queryFn: async () => {
+      if (!user?.teamId) return null;
+      const res = await fetch(`/api/teams/${user.teamId}`, { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!user?.teamId,
+  });
+  const teamSlug = teamData?.slug;
+
   const [sectionDialog, setSectionDialog] = useState<{ open: boolean; section?: MenuSection }>({ open: false });
   const [productDialog, setProductDialog] = useState<{ open: boolean; sectionId?: string; product?: MenuProduct }>({ open: false });
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
@@ -276,7 +289,7 @@ export function MenuBuilder() {
     <div className="p-4 space-y-4 max-w-2xl">
       {/* Menu Link + QR Code Panel - Only for team accounts */}
       {isTeamAccount ? (
-        <MenuLinkPanel username={user!.username} template={user!.template} />
+        <MenuLinkPanel username={user!.username} template={user!.template} teamSlug={teamSlug} />
       ) : (
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-center gap-3 mb-2">
@@ -294,7 +307,36 @@ export function MenuBuilder() {
         </div>
       )}
 
-      {/* Documentation / How to Use */}
+      {/* Show Menu on Profile Toggle */}
+      {isTeamAccount && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold">Show Menu on Profile</h3>
+                <p className="text-xs text-muted-foreground">Display a "View Our Menu" button on your business card profile</p>
+              </div>
+              <Switch
+                checked={user?.showMenuOnProfile || false}
+                onCheckedChange={async (checked) => {
+                  try {
+                    await fetch("/api/auth/profile", {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      credentials: "include",
+                      body: JSON.stringify({ showMenuOnProfile: checked }),
+                    });
+                    queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+                    toast({ title: checked ? "Menu will show on profile" : "Menu hidden from profile" });
+                  } catch {
+                    toast({ title: "Failed to update", variant: "destructive" });
+                  }
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Menu Appearance Panel */}
       <MenuAppearancePanel />
@@ -1011,11 +1053,11 @@ function MenuAppearancePanel() {
 }
 
 
-function MenuLinkPanel({ username, template: templateId }: { username: string; template: string | null }) {
+function MenuLinkPanel({ username, template: templateId, teamSlug }: { username: string; template: string | null; teamSlug?: string }) {
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const menuUrl = `${window.location.origin}/${username}/menu`;
+  const menuUrl = `${window.location.origin}/${teamSlug || username}/menu`;
   const template = getTemplate(templateId);
   const brandColor = template.accent;
 

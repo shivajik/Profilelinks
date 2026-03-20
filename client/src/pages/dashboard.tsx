@@ -1372,7 +1372,7 @@ export default function Dashboard() {
                         toast({ title: "Upgrade Required", description: "Copy menu link is available for team accounts.", variant: "destructive" });
                         return;
                       }
-                      navigator.clipboard.writeText(`${window.location.origin}/${user.username}/menu`);
+                      navigator.clipboard.writeText(`${window.location.origin}/${teamSlug || user.username}/menu`);
                       toast({ title: "Menu link copied!" });
                     }}
                     className={!isTeamAccount ? "opacity-50 cursor-not-allowed" : ""}
@@ -1392,7 +1392,7 @@ export default function Dashboard() {
                         toast({ title: "Upgrade Required", description: "QR code is available for team accounts.", variant: "destructive" });
                         return;
                       }
-                      window.open(`/${user.username}/menu`, "_blank");
+                      window.open(`/${teamSlug || user.username}/menu`, "_blank");
                     }}
                     className={!isTeamAccount ? "opacity-50 cursor-not-allowed" : ""}
                     title={!isTeamAccount ? "Upgrade to Team to use QR code" : "Open menu in new tab"}
@@ -1406,7 +1406,7 @@ export default function Dashboard() {
                 </div>
                 <div className={`bg-background rounded-2xl shadow-lg overflow-hidden border ${previewMode === "mobile" ? "w-[375px]" : "w-full max-w-[800px]"}`} style={{ height: "70vh" }}>
                   <iframe
-                    src={`/${user.username}/menu?embed=1`}
+                    src={`/${teamSlug || user.username}/menu?embed=1`}
                     className="w-full h-full border-0"
                     title="Menu Preview"
                     key={`menu-preview-${previewMode}`}
