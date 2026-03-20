@@ -594,7 +594,7 @@ export default function Dashboard() {
 
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 flex overflow-hidden">
-             <div className={`flex-1 overflow-y-auto border-r bg-background w-full ${activeSection === "design" ? "md:min-w-[300px] md:max-w-[420px]" : ""} ${activeSection === "menu-setup" ? "md:min-w-[300px] md:max-w-[420px]" : ""} ${["team-members", "team-templates", "contacts", "billing", "usage", "affiliate", "business-profile"].includes(activeSection) ? "md:max-w-none" : ""}`}>
+             <div className={`overflow-y-auto border-r bg-background w-full ${activeSection === "design" ? "flex-1 md:min-w-[300px] md:max-w-[420px]" : ""} ${activeSection === "menu-setup" ? "shrink-0 md:w-[380px]" : ""} ${["team-members", "team-templates", "contacts", "billing", "usage", "affiliate", "business-profile"].includes(activeSection) ? "flex-1 md:max-w-none" : ""} ${!["design", "menu-setup", "team-members", "team-templates", "contacts", "billing", "usage", "affiliate", "business-profile"].includes(activeSection) ? "flex-1" : ""}`}>
               {activeSection === "billing" && <BillingSection autoSelectPlanId={new URLSearchParams(search).get("planId")} />}
               {activeSection === "business-profile" && <BusinessProfileSection onNavigateToTemplates={isTeamOwner ? () => setActiveSection("team-templates") : undefined} />}
               {activeSection === "affiliate" && affiliateData && (
@@ -1370,7 +1370,7 @@ export default function Dashboard() {
 
             {/* Menu Setup - middle Column: Preview */}
             {planLimits?.menuBuilderEnabled && (
-            <div className={`${activeSection === "menu-setup" ? "hidden md:flex" : "hidden"} w-[320px] shrink-0 border-l bg-muted/20 flex-col items-center justify-start overflow-y-auto`}>
+            <div className={`${activeSection === "menu-setup" ? "hidden md:flex" : "hidden"} flex-1 min-w-0 border-l bg-muted/20 flex-col items-center justify-start overflow-y-auto`}>
               {/* Preview header */}
               <div className="w-full flex items-center justify-between px-4 py-2.5 border-b bg-background sticky top-0 z-10">
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Menu Preview</span>
@@ -1405,8 +1405,8 @@ export default function Dashboard() {
                 </div>
               </div>
               {/* Preview iframe */}
-              <div className="flex-1 w-full p-4">
-                <div className="bg-background rounded-2xl shadow-md overflow-hidden border w-full h-full" style={{ minHeight: "60vh" }}>
+              <div className="flex-1 w-full p-4 flex justify-center">
+                <div className="bg-background rounded-2xl shadow-md overflow-hidden border w-full h-full" style={{ maxWidth: "400px", minHeight: "60vh" }}>
                   <iframe
                     src={`/${teamSlug || user.username}/menu?embed=1`}
                     className="w-full h-full border-0"
@@ -1418,9 +1418,9 @@ export default function Dashboard() {
               </div>
             </div>
             )}
-            {/* Menu Setup - left Column: Appearance & Info */}
+            {/* Menu Setup - right Column: Appearance & Info */}
             {planLimits?.menuBuilderEnabled && (
-            <div className={`${activeSection === "menu-setup" ? "hidden md:flex" : "hidden"} flex-col overflow-y-auto border-r bg-background`} style={{ width: "420px", minWidth: "320px" }}>
+            <div className={`${activeSection === "menu-setup" ? "hidden md:flex" : "hidden"} flex-col overflow-y-auto border-l bg-background shrink-0`} style={{ width: "280px" }}>
               <MenuAppearancePanel />
             </div>
             )}

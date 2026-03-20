@@ -842,7 +842,7 @@ export function MenuAppearancePanel() {
               <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
                 <Phone className="w-4 h-4 text-primary" /> Contact Information
               </h4>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-3">
                 <div>
                   <Label className="text-xs">Phone</Label>
                   <Input value={menuPhone} onChange={(e) => setMenuPhone(e.target.value)} placeholder="+91 98765 43210" className="mt-1" />
@@ -875,19 +875,19 @@ export function MenuAppearancePanel() {
               <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
                 <Clock className="w-4 h-4 text-primary" /> Opening Hours
               </h4>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {openingHours.map((h) => (
-                  <div key={h.dayOfWeek} className="flex items-center gap-2">
-                    <span className="text-xs w-20 font-medium">{DAY_NAMES[h.dayOfWeek]}</span>
-                    <Switch checked={!h.isClosed} onCheckedChange={(v) => updateHour(h.dayOfWeek, "isClosed", !v)} className="scale-75" />
+                  <div key={h.dayOfWeek} className="flex items-center gap-1.5">
+                    <span className="text-xs w-7 font-medium shrink-0">{DAY_NAMES[h.dayOfWeek].slice(0, 3)}</span>
+                    <Switch checked={!h.isClosed} onCheckedChange={(v) => updateHour(h.dayOfWeek, "isClosed", !v)} className="scale-75 shrink-0" />
                     {!h.isClosed ? (
                       <>
-                        <Input type="time" value={h.openTime} onChange={(e) => updateHour(h.dayOfWeek, "openTime", e.target.value)} className="w-28 h-8 text-xs" />
-                        <span className="text-xs text-muted-foreground">to</span>
-                        <Input type="time" value={h.closeTime} onChange={(e) => updateHour(h.dayOfWeek, "closeTime", e.target.value)} className="w-28 h-8 text-xs" />
+                        <Input type="time" value={h.openTime} onChange={(e) => updateHour(h.dayOfWeek, "openTime", e.target.value)} className="flex-1 h-7 text-xs px-1 min-w-0" />
+                        <span className="text-xs text-muted-foreground shrink-0">-</span>
+                        <Input type="time" value={h.closeTime} onChange={(e) => updateHour(h.dayOfWeek, "closeTime", e.target.value)} className="flex-1 h-7 text-xs px-1 min-w-0" />
                       </>
                     ) : (
-                      <span className="text-xs text-muted-foreground italic">Closed</span>
+                      <span className="text-xs text-muted-foreground italic flex-1">Closed</span>
                     )}
                   </div>
                 ))}
