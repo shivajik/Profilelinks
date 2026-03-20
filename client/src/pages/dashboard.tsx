@@ -1368,85 +1368,84 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Menu Setup Right Panel - Appearance + Preview */}
+            {/* Menu Setup - middle Column: Preview */}
             {planLimits?.menuBuilderEnabled && (
-            <div className={`${activeSection === "menu-setup" ? "hidden md:flex" : "hidden"} flex-1 bg-muted/30 flex-col overflow-y-auto`}>
-              {/* Menu Appearance Panel in right column */}
-              <div className="p-4 border-b">
-                <MenuAppearancePanel />
+            <div className={`${activeSection === "menu-setup" ? "hidden md:flex" : "hidden"} w-[320px] shrink-0 bg-muted/30 flex-col items-center justify-start overflow-y-auto p-4`}>
+              <div className="flex items-center gap-2 mb-3">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handlePreviewMode("mobile")}
+                  className={`toggle-elevate ${previewMode === "mobile" ? "toggle-elevated" : ""}`}
+                >
+                  <Smartphone className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handlePreviewMode("desktop")}
+                  className={`toggle-elevate ${previewMode === "desktop" ? "toggle-elevated" : ""}`}
+                >
+                  <Monitor className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    if (!isTeamAccount) {
+                      toast({ title: "Upgrade Required", description: "Copy menu link is available for team accounts.", variant: "destructive" });
+                      return;
+                    }
+                    navigator.clipboard.writeText(`${window.location.origin}/${teamSlug || user.username}/menu`);
+                    toast({ title: "Menu link copied!" });
+                  }}
+                  className={!isTeamAccount ? "opacity-50 cursor-not-allowed" : ""}
+                  title={!isTeamAccount ? "Upgrade to Team to copy menu link" : "Copy menu link"}
+                >
+                  {!isTeamAccount ? (
+                    <Lock className="w-4 h-4 text-muted-foreground" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    if (!isTeamAccount) {
+                      toast({ title: "Upgrade Required", description: "QR code is available for team accounts.", variant: "destructive" });
+                      return;
+                    }
+                    window.open(`/${teamSlug || user.username}/menu`, "_blank");
+                  }}
+                  className={!isTeamAccount ? "opacity-50 cursor-not-allowed" : ""}
+                  title={!isTeamAccount ? "Upgrade to Team to use QR code" : "Open menu in new tab"}
+                >
+                  {!isTeamAccount ? (
+                    <Lock className="w-4 h-4 text-muted-foreground" />
+                  ) : (
+                    <ExternalLink className="w-4 h-4" />
+                  )}
+                </Button>
               </div>
-              {/* Menu Preview */}
-              <div className="flex-1 flex items-center justify-center p-6">
-                <div className="flex flex-col items-center gap-3">
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handlePreviewMode("mobile")}
-                      className={`toggle-elevate ${previewMode === "mobile" ? "toggle-elevated" : ""}`}
-                    >
-                      <Smartphone className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handlePreviewMode("desktop")}
-                      className={`toggle-elevate ${previewMode === "desktop" ? "toggle-elevated" : ""}`}
-                    >
-                      <Monitor className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        if (!isTeamAccount) {
-                          toast({ title: "Upgrade Required", description: "Copy menu link is available for team accounts.", variant: "destructive" });
-                          return;
-                        }
-                        navigator.clipboard.writeText(`${window.location.origin}/${teamSlug || user.username}/menu`);
-                        toast({ title: "Menu link copied!" });
-                      }}
-                      className={!isTeamAccount ? "opacity-50 cursor-not-allowed" : ""}
-                      title={!isTeamAccount ? "Upgrade to Team to copy menu link" : "Copy menu link"}
-                    >
-                      {!isTeamAccount ? (
-                        <Lock className="w-4 h-4 text-muted-foreground" />
-                      ) : (
-                        <Copy className="w-4 h-4" />
-                      )}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        if (!isTeamAccount) {
-                          toast({ title: "Upgrade Required", description: "QR code is available for team accounts.", variant: "destructive" });
-                          return;
-                        }
-                        window.open(`/${teamSlug || user.username}/menu`, "_blank");
-                      }}
-                      className={!isTeamAccount ? "opacity-50 cursor-not-allowed" : ""}
-                      title={!isTeamAccount ? "Upgrade to Team to use QR code" : "Open menu in new tab"}
-                    >
-                      {!isTeamAccount ? (
-                        <Lock className="w-4 h-4 text-muted-foreground" />
-                      ) : (
-                        <ExternalLink className="w-4 h-4" />
-                      )}
-                    </Button>
-                  </div>
-                  <div className={`bg-background rounded-2xl shadow-lg overflow-hidden border ${previewMode === "mobile" ? "w-[375px]" : "w-full max-w-[800px]"}`} style={{ height: "50vh" }}>
-                    <iframe
-                      src={`/${teamSlug || user.username}/menu?embed=1`}
-                      className="w-full h-full border-0"
-                      title="Menu Preview"
-                      key={`menu-preview-${previewMode}`}
-                    />
-                  </div>
-                </div>
+              <div className="bg-background rounded-2xl shadow-lg overflow-hidden border w-full" style={{ height: "70vh" }}>
+                <iframe
+                  src={`/${teamSlug || user.username}/menu?embed=1`}
+                  className="w-full h-full border-0"
+                  title="Menu Preview"
+                  key={`menu-preview-${previewMode}`}
+                />
               </div>
             </div>
             )}
+            {/* Menu Setup - left Column: Appearance & Info */}
+            {planLimits?.menuBuilderEnabled && (
+            <div className={`${activeSection === "menu-setup" ? "hidden md:flex" : "hidden"} flex-col overflow-y-auto border-r bg-background`} style={{ width: "420px", minWidth: "320px" }}>
+              <MenuAppearancePanel />
+            </div>
+            )}
+
+           
 
             {/* Design panel - always visible when design section is active */}
             {activeSection === "design" && (

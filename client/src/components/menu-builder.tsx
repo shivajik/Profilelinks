@@ -611,7 +611,6 @@ export function MenuBuilder() {
 
 export function MenuAppearancePanel() {
   const { toast } = useToast();
-  const [isOpen, setIsOpen] = useState(false);
 
   const { data: settings, isLoading } = useQuery<{
     menuTemplate: string | null;
@@ -777,22 +776,15 @@ export function MenuAppearancePanel() {
   };
 
   return (
-    <Card>
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer py-3 px-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {isOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-                <Palette className="w-4 h-4 text-primary" />
-                <CardTitle className="text-sm font-medium">Menu Appearance & Info</CardTitle>
-              </div>
-              <Badge variant="secondary" className="text-xs">Independent styling</Badge>
-            </div>
-          </CardHeader>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <CardContent className="pt-0 px-4 pb-4 space-y-5">
+    <div className="p-4 space-y-5">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Palette className="w-4 h-4 text-primary" />
+          <h3 className="text-sm font-semibold">Menu Appearance & Info</h3>
+        </div>
+        <Badge variant="secondary" className="text-xs">Independent styling</Badge>
+      </div>
+      <div className="space-y-5">
             <p className="text-xs text-muted-foreground">
               Customize how your menu looks independently from your portfolio profile.
             </p>
@@ -1014,10 +1006,8 @@ export function MenuAppearancePanel() {
               {(saveMutation.isPending || saveHoursMutation.isPending) && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
               Save Menu Appearance & Info
             </Button>
-          </CardContent>
-        </CollapsibleContent>
-      </Collapsible>
-    </Card>
+      </div>
+    </div>
   );
 }
 
