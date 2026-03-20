@@ -1406,7 +1406,7 @@ export default function Dashboard() {
               </div>
               {/* Preview iframe */}
               <div className="flex-1 w-full p-4 flex justify-center">
-                <div className="bg-background rounded-2xl shadow-md overflow-hidden border w-full h-full" style={{ maxWidth: "400px", minHeight: "60vh" }}>
+                <div className="bg-background rounded-2xl shadow-md overflow-hidden border w-full h-full" style={{ maxWidth: "380px", minHeight: "60vh" }}>
                   <iframe
                     src={`/${teamSlug || user.username}/menu?embed=1`}
                     className="w-full h-full border-0"
