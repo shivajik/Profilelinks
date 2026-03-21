@@ -40,6 +40,8 @@ export const users = pgTable("users", {
   contactFormEmail: text("contact_form_email"),
   meetingLink: text("meeting_link"),
   showMenuOnProfile: boolean("show_menu_on_profile").notNull().default(false),
+  showServicesOnProfile: boolean("show_services_on_profile").notNull().default(false),
+  showProductsOnProfile: boolean("show_products_on_profile").notNull().default(false),
 });
 
 // ── Menu Social Links ──────────────────────────────────────────────────────
@@ -290,6 +292,7 @@ export const teamServices = pgTable("team_services", {
   description: text("description"),
   price: text("price"),
   imageUrl: text("image_url"),
+  url: text("url"),
   position: integer("position").notNull().default(0),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -302,6 +305,7 @@ export const teamProducts = pgTable("team_products", {
   description: text("description"),
   price: text("price"),
   imageUrl: text("image_url"),
+  url: text("url"),
   position: integer("position").notNull().default(0),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -342,6 +346,8 @@ export const updateProfileSchema = z.object({
   contactFormEmail: z.string().email().max(200).optional().nullable(),
   meetingLink: z.string().max(500).optional().nullable(),
   showMenuOnProfile: z.boolean().optional(),
+  showServicesOnProfile: z.boolean().optional(),
+  showProductsOnProfile: z.boolean().optional(),
 });
 
 export const updateMenuSettingsSchema = z.object({

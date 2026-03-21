@@ -74,6 +74,7 @@ interface PublicMenuData {
   openingHours: OpeningHour[];
   socials: SocialLink[];
   teamBranding: TeamBranding | null;
+  affiliateInfo?: { isAffiliate: boolean; referralCode?: string };
 }
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -446,9 +447,13 @@ export default function PublicMenu() {
             <p className={`text-xs ${template.textColor} opacity-40`}>
               Powered by <span className="font-semibold" style={{ color: template.accent, opacity: 1 }}>VisiCardly</span>
             </p>
-            <a href="/auth" target="_blank" rel="noopener noreferrer" className={`text-xs ${template.textColor} opacity-40 hover:opacity-60 transition-opacity block`}>
-              {/* Create your own card on <span className="font-semibold">VisiCardly</span> */}
-            Create your own digital business card
+            <a
+              href={data?.affiliateInfo?.isAffiliate && data.affiliateInfo.referralCode
+                ? `/auth?ref=${data.affiliateInfo.referralCode}`
+                : "/auth"}
+              target="_blank" rel="noopener noreferrer" className={`text-xs ${template.textColor} opacity-40 hover:opacity-60 transition-opacity block`}
+            >
+              Create your own digital business card
             </a>
           </div>
         )}

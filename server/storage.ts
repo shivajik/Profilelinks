@@ -253,6 +253,8 @@ if (pool) pool.query(`
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS contact_form_email text;
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS meeting_link text;
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS show_menu_on_profile boolean NOT NULL DEFAULT false;
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS show_services_on_profile boolean NOT NULL DEFAULT false;
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS show_products_on_profile boolean NOT NULL DEFAULT false;
 
   CREATE TABLE IF NOT EXISTS team_services (
     id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -261,6 +263,7 @@ if (pool) pool.query(`
     description text,
     price text,
     image_url text,
+    url text,
     position integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true,
     created_at timestamp DEFAULT now()
@@ -273,10 +276,14 @@ if (pool) pool.query(`
     description text,
     price text,
     image_url text,
+    url text,
     position integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true,
     created_at timestamp DEFAULT now()
   );
+
+  ALTER TABLE IF EXISTS team_services ADD COLUMN IF NOT EXISTS url text;
+  ALTER TABLE IF EXISTS team_products ADD COLUMN IF NOT EXISTS url text;
 
   CREATE INDEX IF NOT EXISTS idx_team_services_team_id ON team_services(team_id);
   CREATE INDEX IF NOT EXISTS idx_team_products_team_id ON team_products(team_id);

@@ -2,7 +2,7 @@ import express, { type Express, type Request, type Response, type NextFunction }
 import { createServer, type Server } from "http";
 import session from "express-session";
 import { storage, db } from "./storage";
-import { users, teams, teamServices, teamProducts, teamTemplates } from "@shared/schema";
+import { users, teams, teamServices, teamProducts, teamTemplates, affiliates } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema, createPageSchema, updatePageSchema, createBlockSchema, updateBlockSchema, changePasswordSchema, deleteAccountSchema, createTeamSchema, updateTeamSchema, updateTeamMemberSchema, createTeamInviteSchema, createTeamMemberSchema, createTeamTemplateSchema, updateTeamTemplateSchema, createContactSchema, updateContactSchema, createMenuSectionSchema, updateMenuSectionSchema, createMenuProductSchema, updateMenuProductSchema, updateMenuSettingsSchema, upsertOpeningHoursSchema, createMenuSocialSchema, updateMenuSocialSchema, updateBusinessProfileSchema, createBranchSchema, updateBranchSchema } from "@shared/schema";
@@ -1816,7 +1816,7 @@ export async function registerRoutes(
     try {
       const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
       if (!role || !["owner", "admin"].includes(role)) return res.status(403).json({ message: "Not authorized" });
-      const { title, description, price, imageUrl } = req.body;
+      const { title, description, price, imageUrl, url } = req.body;
       if (!title) return res.status(400).json({ message: "Title is required" });
       const existing = await db.select().from(teamServices).where(eq(teamServices.teamId, req.params.teamId as string));
       const [created] = await db.insert(teamServices).values({
@@ -1825,6 +1825,7 @@ export async function registerRoutes(
         description: description || null,
         price: price || null,
         imageUrl: imageUrl || null,
+        url: url || null,
         position: existing.length,
       }).returning();
       res.status(201).json(created);
@@ -1837,9 +1838,9 @@ export async function registerRoutes(
     try {
       const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
       if (!role || !["owner", "admin"].includes(role)) return res.status(403).json({ message: "Not authorized" });
-      const { title, description, price, imageUrl } = req.body;
+      const { title, description, price, imageUrl, url } = req.body;
       const [updated] = await db.update(teamServices)
-        .set({ title, description: description || null, price: price || null, imageUrl: imageUrl || null })
+        .set({ title, description: description || null, price: price || null, imageUrl: imageUrl || null, url: url || null })
         .where(eq(teamServices.id, req.params.id as string))
         .returning();
       res.json(updated);
@@ -1875,7 +1876,7 @@ export async function registerRoutes(
     try {
       const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
       if (!role || !["owner", "admin"].includes(role)) return res.status(403).json({ message: "Not authorized" });
-      const { title, description, price, imageUrl } = req.body;
+      const { title, description, price, imageUrl, url } = req.body;
       if (!title) return res.status(400).json({ message: "Title is required" });
       const existing = await db.select().from(teamProducts).where(eq(teamProducts.teamId, req.params.teamId as string));
       const [created] = await db.insert(teamProducts).values({
@@ -1884,6 +1885,7 @@ export async function registerRoutes(
         description: description || null,
         price: price || null,
         imageUrl: imageUrl || null,
+        url: url || null,
         position: existing.length,
       }).returning();
       res.status(201).json(created);
@@ -1896,9 +1898,9 @@ export async function registerRoutes(
     try {
       const role = await getTeamMemberRole(req.params.teamId as string, req.session.userId!);
       if (!role || !["owner", "admin"].includes(role)) return res.status(403).json({ message: "Not authorized" });
-      const { title, description, price, imageUrl } = req.body;
+      const { title, description, price, imageUrl, url } = req.body;
       const [updated] = await db.update(teamProducts)
-        .set({ title, description: description || null, price: price || null, imageUrl: imageUrl || null })
+        .set({ title, description: description || null, price: price || null, imageUrl: imageUrl || null, url: url || null })
         .where(eq(teamProducts.id, req.params.id as string))
         .returning();
       res.json(updated);
@@ -1929,8 +1931,18 @@ export async function registerRoutes(
       // Get team template for branding
       const tTemplates = await db.select().from(teamTemplates).where(eq(teamTemplates.teamId, team.id));
       const defaultTemplate = tTemplates.find((t: any) => t.isDefault) || tTemplates[0];
+
+      // Check affiliate
+      let affiliateInfo: { isAffiliate: boolean; referralCode?: string } = { isAffiliate: false };
+      try {
+        const owner = await storage.getUser(team.ownerId);
+        if (owner) {
+          const [aff] = await db.select().from(affiliates).where(eq(affiliates.userId, owner.id));
+          if (aff && aff.isActive) affiliateInfo = { isAffiliate: true, referralCode: aff.referralCode };
+        }
+      } catch (_) {}
       
-      res.json({ team, items: activeRows, template: defaultTemplate?.templateData || {} });
+      res.json({ team, items: activeRows, template: defaultTemplate?.templateData || {}, affiliateInfo });
     } catch (error: any) {
       res.status(500).json({ message: "Failed" });
     }
@@ -1945,8 +1957,18 @@ export async function registerRoutes(
       
       const tTemplates = await db.select().from(teamTemplates).where(eq(teamTemplates.teamId, team.id));
       const defaultTemplate = tTemplates.find((t: any) => t.isDefault) || tTemplates[0];
+
+      // Check affiliate
+      let affiliateInfo: { isAffiliate: boolean; referralCode?: string } = { isAffiliate: false };
+      try {
+        const owner = await storage.getUser(team.ownerId);
+        if (owner) {
+          const [aff] = await db.select().from(affiliates).where(eq(affiliates.userId, owner.id));
+          if (aff && aff.isActive) affiliateInfo = { isAffiliate: true, referralCode: aff.referralCode };
+        }
+      } catch (_) {}
       
-      res.json({ team, items: activeRows, template: defaultTemplate?.templateData || {} });
+      res.json({ team, items: activeRows, template: defaultTemplate?.templateData || {}, affiliateInfo });
     } catch (error: any) {
       res.status(500).json({ message: "Failed" });
     }
@@ -2395,28 +2417,7 @@ export async function registerRoutes(
       (publicUser as any).emailVerified = user.emailVerified || false;
       (publicUser as any).useOriginalSocialColors = user.useOriginalSocialColors || false;
 
-      let teamBranding: {
-        companyLogo?: string;
-        coverPhoto?: string;
-        companyName?: string;
-        companyPhone?: string;
-        companyEmail?: string;
-        companyWebsite?: string;
-        companyAddress?: string;
-        companyContact?: string;
-        themeColor?: string;
-        font?: string;
-        jobTitle?: string;
-        teamName?: string;
-        memberPhone?: string;
-        companySocials?: Array<{ platform: string; url: string }>;
-        headBranch?: { name: string; address: string; phone?: string | null; email?: string | null };
-        memberBranch?: { name: string; address: string; phone?: string | null; email?: string | null };
-        companyProfileUrl?: string;
-        productProfileUrl?: string;
-        productUrls?: Array<{ label: string; url: string }>;
-        companyBrochureUrl?: string;
-      } | null = null;
+      let teamBranding: Record<string, any> | null = null;
 
       if (teamId && teamData) {
         const defaultTemplate = templates.find((t: any) => t.isDefault) || templates[0];
@@ -2487,6 +2488,22 @@ export async function registerRoutes(
         res.set("Vercel-CDN-Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
       }
 
+      // Check if user is an affiliate
+      let affiliateInfo: { isAffiliate: boolean; referralCode?: string } = { isAffiliate: false };
+      try {
+        const [aff] = await db.select().from(affiliates).where(eq(affiliates.userId, user.id));
+        if (aff && aff.isActive) {
+          affiliateInfo = { isAffiliate: true, referralCode: aff.referralCode };
+        }
+      } catch (_) {}
+
+      // Add services/products visibility flags to teamBranding
+      if (teamBranding && teamId) {
+        teamBranding.showServicesOnProfile = user.showServicesOnProfile || false;
+        teamBranding.showProductsOnProfile = user.showProductsOnProfile || false;
+        teamBranding.teamSlug = teamData?.slug || undefined;
+      }
+
       res.json({
         user: publicUser,
         links: userLinks,
@@ -2495,6 +2512,7 @@ export async function registerRoutes(
         pages: userPages.map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome })),
         currentPage: currentPage ? { id: currentPage.id, title: currentPage.title, slug: currentPage.slug, isHome: currentPage.isHome } : null,
         teamBranding,
+        affiliateInfo,
       });
     } catch (error: any) {
       console.error("Profile load error:", error);
@@ -3138,6 +3156,15 @@ export async function registerRoutes(
         };
       }
 
+      // Check if user is an affiliate
+      let affiliateInfo: { isAffiliate: boolean; referralCode?: string } = { isAffiliate: false };
+      try {
+        const [aff] = await db.select().from(affiliates).where(eq(affiliates.userId, user.id));
+        if (aff && aff.isActive) {
+          affiliateInfo = { isAffiliate: true, referralCode: aff.referralCode };
+        }
+      } catch (_) {}
+
       res.json({
         user: {
           ...publicUser,
@@ -3158,6 +3185,7 @@ export async function registerRoutes(
         openingHours,
         socials: menuSocialLinks,
         teamBranding,
+        affiliateInfo,
       });
     } catch (error: any) {
       console.error("Public menu load error:", error);

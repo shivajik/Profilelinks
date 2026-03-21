@@ -487,6 +487,8 @@ export default function Dashboard() {
   const teamSlug = teamData?.slug;
   const profileUrl = isTeamMember && teamSlug
     ? `${window.location.origin}/${teamSlug}/${user.username}`
+    : isTeamAccount && teamSlug
+    ? `${window.location.origin}/${teamSlug}`
     : `${window.location.origin}/${user.username}`;
 
   const isIndividual = !isTeamAccount;
@@ -974,17 +976,50 @@ export default function Dashboard() {
                       checked={user?.showMenuOnProfile || false}
                       onCheckedChange={async (checked) => {
                         try {
-                          await fetch("/api/auth/profile", {
-                            method: "PATCH",
-                            headers: { "Content-Type": "application/json" },
-                            credentials: "include",
-                            body: JSON.stringify({ showMenuOnProfile: checked }),
-                          });
+                          await fetch("/api/auth/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ showMenuOnProfile: checked }) });
                           queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
                           toast({ title: checked ? "Menu will show on profile" : "Menu hidden from profile" });
-                        } catch {
-                          toast({ title: "Failed to update", variant: "destructive" });
-                        }
+                        } catch { toast({ title: "Failed to update", variant: "destructive" }); }
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Show Services on Profile Toggle - for non-restaurant team owners */}
+                {isTeamAccount && !isRestaurant && isTeamOwner && (
+                  <div className="border rounded-lg p-4 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold">Show Services on Profile</h3>
+                      <p className="text-xs text-muted-foreground">Display services as a tab on your portfolio page</p>
+                    </div>
+                    <Switch
+                      checked={user?.showServicesOnProfile || false}
+                      onCheckedChange={async (checked) => {
+                        try {
+                          await fetch("/api/auth/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ showServicesOnProfile: checked }) });
+                          queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+                          toast({ title: checked ? "Services visible on profile" : "Services hidden from profile" });
+                        } catch { toast({ title: "Failed to update", variant: "destructive" }); }
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Show Products on Profile Toggle - for non-restaurant team owners */}
+                {isTeamAccount && !isRestaurant && isTeamOwner && (
+                  <div className="border rounded-lg p-4 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold">Show Products on Profile</h3>
+                      <p className="text-xs text-muted-foreground">Display products as a tab on your portfolio page</p>
+                    </div>
+                    <Switch
+                      checked={user?.showProductsOnProfile || false}
+                      onCheckedChange={async (checked) => {
+                        try {
+                          await fetch("/api/auth/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ showProductsOnProfile: checked }) });
+                          queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+                          toast({ title: checked ? "Products visible on profile" : "Products hidden from profile" });
+                        } catch { toast({ title: "Failed to update", variant: "destructive" }); }
                       }}
                     />
                   </div>
@@ -7879,13 +7914,14 @@ function ServicesProductsPanel({ teamId, teamSlug, type }: { teamId: string; tea
   });
 
   // Items state
-  const [items, setItems] = useState<Array<{ id: string; title: string; description: string; price?: string; imageUrl?: string; active: boolean }>>([]);
+  const [items, setItems] = useState<Array<{ id: string; title: string; description: string; price?: string; imageUrl?: string; url?: string; active: boolean }>>([]);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
   const [formTitle, setFormTitle] = useState("");
   const [formDesc, setFormDesc] = useState("");
   const [formPrice, setFormPrice] = useState("");
   const [formImage, setFormImage] = useState("");
+  const [formUrl, setFormUrl] = useState("");
 
   // Fetch items
   const { data: fetchedItems = [], isLoading } = useQuery<any[]>({
@@ -7936,6 +7972,7 @@ function ServicesProductsPanel({ teamId, teamSlug, type }: { teamId: string; tea
     setFormDesc("");
     setFormPrice("");
     setFormImage("");
+    setFormUrl("");
   };
 
   const openAdd = () => {
@@ -7949,6 +7986,7 @@ function ServicesProductsPanel({ teamId, teamSlug, type }: { teamId: string; tea
     setFormDesc(item.description || "");
     setFormPrice(item.price || "");
     setFormImage(item.imageUrl || "");
+    setFormUrl(item.url || "");
     setEditItem(item);
     setAddDialogOpen(true);
   };
@@ -7961,6 +7999,7 @@ function ServicesProductsPanel({ teamId, teamSlug, type }: { teamId: string; tea
       description: formDesc || undefined,
       price: formPrice || undefined,
       imageUrl: formImage || undefined,
+      url: formUrl || undefined,
     });
   };
 
@@ -8074,6 +8113,10 @@ function ServicesProductsPanel({ teamId, teamSlug, type }: { teamId: string; tea
             <div>
               <Label>Image URL</Label>
               <Input value={formImage} onChange={(e) => setFormImage(e.target.value)} placeholder="https://..." />
+            </div>
+            <div>
+              <Label>URL (opens on click)</Label>
+              <Input value={formUrl} onChange={(e) => setFormUrl(e.target.value)} placeholder="https://example.com/details" />
             </div>
             <Button className="w-full" disabled={!formTitle.trim() || saveMutation.isPending} onClick={handleSave}>
               {saveMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
