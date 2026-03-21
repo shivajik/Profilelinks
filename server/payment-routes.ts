@@ -131,6 +131,14 @@ router.post("/api/payments/create-order", requireAuth as any, async (req: Reques
           : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       });
 
+      // Increment promo code usage for free (100% discount) orders
+      if (promoCode && appliedPromoId) {
+        const [code] = await db.select().from(promoCodes).where(eq(promoCodes.code, promoCode.toUpperCase()));
+        if (code) {
+          await db.update(promoCodes).set({ currentUses: code.currentUses + 1 }).where(eq(promoCodes.id, code.id));
+        }
+      }
+
       // If team plan, auto-upgrade user
       if (plan.planType === "team") {
         const user = await storage.getUser(req.session.userId!);
