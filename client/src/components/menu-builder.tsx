@@ -611,6 +611,7 @@ export function MenuBuilder() {
 
 export function MenuAppearancePanel() {
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const { data: settings, isLoading } = useQuery<{
     menuTemplate: string | null;
@@ -626,6 +627,18 @@ export function MenuAppearancePanel() {
     menuWebsite: string | null;
     openingHours: { id: string; dayOfWeek: number; openTime: string | null; closeTime: string | null; isClosed: boolean }[];
     menuSocials: { id: string; platform: string; url: string; position: number }[];
+    teamDefaults: {
+      displayName: string | null;
+      profileImage: string | null;
+      accentColor: string | null;
+      phone: string | null;
+      email: string | null;
+      address: string | null;
+      website: string | null;
+      description: string | null;
+      socials: Array<{ platform: string; url: string }>;
+      profileSocials: Array<{ platform: string; url: string }>;
+    } | null;
   }>({
     queryKey: ["/api/menu/settings"],
   });
@@ -652,18 +665,22 @@ export function MenuAppearancePanel() {
   const defaultHours = DAY_NAMES.map((_, i) => ({ dayOfWeek: i, openTime: "09:00", closeTime: "22:00", isClosed: false }));
   const [openingHours, setOpeningHours] = useState(defaultHours);
 
+  const teamDefaults = settings?.teamDefaults;
+
   if (settings && !initialized) {
+    // Auto-sync: if menu fields are empty, use team defaults
+    const td = settings.teamDefaults;
     setMenuTemplate(settings.menuTemplate);
-    setMenuDisplayName(settings.menuDisplayName || "");
-    setMenuProfileImage(settings.menuProfileImage || "");
-    setMenuAccentColor(settings.menuAccentColor || "");
-    setMenuDescription(settings.menuDescription || "");
-    setMenuPhone(settings.menuPhone || "");
-    setMenuEmail(settings.menuEmail || "");
-    setMenuAddress(settings.menuAddress || "");
+    setMenuDisplayName(settings.menuDisplayName || td?.displayName || "");
+    setMenuProfileImage(settings.menuProfileImage || td?.profileImage || "");
+    setMenuAccentColor(settings.menuAccentColor || td?.accentColor || "");
+    setMenuDescription(settings.menuDescription || td?.description || "");
+    setMenuPhone(settings.menuPhone || td?.phone || "");
+    setMenuEmail(settings.menuEmail || td?.email || "");
+    setMenuAddress(settings.menuAddress || td?.address || "");
     setMenuGoogleMapsUrl(settings.menuGoogleMapsUrl || "");
     setMenuWhatsapp(settings.menuWhatsapp || "");
-    setMenuWebsite(settings.menuWebsite || "");
+    setMenuWebsite(settings.menuWebsite || td?.website || "");
     if (settings.openingHours && settings.openingHours.length > 0) {
       const merged = defaultHours.map(d => {
         const saved = settings.openingHours.find(h => h.dayOfWeek === d.dayOfWeek);
@@ -673,6 +690,19 @@ export function MenuAppearancePanel() {
     }
     setInitialized(true);
   }
+
+  const syncFromTeam = () => {
+    if (!teamDefaults) return;
+    if (teamDefaults.displayName) setMenuDisplayName(teamDefaults.displayName);
+    if (teamDefaults.profileImage) setMenuProfileImage(teamDefaults.profileImage);
+    if (teamDefaults.accentColor) setMenuAccentColor(teamDefaults.accentColor);
+    if (teamDefaults.description) setMenuDescription(teamDefaults.description);
+    if (teamDefaults.phone) setMenuPhone(teamDefaults.phone);
+    if (teamDefaults.email) setMenuEmail(teamDefaults.email);
+    if (teamDefaults.address) setMenuAddress(teamDefaults.address);
+    if (teamDefaults.website) setMenuWebsite(teamDefaults.website);
+    toast({ title: "Synced from team template!" });
+  };
 
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -791,10 +821,17 @@ export function MenuAppearancePanel() {
               Customize how your menu looks independently from your portfolio profile.
             </p>
 
+            {/* Sync from Team Template button */}
+            {teamDefaults && (
+              <Button variant="outline" size="sm" onClick={syncFromTeam} className="w-full">
+                <Share2 className="w-3.5 h-3.5 mr-1" /> Sync Info from Team Template
+              </Button>
+            )}
+
             {/* Menu Display Name */}
             <div>
               <Label className="text-xs">Menu Display Name</Label>
-              <Input value={menuDisplayName} onChange={(e) => setMenuDisplayName(e.target.value)} placeholder="e.g. Restaurant Name" className="mt-1" />
+              <Input value={menuDisplayName} onChange={(e) => setMenuDisplayName(e.target.value)} placeholder={teamDefaults?.displayName || "e.g. Restaurant Name"} className="mt-1" />
             </div>
 
             {/* Menu Description */}
@@ -1015,10 +1052,11 @@ export function MenuAppearancePanel() {
 }
 
 
-function MenuLinkPanel({ username, template: templateId, teamSlug }: { username: string; template: string | null; teamSlug?: string }) {
+function MenuLinkPanel({ username, template: templateId, teamSlug, isRestaurant }: { username: string; template: string | null; teamSlug?: string; isRestaurant?: boolean }) {
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  // Restaurant: menu URL uses team slug; profile uses username
   const menuUrl = `${window.location.origin}/${teamSlug || username}/menu`;
   const template = getTemplate(templateId);
   const brandColor = template.accent;
@@ -1045,7 +1083,7 @@ function MenuLinkPanel({ username, template: templateId, teamSlug }: { username:
             </div>
           </div>
           <div className="flex items-center gap-2 bg-muted rounded-md px-3 py-2 mb-3">
-            <span className="text-xs text-muted-foreground truncate flex-1">{menuUrl}</span>
+            <span className="text-xs text-muted-foreground break-all line-clamp-2 flex-1">{menuUrl}</span>
             <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={handleCopy}>
               {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
             </Button>

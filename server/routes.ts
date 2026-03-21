@@ -2413,7 +2413,7 @@ export async function registerRoutes(
         currentPage ? storage.getBlocksByPageId(currentPage.id) : storage.getBlocksByUserId(user.id),
       ]);
 
-      const { password: _, email: __, ...publicUser } = user;
+      const { password: _, email: __, apiKey: _apiKey, ...publicUser } = user;
       (publicUser as any).emailVerified = user.emailVerified || false;
       (publicUser as any).useOriginalSocialColors = user.useOriginalSocialColors || false;
 
@@ -2936,6 +2936,31 @@ export async function registerRoutes(
         storage.getOpeningHoursByUserId(req.session.userId!),
         storage.getMenuSocialsByUserId(req.session.userId!),
       ]);
+
+      // Get team template data for auto-sync defaults
+      let teamDefaults: any = null;
+      if (user.accountType === "team" && user.teamId) {
+        const [team, templates, teamSocials] = await Promise.all([
+          storage.getTeam(user.teamId),
+          storage.getTeamTemplates(user.teamId),
+          storage.getSocialsByUserId(user.id),
+        ]);
+        const defaultTemplate = templates.find((t: any) => t.isDefault) || templates[0];
+        const tData: any = defaultTemplate?.templateData || {};
+        teamDefaults = {
+          displayName: tData.companyName || team?.name || null,
+          profileImage: tData.companyLogo || team?.logoUrl || null,
+          accentColor: tData.themeColor || null,
+          phone: tData.companyPhone || null,
+          email: tData.companyEmail || null,
+          address: tData.companyAddress || null,
+          website: tData.companyWebsite || team?.websiteUrl || null,
+          description: user.bio || null,
+          socials: tData.companySocials || [],
+          profileSocials: teamSocials?.map((s: any) => ({ platform: s.platform, url: s.url })) || [],
+        };
+      }
+
       res.json({
         menuTemplate: user.menuTemplate,
         menuDisplayName: user.menuDisplayName,
@@ -2950,6 +2975,7 @@ export async function registerRoutes(
         menuWebsite: user.menuWebsite,
         openingHours,
         menuSocials: menuSocialLinks,
+        teamDefaults,
       });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to fetch menu settings" });
@@ -3139,7 +3165,7 @@ export async function registerRoutes(
       const activeSections = sections.filter(s => s.active);
       const activeProducts = products.filter(p => p.active);
 
-      const { password: _, email: __, ...publicUser } = user;
+      const { password: _, email: __, apiKey: _apiKey, ...publicUser } = user;
 
       // Get team branding if applicable
       let teamBranding: any = null;

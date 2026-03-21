@@ -484,9 +484,12 @@ export default function Dashboard() {
   } : null;
 
   // Build profile URL based on team membership
+  // Restaurant owners: profile URL uses username, team slug is for menu
   const teamSlug = teamData?.slug;
   const profileUrl = isTeamMember && teamSlug
     ? `${window.location.origin}/${teamSlug}/${user.username}`
+    : isTeamAccount && isRestaurant
+    ? `${window.location.origin}/${user.username}`
     : isTeamAccount && teamSlug
     ? `${window.location.origin}/${teamSlug}`
     : `${window.location.origin}/${user.username}`;
