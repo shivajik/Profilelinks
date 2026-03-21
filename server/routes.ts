@@ -2,7 +2,7 @@ import express, { type Express, type Request, type Response, type NextFunction }
 import { createServer, type Server } from "http";
 import session from "express-session";
 import { storage, db } from "./storage";
-import { users, teams, teamServices, teamProducts, teamTemplates, affiliates } from "@shared/schema";
+import { users, teams, teamServices, teamProducts, teamTemplates, affiliates, socials } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema, createPageSchema, updatePageSchema, createBlockSchema, updateBlockSchema, changePasswordSchema, deleteAccountSchema, createTeamSchema, updateTeamSchema, updateTeamMemberSchema, createTeamInviteSchema, createTeamMemberSchema, createTeamTemplateSchema, updateTeamTemplateSchema, createContactSchema, updateContactSchema, createMenuSectionSchema, updateMenuSectionSchema, createMenuProductSchema, updateMenuProductSchema, updateMenuSettingsSchema, upsertOpeningHoursSchema, createMenuSocialSchema, updateMenuSocialSchema, updateBusinessProfileSchema, createBranchSchema, updateBranchSchema } from "@shared/schema";
@@ -1928,21 +1928,34 @@ export async function registerRoutes(
       const rows = await db.select().from(teamServices).where(eq(teamServices.teamId, team.id)).orderBy(teamServices.position);
       const activeRows = rows.filter(r => r.active);
       
-      // Get team template for branding
       const tTemplates = await db.select().from(teamTemplates).where(eq(teamTemplates.teamId, team.id));
       const defaultTemplate = tTemplates.find((t: any) => t.isDefault) || tTemplates[0];
 
-      // Check affiliate
+      // Get owner info for profile display
+      const owner = await storage.getUser(team.ownerId);
+      const showProfile = owner?.showCompanyOnServices ?? true;
+      let profileInfo: any = null;
+      if (showProfile && owner) {
+        const ownerSocials = await db.select().from(socials).where(eq(socials.userId, owner.id));
+        profileInfo = {
+          description: (defaultTemplate?.templateData as any)?.description || "",
+          phone: owner.businessPhone,
+          email: owner.contactFormEmail || owner.email,
+          website: (defaultTemplate?.templateData as any)?.website,
+          address: (defaultTemplate?.templateData as any)?.address,
+          socials: ownerSocials.map(s => ({ platform: s.platform, url: s.url })),
+        };
+      }
+
       let affiliateInfo: { isAffiliate: boolean; referralCode?: string } = { isAffiliate: false };
       try {
-        const owner = await storage.getUser(team.ownerId);
         if (owner) {
           const [aff] = await db.select().from(affiliates).where(eq(affiliates.userId, owner.id));
           if (aff && aff.isActive) affiliateInfo = { isAffiliate: true, referralCode: aff.referralCode };
         }
       } catch (_) {}
       
-      res.json({ team, items: activeRows, template: defaultTemplate?.templateData || {}, affiliateInfo });
+      res.json({ team, items: activeRows, template: defaultTemplate?.templateData || {}, showProfile, profileInfo, affiliateInfo });
     } catch (error: any) {
       res.status(500).json({ message: "Failed" });
     }
@@ -1958,17 +1971,31 @@ export async function registerRoutes(
       const tTemplates = await db.select().from(teamTemplates).where(eq(teamTemplates.teamId, team.id));
       const defaultTemplate = tTemplates.find((t: any) => t.isDefault) || tTemplates[0];
 
-      // Check affiliate
+      // Get owner info for profile display
+      const owner = await storage.getUser(team.ownerId);
+      const showProfile = owner?.showCompanyOnProducts ?? true;
+      let profileInfo: any = null;
+      if (showProfile && owner) {
+        const ownerSocials = await db.select().from(socials).where(eq(socials.userId, owner.id));
+        profileInfo = {
+          description: (defaultTemplate?.templateData as any)?.description || "",
+          phone: owner.businessPhone,
+          email: owner.contactFormEmail || owner.email,
+          website: (defaultTemplate?.templateData as any)?.website,
+          address: (defaultTemplate?.templateData as any)?.address,
+          socials: ownerSocials.map(s => ({ platform: s.platform, url: s.url })),
+        };
+      }
+
       let affiliateInfo: { isAffiliate: boolean; referralCode?: string } = { isAffiliate: false };
       try {
-        const owner = await storage.getUser(team.ownerId);
         if (owner) {
           const [aff] = await db.select().from(affiliates).where(eq(affiliates.userId, owner.id));
           if (aff && aff.isActive) affiliateInfo = { isAffiliate: true, referralCode: aff.referralCode };
         }
       } catch (_) {}
       
-      res.json({ team, items: activeRows, template: defaultTemplate?.templateData || {}, affiliateInfo });
+      res.json({ team, items: activeRows, template: defaultTemplate?.templateData || {}, showProfile, profileInfo, affiliateInfo });
     } catch (error: any) {
       res.status(500).json({ message: "Failed" });
     }

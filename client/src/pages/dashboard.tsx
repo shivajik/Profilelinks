@@ -201,6 +201,7 @@ export default function Dashboard() {
     }
   }, [search]);
   const [previewMode, setPreviewMode] = useState<"mobile" | "desktop">("mobile");
+  const [menuPreviewKey, setMenuPreviewKey] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const handlePreviewMode = (mode: "mobile" | "desktop") => {
     setPreviewMode(mode);
@@ -1449,7 +1450,7 @@ export default function Dashboard() {
                     src={`/${teamSlug || user.username}/menu?embed=1`}
                     className="w-full h-full border-0"
                     title="Menu Preview"
-                    key={`menu-preview-${previewMode}`}
+                    key={`menu-preview-${previewMode}-${menuPreviewKey}`}
                     style={{ minHeight: "60vh" }}
                   />
                 </div>
@@ -1459,7 +1460,7 @@ export default function Dashboard() {
             {/* Menu Setup - right Column: Appearance & Info */}
             {planLimits?.menuBuilderEnabled && (
             <div className={`${activeSection === "menu-setup" ? "hidden md:flex" : "hidden"} flex-col overflow-y-auto border-l bg-background shrink-0`} style={{ width: "280px" }}>
-              <MenuAppearancePanel />
+              <MenuAppearancePanel onSave={() => setMenuPreviewKey(k => k + 1)} />
             </div>
             )}
 
@@ -7901,6 +7902,7 @@ function ContactsPanel({ teamId, userId, isTeamMember = false }: { teamId: strin
 // ── Services & Products Panel ──────────────────────────────────────────────
 function ServicesProductsPanel({ teamId, teamSlug, type }: { teamId: string; teamSlug: string; type: "services" | "products" }) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const label = type === "services" ? "Services" : "Products";
   const Icon = type === "services" ? Briefcase : UtensilsCrossed;
   const pageUrl = `${window.location.origin}/${teamSlug}/${type === "services" ? "service" : "product"}`;
@@ -8027,6 +8029,25 @@ function ServicesProductsPanel({ teamId, teamSlug, type }: { teamId: string; tea
         <Button variant="ghost" size="icon" className="shrink-0" onClick={copyUrl}>
           {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
         </Button>
+      </div>
+
+      {/* Show Company Profile Toggle */}
+      <div className="border rounded-lg p-4 flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold">Show Company Profile</h3>
+          <p className="text-xs text-muted-foreground">Display company info, contact details & social links on this page</p>
+        </div>
+        <Switch
+          checked={type === "services" ? (user?.showCompanyOnServices ?? true) : (user?.showCompanyOnProducts ?? true)}
+          onCheckedChange={async (checked) => {
+            const field = type === "services" ? "showCompanyOnServices" : "showCompanyOnProducts";
+            try {
+              await fetch("/api/auth/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ [field]: checked }) });
+              queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+              toast({ title: checked ? "Company profile visible" : "Company profile hidden" });
+            } catch { toast({ title: "Failed to update", variant: "destructive" }); }
+          }}
+        />
       </div>
 
       <div className="flex items-center justify-between">

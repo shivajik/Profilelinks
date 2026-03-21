@@ -255,6 +255,8 @@ if (pool) pool.query(`
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS show_menu_on_profile boolean NOT NULL DEFAULT false;
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS show_services_on_profile boolean NOT NULL DEFAULT false;
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS show_products_on_profile boolean NOT NULL DEFAULT false;
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS show_company_on_services boolean NOT NULL DEFAULT true;
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS show_company_on_products boolean NOT NULL DEFAULT true;
 
   CREATE TABLE IF NOT EXISTS team_services (
     id varchar PRIMARY KEY DEFAULT gen_random_uuid(),

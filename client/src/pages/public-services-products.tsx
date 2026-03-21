@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "wouter";
-import { Loader2, Briefcase, Package, ArrowLeft } from "lucide-react";
+import { Loader2, Briefcase, Package, ArrowLeft, Phone, Mail, Globe, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getTemplate } from "@/lib/templates";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SocialIcon } from "@/components/social-icon";
 
 type ItemType = {
   id: string;
@@ -21,7 +22,21 @@ export default function PublicServicesProducts({ type }: { type: "services" | "p
   const label = type === "services" ? "Services" : "Products";
   const Icon = type === "services" ? Briefcase : Package;
 
-  const { data, isLoading, error } = useQuery<{ team: any; items: ItemType[]; template: any; affiliateInfo?: { isAffiliate: boolean; referralCode?: string } }>({
+  const { data, isLoading, error } = useQuery<{
+    team: any;
+    items: ItemType[];
+    template: any;
+    showProfile?: boolean;
+    profileInfo?: {
+      description?: string;
+      phone?: string;
+      email?: string;
+      website?: string;
+      address?: string;
+      socials?: Array<{ platform: string; url: string }>;
+    };
+    affiliateInfo?: { isAffiliate: boolean; referralCode?: string };
+  }>({
     queryKey: ["/api/public", slug, type],
     queryFn: async () => {
       const res = await fetch(`/api/public/${slug}/${type}`);
@@ -50,7 +65,7 @@ export default function PublicServicesProducts({ type }: { type: "services" | "p
     );
   }
 
-  const { team, items, template: templateData } = data;
+  const { team, items, template: templateData, showProfile, profileInfo } = data;
   const templateId = templateData?.template || "minimal";
   const template = getTemplate(templateId);
   const themeColor = templateData?.themeColor || template.accent;
@@ -63,7 +78,7 @@ export default function PublicServicesProducts({ type }: { type: "services" | "p
     <div className={`min-h-screen ${template.bg}`} style={font ? { fontFamily: font } : undefined}>
       <div className="max-w-2xl mx-auto px-6 py-8">
         {/* Header Card */}
-        <div className="rounded-2xl overflow-hidden bg-card/90 backdrop-blur-md shadow-lg border mb-8" style={{ borderColor: themeColor + "20" }}>
+        <div className={`rounded-2xl overflow-hidden ${template.cardBg} backdrop-blur-md shadow-lg border mb-8`} style={{ borderColor: themeColor + "20" }}>
           {coverPhoto && (
             <div className="h-28 relative overflow-hidden">
               <img src={coverPhoto} alt="Cover" className="w-full h-full object-cover" />
@@ -91,14 +106,58 @@ export default function PublicServicesProducts({ type }: { type: "services" | "p
                   </div>
                 )}
                 <div className="min-w-0">
-                  <h1 className="text-lg font-bold text-foreground truncate">{companyName}</h1>
-                  <p className="text-sm text-muted-foreground">Our {label}</p>
+                  <h1 className={`text-lg font-bold ${template.textColor} truncate`}>{companyName}</h1>
+                  <p className={`text-sm ${template.textColor} opacity-60`}>Our {label}</p>
                 </div>
               </div>
             </div>
           </div>
           <div className="h-1 w-full" style={{ backgroundColor: themeColor }} />
         </div>
+
+        {/* Company Profile Info (if enabled) */}
+        {showProfile && profileInfo && (
+          <div className={`rounded-xl ${template.cardBg} backdrop-blur-sm shadow-md border p-5 mb-6`} style={{ borderColor: themeColor + "15" }}>
+            {profileInfo.description && (
+              <p className={`text-sm ${template.textColor} opacity-80 mb-4 leading-relaxed`}>{profileInfo.description}</p>
+            )}
+            <div className="space-y-2">
+              {profileInfo.phone && (
+                <a href={`tel:${profileInfo.phone}`} className={`flex items-center gap-2 text-sm ${template.textColor} opacity-70 hover:opacity-100 transition-opacity`}>
+                  <Phone className="w-4 h-4 shrink-0" style={{ color: themeColor }} />
+                  {profileInfo.phone}
+                </a>
+              )}
+              {profileInfo.email && (
+                <a href={`mailto:${profileInfo.email}`} className={`flex items-center gap-2 text-sm ${template.textColor} opacity-70 hover:opacity-100 transition-opacity`}>
+                  <Mail className="w-4 h-4 shrink-0" style={{ color: themeColor }} />
+                  {profileInfo.email}
+                </a>
+              )}
+              {profileInfo.website && (
+                <a href={profileInfo.website.startsWith("http") ? profileInfo.website : `https://${profileInfo.website}`} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 text-sm ${template.textColor} opacity-70 hover:opacity-100 transition-opacity`}>
+                  <Globe className="w-4 h-4 shrink-0" style={{ color: themeColor }} />
+                  {profileInfo.website}
+                </a>
+              )}
+              {profileInfo.address && (
+                <div className={`flex items-center gap-2 text-sm ${template.textColor} opacity-70`}>
+                  <MapPin className="w-4 h-4 shrink-0" style={{ color: themeColor }} />
+                  {profileInfo.address}
+                </div>
+              )}
+            </div>
+            {profileInfo.socials && profileInfo.socials.length > 0 && (
+              <div className="flex items-center gap-3 mt-4 pt-3 border-t" style={{ borderColor: themeColor + "15" }}>
+                {profileInfo.socials.map((s, i) => (
+                  <a key={i} href={s.url.startsWith("http") ? s.url : `https://${s.url}`} target="_blank" rel="noopener noreferrer" style={{ color: themeColor }}>
+                    <SocialIcon platform={s.platform} className="w-5 h-5" />
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Content */}
         {items.length === 0 ? (

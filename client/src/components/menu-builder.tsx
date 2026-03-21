@@ -609,7 +609,7 @@ export function MenuBuilder() {
   );
 }
 
-export function MenuAppearancePanel() {
+export function MenuAppearancePanel({ onSave }: { onSave?: () => void } = {}) {
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -712,6 +712,7 @@ export function MenuAppearancePanel() {
       queryClient.invalidateQueries({ queryKey: ["/api/menu/settings"] });
       queryClient.invalidateQueries({ queryKey: ["/api/menu/socials"] });
       toast({ title: "Menu appearance saved!" });
+      onSave?.();
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -1041,12 +1042,15 @@ export function MenuAppearancePanel() {
               </div>
             </div>
 
-            <Button onClick={handleSave} className="w-full" disabled={saveMutation.isPending || saveHoursMutation.isPending}>
-              {(saveMutation.isPending || saveHoursMutation.isPending) && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-              Save Menu Appearance & Info
-            </Button>
       </div>
     </div>
+      {/* Sticky Save Button */}
+      <div className="sticky bottom-0 p-4 border-t bg-background z-10 shrink-0">
+        <Button onClick={handleSave} className="w-full" disabled={saveMutation.isPending || saveHoursMutation.isPending}>
+          {(saveMutation.isPending || saveHoursMutation.isPending) && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+          Save Menu Appearance & Info
+        </Button>
+      </div>
     </div>
   );
 }
