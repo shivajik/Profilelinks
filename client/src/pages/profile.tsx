@@ -97,13 +97,7 @@ export default function PublicProfile(props?: any) {
     const [walletLoading, setWalletLoading] = useState(false);
 
   // Check Google Wallet availability
-  const { data: walletStatus } = useQuery<{ configured: boolean }>({
-    queryKey: ["/api/google-wallet/status"],
-    queryFn: async () => {
-      const res = await fetch("/api/google-wallet/status");
-      return res.json();
-    },
-  });
+  const [walletOpen, setWalletOpen] = useState(false);
 
   const { data, isLoading, isFetching, error } = useQuery<PublicProfile>({
     queryKey: ["/api/profile", companySlug, username, activePageSlug],
@@ -338,6 +332,15 @@ export default function PublicProfile(props?: any) {
           >
             <Share2 className="w-5 h-5" />
           </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setWalletOpen(true)}
+            className={`${template.textColor}`}
+            data-testid="button-wallet"
+          >
+            <Wallet className="w-5 h-5" />
+          </Button>
         </div>
 
         {/* Lightbox overlay */}
@@ -449,7 +452,21 @@ export default function PublicProfile(props?: any) {
           >
             Add Contact
           </Button>
-          {walletStatus?.configured && (
+                    </DialogContent>
+      </Dialog>
+
+      <Dialog open={walletOpen} onOpenChange={setWalletOpen}>
+        <DialogContent className="max-w-sm" data-testid="dialog-wallet">
+          <DialogHeader className="items-center text-center">
+            <div className="flex justify-center mb-3">
+              <Wallet className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <DialogTitle>Save to Google Wallet</DialogTitle>
+            <DialogDescription>
+              Save {displayName}'s business card to your Google Wallet for quick access.
+            </DialogDescription>
+          </DialogHeader>
+          {/* {walletStatus?.configured && ( */}
             <Button
               variant="outline"
               onClick={handleSaveToWallet}
@@ -460,7 +477,7 @@ export default function PublicProfile(props?: any) {
               <Wallet className="w-4 h-4" />
               {walletLoading ? "Generating..." : "Save to Google Wallet"}
             </Button>
-          )}
+          {/* )} */}
         </DialogContent>
       </Dialog>
 
