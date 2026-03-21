@@ -540,9 +540,9 @@ function ContentSection(props: TeamLayoutProps) {
   };
 
   return (
-    <div className="transition-opacity duration-300 ease-in-out" style={{ opacity: isFetching && !isLoading ? 0.5 : 1 }}>
+    <div className="transition-opacity duration-300 ease-in-out overflow-hidden" style={{ opacity: isFetching && !isLoading ? 0.5 : 1 }}>
       {hasBlocks ? (
-        <div className="space-y-3 mt-4">
+        <div className="space-y-3 mt-4  overflow-hidden">
           {(() => {
             const items: JSX.Element[] = [];
             let i = 0;
@@ -572,7 +572,7 @@ function ContentSection(props: TeamLayoutProps) {
           })()}
         </div>
       ) : activeLinks.length > 0 ? (
-        <div className="space-y-3 mt-4">
+        <div className="space-y-3 mt-4 overflow-hidden">
           {activeLinks.map((link) => (
             <a key={link.id} href={normalizeUrl(link.url)} target="_blank" rel="noopener noreferrer"
               onClick={() => trackClick(link.id)}
@@ -622,7 +622,7 @@ function ClassicTeamLayout(props: TeamLayoutProps) {
   const displayName = user.displayName || user.username;
   return (
     <div className="mb-10">
-      <div className="rounded-md overflow-hidden bg-card/80 backdrop-blur-sm shadow-lg" data-testid="corporate-profile-card">
+      <div className="rounded-md overflow-hidden bg-card/80 backdrop-blur-sm shadow-lg" style={{ overflowX: "hidden" }} data-testid="corporate-profile-card">
         <div className="h-28 relative" style={{ backgroundColor: brandColor + "22" }}>
           {teamBranding.coverPhoto ? (
             <img src={teamBranding.coverPhoto} alt="Cover" className="w-full h-full object-cover" />

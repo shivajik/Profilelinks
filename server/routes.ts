@@ -3315,5 +3315,58 @@ export async function registerRoutes(
   app.use(affiliateRouter);
   app.use(ltdRouter);
 
+  // Google Wallet pass generation
+  app.post("/api/google-wallet/pass", async (req, res) => {
+    try {
+      const { isGoogleWalletConfigured, createGoogleWalletPassUrl } = await import("./google-wallet");
+      if (!isGoogleWalletConfigured()) {
+        return res.status(503).json({ message: "Google Wallet is not configured" });
+      }
+      const { username } = req.body;
+      if (!username) return res.status(400).json({ message: "Username required" });
+
+      const user = await storage.getUserByUsername(username);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      // Get team branding if available
+      let teamBranding: any = null;
+      if (user.teamId) {
+        const team = await storage.getTeam(user.teamId);
+        if (team) {
+          const templates = await storage.getTeamTemplates(team.id);
+          const template = templates.find((t: any) => t.isDefault) || templates[0];
+          teamBranding = template?.templateData || {};
+          teamBranding.companyName = team.name;
+        }
+      }
+
+      const profileUrl = `${req.protocol}://${req.get("host")}/${username}`;
+      const objectId = `card_${username}_${Date.now()}`;
+
+      const walletUrl = createGoogleWalletPassUrl({
+        objectId,
+        name: user.displayName || user.username,
+        jobTitle: teamBranding?.jobTitle || undefined,
+        companyName: teamBranding?.companyName || undefined,
+        phone: teamBranding?.companyPhone || teamBranding?.memberPhone || undefined,
+        email: teamBranding?.companyEmail || user.email || undefined,
+        website: teamBranding?.companyWebsite || undefined,
+        address: teamBranding?.companyAddress || undefined,
+        profileImage: user.profileImage || teamBranding?.companyLogo || undefined,
+        profileUrl,
+      });
+
+      res.json({ walletUrl });
+    } catch (err: any) {
+      console.error("Google Wallet error:", err);
+      res.status(500).json({ message: err.message || "Failed to generate wallet pass" });
+    }
+  });
+
+  app.get("/api/google-wallet/status", (_req, res) => {
+    const { isGoogleWalletConfigured } = require("./google-wallet");
+    res.json({ configured: isGoogleWalletConfigured() });
+  });
+
   return httpServer;
 }

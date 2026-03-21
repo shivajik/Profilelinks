@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Loader2, ExternalLink, Mail, Play, Music, UserPlus, Share2, QrCode, Copy, Check, Briefcase, Package } from "lucide-react";
+import { Loader2, ExternalLink, Mail, Play, Music, UserPlus, Share2, QrCode, Copy, Check, Wallet, Briefcase, Package } from "lucide-react";
 import { SiFacebook, SiX, SiPinterest, SiReddit, SiLinkedin } from "react-icons/si";
 import { QRCodeSVG } from "qrcode.react";
 import { getTemplate } from "@/lib/templates";
@@ -94,6 +94,16 @@ export default function PublicProfile(props?: any) {
   const [showQr, setShowQr] = useState(false);
   const [copied, setCopied] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+    const [walletLoading, setWalletLoading] = useState(false);
+
+  // Check Google Wallet availability
+  const { data: walletStatus } = useQuery<{ configured: boolean }>({
+    queryKey: ["/api/google-wallet/status"],
+    queryFn: async () => {
+      const res = await fetch("/api/google-wallet/status");
+      return res.json();
+    },
+  });
 
   const { data, isLoading, isFetching, error } = useQuery<PublicProfile>({
     queryKey: ["/api/profile", companySlug, username, activePageSlug],
@@ -252,6 +262,24 @@ export default function PublicProfile(props?: any) {
     navigator.clipboard.writeText(profileUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function handleSaveToWallet() {
+    setWalletLoading(true);
+    try {
+      const res = await fetch("/api/google-wallet/pass", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      window.open(data.walletUrl, "_blank");
+    } catch (err) {
+      console.error("Google Wallet error:", err);
+    } finally {
+      setWalletLoading(false);
+    }
   }
 
   function handleAddContact() {
@@ -421,6 +449,18 @@ export default function PublicProfile(props?: any) {
           >
             Add Contact
           </Button>
+          {walletStatus?.configured && (
+            <Button
+              variant="outline"
+              onClick={handleSaveToWallet}
+              disabled={walletLoading}
+              className="w-full gap-2"
+              data-testid="button-save-wallet"
+            >
+              <Wallet className="w-4 h-4" />
+              {walletLoading ? "Generating..." : "Save to Google Wallet"}
+            </Button>
+          )}
         </DialogContent>
       </Dialog>
 

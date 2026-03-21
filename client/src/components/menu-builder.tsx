@@ -1028,7 +1028,7 @@ export function MenuAppearancePanel({ onSave }: { onSave?: () => void } = {}) {
               <p className="text-xs text-muted-foreground mb-2">Pick a different theme for your menu page</p>
               <div className="grid grid-cols-3 gap-2">
                 {TEMPLATES.map((t) => (
-                  <button key={t.id} onClick={() => setMenuTemplate(t.id)}
+                  <button key={t.id} onClick={() => { setMenuTemplate(t.id); if (!menuAccentColor || menuAccentColor === getTemplate(menuTemplate || "minimal").accent) { setMenuAccentColor(t.accent); } }}
                     className={`relative rounded-lg overflow-hidden border-2 transition-all ${
                       (menuTemplate || "minimal") === t.id ? "border-primary ring-2 ring-primary/20" : "border-transparent hover:border-muted-foreground/30"
                     }`}>
