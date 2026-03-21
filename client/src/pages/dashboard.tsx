@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { toPng } from "html-to-image";
 import { useLocation, Redirect, useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -201,7 +201,10 @@ export default function Dashboard() {
     }
   }, [search]);
   const [previewMode, setPreviewMode] = useState<"mobile" | "desktop">("mobile");
-  const [menuPreviewKey, setMenuPreviewKey] = useState(0);
+  const menuIframeRef = useRef<HTMLIFrameElement>(null);
+  const refreshMenuPreview = useCallback(() => {
+    menuIframeRef.current?.contentWindow?.postMessage("visicardly:menu-refresh", "*");
+  }, []);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const handlePreviewMode = (mode: "mobile" | "desktop") => {
     setPreviewMode(mode);
@@ -729,7 +732,7 @@ export default function Dashboard() {
                   </Card>
                 </div>
               )}
-              {activeSection === "menu-setup" && <MenuBuilder />}
+              {activeSection === "menu-setup" && <MenuBuilder onSave={refreshMenuPreview} />}
               {activeSection === "design" && (
               <div className="p-4 space-y-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -1450,7 +1453,8 @@ export default function Dashboard() {
                     src={`/${teamSlug || user.username}/menu?embed=1`}
                     className="w-full h-full border-0"
                     title="Menu Preview"
-                    key={`menu-preview-${previewMode}-${menuPreviewKey}`}
+                    key={`menu-preview-${previewMode}`}
+                    ref={menuIframeRef}
                     style={{ minHeight: "60vh" }}
                   />
                 </div>
@@ -1460,7 +1464,7 @@ export default function Dashboard() {
             {/* Menu Setup - right Column: Appearance & Info */}
             {planLimits?.menuBuilderEnabled && (
             <div className={`${activeSection === "menu-setup" ? "hidden md:flex" : "hidden"} flex-col overflow-y-auto border-l bg-background shrink-0`} style={{ width: "280px" }}>
-              <MenuAppearancePanel onSave={() => setMenuPreviewKey(k => k + 1)} />
+              <MenuAppearancePanel onSave={refreshMenuPreview} />
             </div>
             )}
 

@@ -90,7 +90,7 @@ export default function PublicMenu() {
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const tabsRef = useRef<HTMLDivElement | null>(null);
 
-  const { data, isLoading, error } = useQuery<PublicMenuData>({
+  const { data, isLoading, error, refetch } = useQuery<PublicMenuData>({
     queryKey: ["/api/menu", username],
     queryFn: async () => {
       const res = await fetch(`/api/menu/${username}`);
@@ -98,6 +98,18 @@ export default function PublicMenu() {
       return res.json();
     },
   });
+
+  // Listen for parent postMessage to refresh data without full iframe reload
+  useEffect(() => {
+    if (!isEmbed) return;
+    const handler = (e: MessageEvent) => {
+      if (e.data === "visicardly:menu-refresh") {
+        refetch();
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [isEmbed, refetch]);
 
   const { data: whiteLabelData } = useQuery<{ whiteLabelEnabled: boolean }>({
     queryKey: ["/api/white-label", username],

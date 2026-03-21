@@ -85,7 +85,7 @@ interface MenuProduct {
   createdAt: string;
 }
 
-export function MenuBuilder() {
+export function MenuBuilder({ onSave }: { onSave?: () => void } = {}) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation();
@@ -132,6 +132,7 @@ export function MenuBuilder() {
   const invalidateMenu = () => {
     queryClient.invalidateQueries({ queryKey: ["/api/menu/sections"] });
     queryClient.invalidateQueries({ queryKey: ["/api/menu/products"] });
+    onSave?.();
   };
 
   const createSectionMutation = useMutation({

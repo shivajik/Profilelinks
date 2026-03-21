@@ -115,49 +115,44 @@ export default function PublicServicesProducts({ type }: { type: "services" | "p
           <div className="h-1 w-full" style={{ backgroundColor: themeColor }} />
         </div>
 
-        {/* Company Profile Info (if enabled) */}
-        {showProfile && profileInfo && (
-          <div className={`rounded-xl ${template.cardBg} backdrop-blur-sm shadow-md border p-5 mb-6`} style={{ borderColor: themeColor + "15" }}>
-            {profileInfo.description && (
-              <p className={`text-sm ${template.textColor} opacity-80 mb-4 leading-relaxed`}>{profileInfo.description}</p>
-            )}
-            <div className="space-y-2">
-              {profileInfo.phone && (
-                <a href={`tel:${profileInfo.phone}`} className={`flex items-center gap-2 text-sm ${template.textColor} opacity-70 hover:opacity-100 transition-opacity`}>
-                  <Phone className="w-4 h-4 shrink-0" style={{ color: themeColor }} />
-                  {profileInfo.phone}
-                </a>
-              )}
-              {profileInfo.email && (
-                <a href={`mailto:${profileInfo.email}`} className={`flex items-center gap-2 text-sm ${template.textColor} opacity-70 hover:opacity-100 transition-opacity`}>
-                  <Mail className="w-4 h-4 shrink-0" style={{ color: themeColor }} />
-                  {profileInfo.email}
-                </a>
-              )}
-              {profileInfo.website && (
-                <a href={profileInfo.website.startsWith("http") ? profileInfo.website : `https://${profileInfo.website}`} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 text-sm ${template.textColor} opacity-70 hover:opacity-100 transition-opacity`}>
-                  <Globe className="w-4 h-4 shrink-0" style={{ color: themeColor }} />
-                  {profileInfo.website}
-                </a>
-              )}
-              {profileInfo.address && (
-                <div className={`flex items-center gap-2 text-sm ${template.textColor} opacity-70`}>
-                  <MapPin className="w-4 h-4 shrink-0" style={{ color: themeColor }} />
-                  {profileInfo.address}
-                </div>
-              )}
-            </div>
-            {profileInfo.socials && profileInfo.socials.length > 0 && (
-              <div className="flex items-center gap-3 mt-4 pt-3 border-t" style={{ borderColor: themeColor + "15" }}>
-                {profileInfo.socials.map((s, i) => (
-                  <a key={i} href={s.url.startsWith("http") ? s.url : `https://${s.url}`} target="_blank" rel="noopener noreferrer" style={{ color: themeColor }}>
-                    <SocialIcon platform={s.platform} className="w-5 h-5" />
-                  </a>
-                ))}
+      {showProfile && (
+        <a href={`/${slug}`} className="block mt-6 mb-4">
+          <div
+            className={`group flex items-center justify-between gap-4 rounded-xl p-4 border shadow-sm transition-all duration-300 hover:shadow-md hover:scale-[1.01]`}
+            style={{
+              background: `linear-gradient(135deg, ${themeColor}10, ${themeColor}05)`,
+              borderColor: themeColor + "25",
+            }}
+          >
+            {/* Left Content */}
+            <div className="flex items-center gap-3">
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: themeColor + "20" }}
+              >
+                <Globe className="w-5 h-5" style={{ color: themeColor }} />
               </div>
-            )}
+          
+              <div>
+                <p className="text-sm font-semibold" style={{ color: themeColor }}>
+                  Visit Company Profile
+                </p>
+                <p className="text-xs opacity-60">
+                  Explore full details, contact info & more
+                </p>
+              </div>
+            </div>
+          
+            {/* Right Arrow */}
+            <div
+              className="transition-transform duration-300 group-hover:translate-x-1"
+              style={{ color: themeColor }}
+            >
+              →
+            </div>
           </div>
-        )}
+        </a>
+      )}
 
         {/* Content */}
         {items.length === 0 ? (
