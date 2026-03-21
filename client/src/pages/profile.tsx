@@ -373,7 +373,7 @@ export default function PublicProfile(props?: any) {
                 Create your own digital business card
                 {/* Create your own card on{" "} */}
               </span>
-              <span style={{ color: template.accent, opacity: 0.6 }}>Visi</span>
+              <span style={{ color: template.accent, opacity: 0.6 }}> Visi</span>
               <span className={`${template.textColor}`} style={{ opacity: 0.4 }}>Cardly</span>
             </a>
           </div>
