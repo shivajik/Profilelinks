@@ -283,7 +283,7 @@ export default function LtdRegisterPage() {
                           setUsernameAvailable(null);
                           checkUsernameAvailability(val);
                         }}
-                        required className="pl-7" data-testid="input-username" />
+                        required className="pl-7 pr-9" data-testid="input-username" />
                       {checkingUsername && (
                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
                           <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />

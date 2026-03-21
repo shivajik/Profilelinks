@@ -676,7 +676,7 @@ export default function LtdPurchasePage() {
                           checkUsernameAvailability(val);
                         }}
                         required
-                        className="pl-7"
+                        className="pl-7 pr-9"
                       />
                       {checkingUsername && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />}
                       {!checkingUsername && usernameAvailable === true && username.length >= 3 && <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />}
