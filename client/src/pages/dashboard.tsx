@@ -732,7 +732,15 @@ export default function Dashboard() {
                   </Card>
                 </div>
               )}
-              {activeSection === "menu-setup" && <MenuBuilder onSave={refreshMenuPreview} />}
+              {activeSection === "menu-setup" && (
+                <div>
+                  <div className="flex items-center gap-2 p-4 pb-0 mb-2">
+                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <h2 className="text-base font-semibold">Menu Setup</h2>
+                  </div>
+                  <MenuBuilder onSave={refreshMenuPreview} />
+                </div>
+              )}
               {activeSection === "design" && (
               <div className="p-4 space-y-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -1415,7 +1423,9 @@ export default function Dashboard() {
             <div className={`${activeSection === "menu-setup" ? "hidden md:flex" : "hidden"} flex-1 min-w-0 border-l bg-muted/20 flex-col items-center justify-start overflow-y-auto`}>
               {/* Preview header */}
               <div className="w-full flex items-center justify-between px-4 py-2.5 border-b bg-background sticky top-0 z-10">
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Menu Preview</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Menu Preview</span>
+                </div>
                 <div className="flex items-center gap-1">
                   <Button
                     variant="ghost"
@@ -1448,12 +1458,11 @@ export default function Dashboard() {
               </div>
               {/* Preview iframe */}
               <div className="flex-1 w-full p-4 flex justify-center">
-                <div className="bg-background rounded-2xl shadow-md overflow-hidden border w-full h-full" style={{ maxWidth: "380px", minHeight: "60vh" }}>
+                <div className="bg-background rounded-2xl shadow-md overflow-hidden border w-full h-full" style={{ maxWidth: previewMode === "desktop" ? "100%" : "380px", minHeight: "60vh" }}>
                   <iframe
                     src={`/${teamSlug || user.username}/menu?embed=1`}
                     className="w-full h-full border-0"
                     title="Menu Preview"
-                    key={`menu-preview-${previewMode}`}
                     ref={menuIframeRef}
                     style={{ minHeight: "60vh" }}
                   />
@@ -1463,7 +1472,7 @@ export default function Dashboard() {
             )}
             {/* Menu Setup - right Column: Appearance & Info */}
             {planLimits?.menuBuilderEnabled && (
-            <div className={`${activeSection === "menu-setup" ? "hidden md:flex" : "hidden"} flex-col overflow-y-auto border-l bg-background shrink-0`} style={{ width: "280px" }}>
+            <div className={`${activeSection === "menu-setup" ? "hidden md:flex" : "hidden"} flex-col overflow-y-auto border-l bg-background shrink-0`} style={{ width: "340px" }}>
               <MenuAppearancePanel onSave={refreshMenuPreview} />
             </div>
             )}
