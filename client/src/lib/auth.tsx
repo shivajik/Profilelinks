@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest, getQueryFn } from "./queryClient";
 import type { User } from "@shared/schema";
+import { useLocation } from "wouter";
 
 type AuthUser = Omit<User, "password">;
 
@@ -18,12 +19,23 @@ const AuthContext = createContext<AuthContextType | null>(null);
 // Routes that are purely public and never need auth/me
 const PUBLIC_ONLY_PREFIXES = ["/terms", "/privacy", "/docs", "/about", "/contact", "/support", "/gdpr", "/refund-policy", "/restaurant"];
 
-function isPublicOnlyRoute(): boolean {
-  const path = window.location.pathname;
+function isPublicOnlyRoute(path: string): boolean {
   if (PUBLIC_ONLY_PREFIXES.some(p => path.startsWith(p))) return true;
   // Public profile routes: /{username} or /{company}/{username} or /{username}/menu
   // But NOT /auth, /dashboard, /onboarding, /pricing, /affiliate, /invite, /change-password
-  const knownAppRoutes = ["/", "/auth", "/dashboard", "/onboarding", "/pricing", "/affiliate", "/invite", "/change-password"];
+  const knownAppRoutes = [
+    "/",
+    "/auth",
+    "/dashboard",
+    "/onboarding",
+    "/pricing",
+    "/affiliate",
+    "/invite",
+    "/change-password",
+    "/ltd-register",
+    "/ltd-purchase",
+    "/admin",
+  ];
   if (knownAppRoutes.some(r => path === r || (r !== "/" && path.startsWith(r)))) return false;
   // If none of the known app routes match, it's a public profile
   if (/^\/[a-zA-Z0-9_-]+/.test(path)) return true;
@@ -31,7 +43,8 @@ function isPublicOnlyRoute(): boolean {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const skipAuth = useMemo(() => isPublicOnlyRoute(), []);
+  const [location] = useLocation();
+  const skipAuth = useMemo(() => isPublicOnlyRoute(location), [location]);
 
   const { data: user, isLoading } = useQuery<AuthUser | null>({
     queryKey: ["/api/auth/me"],
