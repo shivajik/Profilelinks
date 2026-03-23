@@ -384,6 +384,8 @@ export default function PublicProfile(props?: any) {
             normalizeUrl={normalizeUrl}
             trackClick={trackClick}
             PublicBlock={(p: any) => <PublicBlock {...p} onImageClick={setLightboxUrl} />}
+            activePageSlug={activePageSlug}
+            teamSlug={teamSlug}
           />
         ) : (
           <PersonalProfileLayout
@@ -403,14 +405,6 @@ export default function PublicProfile(props?: any) {
             trackClick={trackClick}
             PublicBlock={(p: any) => <PublicBlock {...p} onImageClick={setLightboxUrl} />}
           />
-        )}
-
-        {/* Inline Services/Products when selected as page tab */}
-        {activePageSlug === "__services__" && teamSlug && (
-          <InlineServicesProducts slug={teamSlug} type="services" template={template} brandColor={brandColor} />
-        )}
-        {activePageSlug === "__products__" && teamSlug && (
-          <InlineServicesProducts slug={teamSlug} type="products" template={template} brandColor={brandColor} />
         )}
 
         {whiteLabelData !== undefined && !whiteLabelData.whiteLabelEnabled && (
@@ -761,81 +755,4 @@ function PublicBlock({ block, template, onClickTrack, onImageClick }: { block: B
     default:
       return null;
   }
-}
-
-// Inline Services/Products component for portfolio page tabs
-function InlineServicesProducts({ slug, type, template, brandColor }: { slug: string; type: "services" | "products"; template: any; brandColor: string }) {
-  const label = type === "services" ? "Services" : "Products";
-  const Icon = type === "services" ? Briefcase : Package;
-
-  const { data, isLoading } = useQuery<{ items: Array<{ id: string; title: string; description: string | null; price: string | null; imageUrl: string | null; url: string | null }> }>({
-    queryKey: ["/api/public", slug, type],
-    queryFn: async () => {
-      const res = await fetch(`/api/public/${slug}/${type}`);
-      if (!res.ok) throw new Error("Not found");
-      return res.json();
-    },
-    enabled: !!slug,
-  });
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  const items = data?.items || [];
-
-  if (items.length === 0) {
-    return (
-      <div className="text-center py-8">
-        <Icon className="w-8 h-8 mx-auto mb-2 opacity-40" style={{ color: brandColor }} />
-        <p className={`text-sm ${template.textColor} opacity-60`}>No {type} available</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid sm:grid-cols-2 gap-4 mt-4">
-      {items.map((item) => {
-        const content = (
-          <div
-            key={item.id}
-            className={`rounded-xl overflow-hidden ${template.cardBg || "bg-card"} backdrop-blur-sm shadow-md border transition-all hover:shadow-lg hover:scale-[1.02]`}
-            style={{ borderColor: brandColor + "15" }}
-          >
-            {item.imageUrl && (
-              <div className="aspect-video overflow-hidden">
-                <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
-              </div>
-            )}
-            <div className="p-4">
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <h3 className={`font-semibold ${template.cardTextColor || ""}`}>{item.title}</h3>
-                {item.price && (
-                  <span className="text-sm font-bold shrink-0 px-2 py-0.5 rounded-full" style={{ color: brandColor, backgroundColor: brandColor + "15" }}>
-                    {item.price}
-                  </span>
-                )}
-              </div>
-              {item.description && (
-                <p className={`text-sm ${template.cardTextColor || ""} opacity-70 leading-relaxed`}>{item.description}</p>
-              )}
-            </div>
-          </div>
-        );
-
-        if (item.url) {
-          return (
-            <a key={item.id} href={item.url.startsWith("http") ? item.url : `https://${item.url}`} target="_blank" rel="noopener noreferrer" className="block">
-              {content}
-            </a>
-          );
-        }
-        return <div key={item.id}>{content}</div>;
-      })}
-    </div>
-  );
 }

@@ -94,8 +94,8 @@ export default function PublicServicesProducts({ type }: { type: "services" | "p
               </a>
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 {companyLogo ? (
-                  <Avatar className="w-12 h-12 border-2 shadow-sm shrink-0" style={{ borderColor: themeColor + "30" }}>
-                    <AvatarImage src={companyLogo} alt={companyName} />
+                  <Avatar className="w-12 h-12 border-2 shadow-sm shrink-0 bg-white" style={{ borderColor: themeColor + "30" }}>
+                    <AvatarImage src={companyLogo} alt={companyName} className="object-contain p-1" />
                     <AvatarFallback style={{ backgroundColor: themeColor + "20", color: themeColor }}>
                       {companyName?.charAt(0)?.toUpperCase()}
                     </AvatarFallback>
