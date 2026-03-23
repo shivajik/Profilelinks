@@ -469,6 +469,8 @@ export default function Dashboard() {
 
   const isTeamAccount = user.accountType === "team" && user.teamId;
   const isTeamOwner = isTeamAccount && teamData && teamData.ownerId === user.id;
+  const isTeamAdmin = isTeamAccount && businessProfileData?.member?.role === "admin";
+  const isTeamOwnerOrAdmin = isTeamOwner || isTeamAdmin;
   const isTeamMember = isTeamAccount && !isTeamOwner;
   const isRestaurant = teamData?.businessType?.toLowerCase() === "restaurant";
 
@@ -504,8 +506,8 @@ export default function Dashboard() {
     { id: "design", label: "Design", icon: Palette, active: true },
     ...(isTeamAccount ? [{ id: "business-profile", label: "Business Profile", icon: Briefcase }] : []),
     ...(isTeamAccount && isRestaurant ? [{ id: "menu-setup", label: "Menu Setup", icon: UtensilsCrossed }] : []),
-    ...(isTeamAccount && !isRestaurant && isTeamOwner ? [{ id: "services", label: "Services", icon: Briefcase }] : []),
-    ...(isTeamAccount && !isRestaurant && isTeamOwner ? [{ id: "products", label: "Products", icon: UtensilsCrossed }] : []),
+    ...(isTeamAccount && !isRestaurant && isTeamOwnerOrAdmin ? [{ id: "services", label: "Services", icon: Briefcase }] : []),
+    ...(isTeamAccount && !isRestaurant && isTeamOwnerOrAdmin ? [{ id: "products", label: "Products", icon: UtensilsCrossed }] : []),
     { id: "settings", label: "Settings", icon: Settings },
     { id: "qrcodes", label: "QR Codes", icon: QrCode },
     { id: "qr-generator", label: "QR Generator", icon: Link2 },
@@ -517,8 +519,8 @@ export default function Dashboard() {
   ];
 
   const teamSidebarItems = [
-    ...(isTeamOwner ? [{ id: "team-members", label: "Team Members", icon: Users }] : []),
-    ...(isTeamOwner ? [{ id: "team-templates", label: "Team Templates", icon: LayoutTemplate }] : []),
+    ...(isTeamOwnerOrAdmin ? [{ id: "team-members", label: "Team Members", icon: Users }] : []),
+    ...(isTeamOwnerOrAdmin ? [{ id: "team-templates", label: "Team Templates", icon: LayoutTemplate }] : []),
     { id: "contacts", label: "Contacts", icon: BookUser },
   ];
 
@@ -605,7 +607,7 @@ export default function Dashboard() {
           <div className="flex-1 flex overflow-hidden">
              <div className={`overflow-y-auto border-r bg-background w-full ${activeSection === "design" ? "flex-1 md:min-w-[300px] md:max-w-[420px]" : ""} ${activeSection === "menu-setup" ? "shrink-0 md:w-[380px]" : ""} ${["team-members", "team-templates", "contacts", "billing", "usage", "affiliate", "business-profile"].includes(activeSection) ? "flex-1 md:max-w-none" : ""} ${!["design", "menu-setup", "team-members", "team-templates", "contacts", "billing", "usage", "affiliate", "business-profile"].includes(activeSection) ? "flex-1" : ""}`}>
               {activeSection === "billing" && <BillingSection autoSelectPlanId={new URLSearchParams(search).get("planId")} />}
-              {activeSection === "business-profile" && <BusinessProfileSection onNavigateToTemplates={isTeamOwner ? () => setActiveSection("team-templates") : undefined} />}
+              {activeSection === "business-profile" && <BusinessProfileSection onNavigateToTemplates={isTeamOwnerOrAdmin ? () => setActiveSection("team-templates") : undefined} />}
               {activeSection === "affiliate" && affiliateData && (
                 <div className="p-6 max-w-4xl mx-auto space-y-6">
                   <div className="flex items-center gap-2 mb-2">
@@ -1001,7 +1003,7 @@ export default function Dashboard() {
                 )}
 
                 {/* Show Services on Profile Toggle - for non-restaurant team owners */}
-                {isTeamAccount && !isRestaurant && isTeamOwner && (
+                {isTeamAccount && !isRestaurant && isTeamOwnerOrAdmin && (
                   <div className="border rounded-lg p-4 flex items-center justify-between">
                     <div>
                       <h3 className="text-sm font-semibold">Show Services on Profile</h3>
@@ -1021,7 +1023,7 @@ export default function Dashboard() {
                 )}
 
                 {/* Show Products on Profile Toggle - for non-restaurant team owners */}
-                {isTeamAccount && !isRestaurant && isTeamOwner && (
+                {isTeamAccount && !isRestaurant && isTeamOwnerOrAdmin && (
                   <div className="border rounded-lg p-4 flex items-center justify-between">
                     <div>
                       <h3 className="text-sm font-semibold">Show Products on Profile</h3>
@@ -1248,16 +1250,16 @@ export default function Dashboard() {
               {activeSection === "team-members" && isTeamAccount && (
                 <TeamMembersPanel teamId={user.teamId!} currentUserId={user.id} teamSlug={teamSlug} />
               )}
-              {activeSection === "team-templates" && isTeamAccount && isTeamOwner && (
+              {activeSection === "team-templates" && isTeamAccount && isTeamOwnerOrAdmin && (
                 <TeamTemplatesPanel teamId={user.teamId!} />
               )}
               {activeSection === "contacts" && isTeamAccount && (
                 <ContactsPanel teamId={user.teamId!} userId={user.id} isTeamMember={!!isTeamMember} />
               )}
-              {activeSection === "services" && isTeamAccount && !isRestaurant && isTeamOwner && (
+              {activeSection === "services" && isTeamAccount && !isRestaurant && isTeamOwnerOrAdmin && (
                 <ServicesProductsPanel teamId={user.teamId!} teamSlug={teamSlug || ''} type="services" />
               )}
-              {activeSection === "products" && isTeamAccount && !isRestaurant && isTeamOwner && (
+              {activeSection === "products" && isTeamAccount && !isRestaurant && isTeamOwnerOrAdmin && (
                 <ServicesProductsPanel teamId={user.teamId!} teamSlug={teamSlug || ''} type="products" />
               )}
             </div>

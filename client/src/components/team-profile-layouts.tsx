@@ -475,20 +475,34 @@ function getNavSurfaceStyle(template: Template) {
   };
 }
 
-function PageNavSection({ pages, currentPage, setActivePageSlug, template }: {
+function PageNavSection({ pages, currentPage, setActivePageSlug, template, activePageSlug }: {
   pages: PageInfo[];
   currentPage: PageInfo | null;
   setActivePageSlug: (slug: string | null) => void;
   template: Template;
+  activePageSlug?: string | null;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const navSurfaceStyle = getNavSurfaceStyle(template);
+
+  // Determine active page: for dynamic pages (__services__, __products__) use activePageSlug directly
+  const getIsActive = (page: PageInfo) => {
+    if (page.slug === "__services__" || page.slug === "__products__") {
+      return activePageSlug === page.slug;
+    }
+    if (page.isHome) {
+      return !activePageSlug || activePageSlug === null;
+    }
+    return currentPage?.slug === page.slug;
+  };
+
+  const activePageTitle = pages.find(p => getIsActive(p))?.title || "Home";
 
   return (
     <div className="flex flex-col items-center">
       <div className="hidden sm:flex items-center gap-2 flex-wrap justify-center" data-testid="page-nav">
         {pages.map((page) => {
-          const isActive = currentPage?.slug === page.slug;
+          const isActive = getIsActive(page);
           return (
             <Button key={page.id} variant="ghost" size="sm"
               onClick={() => setActivePageSlug(page.isHome ? null : page.slug)}
@@ -505,13 +519,13 @@ function PageNavSection({ pages, currentPage, setActivePageSlug, template }: {
           className="flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium text-foreground border shadow-sm"
           style={navSurfaceStyle}
           data-testid="button-page-nav-toggle">
-          {currentPage?.title || "Home"}
+          {activePageTitle}
           <ChevronDown className={`w-3.5 h-3.5 transition-transform ${mobileOpen ? "rotate-180" : ""}`} />
         </button>
         {mobileOpen && (
           <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 min-w-[140px] rounded-xl bg-card/95 border border-border backdrop-blur-md py-1 z-50 shadow-lg">
             {pages.map((page) => {
-              const isActive = currentPage?.slug === page.slug;
+              const isActive = getIsActive(page);
               return (
                 <button key={page.id}
                   onClick={() => { setActivePageSlug(page.isHome ? null : page.slug); setMobileOpen(false); }}
@@ -705,7 +719,7 @@ function CompanyBadge({ teamBranding, template, compact = false }: { teamBrandin
 }
 
 function ClassicTeamLayout(props: TeamLayoutProps) {
-  const { user, template, teamBranding, brandColor, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick } = props;
+  const { user, template, teamBranding, brandColor, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick, activePageSlug } = props;
   const displayName = user.displayName || user.username;
   return (
     <div className="mb-10">
@@ -749,7 +763,7 @@ function ClassicTeamLayout(props: TeamLayoutProps) {
           {/* <div className="mt-3">
             <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
           </div> */}
-          {hasMultiplePages && <div className="mt-4"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} /></div>}
+          {hasMultiplePages && <div className="mt-4"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} /></div>}
           <ContentSection {...props} />
         </div>
       </div>
@@ -758,7 +772,7 @@ function ClassicTeamLayout(props: TeamLayoutProps) {
 }
 
 function ModernTeamLayout(props: TeamLayoutProps) {
-  const { user, template, teamBranding, brandColor, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick, mode } = props;
+  const { user, template, teamBranding, brandColor, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick, mode, activePageSlug } = props;
   const displayName = user.displayName || user.username;
   const avatarCls = getAvatarClass(template.avatarStyle);
 
@@ -800,7 +814,7 @@ function ModernTeamLayout(props: TeamLayoutProps) {
           <MeetingLinkSection teamBranding={teamBranding} brandColor={brandColor} />
           <MenuUrlSection teamBranding={teamBranding} brandColor={brandColor} />
           <ContactFormSection teamBranding={teamBranding} brandColor={brandColor} />
-          {hasMultiplePages && <div className="mt-3"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} /></div>}
+          {hasMultiplePages && <div className="mt-3"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} /></div>}
           <ContentSection {...props} />
         </div>
       </div>
@@ -840,7 +854,7 @@ function ModernTeamLayout(props: TeamLayoutProps) {
           <MeetingLinkSection teamBranding={teamBranding} brandColor={brandColor} />
           <MenuUrlSection teamBranding={teamBranding} brandColor={brandColor} />
           <ContactFormSection teamBranding={teamBranding} brandColor={brandColor} />
-            {hasMultiplePages && <div className="mt-4"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} /></div>}
+            {hasMultiplePages && <div className="mt-4"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} /></div>}
             <ContentSection {...props} />
           </div>
         </div>
@@ -850,7 +864,7 @@ function ModernTeamLayout(props: TeamLayoutProps) {
 }
 
 function BoldTeamLayout(props: TeamLayoutProps) {
-  const { user, template, teamBranding, brandColor, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick } = props;
+  const { user, template, teamBranding, brandColor, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick, activePageSlug } = props;
   const displayName = user.displayName || user.username;
   const avatarCls = getAvatarClass(template.avatarStyle);
   return (
@@ -897,7 +911,7 @@ function BoldTeamLayout(props: TeamLayoutProps) {
           {/* <div className="mt-3">
             <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
           </div> */}
-          {hasMultiplePages && <div className="mt-4"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} /></div>}
+          {hasMultiplePages && <div className="mt-4"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} /></div>}
           <ContentSection {...props} />
         </div>
       </div>
@@ -906,7 +920,7 @@ function BoldTeamLayout(props: TeamLayoutProps) {
 }
 
 function ElegantTeamLayout(props: TeamLayoutProps) {
-  const { user, template, teamBranding, brandColor, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl } = props;
+  const { user, template, teamBranding, brandColor, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, activePageSlug } = props;
   const displayName = user.displayName || user.username;
   const avatarCls = getAvatarClass(template.avatarStyle);
   return (
@@ -940,7 +954,7 @@ function ElegantTeamLayout(props: TeamLayoutProps) {
           <MeetingLinkSection teamBranding={teamBranding} brandColor={brandColor} />
           <MenuUrlSection teamBranding={teamBranding} brandColor={brandColor} />
           <ContactFormSection teamBranding={teamBranding} brandColor={brandColor} />
-          {hasMultiplePages && <div className="mt-4"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} /></div>}
+          {hasMultiplePages && <div className="mt-4"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} /></div>}
           <ContentSection {...props} />
         </div>
       </div>
@@ -949,7 +963,7 @@ function ElegantTeamLayout(props: TeamLayoutProps) {
 }
 
 function HeroTeamLayout(props: TeamLayoutProps) {
-  const { user, template, teamBranding, brandColor, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick } = props;
+  const { user, template, teamBranding, brandColor, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick, activePageSlug } = props;
   const displayName = user.displayName || user.username;
   const avatarCls = getAvatarClass(template.avatarStyle);
   return (
@@ -986,7 +1000,7 @@ function HeroTeamLayout(props: TeamLayoutProps) {
           </div> */}
           {hasMultiplePages && (
             <div className="mt-4 pt-3 border-t border-border/50">
-              <PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} />
+              <PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} />
             </div>
           )}
           <ContentSection {...props} />
