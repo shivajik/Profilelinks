@@ -3325,12 +3325,30 @@ export async function registerRoutes(
       const { username } = req.body;
       if (!username) return res.status(400).json({ message: "Username required" });
 
-      const user = await storage.getUserByUsername(username);
+      // Try as username first, then as team slug
+      let user = await storage.getUserByUsername(username);
+      let teamBranding: any = null;
+      let profileSlug = username;
+
+      if (!user) {
+        // Try as team slug
+        const team = await storage.getTeamBySlug(username);
+        if (team) {
+          user = await storage.getUser(team.ownerId);
+          if (user) {
+            const templates = await storage.getTeamTemplates(team.id);
+            const template = templates.find((t: any) => t.isDefault) || templates[0];
+            teamBranding = template?.templateData || {};
+            teamBranding.companyName = team.name;
+            profileSlug = team.slug;
+          }
+        }
+      }
+
       if (!user) return res.status(404).json({ message: "User not found" });
 
-      // Get team branding if available
-      let teamBranding: any = null;
-      if (user.teamId) {
+      // Get team branding if user belongs to a team and we don't have it yet
+      if (!teamBranding && user.teamId) {
         const team = await storage.getTeam(user.teamId);
         if (team) {
           const templates = await storage.getTeamTemplates(team.id);
@@ -3340,7 +3358,7 @@ export async function registerRoutes(
         }
       }
 
-      const profileUrl = `${req.protocol}://${req.get("host")}/${username}`;
+      const profileUrl = `${req.protocol}://${req.get("host")}/${profileSlug}`;
       const objectId = `card_${username}_${Date.now()}`;
 
       const walletUrl = createGoogleWalletPassUrl({
