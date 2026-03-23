@@ -538,7 +538,9 @@ export default function Dashboard() {
               <img src={logoPath} alt="VisiCardly" className="w-14 h-10 object-contain" />
               <p className="text-xs text-foreground font-medium truncate" title={user.username}>{user.username}</p>
               {isTeamMember ? (
-                <Badge variant="outline" className="text-[10px] w-fit border-primary/30 text-primary">Team Member</Badge>
+                <Badge variant="outline" className="text-[10px] w-fit border-primary/30 text-primary">
+                  {isTeamAdmin ? "Team Admin" : "Team Member"}
+                </Badge>
               ) : (
                 <div className="flex items-center gap-1 flex-wrap">
                   <Badge variant="secondary" className="text-[10px] w-fit capitalize">{planLimits?.planName || "Free"}</Badge>
@@ -4992,7 +4994,11 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
   const [limitMessage, setLimitMessage] = useState("");
   const [activeTab, setActiveTab] = useState<"members" | "invitations">("members");
   const [analyticsMember, setAnalyticsMember] = useState<any>(null);
-
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterTemplate, setFilterTemplate] = useState<string>("all");
+  const [filterRole, setFilterRole] = useState<string>("all");
+  const [currentMemberPage, setCurrentMemberPage] = useState(1);
+  const membersPerPage = 10;
   const { data: members = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/teams", teamId, "members"],
     queryFn: async () => {
@@ -5034,6 +5040,19 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
   const isAdmin = currentMember?.role === "owner" || currentMember?.role === "admin";
 
   const pendingInvites = invitations.filter((i: any) => i.status === "pending");
+
+  // Filter and paginate members
+  const filteredMembers = members.filter((m: any) => {
+    const matchesSearch = !searchQuery || 
+      (m.businessName || m.user?.displayName || m.user?.username || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (m.user?.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (m.jobTitle || "").toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesTemplate = filterTemplate === "all" || m.templateId === filterTemplate;
+    const matchesRole = filterRole === "all" || m.role === filterRole;
+    return matchesSearch && matchesTemplate && matchesRole;
+  });
+  const totalPages = Math.ceil(filteredMembers.length / membersPerPage);
+  const paginatedMembers = filteredMembers.slice((currentMemberPage - 1) * membersPerPage, currentMemberPage * membersPerPage);
 
   const [inviteLink, setInviteLink] = useState<string | null>(null);
 
@@ -5195,12 +5214,54 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
 
       {activeTab === "members" ? (
         <>
+      {/* Search & Filters */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <div className="relative flex-1 min-w-[180px]">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search members..."
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setCurrentMemberPage(1); }}
+            className="pl-8 h-9 text-sm"
+          />
+        </div>
+        {/* {templates.length > 0 && (
+          <Select value={filterTemplate} onValueChange={(v) => { setFilterTemplate(v); setCurrentMemberPage(1); }}>
+            <SelectTrigger className="w-[160px] h-9 text-sm">
+              <SelectValue placeholder="All Templates" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Templates</SelectItem>
+              {templates.map((t: any) => (
+                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )} */}
+        <Select value={filterRole} onValueChange={(v) => { setFilterRole(v); setCurrentMemberPage(1); }}>
+          <SelectTrigger className="w-[130px] h-9 text-sm">
+            <SelectValue placeholder="All Roles" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Roles</SelectItem>
+            <SelectItem value="owner">Owner</SelectItem>
+            <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="member">Member</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      {filteredMembers.length !== members.length && (
+        <p className="text-xs text-muted-foreground">Showing {filteredMembers.length} of {members.length} members</p>
+      )}
+
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
         </div>
-      ) : members.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-8" data-testid="text-no-members">No team members yet. Invite or create members to get started.</p>
+      ) : paginatedMembers.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-8" data-testid="text-no-members">
+          {members.length === 0 ? "No team members yet. Invite or create members to get started." : "No members match your filters."}
+        </p>
       ) : (
         <Table>
           <TableHeader>
@@ -5214,7 +5275,7 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
             </TableRow>
           </TableHeader>
           <TableBody>
-            {members.map((member: any) => (
+            {paginatedMembers.map((member: any) => (
               <TableRow key={member.id} data-testid={`row-member-${member.id}`}>
                 <TableCell>
                   <div className="flex items-center gap-3">
@@ -5341,6 +5402,33 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
             ))}
           </TableBody>
         </Table>
+      )}
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-2">
+          <p className="text-xs text-muted-foreground">
+            Page {currentMemberPage} of {totalPages}
+          </p>
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="sm" disabled={currentMemberPage <= 1} onClick={() => setCurrentMemberPage(p => p - 1)}>
+              Previous
+            </Button>
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+              const page = totalPages <= 5 ? i + 1 : 
+                currentMemberPage <= 3 ? i + 1 :
+                currentMemberPage >= totalPages - 2 ? totalPages - 4 + i :
+                currentMemberPage - 2 + i;
+              return (
+                <Button key={page} variant={page === currentMemberPage ? "default" : "outline"} size="sm" className="w-9 h-9" onClick={() => setCurrentMemberPage(page)}>
+                  {page}
+                </Button>
+              );
+            })}
+            <Button variant="outline" size="sm" disabled={currentMemberPage >= totalPages} onClick={() => setCurrentMemberPage(p => p + 1)}>
+              Next
+            </Button>
+          </div>
+        </div>
       )}
         </>
       ) : (
@@ -6231,19 +6319,22 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
           <div className="lg:w-[320px] shrink-0 space-y-4">
             <TemplateCardPreview data={{ ...tData, companySocials: localSocials }} themeColor={themeColor} />
             {templates.length > 1 && (
-              <div className="flex gap-2 flex-wrap">
-                {templates.map((t: any) => (
-                  <Button
-                    key={t.id}
-                    variant={selectedTemplate?.id === t.id ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedTemplateId(t.id)}
-                    data-testid={`button-select-template-${t.id}`}
-                  >
-                    {t.name}
-                    {t.isDefault && <Badge variant="secondary" className="ml-1.5 text-[10px]">Default</Badge>}
-                  </Button>
-                ))}
+              <div className="space-y-2">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Team Templates</h3>
+                <div className="flex gap-2 flex-wrap">
+                  {templates.map((t: any) => (
+                    <Button
+                      key={t.id}
+                      variant={selectedTemplate?.id === t.id ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedTemplateId(t.id)}
+                      data-testid={`button-select-template-${t.id}`}
+                    >
+                      {t.name}
+                      {t.isDefault && <Badge variant="secondary" className="ml-1.5 text-[10px]">Default</Badge>}
+                    </Button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -6372,9 +6463,9 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
                     data-testid="switch-template-default"
                   />
                 </div>
-                <Button variant="outline" size="sm" onClick={() => duplicateMutation.mutate(selectedTemplate.id)} data-testid="button-duplicate-selected-template">
-                  <Copy className="w-3.5 h-3.5" />
-                  Duplicate
+                <Button variant="outline" size="sm" onClick={() => duplicateMutation.mutate(selectedTemplate.id)} disabled={duplicateMutation.isPending} data-testid="button-duplicate-selected-template">
+                  {duplicateMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Copy className="w-3.5 h-3.5" />}
+                  {duplicateMutation.isPending ? "Duplicating..." : "Duplicate"}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => setDeleteConfirmOpen(true)} data-testid="button-delete-selected-template">
                   <Trash2 className="w-3.5 h-3.5" />

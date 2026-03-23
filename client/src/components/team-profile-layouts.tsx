@@ -90,14 +90,14 @@ function ContactSection({ teamBranding, brandColor, normalizeUrl, activeSocials,
   trackClick?: (blockId?: string) => void;
 }) {
   const userContactItems = [
-    ...(teamBranding.memberPhone ? [{ icon: Phone, value: teamBranding.memberPhone }] : []),
+    ...(teamBranding.memberPhone ? [{ icon: Phone, value: teamBranding.memberPhone, type: "phone" as const }] : []),
   ];
   const contactItems = [
-    { icon: Phone, value: teamBranding.companyPhone },
-    { icon: Phone, value: teamBranding.companyContact },
-    { icon: Mail, value: teamBranding.companyEmail },
-    { icon: Globe, value: teamBranding.companyWebsite },
-    { icon: MapPin, value: teamBranding.companyAddress },
+    { icon: Phone, value: teamBranding.companyPhone, type: "phone" as const },
+    { icon: Phone, value: teamBranding.companyContact, type: "phone" as const },
+    { icon: Mail, value: teamBranding.companyEmail, type: "email" as const },
+    { icon: Globe, value: teamBranding.companyWebsite, type: "website" as const },
+    { icon: MapPin, value: teamBranding.companyAddress, type: "address" as const },
   ].filter(item => item.value);
   const hasBranches = !!(teamBranding.headBranch || teamBranding.memberBranch);
   const hasDocs = !!(teamBranding.companyProfileUrl || teamBranding.productProfileUrl || teamBranding.companyBrochureUrl || (teamBranding.productUrls && teamBranding.productUrls.length > 0));
@@ -110,17 +110,41 @@ function ContactSection({ teamBranding, brandColor, normalizeUrl, activeSocials,
     ? "text-[10px] font-bold uppercase tracking-[0.15em]"
     : "text-[10px] font-semibold uppercase tracking-wider text-muted-foreground";
 
+  function getContactHref(type: string, value: string) {
+    if (type === "phone") return `tel:${value}`;
+    if (type === "email") return `mailto:${value}`;
+    if (type === "website") return value.startsWith("http") ? value : `https://${value}`;
+    if (type === "address") return `https://maps.google.com/?q=${encodeURIComponent(value)}`;
+    return undefined;
+  }
+
+  function ContactItem({ icon: Icon, value, type }: { icon: any; value: string; type: string }) {
+    const href = getContactHref(type, value);
+    const content = (
+      <>
+        <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: iconBg }}>
+          <Icon className="w-3.5 h-3.5" style={{ color: iconColor }} />
+        </div>
+        <span className="text-xs text-foreground break-all">{value}</span>
+      </>
+    );
+    if (href) {
+      return (
+        <a href={href} target={type === "website" ? "_blank" : undefined} rel={type === "website" ? "noopener noreferrer" : undefined}
+          className="flex items-center gap-2.5 hover:opacity-80 transition-opacity cursor-pointer">
+          {content}
+        </a>
+      );
+    }
+    return <div className="flex items-center gap-2.5">{content}</div>;
+  }
+
   return (
     <div className="space-y-3">
       {userContactItems.length > 0 && (
         <div className="space-y-2" data-testid="user-contact-info">
           {userContactItems.map((item, i) => (
-            <div key={`user-${i}`} className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: iconBg }}>
-                <item.icon className="w-3.5 h-3.5" style={{ color: iconColor }} />
-              </div>
-              <span className="text-xs text-foreground">{item.value}</span>
-            </div>
+            <ContactItem key={`user-${i}`} icon={item.icon} value={item.value} type={item.type} />
           ))}
           <div className="flex gap-2 pl-9">
             <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={useOriginalSocialColors} trackClick={trackClick} />
@@ -137,12 +161,7 @@ function ContactSection({ teamBranding, brandColor, normalizeUrl, activeSocials,
           </div>
           <div className="space-y-2" data-testid="corporate-contact-info">
             {contactItems.map((item, i) => (
-              <div key={i} className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: iconBg }}>
-                  <item.icon className="w-3.5 h-3.5" style={{ color: iconColor }} />
-                </div>
-                <span className="text-xs text-foreground">{item.value}</span>
-              </div>
+              <ContactItem key={i} icon={item.icon} value={item.value!} type={item.type} />
             ))}
           </div>
         </>
@@ -763,7 +782,7 @@ function ClassicTeamLayout(props: TeamLayoutProps) {
           {/* <div className="mt-3">
             <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
           </div> */}
-          {hasMultiplePages && <div className="mt-4"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} /></div>}
+          {hasMultiplePages && <><div className="border-t border-border mt-4 mb-2" /><div className="mt-2"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} /></div></>}
           <ContentSection {...props} />
         </div>
       </div>
@@ -814,7 +833,7 @@ function ModernTeamLayout(props: TeamLayoutProps) {
           <MeetingLinkSection teamBranding={teamBranding} brandColor={brandColor} />
           <MenuUrlSection teamBranding={teamBranding} brandColor={brandColor} />
           <ContactFormSection teamBranding={teamBranding} brandColor={brandColor} />
-          {hasMultiplePages && <div className="mt-3"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} /></div>}
+          {hasMultiplePages && <><div className="border-t border-border mt-3 mb-2" /><div className="mt-2"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} /></div></>}
           <ContentSection {...props} />
         </div>
       </div>
@@ -854,7 +873,7 @@ function ModernTeamLayout(props: TeamLayoutProps) {
           <MeetingLinkSection teamBranding={teamBranding} brandColor={brandColor} />
           <MenuUrlSection teamBranding={teamBranding} brandColor={brandColor} />
           <ContactFormSection teamBranding={teamBranding} brandColor={brandColor} />
-            {hasMultiplePages && <div className="mt-4"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} /></div>}
+            {hasMultiplePages && <><div className="border-t border-border mt-4 mb-2" /><div className="mt-2"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} /></div></>}
             <ContentSection {...props} />
           </div>
         </div>
@@ -911,7 +930,7 @@ function BoldTeamLayout(props: TeamLayoutProps) {
           {/* <div className="mt-3">
             <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
           </div> */}
-          {hasMultiplePages && <div className="mt-4"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} /></div>}
+          {hasMultiplePages && <><div className="border-t border-border mt-4 mb-2" /><div className="mt-2"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} /></div></>}
           <ContentSection {...props} />
         </div>
       </div>
@@ -954,7 +973,7 @@ function ElegantTeamLayout(props: TeamLayoutProps) {
           <MeetingLinkSection teamBranding={teamBranding} brandColor={brandColor} />
           <MenuUrlSection teamBranding={teamBranding} brandColor={brandColor} />
           <ContactFormSection teamBranding={teamBranding} brandColor={brandColor} />
-          {hasMultiplePages && <div className="mt-4"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} /></div>}
+          {hasMultiplePages && <><div className="border-t border-border mt-4 mb-2" /><div className="mt-2"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} /></div></>}
           <ContentSection {...props} />
         </div>
       </div>
