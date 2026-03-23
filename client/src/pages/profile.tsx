@@ -323,7 +323,7 @@ export default function PublicProfile(props?: any) {
           >
             <UserPlus className="w-5 h-5" />
           </Button>
-          <Button
+          {/* <Button
             variant="ghost"
             size="icon"
             onClick={() => setShareOpen(true)}
@@ -331,7 +331,8 @@ export default function PublicProfile(props?: any) {
             data-testid="button-share"
           >
             <Share2 className="w-5 h-5" />
-          </Button>
+          </Button> */}
+          {/* Google Wallet button - uncomment when ready to launch
           <Button
             variant="ghost"
             size="icon"
@@ -340,6 +341,16 @@ export default function PublicProfile(props?: any) {
             data-testid="button-wallet"
           >
             <Wallet className="w-5 h-5" />
+          </Button>
+          */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShareOpen(true)}
+            className={`${template.textColor}`}
+            data-testid="button-share-alt"
+          >
+            <Share2 className="w-5 h-5" />
           </Button>
         </div>
 
