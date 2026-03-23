@@ -29,58 +29,25 @@ export function createGoogleWalletPassUrl(data: BusinessCardData): string {
     throw new Error("Google Wallet is not configured");
   }
 
-  const genericClass = {
-    id: CLASS_ID,
-    classTemplateInfo: {
-      cardTemplateOverride: {
-        cardRowTemplateInfos: [
-          {
-            twoItems: {
-              startItem: {
-                firstValue: {
-                  fields: [{ fieldPath: "object.textModulesData['phone']" }],
-                },
-              },
-              endItem: {
-                firstValue: {
-                  fields: [{ fieldPath: "object.textModulesData['email']" }],
-                },
-              },
-            },
-          },
-          {
-            oneItem: {
-              item: {
-                firstValue: {
-                  fields: [{ fieldPath: "object.textModulesData['website']" }],
-                },
-              },
-            },
-          },
-        ],
-      },
-    },
-  };
-
   const genericObject: Record<string, any> = {
     id: `${GOOGLE_WALLET_ISSUER_ID}.${data.objectId}`,
     classId: CLASS_ID,
     genericType: "GENERIC_TYPE_UNSPECIFIED",
     hexBackgroundColor: "#1a1a2e",
     cardTitle: {
-      defaultValue: { language: "en", value: data.companyName || "VisiCardly" },
+      defaultValue: { language: "en", value: (data.companyName || "VisiCardly").substring(0, 40) },
     },
-    subheader: {
-      defaultValue: { language: "en", value: data.jobTitle || "" },
-    },
+    ...(data.jobTitle ? {
+      subheader: {
+        defaultValue: { language: "en", value: data.jobTitle.substring(0, 40) },
+      },
+    } : {}),
     header: {
-      defaultValue: { language: "en", value: data.name },
+      defaultValue: { language: "en", value: (data.name || "Contact").substring(0, 40) },
     },
     textModulesData: [
-      ...(data.phone ? [{ id: "phone", header: "Phone", body: data.phone }] : []),
-      ...(data.email ? [{ id: "email", header: "Email", body: data.email }] : []),
-      ...(data.website ? [{ id: "website", header: "Website", body: data.website }] : []),
-      ...(data.address ? [{ id: "address", header: "Address", body: data.address }] : []),
+      ...(data.phone ? [{ id: "phone", header: "Phone", body: data.phone.substring(0, 30) }] : []),
+      ...(data.email ? [{ id: "email", header: "Email", body: data.email.substring(0, 50) }] : []),
     ],
     linksModuleData: {
       uris: [
@@ -89,33 +56,25 @@ export function createGoogleWalletPassUrl(data: BusinessCardData): string {
           description: "View Digital Card",
           id: "profile_link",
         },
-        ...(data.website
-          ? [{ uri: data.website.startsWith("http") ? data.website : `https://${data.website}`, description: "Website", id: "website_link" }]
-          : []),
       ],
     },
     barcode: {
       type: "QR_CODE",
       value: data.profileUrl,
-      alternateText: data.profileUrl,
     },
   };
 
-  if (data.profileImage) {
+  // Only add logo if it's a short URL (not a data URI or very long URL)
+  if (data.profileImage && data.profileImage.startsWith("http") && data.profileImage.length < 200) {
     genericObject.logo = {
       sourceUri: { uri: data.profileImage },
-      contentDescription: { defaultValue: { language: "en", value: data.name } },
-    };
-    genericObject.heroImage = {
-      sourceUri: { uri: data.profileImage },
-      contentDescription: { defaultValue: { language: "en", value: data.name } },
+      contentDescription: { defaultValue: { language: "en", value: data.name.substring(0, 30) } },
     };
   }
 
   const claims = {
     iss: GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL,
     aud: "google",
-    origins: ["http://localhost:5000"],
     typ: "savetowallet",
     payload: {
       genericObjects: [genericObject],
