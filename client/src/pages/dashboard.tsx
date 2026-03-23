@@ -3166,7 +3166,8 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
                   )}
                 </div>
 
-                <Button onClick={handleCreate} className="w-full" data-testid="button-save-qr">
+                <Button onClick={handleCreate} className="w-full" disabled={createQrMutation.isPending || updateQrMutation.isPending} data-testid="button-save-qr">
+                  {(createQrMutation.isPending || updateQrMutation.isPending) && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                   {editingId ? "Save Changes" : "Create"}
                 </Button>
               </div>
@@ -5457,6 +5458,9 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
                   placeholder="colleague@company.com"
                   data-testid="input-invite-email"
                 />
+                {inviteEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmail) && (
+                  <p className="text-xs text-destructive">Please enter a valid email address</p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="invite-role">Role</Label>
@@ -5490,7 +5494,7 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
               )}
               <Button
                 className="w-full"
-                disabled={!inviteEmail || inviteMutation.isPending}
+                disabled={!inviteEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmail) || inviteMutation.isPending}
                 onClick={() => inviteMutation.mutate({ emails: [inviteEmail], role: inviteRole, ...(inviteBranchId ? { branchId: inviteBranchId } : {}) })}
                 data-testid="button-send-invite"
               >
@@ -5538,6 +5542,9 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
                     className="h-9"
                     data-testid="input-create-email"
                   />
+                  {createEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(createEmail) && (
+                    <p className="text-xs text-destructive">Please enter a valid email address</p>
+                  )}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -5638,7 +5645,7 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
 
             <Button
               className="w-full"
-              disabled={!createName || !createEmail || createMemberMutation.isPending}
+              disabled={!createName || !createEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(createEmail) || createMemberMutation.isPending}
               onClick={() => createMemberMutation.mutate({ displayName: createName, email: createEmail, jobTitle: createJobTitle || undefined, memberRole: createRole, phone: createPhone || undefined, bio: createBio || undefined, ...(createBranchId ? { branchId: createBranchId } : {}) })}
               data-testid="button-submit-create-member"
             >
