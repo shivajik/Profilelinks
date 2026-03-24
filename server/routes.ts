@@ -2445,6 +2445,10 @@ export async function registerRoutes(
         (publicUser as any).template = "minimal";
         (publicUser as any).planRestricted = true;
         (teamBranding as any).menuUrl = undefined;
+        // Restrict company socials to plan limit
+        if (teamBranding.companySocials && Array.isArray(teamBranding.companySocials)) {
+          teamBranding.companySocials = teamBranding.companySocials.slice(0, ownerPlanLimits.maxSocials);
+        }
       }
 
       res.json({
@@ -2626,6 +2630,10 @@ export async function registerRoutes(
         // Remove menu URL if menu builder not available
         if (teamBranding && !effectivePlan.menuBuilderEnabled) {
           teamBranding.menuUrl = undefined;
+        }
+        // Restrict company socials to plan limit
+        if (teamBranding?.companySocials && Array.isArray(teamBranding.companySocials)) {
+          teamBranding.companySocials = teamBranding.companySocials.slice(0, planLimits.maxSocials);
         }
       }
 
