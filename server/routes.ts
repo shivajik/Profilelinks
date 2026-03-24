@@ -487,7 +487,7 @@ export async function registerRoutes(
           if (teamRow.length > 0) {
             const ownerLimits = await getUserPlanLimits(teamRow[0].ownerId);
             if (!ownerLimits.hasActivePlan || ownerLimits.trialExpired) {
-              return res.status(403).json({ message: "Your account has been disabled. The team owner's plan has expired. Please contact your team administrator to upgrade." });
+              return res.status(403).json({ message: "Your account has been disabled. Please contact your team administrator." });
             }
           }
         }
