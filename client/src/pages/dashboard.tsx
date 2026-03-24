@@ -280,6 +280,19 @@ export default function Dashboard() {
     enabled: !!user,
   });
 
+  // For team members: fetch team owner's profile data (pages & blocks for dashboard preview)
+  const { data: teamOwnerProfileData } = useQuery<any>({
+    queryKey: ["/api/profile", teamData?.slug, "owner-preview"],
+    queryFn: async () => {
+      const slug = teamData?.slug;
+      if (!slug) return null;
+      const res = await fetch(`/api/profile/${slug}?preview=1`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!teamData?.slug && !!user?.teamId && teamData?.ownerId !== user?.id,
+  });
+
   // Fetch team templates for live preview (team owners)
   const { data: teamTemplatesForPreview } = useQuery<any[]>({
     queryKey: ["/api/teams", user?.teamId, "templates"],
@@ -1337,9 +1350,9 @@ export default function Dashboard() {
                         user={user}
                         businessProfileData={businessProfileData}
                         socials={userSocials}
-                        blocks={sortedBlocks}
-                        pages={userPages}
-                        currentPage={currentPage || null}
+                        blocks={teamOwnerProfileData?.blocks || []}
+                        pages={teamOwnerProfileData?.pages || []}
+                        currentPage={teamOwnerProfileData?.currentPage || null}
                         mode={previewMode}
                         onPageChange={(pageId) => setSelectedPageId(pageId)}
                       />

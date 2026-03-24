@@ -2361,22 +2361,25 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Member not found in this team" });
       }
 
-      const [userPages, userSocials, templates] = await Promise.all([
-        storage.getPagesByUserId(user.id),
+      // Always use the team OWNER's pages and blocks for team member profiles
+      const effectiveUserId = team.ownerId;
+
+      const [ownerPages, userSocials, templates] = await Promise.all([
+        storage.getPagesByUserId(effectiveUserId),
         storage.getSocialsByUserId(user.id),
         storage.getTeamTemplates(team.id),
       ]);
 
       const pageSlug = req.query.page as string | undefined;
-      let currentPage = userPages.find((p) => p.isHome) || userPages[0];
+      let currentPage = ownerPages.find((p) => p.isHome) || ownerPages[0] || null;
       if (pageSlug) {
-        const found = userPages.find((p) => p.slug === pageSlug);
+        const found = ownerPages.find((p) => p.slug === pageSlug);
         if (found) currentPage = found;
       }
 
       const [userLinks, pageBlocks] = await Promise.all([
-        currentPage ? storage.getLinksByPageId(currentPage.id) : storage.getLinksByUserId(user.id),
-        currentPage ? storage.getBlocksByPageId(currentPage.id) : storage.getBlocksByUserId(user.id),
+        currentPage ? storage.getLinksByPageId(currentPage.id) : storage.getLinksByUserId(effectiveUserId),
+        currentPage ? storage.getBlocksByPageId(currentPage.id) : storage.getBlocksByUserId(effectiveUserId),
       ]);
 
       const { password: _, email: __, ...publicUser } = user;
@@ -2457,8 +2460,8 @@ export async function registerRoutes(
         blocks: effectivePlan.isFree ? pageBlocks.slice(0, ownerPlanLimits.maxBlocks) : pageBlocks,
         socials: effectivePlan.isFree ? userSocials.slice(0, ownerPlanLimits.maxSocials) : userSocials,
         pages: effectivePlan.isFree
-          ? userPages.slice(0, ownerPlanLimits.maxPages).map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome }))
-          : userPages.map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome })),
+          ? ownerPages.slice(0, ownerPlanLimits.maxPages).map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome }))
+          : ownerPages.map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome })),
         currentPage: currentPage ? { id: currentPage.id, title: currentPage.title, slug: currentPage.slug, isHome: currentPage.isHome } : null,
         teamBranding,
         planRestricted: effectivePlan.isFree,
@@ -2487,8 +2490,8 @@ export async function registerRoutes(
 
       let teamId = user.accountType === "team" ? user.teamId : null;
 
-      const [userPages, userSocials, memberships, memberDirect] = await Promise.all([
-        storage.getPagesByUserId(user.id),
+      // Phase 1: Fetch socials + memberships (no pages yet — we need to know effective user first)
+      const [userSocials, memberships, memberDirect] = await Promise.all([
         storage.getSocialsByUserId(user.id),
         teamId ? Promise.resolve([]) : storage.getTeamMembershipsByUserId(user.id),
         teamId ? storage.getTeamMemberByUserId(teamId, user.id) : Promise.resolve(undefined),
@@ -2503,45 +2506,29 @@ export async function registerRoutes(
         }
       }
 
+      // Phase 2: Fetch team data (needed to determine ownerId for members)
+      const [teamData, templates] = teamId
+        ? await Promise.all([storage.getTeam(teamId), storage.getTeamTemplates(teamId)])
+        : [null, [] as any[]];
+
+      // Determine effective user: team members show the team owner's pages/blocks
+      const isTeamMemberNotOwner = teamId && teamData && teamData.ownerId !== user.id;
+      const effectiveUserId = isTeamMemberNotOwner ? teamData!.ownerId : user.id;
+
+      // Phase 3: Fetch pages for the effective user
       const pageSlug = req.query.page as string | undefined;
-      let currentPage = userPages.find((p) => p.isHome) || userPages[0];
+      const displayPages = await storage.getPagesByUserId(effectiveUserId);
+      let displayCurrentPage = displayPages.find((p) => p.isHome) || displayPages[0] || null;
       if (pageSlug) {
-        const found = userPages.find((p) => p.slug === pageSlug);
-        if (found) currentPage = found;
+        const found = displayPages.find((p) => p.slug === pageSlug);
+        if (found) displayCurrentPage = found;
       }
 
-      const teamDataPromise = teamId
-        ? Promise.all([storage.getTeam(teamId), storage.getTeamTemplates(teamId)])
-        : Promise.resolve([null, []] as const);
-
-      const [[teamData, templates], userLinks, pageBlocks] = await Promise.all([
-        teamDataPromise,
-        currentPage ? storage.getLinksByPageId(currentPage.id) : storage.getLinksByUserId(user.id),
-        currentPage ? storage.getBlocksByPageId(currentPage.id) : storage.getBlocksByUserId(user.id),
+      // Phase 4: Fetch links and blocks for the current page
+      const [displayLinks, displayBlocks] = await Promise.all([
+        displayCurrentPage ? storage.getLinksByPageId(displayCurrentPage.id) : storage.getLinksByUserId(effectiveUserId),
+        displayCurrentPage ? storage.getBlocksByPageId(displayCurrentPage.id) : storage.getBlocksByUserId(effectiveUserId),
       ]);
-
-      // Task 1: For team members (not the owner), use the team owner's pages and blocks
-      let displayPages = userPages;
-      let displayCurrentPage = currentPage;
-      let displayLinks = userLinks;
-      let displayBlocks = pageBlocks;
-
-      if (teamId && teamData && teamData.ownerId !== user.id) {
-        const ownerPages = await storage.getPagesByUserId(teamData.ownerId);
-        let ownerCurrentPage: typeof ownerPages[0] | null = ownerPages.find((p) => p.isHome) || ownerPages[0] || null;
-        if (pageSlug) {
-          const found = ownerPages.find((p) => p.slug === pageSlug);
-          if (found) ownerCurrentPage = found;
-        }
-        const [ownerLinks, ownerBlocks] = await Promise.all([
-          ownerCurrentPage ? storage.getLinksByPageId(ownerCurrentPage.id) : storage.getLinksByUserId(teamData.ownerId),
-          ownerCurrentPage ? storage.getBlocksByPageId(ownerCurrentPage.id) : storage.getBlocksByUserId(teamData.ownerId),
-        ]);
-        displayPages = ownerPages;
-        displayCurrentPage = ownerCurrentPage;
-        displayLinks = ownerLinks;
-        displayBlocks = ownerBlocks;
-      }
 
       const { password: _, email: __, apiKey: _apiKey, ...publicUser } = user;
       (publicUser as any).emailVerified = user.emailVerified || false;
