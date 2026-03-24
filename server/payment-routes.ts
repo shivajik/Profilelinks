@@ -66,6 +66,8 @@ router.get("/api/payments/subscription", requireAuth as any, async (req: Request
         planName: pricingPlans.name,
         planMonthlyPrice: pricingPlans.monthlyPrice,
         planYearlyPrice: pricingPlans.yearlyPrice,
+        isTrial: userSubscriptions.isTrial,
+        trialEndsAt: userSubscriptions.trialEndsAt,
       })
       .from(userSubscriptions)
       .leftJoin(pricingPlans, sql`${userSubscriptions.planId} = ${pricingPlans.id}`)

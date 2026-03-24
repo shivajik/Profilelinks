@@ -30,6 +30,8 @@ interface Subscription {
   currentPeriodEnd: string | null;
   planId: string;
   planName: string;
+  isTrial?: boolean;
+  trialEndsAt?: string | null;
 }
 
 interface PaymentHistory {
@@ -370,20 +372,28 @@ export function BillingSection({ autoSelectPlanId }: { autoSelectPlanId?: string
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-foreground">
               You're on the <span className="text-primary">{subscription.planName}</span> plan
+              {subscription.isTrial && (
+                <Badge variant="outline" className="ml-2 text-xs border-amber-500 text-amber-600 bg-amber-50">Trial</Badge>
+              )}
             </p>
             <p className="text-xs text-muted-foreground capitalize">
-              {subscription.billingCycle} billing &bull; Status:{" "}
+              {subscription.isTrial ? "Trial" : subscription.billingCycle} billing &bull; Status:{" "}
               <span className={subscription.status === "active" ? "text-green-600" : "text-amber-600"}>
                 {subscription.status}
               </span>
             </p>
           </div>
-          {subscription.currentPeriodEnd && (
+          {subscription.isTrial && subscription.trialEndsAt ? (
+            <div className="flex items-center gap-1 text-xs text-amber-600 shrink-0">
+              <CalendarDays className="h-3.5 w-3.5" />
+              Trial ends {new Date(subscription.trialEndsAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+            </div>
+          ) : subscription.currentPeriodEnd ? (
             <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
               <CalendarDays className="h-3.5 w-3.5" />
               Renews {new Date(subscription.currentPeriodEnd).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
             </div>
-          )}
+          ) : null}
         </div>
       )}
 
@@ -470,6 +480,7 @@ export function BillingSection({ autoSelectPlanId }: { autoSelectPlanId?: string
               billingCycle={billingCycle}
               currency={currency}
               isCurrentPlan={subscription?.planId === plan.id && subscription?.status === "active"}
+              isTrial={subscription?.planId === plan.id && subscription?.status === "active" && !!subscription?.isTrial}
               loading={payingPlanId === plan.id}
               onSelect={handleSelectPlan}
               discountPercent={appliedPromo?.discountPercent}

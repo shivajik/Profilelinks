@@ -25,6 +25,7 @@ export interface PricingCardProps {
   billingCycle: "monthly" | "yearly";
   currency?: "INR" | "USD";
   isCurrentPlan?: boolean;
+  isTrial?: boolean;
   onSelect?: (plan: PricingPlan) => void;
   loading?: boolean;
   ctaLabel?: string;
@@ -36,6 +37,7 @@ export function PricingCard({
   billingCycle,
   currency = "INR",
   isCurrentPlan,
+  isTrial,
   onSelect,
   loading,
   ctaLabel,
@@ -94,8 +96,8 @@ export function PricingCard({
             )}
           </div>
           {isCurrentPlan && (
-            <Badge variant="secondary" className="text-xs">
-              Current
+            <Badge variant={isTrial ? "outline" : "secondary"} className={`text-xs ${isTrial ? "border-amber-500 text-amber-600 bg-amber-50" : ""}`}>
+              {isTrial ? "Trial" : "Current"}
             </Badge>
           )}
         </div>
