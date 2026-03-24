@@ -9,7 +9,8 @@ import { getPlatform } from "@/lib/social-platforms";
 import { getAvatarClass, getButtonClass } from "@/lib/templates";
 import type { Template } from "@/lib/templates";
 import type { Link, Social, Block } from "@shared/schema";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 
 type PageInfo = { id: string; title: string; slug: string; isHome: boolean };
@@ -503,8 +504,16 @@ function PageNavSection({ pages, currentPage, setActivePageSlug, template, activ
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const navSurfaceStyle = getNavSurfaceStyle(template);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
 
-  // Determine active page: for dynamic pages (__services__, __products__) use activePageSlug directly
+  useEffect(() => {
+    if (mobileOpen && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setDropdownPos({ top: rect.bottom + 8, left: rect.left + rect.width / 2 });
+    }
+  }, [mobileOpen]);
+
   const getIsActive = (page: PageInfo) => {
     if (page.slug === "__services__" || page.slug === "__products__") {
       return activePageSlug === page.slug;
@@ -534,28 +543,32 @@ function PageNavSection({ pages, currentPage, setActivePageSlug, template, activ
         })}
       </div>
       <div className="sm:hidden relative inline-block" data-testid="page-nav-mobile">
-        <button onClick={() => setMobileOpen(!mobileOpen)}
+        <button ref={triggerRef} onClick={() => setMobileOpen(!mobileOpen)}
           className="flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium text-foreground border shadow-sm"
           style={navSurfaceStyle}
           data-testid="button-page-nav-toggle">
           {activePageTitle}
           <ChevronDown className={`w-3.5 h-3.5 transition-transform ${mobileOpen ? "rotate-180" : ""}`} />
         </button>
-        {mobileOpen && (
-          <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 min-w-[140px] rounded-xl bg-card/95 border border-border backdrop-blur-md py-1 z-50 shadow-lg">
-            {pages.map((page) => {
-              const isActive = getIsActive(page);
-              return (
-                <button key={page.id}
-                  onClick={() => { setActivePageSlug(page.isHome ? null : page.slug); setMobileOpen(false); }}
-                  className={`block w-full text-left px-4 py-2 text-sm ${isActive ? "text-foreground font-medium" : "text-foreground/70"}`}
-                  style={isActive ? navSurfaceStyle : undefined}
-                  data-testid={`mobile-page-tab-${page.slug}`}>
-                  {page.title}
-                </button>
-              );
-            })}
-          </div>
+        {mobileOpen && createPortal(
+          <>
+            <div className="fixed inset-0" style={{ zIndex: 99998 }} onClick={() => setMobileOpen(false)} />
+            <div className="fixed min-w-[160px] rounded-xl border border-border backdrop-blur-md py-1 shadow-xl"
+              style={{ zIndex: 99999, backgroundColor: 'var(--card, #fff)', top: dropdownPos?.top ?? 0, left: (dropdownPos?.left ?? 0), transform: 'translateX(-50%)' }}>
+              {pages.map((page) => {
+                const isActive = getIsActive(page);
+                return (
+                  <button key={page.id}
+                    onClick={() => { setActivePageSlug(page.isHome ? null : page.slug); setMobileOpen(false); }}
+                    className={`block w-full text-left px-4 py-2.5 text-sm ${isActive ? "text-foreground font-semibold bg-accent/50" : "text-foreground/70 hover:bg-accent/30"}`}
+                    data-testid={`mobile-page-tab-${page.slug}`}>
+                    {page.title}
+                  </button>
+                );
+              })}
+            </div>
+          </>,
+          document.body
         )}
       </div>
     </div>

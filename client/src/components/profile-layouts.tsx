@@ -6,7 +6,8 @@ import { getPlatform } from "@/lib/social-platforms";
 import { getAvatarClass, getButtonClass } from "@/lib/templates";
 import type { Template, LayoutType } from "@/lib/templates";
 import type { Link, Social, Block } from "@shared/schema";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 
 type PageInfo = { id: string; title: string; slug: string; isHome: boolean };
 
@@ -68,6 +69,15 @@ function PageNav({ pages, currentPage, setActivePageSlug, template }: {
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const navSurfaceStyle = getNavSurfaceStyle(template);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
+
+  useEffect(() => {
+    if (mobileOpen && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setDropdownPos({ top: rect.bottom + 8, left: rect.left + rect.width / 2 });
+    }
+  }, [mobileOpen]);
 
   return (
     <>
@@ -95,6 +105,7 @@ function PageNav({ pages, currentPage, setActivePageSlug, template }: {
       </div>
       <div className="sm:hidden mt-5 relative inline-block" data-testid="page-nav-mobile">
         <button
+          ref={triggerRef}
           onClick={() => setMobileOpen(!mobileOpen)}
           className="flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium text-foreground border shadow-sm"
           style={navSurfaceStyle}
@@ -103,23 +114,28 @@ function PageNav({ pages, currentPage, setActivePageSlug, template }: {
           {currentPage?.title || "Home"}
           <ChevronDown className={`w-3.5 h-3.5 transition-transform ${mobileOpen ? "rotate-180" : ""}`} />
         </button>
-        {mobileOpen && (
-          <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 min-w-[140px] rounded-xl bg-card/95 border border-border backdrop-blur-md py-1 z-50 shadow-lg">
-            {pages.map((page) => {
-              const isActive = currentPage?.slug === page.slug;
-              return (
-                <button
-                  key={page.id}
-                  onClick={() => { setActivePageSlug(page.isHome ? null : page.slug); setMobileOpen(false); }}
-                  className={`block w-full text-left px-4 py-2 text-sm ${isActive ? "text-foreground font-medium" : "text-foreground/70"}`}
-                  style={isActive ? navSurfaceStyle : undefined}
-                  data-testid={`mobile-page-tab-${page.slug}`}
-                >
-                  {page.title}
-                </button>
-              );
-            })}
-          </div>
+        {mobileOpen && createPortal(
+          <>
+            <div className="fixed inset-0" style={{ zIndex: 99998 }} onClick={() => setMobileOpen(false)} />
+            <div className="fixed min-w-[140px] rounded-xl border border-border backdrop-blur-md py-1 shadow-xl"
+              style={{ zIndex: 99999, backgroundColor: 'var(--card, #fff)', top: dropdownPos?.top ?? 0, left: (dropdownPos?.left ?? 0), transform: 'translateX(-50%)' }}>
+              {pages.map((page) => {
+                const isActive = currentPage?.slug === page.slug;
+                return (
+                  <button
+                    key={page.id}
+                    onClick={() => { setActivePageSlug(page.isHome ? null : page.slug); setMobileOpen(false); }}
+                    className={`block w-full text-left px-4 py-2 text-sm ${isActive ? "text-foreground font-medium" : "text-foreground/70"}`}
+                    style={isActive ? navSurfaceStyle : undefined}
+                    data-testid={`mobile-page-tab-${page.slug}`}
+                  >
+                    {page.title}
+                  </button>
+                );
+              })}
+            </div>
+          </>,
+          document.body
         )}
       </div>
     </>
