@@ -602,6 +602,27 @@ export async function registerRoutes(
         }
       }
 
+      // If owner changes their template, sync it to the default team template
+      if (result.data.template && updated.teamId) {
+        try {
+          const memberRows = await db
+            .select({ teamId: teamMembers.teamId, role: teamMembers.role })
+            .from(teamMembers)
+            .where(and(eq(teamMembers.userId, req.session.userId!), eq(teamMembers.status, "activated")))
+            .limit(1);
+          if (memberRows.length > 0 && memberRows[0].role === "owner") {
+            const templates = await storage.getTeamTemplates(memberRows[0].teamId);
+            const defaultTemplate = templates.find((t: any) => t.isDefault) || templates[0];
+            if (defaultTemplate) {
+              const existingData = (defaultTemplate.templateData as any) || {};
+              await storage.updateTeamTemplate(defaultTemplate.id, memberRows[0].teamId, {
+                templateData: { ...existingData, template: result.data.template },
+              });
+            }
+          }
+        } catch { /* ignore sync errors */ }
+      }
+
       const { password: _, ...safeUser } = updated;
       res.json(safeUser);
     } catch (error: any) {

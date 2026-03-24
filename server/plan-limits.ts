@@ -132,13 +132,8 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
     )) as any ?? null;
   }
 
-  // Check if user is a team member and inherit ALL owner's plan features
-  let ownerAnalytics = false;
-  let ownerQrCode = false;
-  let ownerWhiteLabel = false;
-  let ownerMenuBuilder = false;
-  let ownerCustomTemplates = false;
-  let ownerThemeCategories: string[] | null = null;
+  // Check if user is a team member and inherit ALL owner's plan limits & features
+  let ownerPlanLimits: typeof subs[0] | null = null;
 
   // Always check team membership for feature inheritance (regardless of member's own plan)
   const memberRows = await db
@@ -151,30 +146,19 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
     const teamRow = await db.select({ ownerId: teams.ownerId }).from(teams).where(eq(teams.id, memberRows[0].teamId)).limit(1);
     if (teamRow.length > 0) {
       const ownerSubs = await db
-        .select({
-          analyticsEnabled: pricingPlans.analyticsEnabled,
-          qrCodeEnabled: pricingPlans.qrCodeEnabled,
-          whiteLabelEnabled: pricingPlans.whiteLabelEnabled,
-          menuBuilderEnabled: pricingPlans.menuBuilderEnabled,
-          customTemplatesEnabled: pricingPlans.customTemplatesEnabled,
-          themeCategories: pricingPlans.themeCategories,
-        })
+        .select(planSelection)
         .from(userSubscriptions)
         .innerJoin(pricingPlans, eq(userSubscriptions.planId, pricingPlans.id))
         .where(and(eq(userSubscriptions.userId, teamRow[0].ownerId), eq(userSubscriptions.status, "active")))
         .limit(1);
       if (ownerSubs.length > 0) {
-        ownerAnalytics = ownerSubs[0].analyticsEnabled ?? false;
-        ownerQrCode = ownerSubs[0].qrCodeEnabled ?? false;
-        ownerWhiteLabel = ownerSubs[0].whiteLabelEnabled ?? false;
-        ownerMenuBuilder = ownerSubs[0].menuBuilderEnabled ?? false;
-        ownerCustomTemplates = ownerSubs[0].customTemplatesEnabled ?? false;
-        ownerThemeCategories = (ownerSubs[0].themeCategories as string[]) ?? null;
+        ownerPlanLimits = ownerSubs[0];
       }
     }
   }
 
-  const limits = plan || freePlanConfig || FREE_LIMITS;
+  // If team member has owner's plan, use owner's limits entirely
+  const effectiveLimits = ownerPlanLimits || plan || freePlanConfig || FREE_LIMITS;
 
   // Get all current usage counts in parallel
   const [linksResult, pagesResult, blocksResult, socialsResult, menuSocialsResult] = await Promise.all([
@@ -196,27 +180,27 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
   } catch { /* no team */ }
 
   const result: PlanLimits = {
-    planName: plan?.planName ?? freePlanConfig?.planName ?? null,
-    maxLinks: limits.maxLinks,
-    maxPages: limits.maxPages,
-    maxTeamMembers: limits.maxTeamMembers,
-    maxBlocks: limits.maxBlocks ?? FREE_LIMITS.maxBlocks,
-    maxSocials: limits.maxSocials ?? FREE_LIMITS.maxSocials,
-    qrCodeEnabled: (limits.qrCodeEnabled ?? FREE_LIMITS.qrCodeEnabled) || ownerQrCode,
-    analyticsEnabled: (limits.analyticsEnabled ?? FREE_LIMITS.analyticsEnabled) || ownerAnalytics,
-    customTemplatesEnabled: (limits.customTemplatesEnabled ?? FREE_LIMITS.customTemplatesEnabled) || ownerCustomTemplates,
-    menuBuilderEnabled: (limits.menuBuilderEnabled ?? FREE_LIMITS.menuBuilderEnabled) || ownerMenuBuilder,
-    whiteLabelEnabled: (limits.whiteLabelEnabled ?? FREE_LIMITS.whiteLabelEnabled) || ownerWhiteLabel,
-    themeCategories: ownerThemeCategories || (((limits as any)?.themeCategories) ?? FREE_LIMITS.themeCategories) as string[],
+    planName: ownerPlanLimits?.planName ?? plan?.planName ?? freePlanConfig?.planName ?? null,
+    maxLinks: effectiveLimits.maxLinks,
+    maxPages: effectiveLimits.maxPages,
+    maxTeamMembers: effectiveLimits.maxTeamMembers,
+    maxBlocks: effectiveLimits.maxBlocks ?? FREE_LIMITS.maxBlocks,
+    maxSocials: effectiveLimits.maxSocials ?? FREE_LIMITS.maxSocials,
+    qrCodeEnabled: effectiveLimits.qrCodeEnabled ?? FREE_LIMITS.qrCodeEnabled,
+    analyticsEnabled: effectiveLimits.analyticsEnabled ?? FREE_LIMITS.analyticsEnabled,
+    customTemplatesEnabled: effectiveLimits.customTemplatesEnabled ?? FREE_LIMITS.customTemplatesEnabled,
+    menuBuilderEnabled: effectiveLimits.menuBuilderEnabled ?? FREE_LIMITS.menuBuilderEnabled,
+    whiteLabelEnabled: effectiveLimits.whiteLabelEnabled ?? FREE_LIMITS.whiteLabelEnabled,
+    themeCategories: ((effectiveLimits as any)?.themeCategories ?? FREE_LIMITS.themeCategories) as string[],
     currentLinks: Number(linksResult[0]?.count ?? 0),
     currentPages: Number(pagesResult[0]?.count ?? 0),
     currentBlocks: Number(blocksResult[0]?.count ?? 0),
     currentSocials: Number(socialsResult[0]?.count ?? 0) + Number(menuSocialsResult[0]?.count ?? 0),
     currentTeamMembers: teamMembersCount,
-    hasActivePlan,
-    isTrial,
-    trialEndsAt: trialEndsAt ? new Date(trialEndsAt).toISOString() : null,
-    trialExpired,
+    hasActivePlan: !!ownerPlanLimits || hasActivePlan,
+    isTrial: ownerPlanLimits ? (ownerPlanLimits as any).isTrial ?? false : isTrial,
+    trialEndsAt: ownerPlanLimits ? ((ownerPlanLimits as any).trialEndsAt ? new Date((ownerPlanLimits as any).trialEndsAt).toISOString() : null) : (trialEndsAt ? new Date(trialEndsAt).toISOString() : null),
+    trialExpired: ownerPlanLimits ? false : trialExpired,
   };
 
   // Cache the result
