@@ -79,6 +79,19 @@ function PageNav({ pages, currentPage, setActivePageSlug, template }: {
     }
   }, [mobileOpen]);
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const close = () => setMobileOpen(false);
+    window.addEventListener("scroll", close, { passive: true, capture: true });
+    window.addEventListener("wheel", close, { passive: true, capture: true });
+    window.addEventListener("touchmove", close, { passive: true, capture: true });
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("wheel", close, true);
+      window.removeEventListener("touchmove", close, true);
+    };
+  }, [mobileOpen]);
+
   return (
     <>
       <div className="hidden sm:flex items-center gap-2 mt-5 flex-wrap justify-center" data-testid="page-nav">

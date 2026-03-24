@@ -2,9 +2,46 @@ import * as React from "react"
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
 import { Check, ChevronRight, Circle } from "lucide-react"
 
+import { useCloseOnScroll } from "@/hooks/use-close-on-scroll"
 import { cn } from "@/lib/utils"
 
-const DropdownMenu = DropdownMenuPrimitive.Root
+type DropdownMenuRootProps = React.ComponentPropsWithoutRef<
+  typeof DropdownMenuPrimitive.Root
+>
+
+const DropdownMenu = ({
+  open,
+  defaultOpen,
+  onOpenChange,
+  children,
+  ...props
+}: DropdownMenuRootProps) => {
+  const isControlled = open !== undefined
+  const [internalOpen, setInternalOpen] = React.useState(defaultOpen ?? false)
+  const currentOpen = isControlled ? open : internalOpen
+
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (!isControlled) {
+        setInternalOpen(nextOpen)
+      }
+      onOpenChange?.(nextOpen)
+    },
+    [isControlled, onOpenChange]
+  )
+
+  useCloseOnScroll(currentOpen, () => handleOpenChange(false))
+
+  return (
+    <DropdownMenuPrimitive.Root
+      {...props}
+      open={currentOpen}
+      onOpenChange={handleOpenChange}
+    >
+      {children}
+    </DropdownMenuPrimitive.Root>
+  )
+}
 
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger
 

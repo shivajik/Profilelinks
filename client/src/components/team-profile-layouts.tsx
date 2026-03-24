@@ -514,6 +514,19 @@ function PageNavSection({ pages, currentPage, setActivePageSlug, template, activ
     }
   }, [mobileOpen]);
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const close = () => setMobileOpen(false);
+    window.addEventListener("scroll", close, { passive: true, capture: true });
+    window.addEventListener("wheel", close, { passive: true, capture: true });
+    window.addEventListener("touchmove", close, { passive: true, capture: true });
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("wheel", close, true);
+      window.removeEventListener("touchmove", close, true);
+    };
+  }, [mobileOpen]);
+
   const getIsActive = (page: PageInfo) => {
     if (page.slug === "__services__" || page.slug === "__products__") {
       return activePageSlug === page.slug;

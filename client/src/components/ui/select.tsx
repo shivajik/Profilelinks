@@ -4,9 +4,44 @@ import * as React from "react"
 import * as SelectPrimitive from "@radix-ui/react-select"
 import { Check, ChevronDown, ChevronUp } from "lucide-react"
 
+import { useCloseOnScroll } from "@/hooks/use-close-on-scroll"
 import { cn } from "@/lib/utils"
 
-const Select = SelectPrimitive.Root
+type SelectRootProps = React.ComponentPropsWithoutRef<typeof SelectPrimitive.Root>
+
+const Select = ({
+  open,
+  defaultOpen,
+  onOpenChange,
+  children,
+  ...props
+}: SelectRootProps) => {
+  const isControlled = open !== undefined
+  const [internalOpen, setInternalOpen] = React.useState(defaultOpen ?? false)
+  const currentOpen = isControlled ? open : internalOpen
+
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (!isControlled) {
+        setInternalOpen(nextOpen)
+      }
+      onOpenChange?.(nextOpen)
+    },
+    [isControlled, onOpenChange]
+  )
+
+  useCloseOnScroll(currentOpen, () => handleOpenChange(false))
+
+  return (
+    <SelectPrimitive.Root
+      {...props}
+      open={currentOpen}
+      onOpenChange={handleOpenChange}
+    >
+      {children}
+    </SelectPrimitive.Root>
+  )
+}
 
 const SelectGroup = SelectPrimitive.Group
 
