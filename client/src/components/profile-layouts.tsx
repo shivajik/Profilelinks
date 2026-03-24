@@ -279,7 +279,7 @@ function ClassicLayout(props: PersonalLayoutProps) {
         <p className={`text-sm mb-2 ${template.textColor} opacity-70`} data-testid="text-profile-username">@{user.username}</p>
         {user.bio && <p className={`text-sm max-w-sm leading-relaxed ${template.textColor} opacity-80`} data-testid="text-profile-bio">{user.bio}</p>}
         <SocialRow socials={activeSocials} template={template} normalizeUrl={normalizeUrl} className="justify-center mt-4" useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
-        {hasMultiplePages && <PageNav pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} />}
+        {pages.length > 0 && <PageNav pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} />}
       </div>
       <ContentBlocks {...props} />
     </>
@@ -313,7 +313,7 @@ function ModernLayout(props: PersonalLayoutProps) {
               <SocialRow socials={activeSocials} template={template} normalizeUrl={normalizeUrl} className="mt-3" useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
             </div>
           </div>
-          {hasMultiplePages && (
+          {pages.length > 0 && (
             <div className="flex justify-center mt-4 pt-4 border-t" style={{ borderColor: template.accent + "15" }}>
               <PageNav pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} />
             </div>
@@ -354,7 +354,7 @@ function BoldLayout(props: PersonalLayoutProps) {
           <p className={`text-sm mb-3 ${template.textColor} opacity-60`} data-testid="text-profile-username">@{user.username}</p>
           {user.bio && <p className={`text-sm max-w-md mx-auto leading-relaxed ${template.textColor} opacity-75`} data-testid="text-profile-bio">{user.bio}</p>}
           <SocialRow socials={activeSocials} template={template} normalizeUrl={normalizeUrl} className="justify-center mt-4" useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
-          {hasMultiplePages && <PageNav pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} />}
+          {pages.length > 0 && <PageNav pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} />}
         </div>
       </div>
       <ContentBlocks {...props} />
@@ -395,7 +395,7 @@ function ElegantLayout(props: PersonalLayoutProps) {
             </div>
           </div>
         </div>
-        {hasMultiplePages && (
+        {pages.length > 0 && (
           <div className="flex justify-center mt-5">
             <PageNav pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} />
           </div>
@@ -435,7 +435,7 @@ function HeroLayout(props: PersonalLayoutProps) {
               {user.bio && <p className={`text-sm mt-2 max-w-xs leading-relaxed ${template.cardTextColor} opacity-75`} data-testid="text-profile-bio">{user.bio}</p>}
               <SocialRow socials={activeSocials} template={template} normalizeUrl={normalizeUrl} className="justify-center mt-3" useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
             </div>
-            {hasMultiplePages && (
+            {pages.length > 0 && (
               <div className="flex justify-center pt-3 border-t border-white/10">
                 <PageNav pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} />
               </div>

@@ -246,7 +246,7 @@ export default function PublicProfile(props?: any) {
   const dynamicPages = [...pages];
   if (showServices) dynamicPages.push({ id: "__services__", title: "Services", slug: "__services__", isHome: false });
   if (showProducts) dynamicPages.push({ id: "__products__", title: "Products", slug: "__products__", isHome: false });
-  const hasMultiplePages = dynamicPages.length > 1;
+  const hasMultiplePages = dynamicPages.length > 0;
   const hasBlocks = activeBlocks.length > 0;
 
   const profileUrl = typeof window !== "undefined" ? `${window.location.origin}/${username}` : `/${username}`;

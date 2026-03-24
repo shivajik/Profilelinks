@@ -615,7 +615,20 @@ export default function Dashboard() {
         </Sidebar>
 
         <div className="flex-1 flex flex-col min-w-0">
-          <div className="flex-1 flex overflow-hidden">
+          {/* Task 2: Trial expired banner — shown across all dashboard sections */}
+          {planLimits?.trialExpired && (
+            <div className="border-b border-destructive/40 bg-destructive/5 px-4 py-2.5 flex items-center gap-3 shrink-0">
+              <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-semibold text-destructive">Your plan has ended</span>
+                <span className="text-xs text-muted-foreground ml-2 hidden sm:inline">Upgrade to continue using premium features and unlock your full profile.</span>
+              </div>
+              <Button size="sm" variant="destructive" className="shrink-0 h-7 text-xs" onClick={() => setActiveSection("billing")}>
+                Upgrade Now
+              </Button>
+            </div>
+          )}
+          <div className="flex-1 flex overflow-hidden min-h-0">
              <div className={`overflow-y-auto border-r bg-background w-full ${activeSection === "design" ? "flex-1 md:min-w-[300px] md:max-w-[420px]" : ""} ${activeSection === "menu-setup" ? "shrink-0 md:w-[380px]" : ""} ${["team-members", "team-templates", "contacts", "billing", "usage", "affiliate", "business-profile"].includes(activeSection) ? "flex-1 md:max-w-none" : ""} ${!["design", "menu-setup", "team-members", "team-templates", "contacts", "billing", "usage", "affiliate", "business-profile"].includes(activeSection) ? "flex-1" : ""}`}>
               {activeSection === "billing" && <BillingSection autoSelectPlanId={new URLSearchParams(search).get("planId")} />}
               {activeSection === "business-profile" && <BusinessProfileSection onNavigateToTemplates={isTeamOwnerOrAdmin ? () => setActiveSection("team-templates") : undefined} />}
@@ -1117,19 +1130,6 @@ export default function Dashboard() {
                   </div>
                 </CategorySection>
 
-                {/* Trial Expired upgrade banner */}
-                {planLimits?.trialExpired && (
-                  <div className="border border-destructive/30 bg-destructive/5 rounded-lg p-4 flex items-start gap-3">
-                    <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-destructive">Your trial has ended</p>
-                      <p className="text-xs text-muted-foreground mt-1">Your account has been moved to the Free plan. Upgrade to restore premium features like pages, blocks, analytics, and more.</p>
-                      <Button size="sm" className="mt-3" onClick={() => setActiveSection("billing")}>
-                        Upgrade Now
-                      </Button>
-                    </div>
-                  </div>
-                )}
 
                 {!isTeamMember && (
                 <CategorySection

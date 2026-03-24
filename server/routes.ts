@@ -2520,6 +2520,29 @@ export async function registerRoutes(
         currentPage ? storage.getBlocksByPageId(currentPage.id) : storage.getBlocksByUserId(user.id),
       ]);
 
+      // Task 1: For team members (not the owner), use the team owner's pages and blocks
+      let displayPages = userPages;
+      let displayCurrentPage = currentPage;
+      let displayLinks = userLinks;
+      let displayBlocks = pageBlocks;
+
+      if (teamId && teamData && teamData.ownerId !== user.id) {
+        const ownerPages = await storage.getPagesByUserId(teamData.ownerId);
+        let ownerCurrentPage: typeof ownerPages[0] | null = ownerPages.find((p) => p.isHome) || ownerPages[0] || null;
+        if (pageSlug) {
+          const found = ownerPages.find((p) => p.slug === pageSlug);
+          if (found) ownerCurrentPage = found;
+        }
+        const [ownerLinks, ownerBlocks] = await Promise.all([
+          ownerCurrentPage ? storage.getLinksByPageId(ownerCurrentPage.id) : storage.getLinksByUserId(teamData.ownerId),
+          ownerCurrentPage ? storage.getBlocksByPageId(ownerCurrentPage.id) : storage.getBlocksByUserId(teamData.ownerId),
+        ]);
+        displayPages = ownerPages;
+        displayCurrentPage = ownerCurrentPage;
+        displayLinks = ownerLinks;
+        displayBlocks = ownerBlocks;
+      }
+
       const { password: _, email: __, apiKey: _apiKey, ...publicUser } = user;
       (publicUser as any).emailVerified = user.emailVerified || false;
       (publicUser as any).useOriginalSocialColors = user.useOriginalSocialColors || false;
@@ -2639,13 +2662,13 @@ export async function registerRoutes(
 
       res.json({
         user: publicUser,
-        links: effectivePlan.isFree ? userLinks.slice(0, planLimits.maxLinks) : userLinks,
-        blocks: effectivePlan.isFree ? pageBlocks.slice(0, planLimits.maxBlocks) : pageBlocks,
+        links: effectivePlan.isFree ? displayLinks.slice(0, planLimits.maxLinks) : displayLinks,
+        blocks: effectivePlan.isFree ? displayBlocks.slice(0, planLimits.maxBlocks) : displayBlocks,
         socials: effectivePlan.isFree ? userSocials.slice(0, planLimits.maxSocials) : userSocials,
         pages: effectivePlan.isFree 
-          ? userPages.slice(0, planLimits.maxPages).map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome }))
-          : userPages.map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome })),
-        currentPage: currentPage ? { id: currentPage.id, title: currentPage.title, slug: currentPage.slug, isHome: currentPage.isHome } : null,
+          ? displayPages.slice(0, planLimits.maxPages).map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome }))
+          : displayPages.map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome })),
+        currentPage: displayCurrentPage ? { id: displayCurrentPage.id, title: displayCurrentPage.title, slug: displayCurrentPage.slug, isHome: displayCurrentPage.isHome } : null,
         teamBranding,
         affiliateInfo,
         planRestricted: effectivePlan.isFree,

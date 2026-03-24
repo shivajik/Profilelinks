@@ -808,7 +808,7 @@ function ClassicTeamLayout(props: TeamLayoutProps) {
           {/* <div className="mt-3">
             <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
           </div> */}
-          {hasMultiplePages && <><div className="border-t border-border mt-4 mb-2" /><div className="mt-2"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} /></div></>}
+          {pages.length > 0 && <><div className="border-t border-border mt-4 mb-2" /><div className="mt-2"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} /></div></>}
           <ContentSection {...props} />
         </div>
       </div>
@@ -859,7 +859,7 @@ function ModernTeamLayout(props: TeamLayoutProps) {
           <MeetingLinkSection teamBranding={teamBranding} brandColor={brandColor} />
           <MenuUrlSection teamBranding={teamBranding} brandColor={brandColor} />
           <ContactFormSection teamBranding={teamBranding} brandColor={brandColor} />
-          {hasMultiplePages && <><div className="border-t border-border mt-3 mb-2" /><div className="mt-2"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} /></div></>}
+          {pages.length > 0 && <><div className="border-t border-border mt-3 mb-2" /><div className="mt-2"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} /></div></>}
           <ContentSection {...props} />
         </div>
       </div>
@@ -899,7 +899,7 @@ function ModernTeamLayout(props: TeamLayoutProps) {
           <MeetingLinkSection teamBranding={teamBranding} brandColor={brandColor} />
           <MenuUrlSection teamBranding={teamBranding} brandColor={brandColor} />
           <ContactFormSection teamBranding={teamBranding} brandColor={brandColor} />
-            {hasMultiplePages && <><div className="border-t border-border mt-4 mb-2" /><div className="mt-2"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} /></div></>}
+            {pages.length > 0 && <><div className="border-t border-border mt-4 mb-2" /><div className="mt-2"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} /></div></>}
             <ContentSection {...props} />
           </div>
         </div>
@@ -956,7 +956,7 @@ function BoldTeamLayout(props: TeamLayoutProps) {
           {/* <div className="mt-3">
             <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
           </div> */}
-          {hasMultiplePages && <><div className="border-t border-border mt-4 mb-2" /><div className="mt-2"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} /></div></>}
+          {pages.length > 0 && <><div className="border-t border-border mt-4 mb-2" /><div className="mt-2"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} /></div></>}
           <ContentSection {...props} />
         </div>
       </div>
@@ -999,7 +999,7 @@ function ElegantTeamLayout(props: TeamLayoutProps) {
           <MeetingLinkSection teamBranding={teamBranding} brandColor={brandColor} />
           <MenuUrlSection teamBranding={teamBranding} brandColor={brandColor} />
           <ContactFormSection teamBranding={teamBranding} brandColor={brandColor} />
-          {hasMultiplePages && <><div className="border-t border-border mt-4 mb-2" /><div className="mt-2"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} /></div></>}
+          {pages.length > 0 && <><div className="border-t border-border mt-4 mb-2" /><div className="mt-2"><PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} /></div></>}
           <ContentSection {...props} />
         </div>
       </div>
@@ -1043,7 +1043,7 @@ function HeroTeamLayout(props: TeamLayoutProps) {
           {/* <div className="mt-3 flex justify-center">
             <SocialRows activeSocials={activeSocials} normalizeUrl={normalizeUrl} useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
           </div> */}
-          {hasMultiplePages && (
+          {pages.length > 0 && (
             <div className="mt-4 pt-3 border-t border-border/50">
               <PageNavSection pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} activePageSlug={activePageSlug} />
             </div>
