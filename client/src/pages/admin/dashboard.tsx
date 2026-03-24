@@ -2885,6 +2885,7 @@ function RazorpaySettingsSection({ admin }: { admin: { name: string; email: stri
         <TrackingSettings />
         <CleanSignupsSettings />
         <SendGridSettings />
+        <TrialEmailsCard />
 
         <Card>
           <CardHeader className="pb-3">
@@ -3404,6 +3405,45 @@ function SendGridSettings() {
             </Button>
           )}
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Trial Emails Card ──────────────────────────────────────────────────────
+function TrialEmailsCard() {
+  const { toast } = useToast();
+  const [processing, setProcessing] = useState(false);
+
+  const handleTrigger = async () => {
+    setProcessing(true);
+    try {
+      const r = await fetch("/api/admin/trigger-trial-emails", { method: "POST" });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.message);
+      toast({ title: "Trial emails processed", description: "Emails have been sent to eligible users (no duplicates)." });
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    }
+    setProcessing(false);
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Send className="w-4 h-4" />
+          Trial Email Notifications
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Manually trigger trial email processing. This checks all trial users and sends appropriate emails (halfway reminder, expired notice, or discount offer). Each email type is only sent once per user — no duplicates.
+        </p>
+        <Button onClick={handleTrigger} disabled={processing} size="sm">
+          {processing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+          {processing ? "Processing..." : "Process Trial Emails"}
+        </Button>
       </CardContent>
     </Card>
   );

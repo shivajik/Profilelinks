@@ -1117,6 +1117,21 @@ export default function Dashboard() {
                   </div>
                 </CategorySection>
 
+                {/* Trial Expired upgrade banner */}
+                {planLimits?.trialExpired && (
+                  <div className="border border-destructive/30 bg-destructive/5 rounded-lg p-4 flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-destructive">Your trial has ended</p>
+                      <p className="text-xs text-muted-foreground mt-1">Your account has been moved to the Free plan. Upgrade to restore premium features like pages, blocks, analytics, and more.</p>
+                      <Button size="sm" className="mt-3" onClick={() => setActiveSection("billing")}>
+                        Upgrade Now
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {!isTeamMember && (
                 <CategorySection
                   id="page"
                   label="Page:"
@@ -1177,7 +1192,9 @@ export default function Dashboard() {
                     )}
                   </div>
                 </CategorySection>
+                )}
 
+                {!isTeamMember && (
                 <CategorySection
                   id="blocks"
                   label="Blocks"
@@ -1236,6 +1253,7 @@ export default function Dashboard() {
                     )}
                   </div>
                 </CategorySection>
+                )}
               </div>
               )}
               {activeSection === "settings" && (

@@ -1186,4 +1186,16 @@ router.get("/api/settings/tracking", async (req: Request, res: Response) => {
   }
 });
 
+// ─── Trigger Trial Emails ────────────────────────────────────────────────────
+router.post("/api/admin/trigger-trial-emails", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const { processTrialEmails } = await import("./trial-emails");
+    await processTrialEmails();
+    res.json({ message: "Trial emails processed successfully" });
+  } catch (error: any) {
+    console.error("Trial emails trigger error:", error);
+    res.status(500).json({ message: "Failed to process trial emails" });
+  }
+});
+
 export default router;
