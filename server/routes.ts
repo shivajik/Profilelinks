@@ -1245,21 +1245,16 @@ export async function registerRoutes(
         return res.json(updated);
       }
 
-      // Handle deactivation: remove team association but keep the member record
-      if (result.data.status === "deactivated") {
-        const members = await storage.getTeamMembers(req.params.teamId as string);
-        const targetMember = members.find(m => m.id === req.params.id);
-        if (targetMember && targetMember.role !== "owner") {
-          // Remove team association so user can use individual account
-          await storage.updateUser(targetMember.userId, { teamId: null, accountType: "personal" });
-        }
-      }
-      // Handle reactivation: restore team association
-      if (result.data.status === "activated") {
+      // Handle deactivation/reactivation: fetch members once for both checks
+      if (result.data.status === "deactivated" || result.data.status === "activated") {
         const members = await storage.getTeamMembers(req.params.teamId as string);
         const targetMember = members.find(m => m.id === req.params.id);
         if (targetMember) {
-          await storage.updateUser(targetMember.userId, { teamId: req.params.teamId as string, accountType: "team" });
+          if (result.data.status === "deactivated" && targetMember.role !== "owner") {
+            await storage.updateUser(targetMember.userId, { teamId: null, accountType: "personal" });
+          } else if (result.data.status === "activated") {
+            await storage.updateUser(targetMember.userId, { teamId: req.params.teamId as string, accountType: "team" });
+          }
         }
       }
 
@@ -2019,20 +2014,24 @@ export async function registerRoutes(
     }
   });
 
-  // ── Public Services/Products endpoints ──────────────────────────────────
-  app.get("/api/public/:slug/services", async (req, res) => {
+  // ── Public Services/Products endpoints (shared handler) ──────────────────
+  async function handlePublicTeamItems(req: Request, res: Response, type: "services" | "products") {
     try {
       const team = await db.select().from(teams).where(eq(teams.slug, req.params.slug as string)).then(r => r[0]);
       if (!team) return res.status(404).json({ message: "Not found" });
-      const rows = await db.select().from(teamServices).where(eq(teamServices.teamId, team.id)).orderBy(teamServices.position);
+
+      const table = type === "services" ? teamServices : teamProducts;
+      const rows = await db.select().from(table).where(eq(table.teamId, team.id)).orderBy(table.position);
       const activeRows = rows.filter(r => r.active);
-      
-      const tTemplates = await db.select().from(teamTemplates).where(eq(teamTemplates.teamId, team.id));
+
+      const [tTemplates, owner] = await Promise.all([
+        db.select().from(teamTemplates).where(eq(teamTemplates.teamId, team.id)),
+        storage.getUser(team.ownerId),
+      ]);
       const defaultTemplate = tTemplates.find((t: any) => t.isDefault) || tTemplates[0];
 
-      // Get owner info for profile display
-      const owner = await storage.getUser(team.ownerId);
-      const showProfile = owner?.showCompanyOnServices ?? true;
+      const showField = type === "services" ? "showCompanyOnServices" : "showCompanyOnProducts";
+      const showProfile = (owner as any)?.[showField] ?? true;
       let profileInfo: any = null;
       if (showProfile && owner) {
         const ownerSocials = await db.select().from(socials).where(eq(socials.userId, owner.id));
@@ -2053,52 +2052,15 @@ export async function registerRoutes(
           if (aff && aff.isActive) affiliateInfo = { isAffiliate: true, referralCode: aff.referralCode };
         }
       } catch (_) {}
-      
+
       res.json({ team, items: activeRows, template: defaultTemplate?.templateData || {}, showProfile, profileInfo, affiliateInfo });
     } catch (error: any) {
       res.status(500).json({ message: "Failed" });
     }
-  });
+  }
 
-  app.get("/api/public/:slug/products", async (req, res) => {
-    try {
-      const team = await db.select().from(teams).where(eq(teams.slug, req.params.slug as string)).then(r => r[0]);
-      if (!team) return res.status(404).json({ message: "Not found" });
-      const rows = await db.select().from(teamProducts).where(eq(teamProducts.teamId, team.id)).orderBy(teamProducts.position);
-      const activeRows = rows.filter(r => r.active);
-      
-      const tTemplates = await db.select().from(teamTemplates).where(eq(teamTemplates.teamId, team.id));
-      const defaultTemplate = tTemplates.find((t: any) => t.isDefault) || tTemplates[0];
-
-      // Get owner info for profile display
-      const owner = await storage.getUser(team.ownerId);
-      const showProfile = owner?.showCompanyOnProducts ?? true;
-      let profileInfo: any = null;
-      if (showProfile && owner) {
-        const ownerSocials = await db.select().from(socials).where(eq(socials.userId, owner.id));
-        profileInfo = {
-          description: (defaultTemplate?.templateData as any)?.description || "",
-          phone: owner.businessPhone,
-          email: owner.contactFormEmail || owner.email,
-          website: (defaultTemplate?.templateData as any)?.website,
-          address: (defaultTemplate?.templateData as any)?.address,
-          socials: ownerSocials.map(s => ({ platform: s.platform, url: s.url })),
-        };
-      }
-
-      let affiliateInfo: { isAffiliate: boolean; referralCode?: string } = { isAffiliate: false };
-      try {
-        if (owner) {
-          const [aff] = await db.select().from(affiliates).where(eq(affiliates.userId, owner.id));
-          if (aff && aff.isActive) affiliateInfo = { isAffiliate: true, referralCode: aff.referralCode };
-        }
-      } catch (_) {}
-      
-      res.json({ team, items: activeRows, template: defaultTemplate?.templateData || {}, showProfile, profileInfo, affiliateInfo });
-    } catch (error: any) {
-      res.status(500).json({ message: "Failed" });
-    }
-  });
+  app.get("/api/public/:slug/services", (req, res) => handlePublicTeamItems(req, res, "services"));
+  app.get("/api/public/:slug/products", (req, res) => handlePublicTeamItems(req, res, "products"));
 
   // ── CSV Bulk Invite ──────────────────────────────────────────────────────
   app.post("/api/teams/:teamId/members/bulk-invite", requireAuth, async (req, res) => {
@@ -2475,6 +2437,7 @@ export async function registerRoutes(
       }
 
       // Check plan limits for team owner and filter premium features
+      const ownerPlanLimits = await getUserPlanLimits(team.ownerId);
       const { getEffectivePlanForPublicProfile } = await import("./plan-limits");
       const effectivePlan = await getEffectivePlanForPublicProfile(team.ownerId);
 
@@ -2486,11 +2449,11 @@ export async function registerRoutes(
 
       res.json({
         user: publicUser,
-        links: effectivePlan.isFree ? userLinks.slice(0, 5) : userLinks,
-        blocks: effectivePlan.isFree ? pageBlocks.slice(0, 10) : pageBlocks,
-        socials: effectivePlan.isFree ? userSocials.slice(0, 3) : userSocials,
+        links: effectivePlan.isFree ? userLinks.slice(0, ownerPlanLimits.maxLinks) : userLinks,
+        blocks: effectivePlan.isFree ? pageBlocks.slice(0, ownerPlanLimits.maxBlocks) : pageBlocks,
+        socials: effectivePlan.isFree ? userSocials.slice(0, ownerPlanLimits.maxSocials) : userSocials,
         pages: effectivePlan.isFree
-          ? userPages.slice(0, 1).map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome }))
+          ? userPages.slice(0, ownerPlanLimits.maxPages).map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome }))
           : userPages.map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome })),
         currentPage: currentPage ? { id: currentPage.id, title: currentPage.title, slug: currentPage.slug, isHome: currentPage.isHome } : null,
         teamBranding,
@@ -2645,12 +2608,13 @@ export async function registerRoutes(
       }
 
       // Check plan limits and filter premium features for free/expired trial users
-      const { getEffectivePlanForPublicProfile } = await import("./plan-limits");
       // Determine the effective owner: for team members, use the team owner's plan
       let effectiveOwnerId = user.id;
       if (teamId && teamData) {
         effectiveOwnerId = teamData.ownerId;
       }
+      const planLimits = await getUserPlanLimits(effectiveOwnerId);
+      const { getEffectivePlanForPublicProfile } = await import("./plan-limits");
       const effectivePlan = await getEffectivePlanForPublicProfile(effectiveOwnerId);
 
       if (effectivePlan.isFree) {
@@ -2667,11 +2631,11 @@ export async function registerRoutes(
 
       res.json({
         user: publicUser,
-        links: effectivePlan.isFree ? userLinks.slice(0, 5) : userLinks,
-        blocks: effectivePlan.isFree ? pageBlocks.slice(0, 10) : pageBlocks,
-        socials: effectivePlan.isFree ? userSocials.slice(0, 3) : userSocials,
+        links: effectivePlan.isFree ? userLinks.slice(0, planLimits.maxLinks) : userLinks,
+        blocks: effectivePlan.isFree ? pageBlocks.slice(0, planLimits.maxBlocks) : pageBlocks,
+        socials: effectivePlan.isFree ? userSocials.slice(0, planLimits.maxSocials) : userSocials,
         pages: effectivePlan.isFree 
-          ? userPages.slice(0, 1).map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome }))
+          ? userPages.slice(0, planLimits.maxPages).map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome }))
           : userPages.map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome })),
         currentPage: currentPage ? { id: currentPage.id, title: currentPage.title, slug: currentPage.slug, isHome: currentPage.isHome } : null,
         teamBranding,
@@ -3335,8 +3299,10 @@ export async function registerRoutes(
       // Get team branding if applicable
       let teamBranding: any = null;
       if (user.accountType === "team" && user.teamId) {
-        const team = await storage.getTeam(user.teamId);
-        const templates = await storage.getTeamTemplates(user.teamId);
+        const [team, templates] = await Promise.all([
+          storage.getTeam(user.teamId),
+          storage.getTeamTemplates(user.teamId),
+        ]);
         const defaultTemplate = templates.find(t => t.isDefault) || templates[0];
         const tData: any = defaultTemplate?.templateData || {};
         teamBranding = {
@@ -3519,8 +3485,8 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/google-wallet/status", (_req, res) => {
-    const { isGoogleWalletConfigured } = require("./google-wallet");
+  app.get("/api/google-wallet/status", async (_req, res) => {
+    const { isGoogleWalletConfigured } = await import("./google-wallet");
     res.json({ configured: isGoogleWalletConfigured() });
   });
 
