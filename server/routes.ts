@@ -478,11 +478,16 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Your account has been disabled. Please contact support." });
       }
 
-      // Check if user is a team member whose owner's trial expired
+      // Fetch memberships once and reuse for both checks
+      let memberships: Awaited<ReturnType<typeof storage.getTeamMembershipsByUserId>> = [];
       try {
-        const memberships = await storage.getTeamMembershipsByUserId(user.id);
-        const activeMembership = memberships.find(m => m.status === "activated" && m.role !== "owner");
-        if (activeMembership) {
+        memberships = await storage.getTeamMembershipsByUserId(user.id);
+      } catch (_) { /* non-critical */ }
+
+      // Check if user is a team member whose owner's trial expired
+      const activeMembership = memberships.find(m => m.status === "activated" && m.role !== "owner");
+      if (activeMembership) {
+        try {
           const teamRow = await db.select({ ownerId: teams.ownerId }).from(teams).where(eq(teams.id, activeMembership.teamId)).limit(1);
           if (teamRow.length > 0) {
             const ownerLimits = await getUserPlanLimits(teamRow[0].ownerId);
@@ -490,14 +495,13 @@ export async function registerRoutes(
               return res.status(403).json({ message: "Your account has been disabled. Please contact your team administrator." });
             }
           }
-        }
-      } catch (_) { /* non-critical */ }
+        } catch (_) { /* non-critical */ }
+      }
 
       await storage.ensureHomePage(user.id);
 
       // Activate pending team memberships on first login
       try {
-        const memberships = await storage.getTeamMembershipsByUserId(user.id);
         for (const m of memberships) {
           if (m.status === "pending") {
             await storage.updateTeamMember(m.id, m.teamId, { status: "activated" });
