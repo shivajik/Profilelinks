@@ -1500,6 +1500,7 @@ export default function Dashboard() {
                   onSelectTemplate={(id) => templateMutation.mutate(id)}
                   saving={templateMutation.isPending}
                   disabled={false}
+                  isTeamMember={!!isTeamMember && !isTeamOwner}
                 />
               </div>
             )}
@@ -3315,11 +3316,13 @@ function DesignPanel({
   onSelectTemplate,
   saving,
   disabled = false,
+  isTeamMember = false,
 }: {
   currentTemplateId: string;
   onSelectTemplate: (id: string) => void;
   saving: boolean;
   disabled?: boolean;
+  isTeamMember?: boolean;
 }) {
   const currentTemplate = getTemplate(currentTemplateId);
   const { data: designPlanLimits } = usePlanLimits();
@@ -3358,6 +3361,33 @@ function DesignPanel({
 
       <div className="border-t pt-4">
         <h3 className="text-sm font-semibold mb-3">Theme</h3>
+        {isTeamMember ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
+              <Lock className="w-4 h-4 text-muted-foreground shrink-0" />
+              <div>
+                <p className="text-sm font-medium">Managed by team owner</p>
+                <p className="text-xs text-muted-foreground">Your theme is inherited from your organization's template settings.</p>
+              </div>
+            </div>
+            {(() => {
+              const ct = getTemplate(currentTemplateId);
+              const layoutLabel = LAYOUT_LABELS[ct.layout as LayoutType] || "Classic";
+              return (
+                <div className={`relative rounded-md overflow-hidden aspect-[3/4] p-2 flex flex-col items-center justify-center text-center border-2 border-primary ring-1 ring-primary/20 mx-auto max-w-[100px] ${ct.bg}`}>
+                  <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                    <Check className="w-2.5 h-2.5" />
+                  </div>
+                  <div className="absolute top-1 left-1">
+                    <span className="text-[7px] font-bold px-1.5 py-0.5 rounded-full bg-black/30 text-white backdrop-blur-sm">{layoutLabel}</span>
+                  </div>
+                  <div className={`w-5 h-5 rounded-full bg-white/20 mb-1.5`} />
+                  <span className={`text-[9px] font-semibold ${ct.textColor}`}>{ct.name}</span>
+                </div>
+              );
+            })()}
+          </div>
+        ) : (
         <div className="grid grid-cols-3 gap-2">
           {TEMPLATES.filter((t) => allowedThemeCategories.includes(t.category)).map((t) => {
             const layoutLabel = LAYOUT_LABELS[t.layout as LayoutType] || "Classic";
@@ -3393,7 +3423,6 @@ function DesignPanel({
                   </>
                 ) : t.layout === "modern" ? (
                   <>
-                    {/* Split-panel card thumbnail */}
                     <div className="w-full rounded-md overflow-hidden mb-1" style={{ border: `1px solid ${t.accent}25` }}>
                       <div className="flex h-10">
                         <div className={`w-2/5 flex flex-col items-center justify-center gap-0.5 ${t.cardBg} relative`}>
@@ -3452,6 +3481,7 @@ function DesignPanel({
             );
           })}
         </div>
+        )}
       </div>
 
       <div className="border-t pt-4">
@@ -5516,11 +5546,18 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
           <DialogHeader>
             <DialogTitle>{inviteLink ? "Invite Link Created" : "Invite Team Member"}</DialogTitle>
             <DialogDescription id="invite-member-desc">
-              {inviteLink ? "Share this link with your team member so they can create their account and join." : "Create an invite link for a team member to self-register."}
+              {inviteLink ? "An invitation email has been sent to the team member. They can also use the link below to set up their password and join your team." : "Create an invite link for a team member to self-register."}
             </DialogDescription>
           </DialogHeader>
           {inviteLink ? (
             <div className="space-y-3">
+              <div className="rounded-md border border-green-200 bg-green-50 p-3 flex items-start gap-2">
+                <Mail className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-green-800">Invitation email sent!</p>
+                  <p className="text-xs text-green-600">The team member will receive an email with instructions to set up their password and join your team.</p>
+                </div>
+              </div>
               <div className="rounded-md border p-3">
                 <p className="text-xs text-muted-foreground mb-1">Invite Link</p>
                 <p className="text-sm font-mono break-all" data-testid="text-invite-link">{inviteLink}</p>
