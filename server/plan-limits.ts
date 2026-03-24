@@ -86,7 +86,7 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
   let trialExpired = false;
   let freePlanConfig: (typeof subs)[number] | null = null;
 
-  // Check if trial has expired
+  // Check if active trial has just expired
   if (plan && isTrial && trialEndsAt && new Date(trialEndsAt) < new Date()) {
     trialExpired = true;
     // Mark subscription as expired in DB (fire-and-forget)
@@ -94,9 +94,29 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
       .set({ status: "expired", updatedAt: new Date() })
       .where(and(eq(userSubscriptions.userId, userId), eq(userSubscriptions.status, "active"), eq(userSubscriptions.isTrial, true)))
       .catch(() => {});
+    // Clear cache so subsequent requests re-check the DB
+    planLimitsCache.delete(userId);
     // Treat as no plan
     plan = undefined as any;
     hasActivePlan = false;
+  }
+
+  // If no active plan, check whether the user previously had a trial that is now expired (status = 'expired')
+  // This ensures trialExpired stays true even after the subscription row is updated to 'expired'
+  if (!plan && !trialExpired) {
+    const expiredTrials = await db
+      .select({ trialEndsAt: userSubscriptions.trialEndsAt })
+      .from(userSubscriptions)
+      .where(and(
+        eq(userSubscriptions.userId, userId),
+        eq(userSubscriptions.status, "expired"),
+        eq(userSubscriptions.isTrial, true),
+      ))
+      .limit(1);
+    if (expiredTrials.length > 0) {
+      trialExpired = true;
+      trialEndsAt = expiredTrials[0].trialEndsAt ?? null;
+    }
   }
 
   if (!plan) {
