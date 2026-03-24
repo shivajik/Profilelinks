@@ -21,7 +21,7 @@ function getNodemailerTransporter(): nodemailer.Transporter {
   return transporter;
 }
 
-async function sendEmailViaNodemailer(opts: {
+export async function sendEmailViaNodemailer(opts: {
   to: string;
   subject: string;
   html: string;

@@ -542,8 +542,17 @@ export default function Dashboard() {
                   {isTeamAdmin ? "Team Admin" : "Team Member"}
                 </Badge>
               ) : (
-                <div className="flex items-center gap-1 flex-wrap">
-                  <Badge variant="secondary" className="text-[10px] w-fit capitalize">{planLimits?.planName || "Free"}</Badge>
+              <div className="flex items-center gap-1 flex-wrap">
+                  {planLimits?.isTrial ? (
+                    <Badge className="text-[10px] w-fit bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100">
+                      ⏳ Trial {planLimits?.planName || "Enterprise"}
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-[10px] w-fit capitalize">{planLimits?.planName || "Free"}</Badge>
+                  )}
+                  {planLimits?.trialExpired && (
+                    <Badge variant="destructive" className="text-[10px] w-fit">Trial Expired</Badge>
+                  )}
                   {(user as any).isLtd && planLimits?.hasActivePlan && (
                     <Badge className="text-[10px] w-fit bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100">Lifetime</Badge>
                   )}

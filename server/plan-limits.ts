@@ -21,6 +21,9 @@ export interface PlanLimits {
   currentSocials: number;
   currentTeamMembers: number;
   hasActivePlan: boolean;
+  isTrial: boolean;
+  trialEndsAt: string | null;
+  trialExpired: boolean;
 }
 
 // Default free plan limits (when no subscription)
@@ -65,6 +68,8 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
     menuBuilderEnabled: pricingPlans.menuBuilderEnabled,
     whiteLabelEnabled: pricingPlans.whiteLabelEnabled,
     themeCategories: pricingPlans.themeCategories,
+    isTrial: userSubscriptions.isTrial,
+    trialEndsAt: userSubscriptions.trialEndsAt,
   };
 
   const subs = await db
@@ -76,17 +81,55 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
 
   let plan = subs[0];
   let hasActivePlan = !!plan;
+  let isTrial = plan?.isTrial ?? false;
+  let trialEndsAt = plan?.trialEndsAt ?? null;
+  let trialExpired = false;
   let freePlanConfig: (typeof subs)[number] | null = null;
+
+  // Check if trial has expired
+  if (plan && isTrial && trialEndsAt && new Date(trialEndsAt) < new Date()) {
+    trialExpired = true;
+    // Mark subscription as expired in DB (fire-and-forget)
+    db.update(userSubscriptions)
+      .set({ status: "expired", updatedAt: new Date() })
+      .where(and(eq(userSubscriptions.userId, userId), eq(userSubscriptions.status, "active"), eq(userSubscriptions.isTrial, true)))
+      .catch(() => {});
+    // Treat as no plan
+    plan = undefined as any;
+    hasActivePlan = false;
+  }
 
   if (!plan) {
     const activePlans = await db
       .select(planSelection)
       .from(pricingPlans)
+      .innerJoin(userSubscriptions, sql`false`) // dummy join to match type, won't return rows
       .where(and(eq(pricingPlans.isActive, true), eq(pricingPlans.isLtd, false)));
 
-    freePlanConfig = activePlans.find((candidate) => (
+    // Fallback: query without join for free plan detection
+    const freePlans = await db
+      .select({
+        planName: pricingPlans.name,
+        monthlyPrice: pricingPlans.monthlyPrice,
+        yearlyPrice: pricingPlans.yearlyPrice,
+        maxLinks: pricingPlans.maxLinks,
+        maxPages: pricingPlans.maxPages,
+        maxTeamMembers: pricingPlans.maxTeamMembers,
+        maxBlocks: pricingPlans.maxBlocks,
+        maxSocials: pricingPlans.maxSocials,
+        qrCodeEnabled: pricingPlans.qrCodeEnabled,
+        analyticsEnabled: pricingPlans.analyticsEnabled,
+        customTemplatesEnabled: pricingPlans.customTemplatesEnabled,
+        menuBuilderEnabled: pricingPlans.menuBuilderEnabled,
+        whiteLabelEnabled: pricingPlans.whiteLabelEnabled,
+        themeCategories: pricingPlans.themeCategories,
+      })
+      .from(pricingPlans)
+      .where(and(eq(pricingPlans.isActive, true), eq(pricingPlans.isLtd, false)));
+
+    freePlanConfig = freePlans.find((candidate) => (
       Number(candidate.monthlyPrice ?? 0) === 0 && Number(candidate.yearlyPrice ?? 0) === 0
-    )) ?? null;
+    )) as any ?? null;
   }
 
   // If user has no plan, check if they're a team member and inherit owner's analytics/QR
@@ -163,10 +206,37 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
     currentSocials: Number(socialsResult[0]?.count ?? 0) + Number(menuSocialsResult[0]?.count ?? 0),
     currentTeamMembers: teamMembersCount,
     hasActivePlan,
+    isTrial,
+    trialEndsAt: trialEndsAt ? new Date(trialEndsAt).toISOString() : null,
+    trialExpired,
   };
 
   // Cache the result
   planLimitsCache.set(userId, { data: result, timestamp: Date.now() });
 
   return result;
+}
+
+/**
+ * Get the effective plan limits for a user considering trial expiry.
+ * Used by public profile routes to determine what features to show.
+ */
+export async function getEffectivePlanForPublicProfile(userId: string): Promise<{
+  isFree: boolean;
+  allowedThemeCategories: string[];
+  analyticsEnabled: boolean;
+  qrCodeEnabled: boolean;
+  menuBuilderEnabled: boolean;
+  whiteLabelEnabled: boolean;
+}> {
+  const limits = await getUserPlanLimits(userId);
+  const isFree = !limits.hasActivePlan || limits.trialExpired;
+  return {
+    isFree,
+    allowedThemeCategories: isFree ? ["starter"] : limits.themeCategories,
+    analyticsEnabled: !isFree && limits.analyticsEnabled,
+    qrCodeEnabled: !isFree && limits.qrCodeEnabled,
+    menuBuilderEnabled: !isFree && limits.menuBuilderEnabled,
+    whiteLabelEnabled: !isFree && limits.whiteLabelEnabled,
+  };
 }

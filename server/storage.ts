@@ -289,6 +289,24 @@ if (pool) pool.query(`
 
   CREATE INDEX IF NOT EXISTS idx_team_services_team_id ON team_services(team_id);
   CREATE INDEX IF NOT EXISTS idx_team_products_team_id ON team_products(team_id);
+
+  -- Trial system columns
+  ALTER TABLE IF EXISTS user_subscriptions ADD COLUMN IF NOT EXISTS is_trial boolean NOT NULL DEFAULT false;
+  ALTER TABLE IF EXISTS user_subscriptions ADD COLUMN IF NOT EXISTS trial_ends_at timestamp;
+
+  -- Trial email tracking table
+  CREATE TABLE IF NOT EXISTS trial_email_log (
+    id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    email_type text NOT NULL,
+    sent_at timestamp NOT NULL DEFAULT now()
+  );
+  CREATE INDEX IF NOT EXISTS idx_trial_email_log_user_id ON trial_email_log(user_id);
+
+  -- Default trial discount setting
+  INSERT INTO app_settings (key, value, updated_at)
+  VALUES ('trial_discount_percent', '20', now())
+  ON CONFLICT (key) DO NOTHING;
 `).then(async () => {
   // Backfill slugs for existing teams that don't have one
   try {

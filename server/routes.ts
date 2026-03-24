@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import session from "express-session";
 import { storage, db } from "./storage";
 import { users, teams, teamServices, teamProducts, teamTemplates, affiliates, socials } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema, createPageSchema, updatePageSchema, createBlockSchema, updateBlockSchema, changePasswordSchema, deleteAccountSchema, createTeamSchema, updateTeamSchema, updateTeamMemberSchema, createTeamInviteSchema, createTeamMemberSchema, createTeamTemplateSchema, updateTeamTemplateSchema, createContactSchema, updateContactSchema, createMenuSectionSchema, updateMenuSectionSchema, createMenuProductSchema, updateMenuProductSchema, updateMenuSettingsSchema, upsertOpeningHoursSchema, createMenuSocialSchema, updateMenuSocialSchema, updateBusinessProfileSchema, createBranchSchema, updateBranchSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
@@ -301,6 +301,39 @@ export async function registerRoutes(
 
       signupOtpStore.delete(email);
 
+      // Assign 3-day Enterprise trial
+      try {
+        const { pricingPlans: pricingPlansTable, userSubscriptions: userSubsTable } = await import("@shared/schema");
+        const enterprisePlans = await db
+          .select({ id: pricingPlansTable.id, name: pricingPlansTable.name })
+          .from(pricingPlansTable)
+          .where(and(
+            eq(pricingPlansTable.isActive, true),
+            sql`LOWER(${pricingPlansTable.name}) LIKE '%enterprise%'`
+          ))
+          .limit(1);
+
+        if (enterprisePlans.length > 0) {
+          const trialEnd = new Date();
+          trialEnd.setDate(trialEnd.getDate() + 3);
+          await db.insert(userSubsTable).values({
+            userId: user.id,
+            planId: enterprisePlans[0].id,
+            status: "active",
+            billingCycle: "monthly",
+            currentPeriodStart: new Date(),
+            currentPeriodEnd: trialEnd,
+            isTrial: true,
+            trialEndsAt: trialEnd,
+          });
+          console.log(`[Trial] Assigned 3-day Enterprise trial to user ${user.username}`);
+        } else {
+          console.warn("[Trial] No Enterprise plan found — user registered without trial");
+        }
+      } catch (trialErr) {
+        console.error("[Trial] Failed to assign trial:", trialErr);
+      }
+
       // Send welcome email (fire-and-forget)
       import("./email").then(({ sendWelcomeEmail }) => {
         sendWelcomeEmail({ to: email, username: user.username }).catch(() => {});
@@ -444,6 +477,21 @@ export async function registerRoutes(
       if (user.isDisabled) {
         return res.status(403).json({ message: "Your account has been disabled. Please contact support." });
       }
+
+      // Check if user is a team member whose owner's trial expired
+      try {
+        const memberships = await storage.getTeamMembershipsByUserId(user.id);
+        const activeMembership = memberships.find(m => m.status === "activated" && m.role !== "owner");
+        if (activeMembership) {
+          const teamRow = await db.select({ ownerId: teams.ownerId }).from(teams).where(eq(teams.id, activeMembership.teamId)).limit(1);
+          if (teamRow.length > 0) {
+            const ownerLimits = await getUserPlanLimits(teamRow[0].ownerId);
+            if (!ownerLimits.hasActivePlan || ownerLimits.trialExpired) {
+              return res.status(403).json({ message: "Your account has been disabled. The team owner's plan has expired. Please contact your team administrator to upgrade." });
+            }
+          }
+        }
+      } catch (_) { /* non-critical */ }
 
       await storage.ensureHomePage(user.id);
 
@@ -2374,14 +2422,28 @@ export async function registerRoutes(
       } else {
         res.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
       }
+
+      // Check plan limits for team owner and filter premium features
+      const { getEffectivePlanForPublicProfile } = await import("./plan-limits");
+      const effectivePlan = await getEffectivePlanForPublicProfile(team.ownerId);
+
+      if (effectivePlan.isFree) {
+        (publicUser as any).template = "minimal";
+        (publicUser as any).planRestricted = true;
+        (teamBranding as any).menuUrl = undefined;
+      }
+
       res.json({
         user: publicUser,
-        links: userLinks,
-        blocks: pageBlocks,
-        socials: userSocials,
-        pages: userPages.map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome })),
+        links: effectivePlan.isFree ? userLinks.slice(0, 5) : userLinks,
+        blocks: effectivePlan.isFree ? pageBlocks.slice(0, 10) : pageBlocks,
+        socials: effectivePlan.isFree ? userSocials.slice(0, 3) : userSocials,
+        pages: effectivePlan.isFree
+          ? userPages.slice(0, 1).map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome }))
+          : userPages.map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome })),
         currentPage: currentPage ? { id: currentPage.id, title: currentPage.title, slug: currentPage.slug, isHome: currentPage.isHome } : null,
         teamBranding,
+        planRestricted: effectivePlan.isFree,
       });
     } catch (error: any) {
       console.error("Team member profile error:", error);
@@ -2531,15 +2593,40 @@ export async function registerRoutes(
         teamBranding.teamSlug = teamData?.slug || undefined;
       }
 
+      // Check plan limits and filter premium features for free/expired trial users
+      const { getEffectivePlanForPublicProfile } = await import("./plan-limits");
+      // Determine the effective owner: for team members, use the team owner's plan
+      let effectiveOwnerId = user.id;
+      if (teamId && teamData) {
+        effectiveOwnerId = teamData.ownerId;
+      }
+      const effectivePlan = await getEffectivePlanForPublicProfile(effectiveOwnerId);
+
+      if (effectivePlan.isFree) {
+        // For free plan, force minimal template for public viewing
+        (publicUser as any).effectiveTemplate = (publicUser as any).template || "minimal";
+        (publicUser as any).template = "minimal";
+        (publicUser as any).planRestricted = true;
+        
+        // Remove menu URL if menu builder not available
+        if (teamBranding && !effectivePlan.menuBuilderEnabled) {
+          teamBranding.menuUrl = undefined;
+        }
+      }
+
       res.json({
         user: publicUser,
-        links: userLinks,
-        blocks: pageBlocks,
-        socials: userSocials,
-        pages: userPages.map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome })),
+        links: effectivePlan.isFree ? userLinks.slice(0, 5) : userLinks,
+        blocks: effectivePlan.isFree ? pageBlocks.slice(0, 10) : pageBlocks,
+        socials: effectivePlan.isFree ? userSocials.slice(0, 3) : userSocials,
+        pages: effectivePlan.isFree 
+          ? userPages.slice(0, 1).map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome }))
+          : userPages.map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome })),
         currentPage: currentPage ? { id: currentPage.id, title: currentPage.title, slug: currentPage.slug, isHome: currentPage.isHome } : null,
         teamBranding,
         affiliateInfo,
+        planRestricted: effectivePlan.isFree,
+        allowedThemeCategories: effectivePlan.allowedThemeCategories,
       });
     } catch (error: any) {
       console.error("Profile load error:", error);

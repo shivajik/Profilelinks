@@ -35,12 +35,34 @@ export function PlanUsageBanner() {
     limits.currentBlocks >= limits.maxBlocks ||
     limits.currentSocials >= limits.maxSocials;
 
+  // Trial countdown
+  let trialCountdown: string | null = null;
+  if (limits.isTrial && limits.trialEndsAt) {
+    const now = new Date();
+    const end = new Date(limits.trialEndsAt);
+    const diff = end.getTime() - now.getTime();
+    if (diff > 0) {
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const days = Math.floor(hours / 24);
+      const remainingHours = hours % 24;
+      trialCountdown = days > 0 ? `${days}d ${remainingHours}h remaining` : `${hours}h remaining`;
+    }
+  }
+
   return (
-    <Card className={`${anyAtLimit ? "border-destructive/50" : "border-border"}`}>
+    <Card className={`${anyAtLimit ? "border-destructive/50" : limits.isTrial ? "border-amber-300" : "border-border"}`}>
       <CardContent className="pt-4 pb-3 px-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {limits.hasActivePlan ? (
+            {limits.isTrial ? (
+              <Badge className="gap-1 text-xs bg-amber-100 text-amber-800 border-amber-200">
+                ⏳ Trial {limits.planName}
+              </Badge>
+            ) : limits.trialExpired ? (
+              <Badge variant="destructive" className="gap-1 text-xs">
+                Trial Expired
+              </Badge>
+            ) : limits.hasActivePlan ? (
               <Badge variant="secondary" className="gap-1 text-xs">
                 <Crown className="w-3 h-3" />
                 {limits.planName}
@@ -49,12 +71,17 @@ export function PlanUsageBanner() {
               <Badge variant="outline" className="gap-1 text-xs">Free Plan</Badge>
             )}
           </div>
-          {anyAtLimit && (
-            <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => navigate("/dashboard?section=billing")}>
-              <AlertTriangle className="w-3 h-3 mr-1" />
-              Upgrade
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {trialCountdown && (
+              <span className="text-[10px] text-amber-600 font-medium">{trialCountdown}</span>
+            )}
+            {(anyAtLimit || limits.trialExpired || limits.isTrial) && (
+              <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => navigate("/dashboard?section=billing")}>
+                <AlertTriangle className="w-3 h-3 mr-1" />
+                Upgrade
+              </Button>
+            )}
+          </div>
         </div>
         <div className="space-y-2">
           <UsageBar label="Links" current={limits.currentLinks} max={limits.maxLinks} />

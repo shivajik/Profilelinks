@@ -1116,7 +1116,32 @@ router.post("/api/admin/settings/sendgrid", requireAdminAuth, async (req: Reques
   }
 });
 
-// ─── Tracking Settings (GA4 & Facebook Pixel) ──────────────────────────────
+// ─── Trial Discount Settings ────────────────────────────────────────────────
+router.get("/api/admin/settings/trial-discount", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const result = await db.execute(sql`SELECT value FROM app_settings WHERE key = 'trial_discount_percent'`);
+    const rows = result.rows as any[];
+    res.json({ discountPercent: rows[0]?.value || "20" });
+  } catch {
+    res.status(500).json({ message: "Failed to fetch trial discount" });
+  }
+});
+
+router.post("/api/admin/settings/trial-discount", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const { discountPercent } = req.body;
+    if (discountPercent === undefined || isNaN(Number(discountPercent)) || Number(discountPercent) < 0 || Number(discountPercent) > 100) {
+      return res.status(400).json({ message: "Discount must be between 0 and 100" });
+    }
+    await db.execute(sql`INSERT INTO app_settings (key, value, updated_at) VALUES ('trial_discount_percent', ${String(discountPercent)}, now()) ON CONFLICT (key) DO UPDATE SET value = ${String(discountPercent)}, updated_at = now()`);
+    res.json({ message: "Trial discount updated", discountPercent: String(discountPercent) });
+  } catch (error: any) {
+    console.error("Trial discount error:", error);
+    res.status(500).json({ message: "Failed to update trial discount" });
+  }
+});
+
+
 router.get("/api/admin/settings/tracking", requireAdminAuth, async (req: Request, res: Response) => {
   try {
     const result = await db.execute(sql`SELECT key, value FROM app_settings WHERE key IN ('ga4_measurement_id', 'fb_pixel_id')`);

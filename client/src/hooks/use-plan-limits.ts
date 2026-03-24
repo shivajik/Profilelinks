@@ -20,6 +20,9 @@ export interface PlanLimits {
   currentSocials: number;
   currentTeamMembers: number;
   hasActivePlan: boolean;
+  isTrial: boolean;
+  trialEndsAt: string | null;
+  trialExpired: boolean;
 }
 
 export function usePlanLimits() {

@@ -692,6 +692,8 @@ export const userSubscriptions = pgTable("user_subscriptions", {
   currentPeriodStart: timestamp("current_period_start").notNull().defaultNow(),
   currentPeriodEnd: timestamp("current_period_end"),
   razorpaySubscriptionId: text("razorpay_subscription_id"),
+  isTrial: boolean("is_trial").notNull().default(false),
+  trialEndsAt: timestamp("trial_ends_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
