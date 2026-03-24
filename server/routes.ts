@@ -2,7 +2,7 @@ import express, { type Express, type Request, type Response, type NextFunction }
 import { createServer, type Server } from "http";
 import session from "express-session";
 import { storage, db } from "./storage";
-import { users, teams, teamServices, teamProducts, teamTemplates, affiliates, socials } from "@shared/schema";
+import { users, teams, teamServices, teamProducts, teamTemplates, teamMembers, affiliates, socials } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { registerSchema, loginSchema, createLinkSchema, updateLinkSchema, updateProfileSchema, createSocialSchema, updateSocialSchema, createPageSchema, updatePageSchema, createBlockSchema, updateBlockSchema, changePasswordSchema, deleteAccountSchema, createTeamSchema, updateTeamSchema, updateTeamMemberSchema, createTeamInviteSchema, createTeamMemberSchema, createTeamTemplateSchema, updateTeamTemplateSchema, createContactSchema, updateContactSchema, createMenuSectionSchema, updateMenuSectionSchema, createMenuProductSchema, updateMenuProductSchema, updateMenuSettingsSchema, upsertOpeningHoursSchema, createMenuSocialSchema, updateMenuSocialSchema, updateBusinessProfileSchema, createBranchSchema, updateBranchSchema } from "@shared/schema";
@@ -535,6 +535,32 @@ export async function registerRoutes(
       return res.status(403).json({ message: "Your account has been disabled." });
     }
     const { password: _, ...safeUser } = user;
+
+    // For team members, inherit the owner's template (theme)
+    if (user.teamId) {
+      try {
+        const memberRows = await db
+          .select({ teamId: teamMembers.teamId, role: teamMembers.role })
+          .from(teamMembers)
+          .where(and(eq(teamMembers.userId, user.id), eq(teamMembers.status, "activated")))
+          .limit(1);
+        if (memberRows.length > 0 && memberRows[0].role !== "owner") {
+          // Get default team template
+          const defaultTemplate = await db
+            .select({ templateData: teamTemplates.templateData })
+            .from(teamTemplates)
+            .where(and(eq(teamTemplates.teamId, memberRows[0].teamId), eq(teamTemplates.isDefault, true)))
+            .limit(1);
+          if (defaultTemplate.length > 0) {
+            const tData = defaultTemplate[0].templateData as any;
+            if (tData?.template) {
+              (safeUser as any).template = tData.template;
+            }
+          }
+        }
+      } catch { /* ignore */ }
+    }
+
     res.json(safeUser);
   });
 
@@ -2414,8 +2440,8 @@ export async function registerRoutes(
       if (member?.businessName) (publicUser as any).displayName = member.businessName;
       if (member?.businessProfileImage) (publicUser as any).profileImage = member.businessProfileImage;
       if (member?.businessBio) (publicUser as any).bio = member.businessBio;
-      // Member's personal template takes precedence; team default template only used as fallback
-      if (tData.template && !(publicUser as any).template) (publicUser as any).template = tData.template;
+      // Team owner's template ALWAYS overrides member's personal template
+      if (tData.template) (publicUser as any).template = tData.template;
 
       if (req.query.preview === "1") {
         res.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
@@ -2561,8 +2587,8 @@ export async function registerRoutes(
           (publicUser as any).bio = member.businessBio;
         }
 
-        // Member's personal template takes precedence; team default template only used as fallback
-        if (tData.template && !(publicUser as any).template) {
+        // Team owner's template ALWAYS overrides member's personal template
+        if (tData.template) {
           (publicUser as any).template = tData.template;
         }
       }

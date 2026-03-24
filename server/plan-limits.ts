@@ -132,36 +132,44 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
     )) as any ?? null;
   }
 
-  // If user has no plan, check if they're a team member and inherit owner's analytics/QR
+  // Check if user is a team member and inherit ALL owner's plan features
   let ownerAnalytics = false;
   let ownerQrCode = false;
   let ownerWhiteLabel = false;
-  if (!plan) {
-    // Check if user is a team member
-    const memberRows = await db
-      .select({ teamId: teamMembers.teamId, role: teamMembers.role })
-      .from(teamMembers)
-      .where(and(eq(teamMembers.userId, userId), eq(teamMembers.status, "activated")))
-      .limit(1);
+  let ownerMenuBuilder = false;
+  let ownerCustomTemplates = false;
+  let ownerThemeCategories: string[] | null = null;
 
-    if (memberRows.length > 0 && memberRows[0].role !== "owner") {
-      const teamRow = await db.select({ ownerId: teams.ownerId }).from(teams).where(eq(teams.id, memberRows[0].teamId)).limit(1);
-      if (teamRow.length > 0) {
-        const ownerSubs = await db
-          .select({
-            analyticsEnabled: pricingPlans.analyticsEnabled,
-            qrCodeEnabled: pricingPlans.qrCodeEnabled,
-            whiteLabelEnabled: pricingPlans.whiteLabelEnabled,
-          })
-          .from(userSubscriptions)
-          .innerJoin(pricingPlans, eq(userSubscriptions.planId, pricingPlans.id))
-          .where(and(eq(userSubscriptions.userId, teamRow[0].ownerId), eq(userSubscriptions.status, "active")))
-          .limit(1);
-        if (ownerSubs.length > 0) {
-          ownerAnalytics = ownerSubs[0].analyticsEnabled ?? false;
-          ownerQrCode = ownerSubs[0].qrCodeEnabled ?? false;
-          ownerWhiteLabel = ownerSubs[0].whiteLabelEnabled ?? false;
-        }
+  // Always check team membership for feature inheritance (regardless of member's own plan)
+  const memberRows = await db
+    .select({ teamId: teamMembers.teamId, role: teamMembers.role })
+    .from(teamMembers)
+    .where(and(eq(teamMembers.userId, userId), eq(teamMembers.status, "activated")))
+    .limit(1);
+
+  if (memberRows.length > 0 && memberRows[0].role !== "owner") {
+    const teamRow = await db.select({ ownerId: teams.ownerId }).from(teams).where(eq(teams.id, memberRows[0].teamId)).limit(1);
+    if (teamRow.length > 0) {
+      const ownerSubs = await db
+        .select({
+          analyticsEnabled: pricingPlans.analyticsEnabled,
+          qrCodeEnabled: pricingPlans.qrCodeEnabled,
+          whiteLabelEnabled: pricingPlans.whiteLabelEnabled,
+          menuBuilderEnabled: pricingPlans.menuBuilderEnabled,
+          customTemplatesEnabled: pricingPlans.customTemplatesEnabled,
+          themeCategories: pricingPlans.themeCategories,
+        })
+        .from(userSubscriptions)
+        .innerJoin(pricingPlans, eq(userSubscriptions.planId, pricingPlans.id))
+        .where(and(eq(userSubscriptions.userId, teamRow[0].ownerId), eq(userSubscriptions.status, "active")))
+        .limit(1);
+      if (ownerSubs.length > 0) {
+        ownerAnalytics = ownerSubs[0].analyticsEnabled ?? false;
+        ownerQrCode = ownerSubs[0].qrCodeEnabled ?? false;
+        ownerWhiteLabel = ownerSubs[0].whiteLabelEnabled ?? false;
+        ownerMenuBuilder = ownerSubs[0].menuBuilderEnabled ?? false;
+        ownerCustomTemplates = ownerSubs[0].customTemplatesEnabled ?? false;
+        ownerThemeCategories = (ownerSubs[0].themeCategories as string[]) ?? null;
       }
     }
   }
@@ -196,10 +204,10 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
     maxSocials: limits.maxSocials ?? FREE_LIMITS.maxSocials,
     qrCodeEnabled: (limits.qrCodeEnabled ?? FREE_LIMITS.qrCodeEnabled) || ownerQrCode,
     analyticsEnabled: (limits.analyticsEnabled ?? FREE_LIMITS.analyticsEnabled) || ownerAnalytics,
-    customTemplatesEnabled: limits.customTemplatesEnabled ?? FREE_LIMITS.customTemplatesEnabled,
-    menuBuilderEnabled: limits.menuBuilderEnabled ?? FREE_LIMITS.menuBuilderEnabled,
+    customTemplatesEnabled: (limits.customTemplatesEnabled ?? FREE_LIMITS.customTemplatesEnabled) || ownerCustomTemplates,
+    menuBuilderEnabled: (limits.menuBuilderEnabled ?? FREE_LIMITS.menuBuilderEnabled) || ownerMenuBuilder,
     whiteLabelEnabled: (limits.whiteLabelEnabled ?? FREE_LIMITS.whiteLabelEnabled) || ownerWhiteLabel,
-    themeCategories: (((limits as any)?.themeCategories) ?? FREE_LIMITS.themeCategories) as string[],
+    themeCategories: ownerThemeCategories || (((limits as any)?.themeCategories) ?? FREE_LIMITS.themeCategories) as string[],
     currentLinks: Number(linksResult[0]?.count ?? 0),
     currentPages: Number(pagesResult[0]?.count ?? 0),
     currentBlocks: Number(blocksResult[0]?.count ?? 0),
