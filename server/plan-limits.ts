@@ -102,7 +102,7 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
   }
 
   // If no active plan, check whether the user previously had a trial that is now expired (status = 'expired')
-  // This ensures trialExpired stays true even after the subscription row is updated to 'expired'
+  // Only show trialExpired=true for 24 hours after expiry, then treat as normal free user
   if (!plan && !trialExpired) {
     const expiredTrials = await db
       .select({ trialEndsAt: userSubscriptions.trialEndsAt })
@@ -114,7 +114,12 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
       ))
       .limit(1);
     if (expiredTrials.length > 0) {
-      trialExpired = true;
+      const expiredAt = expiredTrials[0].trialEndsAt ? new Date(expiredTrials[0].trialEndsAt) : null;
+      const hoursSinceExpiry = expiredAt ? (Date.now() - expiredAt.getTime()) / (1000 * 60 * 60) : Infinity;
+      // Only show trial expired badge for 24 hours after expiry
+      if (hoursSinceExpiry <= 24) {
+        trialExpired = true;
+      }
       trialEndsAt = expiredTrials[0].trialEndsAt ?? null;
     }
   }

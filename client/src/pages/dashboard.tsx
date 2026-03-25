@@ -1299,10 +1299,10 @@ export default function Dashboard() {
                 <ContactsPanel teamId={user.teamId!} userId={user.id} isTeamMember={!!isTeamMember} />
               )}
               {activeSection === "services" && isTeamAccount && !isRestaurant && isTeamOwnerOrAdmin && (
-                <ServicesProductsPanel teamId={user.teamId!} teamSlug={teamSlug || ''} type="services" />
+                <ServicesProductsPanel teamId={user.teamId!} teamSlug={teamSlug || ''} type="services" businessType={teamData?.businessType || undefined} />
               )}
               {activeSection === "products" && isTeamAccount && !isRestaurant && isTeamOwnerOrAdmin && (
-                <ServicesProductsPanel teamId={user.teamId!} teamSlug={teamSlug || ''} type="products" />
+                <ServicesProductsPanel teamId={user.teamId!} teamSlug={teamSlug || ''} type="products" businessType={teamData?.businessType || undefined} />
               )}
             </div>
 
@@ -8093,11 +8093,12 @@ function ContactsPanel({ teamId, userId, isTeamMember = false }: { teamId: strin
 }
 
 // ── Services & Products Panel ──────────────────────────────────────────────
-function ServicesProductsPanel({ teamId, teamSlug, type }: { teamId: string; teamSlug: string; type: "services" | "products" }) {
+function ServicesProductsPanel({ teamId, teamSlug, type, businessType }: { teamId: string; teamSlug: string; type: "services" | "products"; businessType?: string }) {
   const { toast } = useToast();
   const { user } = useAuth();
   const label = type === "services" ? "Services" : "Products";
   const Icon = type === "services" ? Briefcase : UtensilsCrossed;
+  const isSalon = businessType?.toLowerCase() === "beauty & salon";
   const pageUrl = `${window.location.origin}/${teamSlug}/${type === "services" ? "service" : "product"}`;
   const [copied, setCopied] = useState(false);
 
@@ -8267,9 +8268,31 @@ function ServicesProductsPanel({ teamId, teamSlug, type }: { teamId: string; tea
             <p className="text-sm text-muted-foreground mb-4 max-w-xs">
               Add your first {type === "services" ? "service" : "product"} to get started.
             </p>
-            <Button size="sm" onClick={openAdd}>
-              <Plus className="w-4 h-4 mr-1" /> Add {label.slice(0, -1)}
-            </Button>
+            <div className="flex flex-col gap-2 items-center">
+              <Button size="sm" onClick={openAdd}>
+                <Plus className="w-4 h-4 mr-1" /> Add {label.slice(0, -1)}
+              </Button>
+              {isSalon && type === "services" && (
+                <Button size="sm" variant="outline" onClick={async () => {
+                  try {
+                    const { DEFAULT_SALON_SERVICES } = await import("@/lib/default-salon-services");
+                    for (const svc of DEFAULT_SALON_SERVICES) {
+                      await apiRequest("POST", `/api/teams/${teamId}/${type}`, {
+                        title: svc.title,
+                        description: svc.description,
+                        price: svc.price,
+                      });
+                    }
+                    queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, type] });
+                    toast({ title: "Default salon services imported!" });
+                  } catch {
+                    toast({ title: "Failed to import", variant: "destructive" });
+                  }
+                }}>
+                  <Download className="w-4 h-4 mr-1" /> Import Salon Services
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
       ) : (
