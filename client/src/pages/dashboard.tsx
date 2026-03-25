@@ -8092,6 +8092,36 @@ function ContactsPanel({ teamId, userId, isTeamMember = false }: { teamId: strin
   );
 }
 
+// ── Import Salon Services Button with loader ──────────────────────────────
+function ImportSalonServicesButton({ teamId, type }: { teamId: string; type: string }) {
+  const { toast } = useToast();
+  const [importing, setImporting] = useState(false);
+  return (
+    <Button size="sm" variant="outline" disabled={importing} onClick={async () => {
+      setImporting(true);
+      try {
+        const { DEFAULT_SALON_SERVICES } = await import("@/lib/default-salon-services");
+        for (const svc of DEFAULT_SALON_SERVICES) {
+          await apiRequest("POST", `/api/teams/${teamId}/${type}`, {
+            title: svc.title,
+            description: svc.description,
+            price: svc.price,
+          });
+        }
+        queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, type] });
+        toast({ title: "Default salon services imported!" });
+      } catch {
+        toast({ title: "Failed to import", variant: "destructive" });
+      } finally {
+        setImporting(false);
+      }
+    }}>
+      {importing ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
+      {importing ? "Importing..." : "Import Salon Services"}
+    </Button>
+  );
+}
+
 // ── Services & Products Panel ──────────────────────────────────────────────
 function ServicesProductsPanel({ teamId, teamSlug, type, businessType }: { teamId: string; teamSlug: string; type: "services" | "products"; businessType?: string }) {
   const { toast } = useToast();
@@ -8273,24 +8303,7 @@ function ServicesProductsPanel({ teamId, teamSlug, type, businessType }: { teamI
                 <Plus className="w-4 h-4 mr-1" /> Add {label.slice(0, -1)}
               </Button>
               {isSalon && type === "services" && (
-                <Button size="sm" variant="outline" onClick={async () => {
-                  try {
-                    const { DEFAULT_SALON_SERVICES } = await import("@/lib/default-salon-services");
-                    for (const svc of DEFAULT_SALON_SERVICES) {
-                      await apiRequest("POST", `/api/teams/${teamId}/${type}`, {
-                        title: svc.title,
-                        description: svc.description,
-                        price: svc.price,
-                      });
-                    }
-                    queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, type] });
-                    toast({ title: "Default salon services imported!" });
-                  } catch {
-                    toast({ title: "Failed to import", variant: "destructive" });
-                  }
-                }}>
-                  <Download className="w-4 h-4 mr-1" /> Import Salon Services
-                </Button>
+                <ImportSalonServicesButton teamId={teamId} type={type} />
               )}
             </div>
           </CardContent>
