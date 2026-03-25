@@ -633,7 +633,7 @@ export default function Dashboard() {
             <div className="border-b border-destructive/40 bg-destructive/5 px-4 py-2.5 flex items-center gap-3 shrink-0">
               <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
               <div className="flex-1 min-w-0">
-                <span className="text-sm font-semibold text-destructive">Your plan has ended</span>
+                <span className="text-sm font-semibold text-destructive">Your plan has expired</span>
                 <span className="text-xs text-muted-foreground ml-2 hidden sm:inline">Upgrade to continue using premium features and unlock your full profile.</span>
               </div>
               <Button size="sm" variant="destructive" className="shrink-0 h-7 text-xs" onClick={() => setActiveSection("billing")}>

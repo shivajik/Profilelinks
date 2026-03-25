@@ -48,7 +48,7 @@ export default function PricingPage() {
 
   const [promoInput, setPromoInput] = useState("");
   const [promoValidating, setPromoValidating] = useState(false);
-  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPercent: number } | null>(null);
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPercent: number; planId?: string | null } | null>(null);
 
   useEffect(() => {
     fetch("/api/pricing/plans")
@@ -77,7 +77,7 @@ export default function PricingPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-      setAppliedPromo({ code: data.code, discountPercent: data.discountPercent });
+      setAppliedPromo({ code: data.code, discountPercent: data.discountPercent, planId: data.planId || null });
       toast({ title: "Promo code applied! 🎉", description: `${data.discountPercent}% discount will be applied.` });
     } catch (err: any) {
       toast({ title: "Invalid promo code", description: err.message, variant: "destructive" });
@@ -151,6 +151,8 @@ export default function PricingPage() {
             if (!verifyRes.ok) throw new Error(vData.message);
             toast({ title: "Payment successful! 🎉", description: `You're now on the ${plan.name} plan.` });
             setCurrentPlanId(plan.id);
+            setAppliedPromo(null);
+            setPromoInput("");
           } catch (err: any) {
             toast({ title: "Verification failed", description: err.message, variant: "destructive" });
           } finally {
@@ -282,7 +284,7 @@ export default function PricingPage() {
                 isCurrentPlan={currentPlanId === plan.id}
                 loading={payingPlanId === plan.id}
                 onSelect={handleSelectPlan}
-                discountPercent={appliedPromo?.discountPercent}
+                discountPercent={appliedPromo && (!appliedPromo.planId || appliedPromo.planId === plan.id) ? appliedPromo.discountPercent : undefined}
               />
             ))}
           </div>

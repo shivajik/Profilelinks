@@ -43,11 +43,12 @@ async function logEmailSent(userId: string, emailType: string): Promise<void> {
   }
 }
 
-export async function processTrialEmails(): Promise<void> {
+export async function processTrialEmails(): Promise<{ processed: number; emailsSent: string[]; errors: string[] }> {
+  const result = { processed: 0, emailsSent: [] as string[], errors: [] as string[] };
   try {
     const now = new Date();
 
-    // Find all active trial subscriptions
+    // Find all trial subscriptions (active OR expired)
     const trialSubs = await db
       .select({
         userId: userSubscriptions.userId,
@@ -64,8 +65,11 @@ export async function processTrialEmails(): Promise<void> {
         )
       );
 
+    console.log(`[Trial Emails] Found ${trialSubs.length} trial subscriptions`);
+
     for (const sub of trialSubs) {
       if (!sub.trialEndsAt) continue;
+      result.processed++;
 
       const trialEnd = new Date(sub.trialEndsAt);
       const hoursUntilExpiry = (trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60);
@@ -78,9 +82,14 @@ export async function processTrialEmails(): Promise<void> {
         .where(eq(users.id, sub.userId))
         .limit(1);
 
-      if (!userRows.length) continue;
+      if (!userRows.length) {
+        result.errors.push(`User ${sub.userId} not found`);
+        continue;
+      }
       const user = userRows[0];
       const appUrl = process.env.APP_URL || 'https://visicardly.com';
+
+      console.log(`[Trial Emails] User ${user.email}: status=${sub.status}, hoursUntilExpiry=${hoursUntilExpiry.toFixed(1)}, hoursSinceExpiry=${hoursSinceExpiry.toFixed(1)}`);
 
       // 1. Halfway reminder (around 1.5 days = 36 hours remaining)
       if (hoursUntilExpiry > 0 && hoursUntilExpiry <= 36 && sub.status === "active") {
@@ -89,6 +98,9 @@ export async function processTrialEmails(): Promise<void> {
           const remainingHours = Math.round(hoursUntilExpiry);
           await sendTrialReminderEmail(user.email, user.displayName || user.username, sub.planName, remainingHours, appUrl);
           await logEmailSent(sub.userId, TRIAL_EMAIL_TYPES.HALFWAY_REMINDER);
+          result.emailsSent.push(`${user.email}: halfway reminder`);
+        } else {
+          console.log(`[Trial Emails] Already sent halfway reminder to ${user.email}`);
         }
       }
 
@@ -98,6 +110,9 @@ export async function processTrialEmails(): Promise<void> {
         if (!sent) {
           await sendTrialExpiredEmail(user.email, user.displayName || user.username, sub.planName, appUrl);
           await logEmailSent(sub.userId, TRIAL_EMAIL_TYPES.EXPIRED_NOTICE);
+          result.emailsSent.push(`${user.email}: expired notice`);
+        } else {
+          console.log(`[Trial Emails] Already sent expired notice to ${user.email}`);
         }
       }
 
@@ -108,19 +123,24 @@ export async function processTrialEmails(): Promise<void> {
           const discount = await getTrialDiscount();
           await sendTrialDiscountEmail(user.email, user.displayName || user.username, sub.planName, discount, appUrl);
           await logEmailSent(sub.userId, TRIAL_EMAIL_TYPES.DISCOUNT_OFFER);
+          result.emailsSent.push(`${user.email}: discount offer`);
+        } else {
+          console.log(`[Trial Emails] Already sent discount offer to ${user.email}`);
         }
       }
     }
   } catch (err) {
     console.error("[Trial Emails] Error processing trial emails:", err);
+    result.errors.push(String(err));
   }
+  return result;
 }
 
 async function sendTrialReminderEmail(to: string, name: string, planName: string, hoursLeft: number, appUrl: string): Promise<void> {
   try {
     await sendEmailViaNodemailer({
       to,
-      subject: `⏰ Your ${planName} trial is expiring soon!`,
+      subject: `⏰ Your visicardly ${planName} trial is expiring soon!`,
       html: `
         <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
           <div style="background: linear-gradient(135deg, #f59e0b, #d97706); padding: 32px 24px; text-align: center;">
@@ -132,7 +152,7 @@ async function sendTrialReminderEmail(to: string, name: string, planName: string
               Hi <strong>${name}</strong>,
             </p>
             <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin: 0 0 20px;">
-              Your <strong>${planName}</strong> trial is expiring soon. To keep all your premium features — including team management, premium themes, analytics, and QR codes — please upgrade your plan.
+              Your visicardly<strong>${planName}</strong> trial is expiring soon. To keep all your premium features — including team management, premium themes, analytics, and QR codes — please upgrade your plan.
             </p>
             <div style="background: #fef3c7; border-radius: 12px; padding: 16px; margin-bottom: 24px; border-left: 4px solid #f59e0b;">
               <p style="color: #92400e; font-size: 13px; margin: 0; font-weight: 500;">
@@ -163,12 +183,12 @@ async function sendTrialExpiredEmail(to: string, name: string, planName: string,
   try {
     await sendEmailViaNodemailer({
       to,
-      subject: `Your ${planName} trial has expired`,
+      subject: `Your visicardly ${planName} trial has expired`,
       html: `
         <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
           <div style="background: linear-gradient(135deg, #ef4444, #dc2626); padding: 32px 24px; text-align: center;">
             <h1 style="color: #ffffff; font-size: 24px; margin: 0 0 8px 0; font-weight: 700;">Trial Expired</h1>
-            <p style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 0;">Your ${planName} trial has ended</p>
+            <p style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 0;">Your visicardly ${planName} trial has ended</p>
           </div>
           <div style="padding: 32px 24px;">
             <p style="color: #374151; font-size: 15px; line-height: 1.6; margin: 0 0 16px;">

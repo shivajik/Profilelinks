@@ -107,7 +107,7 @@ export function BillingSection({ autoSelectPlanId }: { autoSelectPlanId?: string
   // Promo code state
   const [promoInput, setPromoInput] = useState("");
   const [promoValidating, setPromoValidating] = useState(false);
-  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPercent: number } | null>(null);
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPercent: number; planId?: string | null } | null>(null);
 
   // Retry pending payment
   const [retryingPaymentId, setRetryingPaymentId] = useState<string | null>(null);
@@ -197,7 +197,7 @@ export function BillingSection({ autoSelectPlanId }: { autoSelectPlanId?: string
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-      setAppliedPromo({ code: data.code, discountPercent: data.discountPercent });
+      setAppliedPromo({ code: data.code, discountPercent: data.discountPercent, planId: data.planId || null });
       toast({ title: "Promo code applied! 🎉", description: `${data.discountPercent}% discount will be applied.` });
     } catch (err: any) {
       toast({ title: "Invalid promo code", description: err.message, variant: "destructive" });
@@ -327,6 +327,8 @@ export function BillingSection({ autoSelectPlanId }: { autoSelectPlanId?: string
             const vData = await verifyRes.json();
             if (!verifyRes.ok) throw new Error(vData.message);
             toast({ title: "Payment successful! 🎉", description: `You're now on the ${plan.name} plan.` });
+            setAppliedPromo(null);
+            setPromoInput("");
             fetchData(true); fetchHistory(true);
           } catch (err: any) {
             toast({ title: "Verification failed", description: err.message, variant: "destructive" });
@@ -483,7 +485,7 @@ export function BillingSection({ autoSelectPlanId }: { autoSelectPlanId?: string
               isTrial={subscription?.planId === plan.id && subscription?.status === "active" && !!subscription?.isTrial}
               loading={payingPlanId === plan.id}
               onSelect={handleSelectPlan}
-              discountPercent={appliedPromo?.discountPercent}
+              discountPercent={appliedPromo && (!appliedPromo.planId || appliedPromo.planId === plan.id) ? appliedPromo.discountPercent : undefined}
             />
           ))}
         </div>

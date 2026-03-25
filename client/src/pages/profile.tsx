@@ -432,7 +432,7 @@ export default function PublicProfile(props?: any) {
               target="_blank" rel="noopener noreferrer" className="text-xs transition-opacity hover:opacity-80 block"
             >
               <span className={`${template.textColor}`} style={{ opacity: 0.5 }}>
-                Create your own digital business card
+                Create your own digital business card with
               </span>
               <span style={{ color: template.accent, opacity: 0.6 }}> Visi</span>
               <span className={`${template.textColor}`} style={{ opacity: 0.4 }}>Cardly</span>
