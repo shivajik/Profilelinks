@@ -170,6 +170,9 @@ export default function Onboarding() {
     if (step === lastStep && username.length < 3) return false;
     if (accountType === "team" && step === 2 && !companyName.trim()) return false;
     if (accountType === "team" && step === 2 && companyUrl && !/^https?:\/\/.+\..+/.test(companyUrl)) return false;
+    // Name is required on ProfileStep: personal step 2, team step 3
+    if (accountType === "personal" && step === 2 && !displayName.trim()) return false;
+    if (accountType === "team" && step === 3 && !displayName.trim()) return false;
     return true;
   };
 
@@ -817,14 +820,18 @@ function ProfileStep({
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="onb-name">Name</Label>
+          <Label htmlFor="onb-name">Name <span className="text-destructive">*</span></Label>
           <Input
             id="onb-name"
             placeholder="Your Name"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             data-testid="input-onboarding-name"
+            required
           />
+          {!displayName.trim() && (
+            <p className="text-xs text-destructive">Name is required</p>
+          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="onb-bio">Bio</Label>

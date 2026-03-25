@@ -575,6 +575,11 @@ export async function registerRoutes(
         return res.status(400).json({ message: fromZodError(result.error).message });
       }
 
+      // When completing onboarding, displayName is required
+      if (result.data.onboardingCompleted && (!result.data.displayName || !result.data.displayName.trim())) {
+        return res.status(400).json({ message: "Name is required" });
+      }
+
       if (result.data.username) {
         const existing = await storage.getUserByUsername(result.data.username);
         if (existing && existing.id !== req.session.userId) {
@@ -2755,6 +2760,57 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error: any) {
       console.error("Team contact form error:", error);
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  // ── Website Contact Form (public /contact page) ──────────────────────
+  app.post("/api/website-contact", rateLimit("website-contact", 3, 60000), async (req, res) => {
+    try {
+      const { name, email, mobile, message, imageUrl } = req.body;
+      if (!name || !email || !message) {
+        return res.status(400).json({ message: "Name, email, and message are required" });
+      }
+      if (name.length > 100 || email.length > 255 || message.length > 2000) {
+        return res.status(400).json({ message: "Field length exceeded" });
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "Invalid email address" });
+      }
+
+      const { sendEmailViaNodemailer } = await import("./email");
+      const adminEmail = process.env.EMAIL || "support@visicardly.com";
+
+      await sendEmailViaNodemailer({
+        to: adminEmail,
+        subject: `New Website Contact — ${name}`,
+        html: `
+          <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 0;">
+            <div style="background: linear-gradient(135deg, #6C5CE7, #a855f7); padding: 30px 25px; border-radius: 12px 12px 0 0; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 22px; font-weight: 700;">📬 New Contact Form Submission</h1>
+              <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px;">From your VisiCardly website</p>
+            </div>
+            <div style="border: 1px solid #e5e7eb; border-top: none; padding: 25px; border-radius: 0 0 12px 12px; background: #ffffff;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 10px 0; color: #6b7280; font-size: 13px; width: 100px; vertical-align: top;">Name</td><td style="padding: 10px 0; color: #111827; font-size: 14px; font-weight: 600;">${name}</td></tr>
+                <tr><td style="padding: 10px 0; color: #6b7280; font-size: 13px; vertical-align: top;">Email</td><td style="padding: 10px 0; font-size: 14px;"><a href="mailto:${email}" style="color: #6C5CE7; text-decoration: none;">${email}</a></td></tr>
+                ${mobile ? `<tr><td style="padding: 10px 0; color: #6b7280; font-size: 13px; vertical-align: top;">Mobile</td><td style="padding: 10px 0; color: #111827; font-size: 14px;">${mobile}</td></tr>` : ""}
+              </table>
+              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 15px 0;" />
+              <p style="color: #6b7280; font-size: 13px; margin: 0 0 8px;">Message:</p>
+              <div style="background: #f9fafb; padding: 15px; border-radius: 8px; color: #111827; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${message}</div>
+              ${imageUrl ? `<hr style="border: none; border-top: 1px solid #e5e7eb; margin: 15px 0;" /><p style="color: #6b7280; font-size: 13px; margin: 0 0 8px;">Attached Image:</p><img src="${imageUrl}" alt="Attachment" style="max-width: 100%; border-radius: 8px; margin-top: 5px;" />` : ""}
+              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
+              <p style="color: #9ca3af; font-size: 11px; text-align: center; margin: 0;">Sent via VisiCardly Contact Form</p>
+            </div>
+          </div>
+        `,
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Website contact form error:", error);
       res.status(500).json({ message: "Failed to send message" });
     }
   });
