@@ -2195,6 +2195,9 @@ function WhiteLabelCard({ onNavigateBilling }: { onNavigateBilling?: () => void 
 
   const { data: user } = useQuery<any>({ queryKey: ["/api/auth/me"] });
   const isWhiteLabelEnabled = planLimits?.whiteLabelEnabled ?? false;
+  const isTrial = planLimits?.isTrial ?? false;
+  // White label is NOT available during trial period
+  const canUseWhiteLabel = isWhiteLabelEnabled && !isTrial;
   const currentlyEnabled = user?.whiteLabelEnabled ?? false;
 
   return (
@@ -2208,7 +2211,7 @@ function WhiteLabelCard({ onNavigateBilling }: { onNavigateBilling?: () => void 
         <p className="text-xs text-muted-foreground">
           Remove VisiCardly branding from your public profile pages and QR codes.
         </p>
-        {isWhiteLabelEnabled ? (
+        {canUseWhiteLabel ? (
           <div className="flex items-center justify-between">
             <span className="text-sm">White Label Branding</span>
             <Switch

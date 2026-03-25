@@ -77,6 +77,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: () => {
       // Clear ALL cached data to prevent leaking previous user's data
       queryClient.clear();
+      // Also remove all queries from the cache to ensure no stale data
+      queryClient.removeQueries();
     },
   });
 
