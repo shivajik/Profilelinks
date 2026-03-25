@@ -2399,7 +2399,10 @@ export async function registerRoutes(
         }
       } catch (_) {}
 
-      const teamBranding = {
+      // Fetch owner user to get services/products visibility flags
+      const ownerUser = await storage.getUser(team.ownerId);
+
+      const teamBranding: Record<string, any> = {
         companyLogo: tData.companyLogo || team.logoUrl || undefined,
         coverPhoto: tData.coverPhoto || undefined,
         companyName: tData.companyName || team.name || undefined,
@@ -2425,6 +2428,10 @@ export async function registerRoutes(
         contactFormFields: tData.contactFormFields || undefined,
         meetingLink: tData.meetingLink || undefined,
         meetingLinkLabel: tData.meetingLinkLabel || undefined,
+        showServicesOnProfile: ownerUser?.showServicesOnProfile || false,
+        showProductsOnProfile: ownerUser?.showProductsOnProfile || false,
+        teamSlug: team.slug || undefined,
+        menuUrl: ownerUser?.showMenuOnProfile && team.slug ? `/${team.slug}/menu` : undefined,
       };
 
       if (member?.businessName) (publicUser as any).displayName = member.businessName;
@@ -3506,6 +3513,76 @@ export async function registerRoutes(
   app.get("/api/google-wallet/status", async (_req, res) => {
     const { isGoogleWalletConfigured } = await import("./google-wallet");
     res.json({ configured: isGoogleWalletConfigured() });
+  });
+
+  // Apple Wallet pass generation
+  app.post("/api/apple-wallet/pass", async (req, res) => {
+    try {
+      const { isAppleWalletConfigured, createAppleWalletPass } = await import("./apple-wallet");
+      if (!isAppleWalletConfigured()) {
+        return res.status(503).json({ message: "Apple Wallet is not configured" });
+      }
+      const { username } = req.body;
+      if (!username) return res.status(400).json({ message: "Username required" });
+
+      let user = await storage.getUserByUsername(username);
+      let teamBrandingData: any = null;
+      let profileSlug = username;
+
+      if (!user) {
+        const team = await storage.getTeamBySlug(username);
+        if (team) {
+          user = await storage.getUser(team.ownerId);
+          if (user) {
+            const templates = await storage.getTeamTemplates(team.id);
+            const template = templates.find((t: any) => t.isDefault) || templates[0];
+            teamBrandingData = template?.templateData || {};
+            teamBrandingData.companyName = team.name;
+            profileSlug = team.slug;
+          }
+        }
+      }
+
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      if (!teamBrandingData && user.teamId) {
+        const team = await storage.getTeam(user.teamId);
+        if (team) {
+          const templates = await storage.getTeamTemplates(team.id);
+          const template = templates.find((t: any) => t.isDefault) || templates[0];
+          teamBrandingData = template?.templateData || {};
+          teamBrandingData.companyName = team.name;
+        }
+      }
+
+      const profileUrl = `${req.protocol}://${req.get("host")}/${profileSlug}`;
+      const serialNumber = `card_${username}_${Date.now()}`;
+
+      const passBuffer = await createAppleWalletPass({
+        serialNumber,
+        name: user.displayName || user.username,
+        jobTitle: teamBrandingData?.jobTitle || undefined,
+        companyName: teamBrandingData?.companyName || undefined,
+        phone: teamBrandingData?.companyPhone || teamBrandingData?.memberPhone || undefined,
+        email: teamBrandingData?.companyEmail || user.email || undefined,
+        website: teamBrandingData?.companyWebsite || undefined,
+        address: teamBrandingData?.companyAddress || undefined,
+        profileImage: user.profileImage || teamBrandingData?.companyLogo || undefined,
+        profileUrl,
+      });
+
+      res.set("Content-Type", "application/vnd.apple.pkpass");
+      res.set("Content-Disposition", `attachment; filename="${username}.pkpass"`);
+      res.send(passBuffer);
+    } catch (err: any) {
+      console.error("Apple Wallet error:", err);
+      res.status(500).json({ message: err.message || "Failed to generate wallet pass" });
+    }
+  });
+
+  app.get("/api/apple-wallet/status", async (_req, res) => {
+    const { isAppleWalletConfigured } = await import("./apple-wallet");
+    res.json({ configured: isAppleWalletConfigured() });
   });
 
   return httpServer;

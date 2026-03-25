@@ -94,9 +94,8 @@ export default function PublicProfile(props?: any) {
   const [showQr, setShowQr] = useState(false);
   const [copied, setCopied] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
-    const [walletLoading, setWalletLoading] = useState(false);
-
-  // Check Google Wallet availability
+  const [walletLoading, setWalletLoading] = useState(false);
+  const [appleWalletLoading, setAppleWalletLoading] = useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
 
   const { data, isLoading, isFetching, error } = useQuery<PublicProfile>({
@@ -276,6 +275,33 @@ export default function PublicProfile(props?: any) {
     }
   }
 
+
+  async function handleSaveToAppleWallet() {
+    setAppleWalletLoading(true);
+    try {
+      const res = await fetch("/api/apple-wallet/pass", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username }),
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${username}.pkpass`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Apple Wallet error:", err);
+    } finally {
+      setAppleWalletLoading(false);
+    }
+  }
+
   function handleAddContact() {
     const vcard = [
       "BEGIN:VCARD",
@@ -323,7 +349,7 @@ export default function PublicProfile(props?: any) {
           >
             <UserPlus className="w-5 h-5" />
           </Button>
-          {/* <Button
+          <Button
             variant="ghost"
             size="icon"
             onClick={() => setShareOpen(true)}
@@ -331,9 +357,9 @@ export default function PublicProfile(props?: any) {
             data-testid="button-share"
           >
             <Share2 className="w-5 h-5" />
-          </Button> */}
-          {/* Google Wallet button - uncomment when ready to launch
-          <Button
+          </Button>
+          {/* Google Wallet button - uncomment when ready to launch */}
+           <Button
             variant="ghost"
             size="icon"
             onClick={() => setWalletOpen(true)}
@@ -342,8 +368,17 @@ export default function PublicProfile(props?: any) {
           >
             <Wallet className="w-5 h-5" />
           </Button>
-          */}
           <Button
+              variant="outline"
+              onClick={handleSaveToAppleWallet}
+              disabled={appleWalletLoading}
+              className="w-full gap-2"
+              data-testid="button-save-apple-wallet"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+              {appleWalletLoading ? "Generating..." : "Save to Apple Wallet"}
+            </Button>
+          {/* <Button
             variant="ghost"
             size="icon"
             onClick={() => setShareOpen(true)}
@@ -351,7 +386,7 @@ export default function PublicProfile(props?: any) {
             data-testid="button-share-alt"
           >
             <Share2 className="w-5 h-5" />
-          </Button>
+          </Button> */}
         </div>
 
         {/* Lightbox overlay */}
@@ -466,23 +501,35 @@ export default function PublicProfile(props?: any) {
             <div className="flex justify-center mb-3">
               <Wallet className="w-8 h-8 text-muted-foreground" />
             </div>
-            <DialogTitle>Save to Google Wallet</DialogTitle>
+            <DialogTitle>Save to Wallet</DialogTitle>
             <DialogDescription>
-              Save {displayName}'s business card to your Google Wallet for quick access.
+              Save {displayName}'s business card to your digital wallet for quick access.
             </DialogDescription>
           </DialogHeader>
-          {/* {walletStatus?.configured && ( */}
+          <div className="space-y-3">
+            {/* Google Wallet - uncomment when ready to launch
             <Button
               variant="outline"
               onClick={handleSaveToWallet}
               disabled={walletLoading}
               className="w-full gap-2"
-              data-testid="button-save-wallet"
+              data-testid="button-save-google-wallet"
             >
               <Wallet className="w-4 h-4" />
               {walletLoading ? "Generating..." : "Save to Google Wallet"}
             </Button>
-          {/* )} */}
+            */}
+            <Button
+              variant="outline"
+              onClick={handleSaveToAppleWallet}
+              disabled={appleWalletLoading}
+              className="w-full gap-2"
+              data-testid="button-save-apple-wallet"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+              {appleWalletLoading ? "Generating..." : "Save to Apple Wallet"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
