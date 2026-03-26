@@ -178,6 +178,7 @@ export default function Onboarding() {
   const canProceed = () => {
     if (step === lastStep && username.length < 3) return false;
     if (accountType === "team" && step === 2 && !companyName.trim()) return false;
+    if (accountType === "team" && step === 2 && !companySize) return false;
     if (accountType === "team" && step === 2 && companyUrl && !/^https?:\/\/.+\..+/.test(companyUrl)) return false;
     // Name is required on ProfileStep: personal step 2, team step 3
     if (accountType === "personal" && step === 2 && !displayName.trim()) return false;
@@ -512,7 +513,7 @@ function WorkspaceStep({
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="onb-company-size">Company Size</Label>
+          <Label htmlFor="onb-company-size">Company Size <span className="text-destructive">*</span></Label>
           <Select value={companySize} onValueChange={setCompanySize}>
             <SelectTrigger data-testid="select-workspace-company-size">
               <SelectValue placeholder="Select company size" />
@@ -525,6 +526,9 @@ function WorkspaceStep({
               ))}
             </SelectContent>
           </Select>
+          {!companySize && (
+            <p className="text-xs text-destructive">Company size is required to proceed.</p>
+          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="onb-company-url">Company URL</Label>

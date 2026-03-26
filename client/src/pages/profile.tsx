@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,12 +11,18 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Loader2, ExternalLink, Mail, Play, Music, UserPlus, Share2, QrCode, Copy, Check, Wallet, Briefcase, Package } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Loader2, ExternalLink, Mail, Play, Music, UserPlus, Share2, QrCode, Copy, Check, Wallet, Briefcase, Package, Download, BookmarkPlus, Pencil } from "lucide-react";
 import { SiFacebook, SiX, SiPinterest, SiReddit, SiLinkedin } from "react-icons/si";
 import { QRCodeSVG } from "qrcode.react";
 import { getTemplate } from "@/lib/templates";
 import { PersonalProfileLayout } from "@/components/profile-layouts";
 import { TeamProfileLayout } from "@/components/team-profile-layouts";
+import { useAuth } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast";
 import type { Link, User, Social, Block, BlockContent } from "@shared/schema";
 
 function normalizeUrl(url: string, platform?: string): string {
@@ -86,6 +92,9 @@ type PublicProfile = {
 
 export default function PublicProfile(props?: any) {
   const params = useParams<{ username?: string; companySlug?: string }>();
+  const [, navigate] = useLocation();
+  const { user: loggedInUser } = useAuth();
+  const { toast } = useToast();
   const username = props?.username || props?.params?.username || params.username;
   const companySlug = props?.companySlug || props?.params?.companySlug || params.companySlug;
   const [activePageSlug, setActivePageSlug] = useState<string | null>(null);
@@ -97,6 +106,17 @@ export default function PublicProfile(props?: any) {
   const [walletLoading, setWalletLoading] = useState(false);
   const [appleWalletLoading, setAppleWalletLoading] = useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
+  const [saveToAppView, setSaveToAppView] = useState<"options" | "form">("options");
+  const [contactFormData, setContactFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    company: "",
+    jobTitle: "",
+    notes: "",
+    type: "personal" as "personal" | "company",
+  });
+  const [savingContact, setSavingContact] = useState(false);
 
   const { data, isLoading, isFetching, error } = useQuery<PublicProfile>({
     queryKey: ["/api/profile", companySlug, username, activePageSlug],
@@ -328,6 +348,58 @@ export default function PublicProfile(props?: any) {
     URL.revokeObjectURL(url);
   }
 
+  function prefillContactForm() {
+    setContactFormData({
+      name: displayName,
+      email: teamBranding?.companyEmail || "",
+      phone: teamBranding?.companyPhone || teamBranding?.companyContact || "",
+      company: teamBranding?.companyName || "",
+      jobTitle: teamBranding?.jobTitle || "",
+      notes: user.bio || "",
+      type: "personal",
+    });
+  }
+
+  function handleSaveToVisiCardly() {
+    prefillContactForm();
+    if (loggedInUser) {
+      setSaveToAppView("form");
+    } else {
+      // Store contact info and redirect to signup
+      const pendingContact = {
+        name: displayName,
+        email: teamBranding?.companyEmail || "",
+        phone: teamBranding?.companyPhone || teamBranding?.companyContact || "",
+        company: teamBranding?.companyName || "",
+        jobTitle: teamBranding?.jobTitle || "",
+        notes: user.bio || "",
+        type: "personal",
+      };
+      localStorage.setItem("pendingVisiCardlyContact", JSON.stringify(pendingContact));
+      navigate("/auth?tab=register&redirect=contacts");
+    }
+  }
+
+  async function handleSaveContactToApp() {
+    setSavingContact(true);
+    try {
+      const res = await fetch("/api/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(contactFormData),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      toast({ title: "Contact saved! ✅", description: `${contactFormData.name} has been saved to your contacts.` });
+      setContactOpen(false);
+      setSaveToAppView("options");
+    } catch (err: any) {
+      toast({ title: "Failed to save", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingContact(false);
+    }
+  }
+
   const socialShareItems = [
     { icon: SiFacebook, color: "#1877F2", label: "Facebook", url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(profileUrl)}` },
     { icon: SiX, color: "#000000", label: "X", url: `https://x.com/intent/tweet?url=${encodeURIComponent(profileUrl)}&text=${encodeURIComponent(`Check out ${displayName}'s profile`)}` },
@@ -456,23 +528,129 @@ export default function PublicProfile(props?: any) {
         )}
       </div>
 
-      <Dialog open={contactOpen} onOpenChange={setContactOpen}>
+      <Dialog open={contactOpen} onOpenChange={(open) => { setContactOpen(open); if (!open) setSaveToAppView("options"); }}>
         <DialogContent className="max-w-sm" data-testid="dialog-add-contact">
           <DialogHeader className="items-center text-center">
             <div className="flex justify-center mb-3">
               <UserPlus className="w-8 h-8 text-muted-foreground" />
             </div>
-            <DialogTitle>Add {displayName} as a contact.</DialogTitle>
-            <DialogDescription className="sr-only">Download contact card</DialogDescription>
+            <DialogTitle>
+              {saveToAppView === "form" ? "Save Contact" : `Add ${displayName} as a contact`}
+            </DialogTitle>
+            <DialogDescription className="sr-only">Save contact options</DialogDescription>
           </DialogHeader>
-          <Button
-            onClick={handleAddContact}
-            className="w-full"
-            data-testid="button-download-contact"
-          >
-            Add Contact
-          </Button>
-                    </DialogContent>
+
+          {saveToAppView === "options" ? (
+            <div className="space-y-3">
+              <Button
+                onClick={handleAddContact}
+                variant="outline"
+                className="w-full gap-2"
+                data-testid="button-download-contact"
+              >
+                <Download className="w-4 h-4" />
+                Save Contact to Phone
+              </Button>
+              <Button
+                onClick={handleSaveToVisiCardly}
+                className="w-full gap-2"
+                data-testid="button-save-to-visicardly"
+              >
+                <BookmarkPlus className="w-4 h-4" />
+                Save Contact in VisiCardly
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Name *</Label>
+                  <Input
+                    value={contactFormData.name}
+                    onChange={(e) => setContactFormData(p => ({ ...p, name: e.target.value }))}
+                    placeholder="Full name"
+                    maxLength={100}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Email</Label>
+                  <Input
+                    value={contactFormData.email}
+                    onChange={(e) => setContactFormData(p => ({ ...p, email: e.target.value }))}
+                    placeholder="Email"
+                    maxLength={255}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Phone</Label>
+                  <Input
+                    value={contactFormData.phone}
+                    onChange={(e) => setContactFormData(p => ({ ...p, phone: e.target.value }))}
+                    placeholder="Phone"
+                    maxLength={50}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Company</Label>
+                  <Input
+                    value={contactFormData.company}
+                    onChange={(e) => setContactFormData(p => ({ ...p, company: e.target.value }))}
+                    placeholder="Company"
+                    maxLength={100}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Job Title</Label>
+                  <Input
+                    value={contactFormData.jobTitle}
+                    onChange={(e) => setContactFormData(p => ({ ...p, jobTitle: e.target.value }))}
+                    placeholder="Job title"
+                    maxLength={100}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Save as</Label>
+                  <Select value={contactFormData.type} onValueChange={(v: "personal" | "company") => setContactFormData(p => ({ ...p, type: v }))}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="personal">Personal</SelectItem>
+                      <SelectItem value="company">Company</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Notes</Label>
+                <Textarea
+                  value={contactFormData.notes}
+                  onChange={(e) => setContactFormData(p => ({ ...p, notes: e.target.value }))}
+                  placeholder="Notes"
+                  rows={2}
+                  maxLength={1000}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setSaveToAppView("options")} className="flex-1">
+                  Back
+                </Button>
+                <Button
+                  onClick={handleSaveContactToApp}
+                  disabled={savingContact || !contactFormData.name.trim()}
+                  className="flex-1"
+                >
+                  {savingContact ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                  Save
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
       </Dialog>
 
       <Dialog open={walletOpen} onOpenChange={setWalletOpen}>

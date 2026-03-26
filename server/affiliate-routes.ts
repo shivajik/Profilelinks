@@ -320,6 +320,9 @@ router.post("/api/promo-codes/validate", async (req: Request, res: Response) => 
     res.json({
       valid: true,
       discountPercent: parseFloat(code.discountPercent),
+      discountType: code.discountType || "percentage",
+      discountMonthlyAmount: parseFloat(code.discountMonthlyAmount || "0"),
+      discountYearlyAmount: parseFloat(code.discountYearlyAmount || "0"),
       code: code.code,
       appliesToLtd: code.appliesToLtd,
       appliesToRegular: code.appliesToRegular,

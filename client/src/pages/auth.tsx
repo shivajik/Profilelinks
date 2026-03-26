@@ -103,6 +103,11 @@ export default function AuthPage() {
     if ((user as any).mustChangePassword) {
       return <Redirect to="/change-password" />;
     }
+    // Check for pending contact redirect
+    const redirectParam = params.get("redirect");
+    if (redirectParam === "contacts" && user.onboardingCompleted) {
+      return <Redirect to="/dashboard?section=contacts" />;
+    }
     if ((user as any).teamId && (user as any).accountType === "team") {
       return <Redirect to="/dashboard" />;
     }

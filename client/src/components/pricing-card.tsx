@@ -30,6 +30,7 @@ export interface PricingCardProps {
   loading?: boolean;
   ctaLabel?: string;
   discountPercent?: number;
+  discountAmount?: number;
 }
 
 export function PricingCard({
@@ -42,6 +43,7 @@ export function PricingCard({
   loading,
   ctaLabel,
   discountPercent,
+  discountAmount,
 }: PricingCardProps) {
   const isUsd = currency === "USD";
 
@@ -58,9 +60,11 @@ export function PricingCard({
 
   const originalPrice = rawPrice;
 
-  const price = discountPercent && originalPrice > 0
-    ? Math.round(originalPrice * (1 - discountPercent / 100))
-    : originalPrice;
+  const price = discountAmount && originalPrice > 0
+    ? Math.max(0, Math.round(originalPrice - discountAmount))
+    : discountPercent && originalPrice > 0
+      ? Math.round(originalPrice * (1 - discountPercent / 100))
+      : originalPrice;
 
   const isFree = price === 0 && originalPrice === 0;
   const symbol = isUsd && hasUsdPricing ? "$" : "₹";

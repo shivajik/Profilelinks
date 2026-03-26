@@ -7634,6 +7634,25 @@ function ContactsPanel({ teamId, userId, isTeamMember = false }: { teamId: strin
   const [newNotes, setNewNotes] = useState("");
   const [newType, setNewType] = useState<"personal" | "company">("personal");
 
+  // Check for pending contact from public profile save
+  useEffect(() => {
+    const pending = localStorage.getItem("pendingVisiCardlyContact");
+    if (pending) {
+      try {
+        const data = JSON.parse(pending);
+        setNewName(data.name || "");
+        setNewEmail(data.email || "");
+        setNewPhone(data.phone || "");
+        setNewCompany(data.company || "");
+        setNewJobTitle(data.jobTitle || "");
+        setNewNotes(data.notes || "");
+        setNewType(data.type || "personal");
+        setCreateOpen(true);
+        localStorage.removeItem("pendingVisiCardlyContact");
+      } catch {}
+    }
+  }, []);
+
   const { data: contacts = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/contacts", { type: contactType }],
     queryFn: async () => {

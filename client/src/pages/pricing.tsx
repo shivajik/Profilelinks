@@ -48,7 +48,7 @@ export default function PricingPage() {
 
   const [promoInput, setPromoInput] = useState("");
   const [promoValidating, setPromoValidating] = useState(false);
-  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPercent: number; planId?: string | null; billingCycleScope?: string } | null>(null);
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPercent: number; discountType?: string; discountMonthlyAmount?: number; discountYearlyAmount?: number; planId?: string | null; billingCycleScope?: string } | null>(null);
 
   useEffect(() => {
     fetch("/api/pricing/plans")
@@ -77,8 +77,19 @@ export default function PricingPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-      setAppliedPromo({ code: data.code, discountPercent: data.discountPercent, planId: data.planId || null, billingCycleScope: data.billingCycleScope || "both" });
-      toast({ title: "Promo code applied! 🎉", description: `${data.discountPercent}% discount will be applied.` });
+      setAppliedPromo({
+        code: data.code,
+        discountPercent: data.discountPercent,
+        discountType: data.discountType || "percentage",
+        discountMonthlyAmount: data.discountMonthlyAmount || 0,
+        discountYearlyAmount: data.discountYearlyAmount || 0,
+        planId: data.planId || null,
+        billingCycleScope: data.billingCycleScope || "both",
+      });
+      const desc = data.discountType === "money"
+        ? `₹${billingCycle === "yearly" ? data.discountYearlyAmount : data.discountMonthlyAmount} off will be applied.`
+        : `${data.discountPercent}% discount will be applied.`;
+      toast({ title: "Promo code applied! 🎉", description: desc });
     } catch (err: any) {
       toast({ title: "Invalid promo code", description: err.message, variant: "destructive" });
       setAppliedPromo(null);
@@ -231,7 +242,9 @@ export default function PricingPage() {
           {appliedPromo ? (
             <>
               <span className="text-sm font-medium text-primary">
-                {appliedPromo.code} (-{appliedPromo.discountPercent}%)
+                {appliedPromo.code} ({appliedPromo.discountType === "money"
+                  ? `₹${billingCycle === "yearly" ? appliedPromo.discountYearlyAmount : appliedPromo.discountMonthlyAmount} off`
+                  : `-${appliedPromo.discountPercent}%`})
               </span>
               <button onClick={removePromo}>
                 <X className="h-4 w-4 text-muted-foreground hover:text-red-500" />
@@ -284,7 +297,10 @@ export default function PricingPage() {
                 isCurrentPlan={currentPlanId === plan.id}
                 loading={payingPlanId === plan.id}
                 onSelect={handleSelectPlan}
-                discountPercent={appliedPromo && (!appliedPromo.planId || appliedPromo.planId === plan.id) ? appliedPromo.discountPercent : undefined}
+                discountPercent={appliedPromo && appliedPromo.discountType !== "money" && (!appliedPromo.planId || appliedPromo.planId === plan.id) ? appliedPromo.discountPercent : undefined}
+                discountAmount={appliedPromo && appliedPromo.discountType === "money" && (!appliedPromo.planId || appliedPromo.planId === plan.id)
+                  ? (billingCycle === "yearly" ? appliedPromo.discountYearlyAmount : appliedPromo.discountMonthlyAmount)
+                  : undefined}
               />
             ))}
           </div>

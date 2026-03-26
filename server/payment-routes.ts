@@ -121,15 +121,23 @@ router.post("/api/payments/create-order", requireAuth as any, async (req: Reques
         return res.status(400).json({ message: `This coupon is only valid for ${codeBillingScope} billing` });
       }
 
-      const discount = parseFloat(code.discountPercent);
-      if (codeBillingScope === "monthly" && billingCycle === "yearly") {
-        // Monthly-only coupon on yearly plan: reduce by monthly discount amount only
-        // e.g., monthly price 1500, 10% off = 150 off the yearly price
-        const monthlyPrice = useUsd ? parseFloat(plan.monthlyPriceUsd) : parseFloat(plan.monthlyPrice);
-        const monthlyDiscount = Math.round(monthlyPrice * (discount / 100));
-        price = Math.max(0, price - monthlyDiscount);
+      const codeDiscountType = code.discountType || "percentage";
+      if (codeDiscountType === "money") {
+        // Fixed monetary discount
+        const fixedAmount = billingCycle === "yearly"
+          ? parseFloat(code.discountYearlyAmount || "0")
+          : parseFloat(code.discountMonthlyAmount || "0");
+        price = Math.max(0, price - fixedAmount);
       } else {
-        price = Math.max(0, Math.round(price * (1 - discount / 100)));
+        // Percentage discount
+        const discount = parseFloat(code.discountPercent);
+        if (codeBillingScope === "monthly" && billingCycle === "yearly") {
+          const monthlyPrice = useUsd ? parseFloat(plan.monthlyPriceUsd) : parseFloat(plan.monthlyPrice);
+          const monthlyDiscount = Math.round(monthlyPrice * (discount / 100));
+          price = Math.max(0, price - monthlyDiscount);
+        } else {
+          price = Math.max(0, Math.round(price * (1 - discount / 100)));
+        }
       }
       appliedPromoId = code.id;
     }

@@ -107,7 +107,7 @@ export function BillingSection({ autoSelectPlanId }: { autoSelectPlanId?: string
   // Promo code state
   const [promoInput, setPromoInput] = useState("");
   const [promoValidating, setPromoValidating] = useState(false);
-  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPercent: number; planId?: string | null } | null>(null);
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPercent: number; discountType?: string; discountMonthlyAmount?: number; discountYearlyAmount?: number; planId?: string | null } | null>(null);
 
   // Retry pending payment
   const [retryingPaymentId, setRetryingPaymentId] = useState<string | null>(null);
@@ -197,8 +197,18 @@ export function BillingSection({ autoSelectPlanId }: { autoSelectPlanId?: string
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-      setAppliedPromo({ code: data.code, discountPercent: data.discountPercent, planId: data.planId || null });
-      toast({ title: "Promo code applied! 🎉", description: `${data.discountPercent}% discount will be applied.` });
+      setAppliedPromo({
+        code: data.code,
+        discountPercent: data.discountPercent,
+        discountType: data.discountType || "percentage",
+        discountMonthlyAmount: data.discountMonthlyAmount || 0,
+        discountYearlyAmount: data.discountYearlyAmount || 0,
+        planId: data.planId || null,
+      });
+      const desc = data.discountType === "money"
+        ? `₹${billingCycle === "yearly" ? data.discountYearlyAmount : data.discountMonthlyAmount} off will be applied.`
+        : `${data.discountPercent}% discount will be applied.`;
+      toast({ title: "Promo code applied! 🎉", description: desc });
     } catch (err: any) {
       toast({ title: "Invalid promo code", description: err.message, variant: "destructive" });
       setAppliedPromo(null);
@@ -445,7 +455,9 @@ export function BillingSection({ autoSelectPlanId }: { autoSelectPlanId?: string
             <div className="flex items-center gap-2">
               <Check className="h-4 w-4 text-primary" />
               <span className="font-semibold text-primary">{appliedPromo.code}</span>
-              <span className="text-sm text-muted-foreground">— {appliedPromo.discountPercent}% off</span>
+              <span className="text-sm text-muted-foreground">— {appliedPromo.discountType === "money"
+                ? `₹${billingCycle === "yearly" ? appliedPromo.discountYearlyAmount : appliedPromo.discountMonthlyAmount} off`
+                : `${appliedPromo.discountPercent}% off`}</span>
             </div>
             <Button variant="ghost" size="sm" onClick={removePromo} className="h-7 w-7 p-0">
               <X className="h-4 w-4" />
@@ -485,7 +497,10 @@ export function BillingSection({ autoSelectPlanId }: { autoSelectPlanId?: string
               isTrial={subscription?.planId === plan.id && subscription?.status === "active" && !!subscription?.isTrial}
               loading={payingPlanId === plan.id}
               onSelect={handleSelectPlan}
-              discountPercent={appliedPromo && (!appliedPromo.planId || appliedPromo.planId === plan.id) ? appliedPromo.discountPercent : undefined}
+              discountPercent={appliedPromo && appliedPromo.discountType !== "money" && (!appliedPromo.planId || appliedPromo.planId === plan.id) ? appliedPromo.discountPercent : undefined}
+              discountAmount={appliedPromo && appliedPromo.discountType === "money" && (!appliedPromo.planId || appliedPromo.planId === plan.id)
+                ? (billingCycle === "yearly" ? appliedPromo.discountYearlyAmount : appliedPromo.discountMonthlyAmount)
+                : undefined}
             />
           ))}
         </div>
