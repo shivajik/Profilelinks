@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Mail, MessageCircle, Phone, User, Send, Paperclip, X, Loader2 } from "lucide-react";
+import { Mail, MessageCircle, Phone, User, Send, Loader2 } from "lucide-react";
 import LegalLayout from "@/components/legal-layout";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,30 +13,7 @@ export default function ContactPage() {
   const [email, setEmail] = useState("");
   const [mobile, setMobile] = useState("");
   const [message, setMessage] = useState("");
-  const [image, setImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 1 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Please upload an image smaller than 1MB", variant: "destructive" });
-      return;
-    }
-    if (!file.type.startsWith("image/")) {
-      toast({ title: "Invalid file", description: "Please upload an image file", variant: "destructive" });
-      return;
-    }
-    setImage(file);
-    setImagePreview(URL.createObjectURL(file));
-  };
-
-  const removeImage = () => {
-    setImage(null);
-    if (imagePreview) URL.revokeObjectURL(imagePreview);
-    setImagePreview(null);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,16 +29,6 @@ export default function ContactPage() {
 
     setSending(true);
     try {
-      let imageUrl = "";
-      if (image) {
-        const formData = new FormData();
-        formData.append("file", image);
-        const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
-        if (uploadRes.ok) {
-          const uploadData = await uploadRes.json();
-          imageUrl = uploadData.url;
-        }
-      }
 
       const res = await fetch("/api/website-contact", {
         method: "POST",
@@ -71,7 +38,6 @@ export default function ContactPage() {
           email: email.trim(),
           mobile: mobile.trim(),
           message: message.trim(),
-          imageUrl,
         }),
       });
       const data = await res.json();
@@ -81,7 +47,6 @@ export default function ContactPage() {
       setEmail("");
       setMobile("");
       setMessage("");
-      removeImage();
     } catch (err: any) {
       toast({ title: "Failed to send", description: err.message, variant: "destructive" });
     } finally {
@@ -183,30 +148,6 @@ export default function ContactPage() {
                 maxLength={2000}
               />
               <p className="text-xs text-muted-foreground text-right">{message.length}/2000</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Attachment (optional, max 1MB)</Label>
-              {imagePreview ? (
-                <div className="flex items-center gap-3 p-3 border border-border rounded-lg bg-muted/30">
-                  <img src={imagePreview} alt="Attachment" className="w-16 h-16 object-cover rounded-md" />
-                  <span className="text-sm text-foreground truncate flex-1">{image?.name}</span>
-                  <button type="button" onClick={removeImage} className="text-destructive p-1">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <label className="flex items-center gap-2 px-4 py-3 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
-                  <Paperclip className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Click to attach an image (JPEG, PNG, GIF, WEBP)</span>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/gif,image/webp"
-                    className="hidden"
-                    onChange={handleImageChange}
-                  />
-                </label>
-              )}
             </div>
 
             <Button type="submit" disabled={sending} className="w-full">

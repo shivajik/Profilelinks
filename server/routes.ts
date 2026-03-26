@@ -2800,8 +2800,6 @@ export async function registerRoutes(
               <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 15px 0;" />
               <p style="color: #6b7280; font-size: 13px; margin: 0 0 8px;">Message:</p>
               <div style="background: #f9fafb; padding: 15px; border-radius: 8px; color: #111827; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${message}</div>
-              ${imageUrl ? `<hr style="border: none; border-top: 1px solid #e5e7eb; margin: 15px 0;" /><p style="color: #6b7280; font-size: 13px; margin: 0 0 8px;">Attached Image:</p><img src="${imageUrl}" alt="Attachment" style="max-width: 100%; border-radius: 8px; margin-top: 5px;" />` : ""}
-              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
               <p style="color: #9ca3af; font-size: 11px; text-align: center; margin: 0;">Sent via VisiCardly Contact Form</p>
             </div>
           </div>
