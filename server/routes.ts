@@ -1497,9 +1497,17 @@ export async function registerRoutes(
         return res.status(400).json({ message: fromZodError(result.error).message });
       }
 
-      // Validate each email for duplicates
+      // Enforce team member limit (same as create member)
+      const inviteTeam = await storage.getTeam(req.params.teamId as string);
+      const ownerIdForLimits = inviteTeam?.ownerId || req.session.userId!;
+      const limits = await getUserPlanLimits(ownerIdForLimits);
       const existingInvites = await storage.getTeamInvites(req.params.teamId as string);
       const members = await storage.getTeamMembers(req.params.teamId as string);
+      const pendingInviteCount = existingInvites.filter(inv => inv.status === "pending").length;
+      const totalAfterInvite = members.length + pendingInviteCount;
+      if (totalAfterInvite >= limits.maxTeamMembers) {
+        return res.status(403).json({ message: `Team member limit reached (${limits.maxTeamMembers}). Upgrade your plan to add more members.` });
+      }
       const skipped: string[] = [];
       const validEmails: string[] = [];
 

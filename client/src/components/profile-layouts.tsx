@@ -61,16 +61,21 @@ function getNavSurfaceStyle(template: Template) {
   };
 }
 
-function PageNav({ pages, currentPage, setActivePageSlug, template }: {
+function PageNav({ pages, currentPage, setActivePageSlug, template, hasBlocks }: {
   pages: PageInfo[];
   currentPage: PageInfo | null;
   setActivePageSlug: (slug: string | null) => void;
   template: Template;
+  hasBlocks?: boolean;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const navSurfaceStyle = getNavSurfaceStyle(template);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
+
+  // Hide page nav if there's only 1 page (Home) with no blocks/content
+  const isOnlyHomePage = pages.length === 1 && pages[0].isHome;
+  if (isOnlyHomePage && !hasBlocks) return null;
 
   useEffect(() => {
     if (mobileOpen && triggerRef.current) {
@@ -258,7 +263,7 @@ function ContentBlocks({ hasBlocks, activeBlocks, activeLinks, template, isFetch
 }
 
 function ClassicLayout(props: PersonalLayoutProps) {
-  const { user, template, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick } = props;
+  const { user, template, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick, hasBlocks } = props;
   const displayName = user.displayName || user.username;
   const avatarClass = getAvatarClass(template.avatarStyle);
   return (
@@ -279,7 +284,7 @@ function ClassicLayout(props: PersonalLayoutProps) {
         <p className={`text-sm mb-2 ${template.textColor} opacity-70`} data-testid="text-profile-username">@{user.username}</p>
         {user.bio && <p className={`text-sm max-w-sm leading-relaxed ${template.textColor} opacity-80`} data-testid="text-profile-bio">{user.bio}</p>}
         <SocialRow socials={activeSocials} template={template} normalizeUrl={normalizeUrl} className="justify-center mt-4" useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
-        {pages.length > 0 && <PageNav pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} />}
+        {pages.length > 0 && <PageNav pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} hasBlocks={hasBlocks} />}
       </div>
       <ContentBlocks {...props} />
     </>
@@ -287,7 +292,7 @@ function ClassicLayout(props: PersonalLayoutProps) {
 }
 
 function ModernLayout(props: PersonalLayoutProps) {
-  const { user, template, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick } = props;
+  const { user, template, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick, hasBlocks } = props;
   const displayName = user.displayName || user.username;
   const avatarClass = getAvatarClass(template.avatarStyle);
   return (
@@ -315,7 +320,7 @@ function ModernLayout(props: PersonalLayoutProps) {
           </div>
           {pages.length > 0 && (
             <div className="flex justify-center mt-4 pt-4 border-t" style={{ borderColor: template.accent + "15" }}>
-              <PageNav pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} />
+              <PageNav pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} hasBlocks={hasBlocks} />
             </div>
           )}
         </div>
@@ -326,7 +331,7 @@ function ModernLayout(props: PersonalLayoutProps) {
 }
 
 function BoldLayout(props: PersonalLayoutProps) {
-  const { user, template, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick } = props;
+  const { user, template, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick, hasBlocks } = props;
   const displayName = user.displayName || user.username;
   const avatarClass = getAvatarClass(template.avatarStyle);
   return (
@@ -354,7 +359,7 @@ function BoldLayout(props: PersonalLayoutProps) {
           <p className={`text-sm mb-3 ${template.textColor} opacity-60`} data-testid="text-profile-username">@{user.username}</p>
           {user.bio && <p className={`text-sm max-w-md mx-auto leading-relaxed ${template.textColor} opacity-75`} data-testid="text-profile-bio">{user.bio}</p>}
           <SocialRow socials={activeSocials} template={template} normalizeUrl={normalizeUrl} className="justify-center mt-4" useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
-          {pages.length > 0 && <PageNav pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} />}
+          {pages.length > 0 && <PageNav pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} hasBlocks={hasBlocks} />}
         </div>
       </div>
       <ContentBlocks {...props} />
@@ -363,7 +368,7 @@ function BoldLayout(props: PersonalLayoutProps) {
 }
 
 function ElegantLayout(props: PersonalLayoutProps) {
-  const { user, template, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick } = props;
+  const { user, template, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick, hasBlocks } = props;
   const displayName = user.displayName || user.username;
   const avatarClass = getAvatarClass(template.avatarStyle);
   return (
@@ -397,7 +402,7 @@ function ElegantLayout(props: PersonalLayoutProps) {
         </div>
         {pages.length > 0 && (
           <div className="flex justify-center mt-5">
-            <PageNav pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} />
+            <PageNav pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} hasBlocks={hasBlocks} />
           </div>
         )}
       </div>
@@ -407,7 +412,7 @@ function ElegantLayout(props: PersonalLayoutProps) {
 }
 
 function HeroLayout(props: PersonalLayoutProps) {
-  const { user, template, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick } = props;
+  const { user, template, activeSocials, pages, hasMultiplePages, currentPage, setActivePageSlug, normalizeUrl, trackClick, hasBlocks } = props;
   const displayName = user.displayName || user.username;
   const avatarClass = getAvatarClass(template.avatarStyle);
   return (
@@ -437,7 +442,7 @@ function HeroLayout(props: PersonalLayoutProps) {
             </div>
             {pages.length > 0 && (
               <div className="flex justify-center pt-3 border-t border-white/10">
-                <PageNav pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} />
+                <PageNav pages={pages} currentPage={currentPage} setActivePageSlug={setActivePageSlug} template={template} hasBlocks={hasBlocks} />
               </div>
             )}
             <div className="mt-4">

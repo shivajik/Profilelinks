@@ -120,18 +120,13 @@ export function PricingCard({
                 <span className="text-muted-foreground text-sm mb-1">/month</span>
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                Billed annually{discountPercent ? "" : ` at ${symbol}${price.toLocaleString(locale)}`}
+                Billed annually at {symbol}{price.toLocaleString(locale)}
               </p>
-              {discountPercent && originalPrice > 0 && (
+              {(discountPercent || discountAmount) && originalPrice > 0 && price < originalPrice && (
                 <p className="text-xs text-muted-foreground mt-0.5 line-through">
                   {symbol}{originalPrice.toLocaleString(locale)}/year
                 </p>
               )}
-              {/* {!discountPercent && inrMonthlyForSaving > 0 && inrYearlyForSaving > 0 && (
-                <p className="text-xs text-primary mt-0.5">
-                  Save {Math.round(100 - (inrYearlyForSaving / (inrMonthlyForSaving * 12)) * 100)}% vs monthly
-                </p>
-              )} */}
             </>
           ) : (
             <>
@@ -142,7 +137,7 @@ export function PricingCard({
                 <span className="text-muted-foreground text-sm mb-1">/month</span>
               </div>
               <p className="text-sm text-muted-foreground mt-1">Billed monthly</p>
-              {discountPercent && originalPrice > 0 && (
+              {(discountPercent || discountAmount) && originalPrice > 0 && price < originalPrice && (
                 <p className="text-xs text-muted-foreground mt-0.5 line-through">
                   {symbol}{originalPrice.toLocaleString(locale)}/month
                 </p>

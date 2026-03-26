@@ -3480,17 +3480,51 @@ function TrialEmailsCard() {
   const { toast } = useToast();
   const [processing, setProcessing] = useState(false);
 
+  // Custom discount state
+  const [customDiscount, setCustomDiscount] = useState("20");
+  const [customCouponCode, setCustomCouponCode] = useState("JOIN-NOW-20");
+  const [customMinDays, setCustomMinDays] = useState("7");
+  const [customProcessing, setCustomProcessing] = useState(false);
+  const [customResult, setCustomResult] = useState<{ emailsSent: string[]; skipped: string[]; errors: string[] } | null>(null);
+
   const handleTrigger = async () => {
     setProcessing(true);
     try {
       const r = await fetch("/api/admin/trigger-trial-emails", { method: "POST" });
       const j = await r.json();
       if (!r.ok) throw new Error(j.message);
-      toast({ title: "Trial emails processed", description: "Emails have been sent to eligible users (no duplicates)." });
+      toast({ title: "Trial emails processed", description: `Sent: ${j.emailsSent?.length || 0} emails` });
     } catch (err: any) {
       toast({ title: "Failed", description: err.message, variant: "destructive" });
     }
     setProcessing(false);
+  };
+
+  const handleCustomDiscount = async () => {
+    if (!customDiscount || !customCouponCode || !customMinDays) {
+      toast({ title: "Missing fields", description: "Please fill all fields", variant: "destructive" });
+      return;
+    }
+    setCustomProcessing(true);
+    setCustomResult(null);
+    try {
+      const r = await fetch("/api/admin/send-custom-discount", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          discountPercent: customDiscount,
+          couponCode: customCouponCode.toUpperCase(),
+          minDaysExpired: parseInt(customMinDays),
+        }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.message);
+      setCustomResult({ emailsSent: j.emailsSent || [], skipped: j.skipped || [], errors: j.errors || [] });
+      toast({ title: "Custom discount emails processed", description: `Sent: ${j.emailsSent?.length || 0}, Skipped: ${j.skipped?.length || 0}` });
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    }
+    setCustomProcessing(false);
   };
 
   return (
@@ -3501,14 +3535,98 @@ function TrialEmailsCard() {
           Trial Email Notifications
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <p className="text-sm text-muted-foreground">
-          Manually trigger trial email processing. This checks all trial users and sends appropriate emails (halfway reminder, expired notice, or discount offer). Each email type is only sent once per user — no duplicates.
-        </p>
-        <Button onClick={handleTrigger} disabled={processing} size="sm">
-          {processing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-          {processing ? "Processing..." : "Process Trial Emails"}
-        </Button>
+      <CardContent className="space-y-4">
+        {/* Standard trial email processing */}
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Process standard trial emails (halfway reminder, expired notice, auto discount). Each email type is sent once per user — no duplicates.
+          </p>
+          <Button onClick={handleTrigger} disabled={processing} size="sm">
+            {processing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            {processing ? "Processing..." : "Process Trial Emails"}
+          </Button>
+        </div>
+
+        <Separator />
+
+        {/* Custom discount email */}
+        <div className="space-y-3">
+          <h4 className="text-sm font-semibold text-foreground">Custom Discount Email</h4>
+          <p className="text-xs text-muted-foreground">
+            Send a discount email to users whose trial expired more than N days ago. Each "N days" threshold acts as a unique email — users won't receive the same threshold email twice.
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <Label className="text-xs">Discount %</Label>
+              <Input
+                type="number"
+                min="1"
+                max="100"
+                value={customDiscount}
+                onChange={(e) => setCustomDiscount(e.target.value)}
+                placeholder="20"
+                className="h-8 text-sm"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Coupon Code</Label>
+              <Input
+                value={customCouponCode}
+                onChange={(e) => setCustomCouponCode(e.target.value.toUpperCase())}
+                placeholder="JOIN-NOW-20"
+                className="h-8 text-sm uppercase"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Min Days Expired</Label>
+              <Input
+                type="number"
+                min="1"
+                value={customMinDays}
+                onChange={(e) => setCustomMinDays(e.target.value)}
+                placeholder="7"
+                className="h-8 text-sm"
+              />
+            </div>
+          </div>
+          <div className="bg-muted/50 rounded-md p-2 text-xs text-muted-foreground space-y-1">
+            <p>📋 <strong>How it works:</strong></p>
+            <p>• Sends to users whose trial expired ≥ <strong>{customMinDays} days</strong> ago</p>
+            <p>• Users who already received this exact threshold email will be skipped</p>
+            <p>• Users who already have an active paid plan will be skipped</p>
+            <p>• Example: If you send at "7 days" then later at "10 days", a user at 11 days gets the "10 days" email but NOT the "7 days" one again</p>
+          </div>
+          <Button onClick={handleCustomDiscount} disabled={customProcessing} size="sm" variant="outline">
+            {customProcessing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            {customProcessing ? "Sending..." : `Send ${customDiscount}% Discount Emails`}
+          </Button>
+
+          {customResult && (
+            <div className="text-xs space-y-1 bg-muted/30 rounded-md p-2 max-h-40 overflow-y-auto">
+              {customResult.emailsSent.length > 0 && (
+                <div>
+                  <span className="font-semibold text-green-600">✅ Sent ({customResult.emailsSent.length}):</span>
+                  <ul className="ml-3">{customResult.emailsSent.map((e, i) => <li key={i}>{e}</li>)}</ul>
+                </div>
+              )}
+              {customResult.skipped.length > 0 && (
+                <div>
+                  <span className="font-semibold text-amber-600">⏭ Skipped ({customResult.skipped.length}):</span>
+                  <ul className="ml-3">{customResult.skipped.map((e, i) => <li key={i}>{e}</li>)}</ul>
+                </div>
+              )}
+              {customResult.errors.length > 0 && (
+                <div>
+                  <span className="font-semibold text-red-600">❌ Errors ({customResult.errors.length}):</span>
+                  <ul className="ml-3">{customResult.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
+                </div>
+              )}
+              {customResult.emailsSent.length === 0 && customResult.skipped.length === 0 && customResult.errors.length === 0 && (
+                <p className="text-muted-foreground">No eligible users found for this threshold.</p>
+              )}
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

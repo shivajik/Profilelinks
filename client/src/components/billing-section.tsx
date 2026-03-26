@@ -87,7 +87,7 @@ function StatusChip({ status }: { status: string }) {
     history?: PaymentHistory[];
   } = {};
 
-export function BillingSection({ autoSelectPlanId }: { autoSelectPlanId?: string | null }) {
+export function BillingSection({ autoSelectPlanId, autoPromoCode }: { autoSelectPlanId?: string | null; autoPromoCode?: string | null }) {
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -184,6 +184,40 @@ export function BillingSection({ autoSelectPlanId }: { autoSelectPlanId?: string
       }
     }
   }, [autoSelectPlanId, autoTriggered, loading, plans]);
+
+  // Auto-apply promo code from URL (e.g., from trial discount email)
+  const [promoAutoApplied, setPromoAutoApplied] = useState(false);
+  useEffect(() => {
+    if (autoPromoCode && !promoAutoApplied && !appliedPromo && !loading) {
+      setPromoAutoApplied(true);
+      setPromoInput(autoPromoCode.toUpperCase());
+      // Auto-validate the promo code
+      (async () => {
+        try {
+          const res = await fetch("/api/promo-codes/validate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code: autoPromoCode.trim() }),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            setAppliedPromo({
+              code: data.code,
+              discountPercent: data.discountPercent,
+              discountType: data.discountType || "percentage",
+              discountMonthlyAmount: data.discountMonthlyAmount || 0,
+              discountYearlyAmount: data.discountYearlyAmount || 0,
+              planId: data.planId || null,
+            });
+            const desc = data.discountType === "money"
+              ? `₹${billingCycle === "yearly" ? data.discountYearlyAmount : data.discountMonthlyAmount} off will be applied.`
+              : `${data.discountPercent}% discount will be applied.`;
+            toast({ title: "Promo code applied! 🎉", description: desc });
+          }
+        } catch {}
+      })();
+    }
+  }, [autoPromoCode, promoAutoApplied, appliedPromo, loading]);
 
 
   const validatePromo = async () => {

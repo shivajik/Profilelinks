@@ -1205,4 +1205,27 @@ router.post("/api/admin/trigger-trial-emails", requireAdminAuth, async (req: Req
   }
 });
 
+// ─── Custom Discount Email Blast ─────────────────────────────────────────────
+router.post("/api/admin/send-custom-discount", requireAdminAuth, async (req: Request, res: Response) => {
+  try {
+    const { discountPercent, couponCode, minDaysExpired } = req.body;
+    if (!discountPercent || !couponCode || !minDaysExpired) {
+      return res.status(400).json({ message: "discountPercent, couponCode, and minDaysExpired are required" });
+    }
+    const { processCustomDiscountEmails } = await import("./trial-emails");
+    const result = await processCustomDiscountEmails({
+      discountPercent: String(discountPercent),
+      couponCode: String(couponCode),
+      minDaysExpired: Number(minDaysExpired),
+    });
+    res.json({
+      message: "Custom discount emails processed",
+      ...result,
+    });
+  } catch (error: any) {
+    console.error("Custom discount email error:", error);
+    res.status(500).json({ message: "Failed to send custom discount emails", error: error.message });
+  }
+});
+
 export default router;

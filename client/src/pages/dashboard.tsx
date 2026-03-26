@@ -643,7 +643,7 @@ export default function Dashboard() {
           )}
           <div className="flex-1 flex overflow-hidden min-h-0">
              <div className={`overflow-y-auto border-r bg-background w-full ${activeSection === "design" ? "flex-1 md:min-w-[300px] md:max-w-[420px]" : ""} ${activeSection === "menu-setup" ? "shrink-0 md:w-[380px]" : ""} ${["team-members", "team-templates", "contacts", "billing", "usage", "affiliate", "business-profile"].includes(activeSection) ? "flex-1 md:max-w-none" : ""} ${!["design", "menu-setup", "team-members", "team-templates", "contacts", "billing", "usage", "affiliate", "business-profile"].includes(activeSection) ? "flex-1" : ""}`}>
-              {activeSection === "billing" && <BillingSection autoSelectPlanId={new URLSearchParams(search).get("planId")} />}
+              {activeSection === "billing" && <BillingSection autoSelectPlanId={new URLSearchParams(search).get("planId")} autoPromoCode={new URLSearchParams(search).get("promoCode")} />}
               {activeSection === "business-profile" && <BusinessProfileSection onNavigateToTemplates={isTeamOwnerOrAdmin ? () => setActiveSection("team-templates") : undefined} />}
               {activeSection === "affiliate" && affiliateData && (
                 <div className="p-6 max-w-4xl mx-auto space-y-6">

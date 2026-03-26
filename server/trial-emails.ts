@@ -22,8 +22,32 @@ async function getTrialDiscount(): Promise<string> {
   }
 }
 
+async function getTrialCouponCode(): Promise<string> {
+  try {
+    const result = await db.execute(
+      sql`SELECT value FROM app_settings WHERE key = 'trial_discount_coupon_code'`
+    );
+    const rows = result.rows as { value: string }[];
+    return rows[0]?.value || "JOIN-NOW-20";
+  } catch {
+    return "JOIN-NOW-20";
+  }
+}
+
 async function hasEmailBeenSent(userId: string, emailType: string): Promise<boolean> {
   try {
+    const result = await db.execute(
+      sql`SELECT 1 FROM trial_email_log WHERE user_id = ${userId} AND email_type = ${emailType} LIMIT 1`
+    );
+    return (result.rows?.length ?? 0) > 0;
+  } catch {
+    return false;
+  }
+}
+
+async function hasCustomDiscountBeenSent(userId: string, minDaysExpired: number): Promise<boolean> {
+  try {
+    const emailType = `trial_custom_discount_${minDaysExpired}`;
     const result = await db.execute(
       sql`SELECT 1 FROM trial_email_log WHERE user_id = ${userId} AND email_type = ${emailType} LIMIT 1`
     );
@@ -121,7 +145,8 @@ export async function processTrialEmails(): Promise<{ processed: number; emailsS
         const sent = await hasEmailBeenSent(sub.userId, TRIAL_EMAIL_TYPES.DISCOUNT_OFFER);
         if (!sent) {
           const discount = await getTrialDiscount();
-          await sendTrialDiscountEmail(user.email, user.displayName || user.username, sub.planName, discount, appUrl);
+          const couponCode = await getTrialCouponCode();
+          await sendTrialDiscountEmail(user.email, user.displayName || user.username, sub.planName, discount, couponCode, appUrl);
           await logEmailSent(sub.userId, TRIAL_EMAIL_TYPES.DISCOUNT_OFFER);
           result.emailsSent.push(`${user.email}: discount offer`);
         } else {
@@ -131,6 +156,99 @@ export async function processTrialEmails(): Promise<{ processed: number; emailsS
     }
   } catch (err) {
     console.error("[Trial Emails] Error processing trial emails:", err);
+    result.errors.push(String(err));
+  }
+  return result;
+}
+
+// Custom discount email for admin-triggered sends
+export async function processCustomDiscountEmails(options: {
+  discountPercent: string;
+  couponCode: string;
+  minDaysExpired: number;
+}): Promise<{ processed: number; emailsSent: string[]; skipped: string[]; errors: string[] }> {
+  const result = { processed: 0, emailsSent: [] as string[], skipped: [] as string[], errors: [] as string[] };
+  try {
+    const now = new Date();
+    const minHoursExpired = options.minDaysExpired * 24;
+    const emailType = `trial_custom_discount_${options.minDaysExpired}`;
+
+    // Find all expired trial subscriptions
+    const trialSubs = await db
+      .select({
+        userId: userSubscriptions.userId,
+        trialEndsAt: userSubscriptions.trialEndsAt,
+        planName: pricingPlans.name,
+        status: userSubscriptions.status,
+      })
+      .from(userSubscriptions)
+      .innerJoin(pricingPlans, eq(userSubscriptions.planId, pricingPlans.id))
+      .where(
+        and(
+          eq(userSubscriptions.isTrial, true),
+          sql`${userSubscriptions.trialEndsAt} IS NOT NULL`
+        )
+      );
+
+    for (const sub of trialSubs) {
+      if (!sub.trialEndsAt) continue;
+      result.processed++;
+
+      const trialEnd = new Date(sub.trialEndsAt);
+      const hoursSinceExpiry = (now.getTime() - trialEnd.getTime()) / (1000 * 60 * 60);
+
+      // Only send to users whose trial expired >= minDaysExpired ago
+      if (hoursSinceExpiry < minHoursExpired) {
+        continue;
+      }
+
+      // Check if this exact email type was already sent to this user
+      const alreadySent = await hasCustomDiscountBeenSent(sub.userId, options.minDaysExpired);
+      if (alreadySent) {
+        const userRows = await db.select({ email: users.email }).from(users).where(eq(users.id, sub.userId)).limit(1);
+        result.skipped.push(`${userRows[0]?.email || sub.userId} (already sent for ${options.minDaysExpired}+ days)`);
+        continue;
+      }
+
+      // Check if user has since purchased a plan (skip active non-trial subscriptions)
+      const activeSubs = await db
+        .select()
+        .from(userSubscriptions)
+        .where(sql`${userSubscriptions.userId} = ${sub.userId} AND ${userSubscriptions.status} = 'active' AND ${userSubscriptions.isTrial} = false`)
+        .limit(1);
+      if (activeSubs.length > 0) {
+        const userRows = await db.select({ email: users.email }).from(users).where(eq(users.id, sub.userId)).limit(1);
+        result.skipped.push(`${userRows[0]?.email || sub.userId} (already has active plan)`);
+        continue;
+      }
+
+      const userRows = await db
+        .select({ email: users.email, username: users.username, displayName: users.displayName })
+        .from(users)
+        .where(eq(users.id, sub.userId))
+        .limit(1);
+
+      if (!userRows.length) {
+        result.errors.push(`User ${sub.userId} not found`);
+        continue;
+      }
+      const user = userRows[0];
+      const appUrl = process.env.APP_URL || 'https://visicardly.com';
+      const daysSinceExpiry = Math.floor(hoursSinceExpiry / 24);
+
+      await sendTrialDiscountEmail(
+        user.email,
+        user.displayName || user.username,
+        sub.planName,
+        options.discountPercent,
+        options.couponCode,
+        appUrl
+      );
+      await logEmailSent(sub.userId, emailType);
+      result.emailsSent.push(`${user.email} (${daysSinceExpiry} days expired)`);
+    }
+  } catch (err) {
+    console.error("[Trial Emails] Error processing custom discount emails:", err);
     result.errors.push(String(err));
   }
   return result;
@@ -225,8 +343,9 @@ async function sendTrialExpiredEmail(to: string, name: string, planName: string,
   }
 }
 
-async function sendTrialDiscountEmail(to: string, name: string, planName: string, discountPercent: string, appUrl: string): Promise<void> {
+async function sendTrialDiscountEmail(to: string, name: string, planName: string, discountPercent: string, couponCode: string, appUrl: string): Promise<void> {
   try {
+    const billingUrl = `${appUrl}/dashboard?section=billing&promoCode=${encodeURIComponent(couponCode)}`;
     await sendEmailViaNodemailer({
       to,
       subject: `🎁 Special ${discountPercent}% discount — Upgrade your VisiCardly plan!`,
@@ -246,6 +365,7 @@ async function sendTrialDiscountEmail(to: string, name: string, planName: string
             <div style="background: linear-gradient(135deg, #f0f0ff, #e8e5ff); border-radius: 16px; padding: 24px; text-align: center; margin-bottom: 24px; border: 2px dashed #6C5CE7;">
               <p style="font-size: 48px; font-weight: 800; color: #6C5CE7; margin: 0;">${discountPercent}% OFF</p>
               <p style="color: #6b7280; font-size: 13px; margin: 8px 0 0;">On any paid plan</p>
+              <p style="font-size: 16px; font-weight: 700; color: #6C5CE7; margin: 12px 0 0; letter-spacing: 2px;">Code: ${couponCode}</p>
             </div>
             <div style="background: #f0fdf4; border-radius: 12px; padding: 16px; margin-bottom: 24px; border-left: 4px solid #10b981;">
               <p style="color: #065f46; font-size: 13px; margin: 0 0 8px; font-weight: 600;">What you'll get back:</p>
@@ -256,7 +376,7 @@ async function sendTrialDiscountEmail(to: string, name: string, planName: string
               </ul>
             </div>
             <div style="text-align: center; margin: 28px 0;">
-              <a href="${appUrl}/dashboard?section=billing"
+              <a href="${billingUrl}"
                  style="display: inline-block; background: linear-gradient(135deg, #6C5CE7, #a855f7); color: white; padding: 14px 36px; text-decoration: none; border-radius: 10px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 14px rgba(108,92,231,0.35);">
                 Claim ${discountPercent}% Discount →
               </a>
