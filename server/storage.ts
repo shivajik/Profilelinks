@@ -170,6 +170,7 @@ if (pool) pool.query(`
     max_uses integer DEFAULT 0,
     current_uses integer NOT NULL DEFAULT 0,
     is_active boolean NOT NULL DEFAULT true,
+    billing_cycle_scope text NOT NULL DEFAULT 'both',
     expires_at timestamp,
     created_at timestamp NOT NULL DEFAULT now()
   );

@@ -115,8 +115,22 @@ router.post("/api/payments/create-order", requireAuth as any, async (req: Reques
       if (!plan.isLtd && !code.appliesToRegular) return res.status(400).json({ message: "This coupon is not valid for regular plans" });
       if (code.planId && code.planId !== planId) return res.status(400).json({ message: "This coupon is not valid for the selected plan" });
 
+      // Check billing cycle scope
+      const codeBillingScope = (code as any).billingCycleScope || "both";
+      if (codeBillingScope !== "both" && codeBillingScope !== billingCycle) {
+        return res.status(400).json({ message: `This coupon is only valid for ${codeBillingScope} billing` });
+      }
+
       const discount = parseFloat(code.discountPercent);
-      price = Math.max(0, Math.round(price * (1 - discount / 100)));
+      if (codeBillingScope === "monthly" && billingCycle === "yearly") {
+        // Monthly-only coupon on yearly plan: reduce by monthly discount amount only
+        // e.g., monthly price 1500, 10% off = 150 off the yearly price
+        const monthlyPrice = useUsd ? parseFloat(plan.monthlyPriceUsd) : parseFloat(plan.monthlyPrice);
+        const monthlyDiscount = Math.round(monthlyPrice * (discount / 100));
+        price = Math.max(0, price - monthlyDiscount);
+      } else {
+        price = Math.max(0, Math.round(price * (1 - discount / 100)));
+      }
       appliedPromoId = code.id;
     }
 

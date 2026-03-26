@@ -48,7 +48,7 @@ export default function PricingPage() {
 
   const [promoInput, setPromoInput] = useState("");
   const [promoValidating, setPromoValidating] = useState(false);
-  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPercent: number; planId?: string | null } | null>(null);
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPercent: number; planId?: string | null; billingCycleScope?: string } | null>(null);
 
   useEffect(() => {
     fetch("/api/pricing/plans")
@@ -73,11 +73,11 @@ export default function PricingPage() {
       const res = await fetch("/api/promo-codes/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: promoInput.trim() }),
+        body: JSON.stringify({ code: promoInput.trim(), billingCycle }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-      setAppliedPromo({ code: data.code, discountPercent: data.discountPercent, planId: data.planId || null });
+      setAppliedPromo({ code: data.code, discountPercent: data.discountPercent, planId: data.planId || null, billingCycleScope: data.billingCycleScope || "both" });
       toast({ title: "Promo code applied! 🎉", description: `${data.discountPercent}% discount will be applied.` });
     } catch (err: any) {
       toast({ title: "Invalid promo code", description: err.message, variant: "destructive" });

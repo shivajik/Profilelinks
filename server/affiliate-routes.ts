@@ -25,6 +25,7 @@ async function ensurePromoCodeScopeColumns() {
     await db.execute(sql`ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS applies_to_ltd boolean NOT NULL DEFAULT false`);
     await db.execute(sql`ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS applies_to_regular boolean NOT NULL DEFAULT true`);
     await db.execute(sql`ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS plan_id varchar`);
+    await db.execute(sql`ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS billing_cycle_scope text NOT NULL DEFAULT 'both'`);
   } catch (error) {
     console.error("Promo code scope column setup failed:", error);
   }
@@ -296,12 +297,21 @@ router.post("/api/promo-codes/validate", async (req: Request, res: Response) => 
       return res.status(400).json({ message: "This coupon is not valid for the selected plan" });
     }
 
+    // Check billing cycle scope
+    const billingCycle = result.data.billingCycle;
+    if (billingCycle && code.billingCycleScope && code.billingCycleScope !== "both") {
+      if (code.billingCycleScope !== billingCycle) {
+        return res.status(400).json({ message: `This coupon is only valid for ${code.billingCycleScope} plans` });
+      }
+    }
+
     res.json({
       valid: true,
       discountPercent: parseFloat(code.discountPercent),
       code: code.code,
       appliesToLtd: code.appliesToLtd,
       appliesToRegular: code.appliesToRegular,
+      billingCycleScope: code.billingCycleScope || "both",
       planId: code.planId,
     });
   } catch {

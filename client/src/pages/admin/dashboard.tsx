@@ -226,6 +226,7 @@ export default function AdminDashboard() {
   const [promoAppliesToLtd, setPromoAppliesToLtd] = useState(false);
   const [promoAppliesToRegular, setPromoAppliesToRegular] = useState(true);
   const [promoPlanId, setPromoPlanId] = useState<string>("all");
+  const [promoBillingCycleScope, setPromoBillingCycleScope] = useState<"monthly" | "yearly" | "both">("both");
   const [savingPromo, setSavingPromo] = useState(false);
   const [deletingPromoId, setDeletingPromoId] = useState<string | null>(null);
   const [promoSignupAccountType, setPromoSignupAccountType] = useState<"individual" | "team">("individual"); // kept for backwards compat but unused
@@ -1353,6 +1354,7 @@ export default function AdminDashboard() {
                   setPromoAppliesToLtd(false);
                   setPromoAppliesToRegular(true);
                   setPromoPlanId("all");
+                  setPromoBillingCycleScope("both");
                   setPromoSignupAccountType("individual");
                   setPromoDialog({ open: true });
                 }}>
@@ -2370,6 +2372,23 @@ export default function AdminDashboard() {
               </select>
             </div>
             <div className="space-y-1.5">
+              <Label>Billing Cycle</Label>
+              <select
+                value={promoBillingCycleScope}
+                onChange={(e) => setPromoBillingCycleScope(e.target.value as "monthly" | "yearly" | "both")}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+              >
+                <option value="both">Both (Monthly & Annual)</option>
+                <option value="monthly">Monthly only</option>
+                <option value="yearly">Annual only</option>
+              </select>
+              {promoBillingCycleScope === "monthly" && (
+                <p className="text-xs text-muted-foreground">
+                  If used on annual plan, only the monthly equivalent discount will be deducted from annual price.
+                </p>
+              )}
+            </div>
+            <div className="space-y-1.5">
               <Label>Max Uses (0 = unlimited)</Label>
               <Input type="number" min="0" value={promoMaxUses} onChange={(e) => setPromoMaxUses(e.target.value)} />
             </div>
@@ -2395,6 +2414,7 @@ export default function AdminDashboard() {
                       expiresAt: promoExpiry || undefined,
                       appliesToLtd: promoAppliesToLtd,
                       appliesToRegular: promoAppliesToRegular,
+                      billingCycleScope: promoBillingCycleScope,
                       planId: promoPlanId === "all" ? undefined : promoPlanId,
                     }),
                   });

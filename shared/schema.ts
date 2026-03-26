@@ -839,6 +839,7 @@ export const promoCodes = pgTable("promo_codes", {
   isActive: boolean("is_active").notNull().default(true),
   appliesToLtd: boolean("applies_to_ltd").notNull().default(false),
   appliesToRegular: boolean("applies_to_regular").notNull().default(true),
+  billingCycleScope: text("billing_cycle_scope").notNull().default("both"), // "monthly", "yearly", "both"
   planId: varchar("plan_id").references(() => pricingPlans.id, { onDelete: "cascade" }),
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -861,6 +862,7 @@ export const createPromoCodeSchema = z.object({
   expiresAt: z.string().optional(),
   appliesToLtd: z.boolean().default(false),
   appliesToRegular: z.boolean().default(true),
+  billingCycleScope: z.enum(["monthly", "yearly", "both"]).default("both"),
   planId: z.string().optional().nullable(),
 });
 
@@ -871,6 +873,7 @@ export const updatePromoCodeSchema = z.object({
   expiresAt: z.string().optional().nullable(),
   appliesToLtd: z.boolean().optional(),
   appliesToRegular: z.boolean().optional(),
+  billingCycleScope: z.enum(["monthly", "yearly", "both"]).optional(),
   planId: z.string().optional().nullable(),
 });
 
@@ -878,6 +881,7 @@ export const validatePromoCodeSchema = z.object({
   code: z.string().min(1),
   planId: z.string().optional().nullable(),
   isLtd: z.boolean().optional(),
+  billingCycle: z.enum(["monthly", "yearly"]).optional(),
 });
 
 export type Affiliate = typeof affiliates.$inferSelect;
