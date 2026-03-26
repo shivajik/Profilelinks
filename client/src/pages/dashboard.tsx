@@ -234,13 +234,18 @@ export default function Dashboard() {
   });
 
   const currentPage = selectedPageId
-    ? userPages.find((p) => p.id === selectedPageId)
+    ? userPages.find((p) => p.id === selectedPageId) || userPages.find((p) => p.isHome) || userPages[0]
     : userPages.find((p) => p.isHome) || userPages[0];
 
   useEffect(() => {
-    if (userPages.length > 0 && !selectedPageId) {
+    if (userPages.length === 0) {
+      if (selectedPageId !== null) setSelectedPageId(null);
+      return;
+    }
+
+    if (!selectedPageId || !userPages.some((p) => p.id === selectedPageId)) {
       const home = userPages.find((p) => p.isHome) || userPages[0];
-      setSelectedPageId(home.id);
+      if (home) setSelectedPageId(home.id);
     }
   }, [userPages, selectedPageId]);
 
@@ -1155,24 +1160,34 @@ export default function Dashboard() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm" className="gap-1" data-testid="button-page-selector">
-                            {currentPage?.title || "Home"}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1"
+                            data-testid="button-page-selector"
+                            disabled={userPages.length === 0}
+                          >
+                            {currentPage?.title || "No pages"}
                             <ChevronDown className="w-3.5 h-3.5" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start">
-                          {userPages.map((page) => (
-                            <DropdownMenuItem
-                              key={page.id}
-                              onClick={() => setSelectedPageId(page.id)}
-                              data-testid={`page-option-${page.id}`}
-                            >
-                              <span className="flex items-center gap-2">
-                                {page.isHome && <Home className="w-3.5 h-3.5 text-muted-foreground" />}
-                                {page.title}
-                              </span>
-                            </DropdownMenuItem>
-                          ))}
+                          {userPages.length === 0 ? (
+                            <DropdownMenuItem disabled>No pages available</DropdownMenuItem>
+                          ) : (
+                            userPages.map((page) => (
+                              <DropdownMenuItem
+                                key={page.id}
+                                onClick={() => setSelectedPageId(page.id)}
+                                data-testid={`page-option-${page.id}`}
+                              >
+                                <span className="flex items-center gap-2">
+                                  {page.isHome && <Home className="w-3.5 h-3.5 text-muted-foreground" />}
+                                  {page.title}
+                                </span>
+                              </DropdownMenuItem>
+                            ))
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                       <Button
@@ -1195,7 +1210,7 @@ export default function Dashboard() {
                 >
                   <div className="px-4 pb-3 pt-1">
                     <p className="text-sm text-muted-foreground">
-                      Editing: <span className="font-medium">{currentPage?.title || "Home"}</span>
+                      Editing: <span className="font-medium">{currentPage?.title || "No page selected"}</span>
                       {currentPage?.isHome && <span className="text-xs ml-1 text-muted-foreground">(Home page)</span>}
                     </p>
                     {userPages.length > 1 && (
@@ -1228,6 +1243,28 @@ export default function Dashboard() {
                     {blocksLoading ? (
                       <div className="flex items-center justify-center py-8">
                         <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : !currentPage ? (
+                      <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                          <FileText className="w-6 h-6 text-primary" />
+                        </div>
+                        <h3 className="font-semibold mb-1">No pages yet</h3>
+                        <p className="text-sm text-muted-foreground mb-4 max-w-xs">
+                          Create a page first, then you can add blocks to it.
+                        </p>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            const check = canPerformAction(planLimits, "addPage");
+                            if (!check.allowed) { setLimitMessage(check.message || ""); setLimitDialogOpen(true); return; }
+                            setAddingPage(true);
+                          }}
+                          data-testid="button-create-page-first"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Create your first page
+                        </Button>
                       </div>
                     ) : sortedBlocks.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -3572,7 +3609,7 @@ function PreviewPageNav({
         className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-medium ${template.cardBg} ${template.cardTextColor}`}
         data-testid="preview-page-nav-toggle"
       >
-        {currentPage?.title || "Home"}
+        {currentPage?.title || "No pages"}
         <ChevronDown className={`w-2.5 h-2.5 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (

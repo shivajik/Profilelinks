@@ -854,7 +854,7 @@ export async function registerRoutes(
   app.delete("/api/pages/:id", requireAuth, async (req, res) => {
     const deleted = await storage.deletePage(req.params.id as string, req.session.userId!);
     if (!deleted) {
-      return res.status(400).json({ message: "Cannot delete home page or page not found" });
+      return res.status(400).json({ message: "Page not found or not authorized" });
     }
     res.json({ message: "Deleted" });
   });

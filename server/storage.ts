@@ -544,7 +544,6 @@ export class DatabaseStorage implements IStorage {
   async deletePage(id: string, userId: string): Promise<boolean> {
     const existing = await db.select().from(pages).where(eq(pages.id, id));
     if (!existing.length || existing[0].userId !== userId) return false;
-    if (existing[0].isHome) return false;
     await db.delete(links).where(eq(links.pageId, id));
     await db.delete(pages).where(eq(pages.id, id));
     return true;
