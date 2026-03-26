@@ -4336,16 +4336,14 @@ function ManagePagesDialog({
                     >
                       <Pencil className="w-3.5 h-3.5" />
                     </Button>
-                    {!page.isHome && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => deleteMutation.mutate(page.id)}
-                        data-testid={`button-delete-page-${page.id}`}
-                      >
-                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                      </Button>
-                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => deleteMutation.mutate(page.id)}
+                      data-testid={`button-delete-page-${page.id}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                    </Button>
                   </div>
                 </>
               )}
@@ -5148,7 +5146,18 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
       }
     },
     onError: (err: any) => {
-      toast({ title: "Failed to send invite", description: err.message, variant: "destructive" });
+      const msg = err.message || "";
+      let parsedMsg = msg;
+      try {
+        const jsonMatch = msg.match(/\{.*\}/);
+        if (jsonMatch) parsedMsg = JSON.parse(jsonMatch[0]).message || msg;
+      } catch {}
+      if (parsedMsg.toLowerCase().includes("limit reached") || parsedMsg.toLowerCase().includes("upgrade")) {
+        setLimitMessage(parsedMsg);
+        setLimitDialogOpen(true);
+      } else {
+        toast({ title: "Failed to send invite", description: parsedMsg, variant: "destructive" });
+      }
     },
   });
 
