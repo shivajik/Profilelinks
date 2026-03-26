@@ -130,6 +130,14 @@ export default function Onboarding() {
             emails: inviteEmails,
           });
         }
+
+        // Assign trial based on company size (business accounts only)
+        try {
+          await apiRequest("POST", "/api/auth/assign-trial", {
+            accountType: "team",
+            companySize: companySize || "1-5",
+          });
+        } catch { /* trial assignment is best-effort */ }
       } else {
         for (const entry of socialEntries) {
           if (!entry.url.trim()) continue;
@@ -143,6 +151,7 @@ export default function Onboarding() {
             url: fullUrl,
           });
         }
+        // Personal accounts get no trial - they stay on free plan
       }
 
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });

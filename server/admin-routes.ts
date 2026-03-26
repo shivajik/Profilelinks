@@ -307,19 +307,21 @@ router.get("/api/admin/users", requireAdminAuth, async (req: Request, res: Respo
         billingCycle: userSubscriptions.billingCycle,
         planName: pricingPlans.name,
         createdAt: userSubscriptions.createdAt,
+        isTrial: userSubscriptions.isTrial,
       })
       .from(userSubscriptions)
       .leftJoin(pricingPlans, sql`${userSubscriptions.planId} = ${pricingPlans.id}`)
       .where(inArray(userSubscriptions.userId, userIds))
       .orderBy(desc(userSubscriptions.createdAt));
 
-    const latestSubscriptionByUserId = new Map<string, { status: string; billingCycle: string; planName?: string | null }>();
+    const latestSubscriptionByUserId = new Map<string, { status: string; billingCycle: string; planName?: string | null; isTrial?: boolean }>();
     for (const sub of subscriptionRows) {
       if (!latestSubscriptionByUserId.has(sub.userId)) {
         latestSubscriptionByUserId.set(sub.userId, {
           status: sub.status,
           billingCycle: sub.billingCycle,
           planName: sub.planName,
+          isTrial: sub.isTrial ?? false,
         });
       }
     }

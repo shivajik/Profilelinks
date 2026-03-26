@@ -834,6 +834,9 @@ export const promoCodes = pgTable("promo_codes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   code: text("code").notNull().unique(),
   discountPercent: numeric("discount_percent", { precision: 5, scale: 2 }).notNull().default("10"),
+  discountType: text("discount_type").notNull().default("percentage"), // "percentage" | "money"
+  discountMonthlyAmount: numeric("discount_monthly_amount", { precision: 10, scale: 2 }).default("0"),
+  discountYearlyAmount: numeric("discount_yearly_amount", { precision: 10, scale: 2 }).default("0"),
   maxUses: integer("max_uses").default(0), // 0 = unlimited
   currentUses: integer("current_uses").notNull().default(0),
   isActive: boolean("is_active").notNull().default(true),
@@ -857,7 +860,10 @@ export const updateAffiliateSchema = z.object({
 
 export const createPromoCodeSchema = z.object({
   code: z.string().min(1, "Code is required").max(50).regex(/^[A-Z0-9_-]+$/i, "Only letters, numbers, hyphens and underscores"),
-  discountPercent: z.number().min(1).max(100),
+  discountPercent: z.number().min(0).max(100).default(10),
+  discountType: z.enum(["percentage", "money"]).default("percentage"),
+  discountMonthlyAmount: z.number().min(0).default(0),
+  discountYearlyAmount: z.number().min(0).default(0),
   maxUses: z.number().int().min(0).default(0),
   expiresAt: z.string().optional(),
   appliesToLtd: z.boolean().default(false),
@@ -867,7 +873,10 @@ export const createPromoCodeSchema = z.object({
 });
 
 export const updatePromoCodeSchema = z.object({
-  discountPercent: z.number().min(1).max(100).optional(),
+  discountPercent: z.number().min(0).max(100).optional(),
+  discountType: z.enum(["percentage", "money"]).optional(),
+  discountMonthlyAmount: z.number().min(0).optional(),
+  discountYearlyAmount: z.number().min(0).optional(),
   maxUses: z.number().int().min(0).optional(),
   isActive: z.boolean().optional(),
   expiresAt: z.string().optional().nullable(),

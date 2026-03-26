@@ -301,38 +301,10 @@ export async function registerRoutes(
 
       signupOtpStore.delete(email);
 
-      // Assign 3-day Enterprise trial
-      try {
-        const { pricingPlans: pricingPlansTable, userSubscriptions: userSubsTable } = await import("@shared/schema");
-        const enterprisePlans = await db
-          .select({ id: pricingPlansTable.id, name: pricingPlansTable.name })
-          .from(pricingPlansTable)
-          .where(and(
-            eq(pricingPlansTable.isActive, true),
-            sql`LOWER(${pricingPlansTable.name}) LIKE '%enterprise%'`
-          ))
-          .limit(1);
-
-        if (enterprisePlans.length > 0) {
-          const trialEnd = new Date();
-          trialEnd.setDate(trialEnd.getDate() + 3);
-          await db.insert(userSubsTable).values({
-            userId: user.id,
-            planId: enterprisePlans[0].id,
-            status: "active",
-            billingCycle: "monthly",
-            currentPeriodStart: new Date(),
-            currentPeriodEnd: trialEnd,
-            isTrial: true,
-            trialEndsAt: trialEnd,
-          });
-          console.log(`[Trial] Assigned 3-day Enterprise trial to user ${user.username}`);
-        } else {
-          console.warn("[Trial] No Enterprise plan found — user registered without trial");
-        }
-      } catch (trialErr) {
-        console.error("[Trial] Failed to assign trial:", trialErr);
-      }
+      // Trial is assigned after onboarding based on account type & company size
+      // Personal accounts = no trial (free plan)
+      // Business <10 employees = Business trial
+      // Business >=10 employees = Enterprise trial
 
       // Send welcome email (fire-and-forget)
       import("./email").then(({ sendWelcomeEmail }) => {
@@ -638,6 +610,69 @@ export async function registerRoutes(
       res.status(500).json({ message: "Profile update failed" });
     }
   });
+
+  // ── Assign trial after onboarding based on account type & company size ──
+  app.post("/api/auth/assign-trial", requireAuth, async (req, res) => {
+    try {
+      const { accountType, companySize } = req.body;
+      const userId = req.session.userId!;
+
+      // Personal accounts get no trial
+      if (accountType !== "team") {
+        return res.json({ message: "No trial assigned for personal accounts", trial: false });
+      }
+
+      // Check if user already has a subscription
+      const { pricingPlans: pricingPlansTable, userSubscriptions: userSubsTable } = await import("@shared/schema");
+      const existingSub = await db
+        .select({ id: userSubsTable.id })
+        .from(userSubsTable)
+        .where(and(eq(userSubsTable.userId, userId), eq(userSubsTable.status, "active")))
+        .limit(1);
+      if (existingSub.length > 0) {
+        return res.json({ message: "Already has a subscription", trial: false });
+      }
+
+      // Determine plan based on company size
+      // Parse the first number from sizes like "1-5", "6-20", "21-50", etc.
+      const sizeNum = companySize ? parseInt(companySize.split("-")[0]) : 1;
+      const isLargeCompany = sizeNum >= 10 || companySize === "500+";
+
+      const planKeyword = isLargeCompany ? "enterprise" : "business";
+      const plans = await db
+        .select({ id: pricingPlansTable.id, name: pricingPlansTable.name })
+        .from(pricingPlansTable)
+        .where(and(
+          eq(pricingPlansTable.isActive, true),
+          sql`LOWER(${pricingPlansTable.name}) LIKE ${'%' + planKeyword + '%'}`
+        ))
+        .limit(1);
+
+      if (plans.length > 0) {
+        const trialEnd = new Date();
+        trialEnd.setDate(trialEnd.getDate() + 3);
+        await db.insert(userSubsTable).values({
+          userId,
+          planId: plans[0].id,
+          status: "active",
+          billingCycle: "monthly",
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: trialEnd,
+          isTrial: true,
+          trialEndsAt: trialEnd,
+        });
+        console.log(`[Trial] Assigned 3-day ${plans[0].name} trial to user ${userId} (size: ${companySize})`);
+        return res.json({ message: `${plans[0].name} trial assigned`, trial: true, planName: plans[0].name });
+      } else {
+        console.warn(`[Trial] No ${planKeyword} plan found`);
+        return res.json({ message: "No matching plan found", trial: false });
+      }
+    } catch (error: any) {
+      console.error("[Trial] Error assigning trial:", error);
+      res.status(500).json({ message: "Failed to assign trial" });
+    }
+  });
+
 
   app.get("/api/auth/username-available", async (req, res) => {
     try {
@@ -2765,7 +2800,7 @@ export async function registerRoutes(
   });
 
   // ── Website Contact Form (public /contact page) ──────────────────────
-  app.post("/api/website-contact", rateLimit("website-contact", 3, 60000), async (req, res) => {
+  app.post("/api/website-contact", rateLimit("website-contact", 3, 900000), async (req, res) => {
     try {
       const { name, email, mobile, message, imageUrl } = req.body;
       if (!name || !email || !message) {

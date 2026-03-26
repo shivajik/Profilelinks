@@ -26,6 +26,9 @@ async function ensurePromoCodeScopeColumns() {
     await db.execute(sql`ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS applies_to_regular boolean NOT NULL DEFAULT true`);
     await db.execute(sql`ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS plan_id varchar`);
     await db.execute(sql`ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS billing_cycle_scope text NOT NULL DEFAULT 'both'`);
+    await db.execute(sql`ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS discount_type text NOT NULL DEFAULT 'percentage'`);
+    await db.execute(sql`ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS discount_monthly_amount numeric(10,2) DEFAULT 0`);
+    await db.execute(sql`ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS discount_yearly_amount numeric(10,2) DEFAULT 0`);
   } catch (error) {
     console.error("Promo code scope column setup failed:", error);
   }
@@ -170,6 +173,9 @@ router.get("/api/admin/promo-codes", requireAdminAuth, async (req: Request, res:
         id: promoCodes.id,
         code: promoCodes.code,
         discountPercent: promoCodes.discountPercent,
+        discountType: promoCodes.discountType,
+        discountMonthlyAmount: promoCodes.discountMonthlyAmount,
+        discountYearlyAmount: promoCodes.discountYearlyAmount,
         maxUses: promoCodes.maxUses,
         currentUses: promoCodes.currentUses,
         isActive: promoCodes.isActive,
@@ -212,6 +218,9 @@ router.post("/api/admin/promo-codes", requireAdminAuth, async (req: Request, res
     const [code] = await db.insert(promoCodes).values({
       code: result.data.code.toUpperCase(),
       discountPercent: result.data.discountPercent.toString(),
+      discountType: result.data.discountType,
+      discountMonthlyAmount: result.data.discountMonthlyAmount.toString(),
+      discountYearlyAmount: result.data.discountYearlyAmount.toString(),
       maxUses: result.data.maxUses,
       expiresAt: result.data.expiresAt ? new Date(result.data.expiresAt) : null,
       appliesToLtd: result.data.appliesToLtd,
@@ -233,6 +242,9 @@ router.patch("/api/admin/promo-codes/:id", requireAdminAuth, async (req: Request
     }
     const updateData: Record<string, any> = {};
     if (result.data.discountPercent !== undefined) updateData.discountPercent = result.data.discountPercent.toString();
+    if (result.data.discountType !== undefined) updateData.discountType = result.data.discountType;
+    if (result.data.discountMonthlyAmount !== undefined) updateData.discountMonthlyAmount = result.data.discountMonthlyAmount.toString();
+    if (result.data.discountYearlyAmount !== undefined) updateData.discountYearlyAmount = result.data.discountYearlyAmount.toString();
     if (result.data.maxUses !== undefined) updateData.maxUses = result.data.maxUses;
     if (result.data.isActive !== undefined) updateData.isActive = result.data.isActive;
     if (result.data.expiresAt !== undefined) updateData.expiresAt = result.data.expiresAt ? new Date(result.data.expiresAt) : null;

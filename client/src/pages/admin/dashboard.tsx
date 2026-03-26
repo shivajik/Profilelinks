@@ -45,7 +45,7 @@ interface UserRow {
   id: string; username: string; email: string; displayName?: string;
   accountType: string; onboardingCompleted: boolean; isDisabled: boolean; isLtd: boolean;
   createdAt?: string; businessPhone?: string | null;
-  subscription?: { status: string; billingCycle: string; planName?: string } | null;
+  subscription?: { status: string; billingCycle: string; planName?: string; isTrial?: boolean } | null;
   isTeamOwner?: boolean; teamName?: string | null; teamMemberCount?: number;
 }
 interface PaymentRow {
@@ -78,6 +78,7 @@ interface AffiliateRow {
 }
 interface PromoCodeRow {
   id: string; code: string; discountPercent: string; maxUses: number | null;
+  discountType?: string; discountMonthlyAmount?: string; discountYearlyAmount?: string;
   currentUses: number; isActive: boolean; expiresAt?: string; createdAt: string;
   appliesToLtd?: boolean; appliesToRegular?: boolean; planId?: string | null; planName?: string | null;
 }
@@ -227,6 +228,9 @@ export default function AdminDashboard() {
   const [promoAppliesToRegular, setPromoAppliesToRegular] = useState(true);
   const [promoPlanId, setPromoPlanId] = useState<string>("all");
   const [promoBillingCycleScope, setPromoBillingCycleScope] = useState<"monthly" | "yearly" | "both">("both");
+  const [promoDiscountType, setPromoDiscountType] = useState<"percentage" | "money">("percentage");
+  const [promoMonthlyAmount, setPromoMonthlyAmount] = useState("0");
+  const [promoYearlyAmount, setPromoYearlyAmount] = useState("0");
   const [savingPromo, setSavingPromo] = useState(false);
   const [deletingPromoId, setDeletingPromoId] = useState<string | null>(null);
   const [promoSignupAccountType, setPromoSignupAccountType] = useState<"individual" | "team">("individual"); // kept for backwards compat but unused
@@ -820,7 +824,12 @@ export default function AdminDashboard() {
                               {u.isLtd && u.subscription?.status !== "active" && <Badge className="text-xs bg-red-100 text-red-700 border-red-200 hover:bg-red-100">LTD (Unpaid)</Badge>}
                             </div>
                           </td>
-                          <td className="p-3 text-muted-foreground">{u.subscription?.planName ?? "Free"}</td>
+                          <td className="p-3 text-muted-foreground">
+                            {u.subscription?.planName ?? "Free"}
+                            {u.subscription?.isTrial && (
+                              <Badge className="ml-1.5 text-[10px] bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-100">Trial</Badge>
+                            )}
+                          </td>
                           <td className="p-3 text-muted-foreground text-xs">{u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}</td>
                           <td className="p-3">
                             {u.isDisabled
@@ -1355,6 +1364,9 @@ export default function AdminDashboard() {
                   setPromoAppliesToRegular(true);
                   setPromoPlanId("all");
                   setPromoBillingCycleScope("both");
+                  setPromoDiscountType("percentage");
+                  setPromoMonthlyAmount("0");
+                  setPromoYearlyAmount("0");
                   setPromoSignupAccountType("individual");
                   setPromoDialog({ open: true });
                 }}>
@@ -1383,7 +1395,11 @@ export default function AdminDashboard() {
                       ) : adminPromoCodes.map((p) => (
                         <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
                           <td className="p-3"><code className="bg-muted px-2 py-0.5 rounded text-xs font-bold">{p.code}</code></td>
-                          <td className="p-3 font-medium">{parseFloat(p.discountPercent)}%</td>
+                          <td className="p-3 font-medium">
+                            {p.discountType === "money"
+                              ? `₹${p.discountMonthlyAmount || 0}/mo, ₹${p.discountYearlyAmount || 0}/yr`
+                              : `${parseFloat(p.discountPercent)}%`}
+                          </td>
                           <td className="p-3 text-muted-foreground text-xs">
                             {[p.appliesToRegular ? "Regular" : null, p.appliesToLtd ? "LTD" : null].filter(Boolean).join(" + ") || "—"}
                           </td>
@@ -2333,9 +2349,35 @@ export default function AdminDashboard() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Discount Percentage (%)</Label>
-              <Input type="number" min="1" max="100" value={promoDiscount} onChange={(e) => setPromoDiscount(e.target.value)} />
+              <Label>Discount Type</Label>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="radio" checked={promoDiscountType === "percentage"} onChange={() => setPromoDiscountType("percentage")} />
+                  Percentage (%)
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="radio" checked={promoDiscountType === "money"} onChange={() => setPromoDiscountType("money")} />
+                  Fixed Amount (₹)
+                </label>
+              </div>
             </div>
+            {promoDiscountType === "percentage" ? (
+              <div className="space-y-1.5">
+                <Label>Discount Percentage (%)</Label>
+                <Input type="number" min="1" max="100" value={promoDiscount} onChange={(e) => setPromoDiscount(e.target.value)} />
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label>Monthly Discount (₹)</Label>
+                  <Input type="number" min="0" value={promoMonthlyAmount} onChange={(e) => setPromoMonthlyAmount(e.target.value)} placeholder="e.g. 200" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Annual Discount (₹)</Label>
+                  <Input type="number" min="0" value={promoYearlyAmount} onChange={(e) => setPromoYearlyAmount(e.target.value)} placeholder="e.g. 2000" />
+                </div>
+              </div>
+            )}
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="flex items-center gap-2 rounded-lg border border-border p-3 text-sm text-foreground">
                 <input type="checkbox" checked={promoAppliesToRegular} onChange={(e) => {
@@ -2409,7 +2451,10 @@ export default function AdminDashboard() {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                       code: promoCode,
-                      discountPercent: parseFloat(promoDiscount),
+                      discountPercent: promoDiscountType === "percentage" ? parseFloat(promoDiscount) : 0,
+                      discountType: promoDiscountType,
+                      discountMonthlyAmount: promoDiscountType === "money" ? parseFloat(promoMonthlyAmount) : 0,
+                      discountYearlyAmount: promoDiscountType === "money" ? parseFloat(promoYearlyAmount) : 0,
                       maxUses: parseInt(promoMaxUses),
                       expiresAt: promoExpiry || undefined,
                       appliesToLtd: promoAppliesToLtd,
