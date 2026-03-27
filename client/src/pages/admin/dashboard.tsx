@@ -3486,7 +3486,7 @@ function TrialEmailsCard() {
   const [customMinDays, setCustomMinDays] = useState("7");
   const [customProcessing, setCustomProcessing] = useState(false);
   const [customResult, setCustomResult] = useState<{ emailsSent: string[]; skipped: string[]; errors: string[] } | null>(null);
-  const [availableCoupons, setAvailableCoupons] = useState<{ code: string; discountPercent: string; isActive: boolean }[]>([]);
+  const [availableCoupons, setAvailableCoupons] = useState<{ code: string; discountPercent: string; discountType: string; discountMonthlyAmount: string; discountYearlyAmount: string; isActive: boolean }[]>([]);
 
   useEffect(() => {
     fetch("/api/admin/promo-codes")
@@ -3495,6 +3495,9 @@ function TrialEmailsCard() {
         const active = codes.filter((c: any) => c.isActive).map((c: any) => ({
           code: c.code,
           discountPercent: c.discountPercent || c.discount_percent || "0",
+          discountType: c.discountType || c.discount_type || "percentage",
+          discountMonthlyAmount: c.discountMonthlyAmount || c.discount_monthly_amount || "0",
+          discountYearlyAmount: c.discountYearlyAmount || c.discount_yearly_amount || "0",
           isActive: c.isActive,
         }));
         setAvailableCoupons(active);
@@ -3534,6 +3537,9 @@ function TrialEmailsCard() {
           discountPercent: customDiscount,
           couponCode: customCouponCode.toUpperCase(),
           minDaysExpired: parseInt(customMinDays),
+          discountType: availableCoupons.find(c => c.code === customCouponCode)?.discountType || "percentage",
+          discountMonthlyAmount: availableCoupons.find(c => c.code === customCouponCode)?.discountMonthlyAmount || "0",
+          discountYearlyAmount: availableCoupons.find(c => c.code === customCouponCode)?.discountYearlyAmount || "0",
         }),
       });
       const j = await r.json();
@@ -3603,7 +3609,9 @@ function TrialEmailsCard() {
                 <SelectContent>
                   {availableCoupons.map(c => (
                     <SelectItem key={c.code} value={c.code}>
-                      {c.code} ({c.discountPercent}%)
+                      {c.code} ({c.discountType === "money" 
+                        ? `₹${Math.max(parseFloat(c.discountMonthlyAmount || "0"), parseFloat(c.discountYearlyAmount || "0"))} off` 
+                        : `${c.discountPercent}%`})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -3629,7 +3637,14 @@ function TrialEmailsCard() {
           </div>
           <Button onClick={handleCustomDiscount} disabled={customProcessing} size="sm" variant="outline">
             {customProcessing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-            {customProcessing ? "Sending..." : `Send ${customDiscount}% Discount Emails`}
+            {customProcessing ? "Sending..." : (() => {
+              const selected = availableCoupons.find(c => c.code === customCouponCode);
+              if (selected?.discountType === "money") {
+                const amt = Math.max(parseFloat(selected.discountMonthlyAmount || "0"), parseFloat(selected.discountYearlyAmount || "0"));
+                return `Send ₹${amt} Discount Emails`;
+              }
+              return `Send ${customDiscount}% Discount Emails`;
+            })()}
           </Button>
 
           {customResult && (

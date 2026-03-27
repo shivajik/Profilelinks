@@ -1208,15 +1208,18 @@ router.post("/api/admin/trigger-trial-emails", requireAdminAuth, async (req: Req
 // ─── Custom Discount Email Blast ─────────────────────────────────────────────
 router.post("/api/admin/send-custom-discount", requireAdminAuth, async (req: Request, res: Response) => {
   try {
-    const { discountPercent, couponCode, minDaysExpired } = req.body;
-    if (!discountPercent || !couponCode || !minDaysExpired) {
-      return res.status(400).json({ message: "discountPercent, couponCode, and minDaysExpired are required" });
+    const { discountPercent, couponCode, minDaysExpired, discountType, discountMonthlyAmount, discountYearlyAmount } = req.body;
+    if (!couponCode || !minDaysExpired) {
+      return res.status(400).json({ message: "couponCode and minDaysExpired are required" });
     }
     const { processCustomDiscountEmails } = await import("./trial-emails");
     const result = await processCustomDiscountEmails({
-      discountPercent: String(discountPercent),
+      discountPercent: String(discountPercent || "0"),
       couponCode: String(couponCode),
       minDaysExpired: Number(minDaysExpired),
+      discountType: discountType || undefined,
+      discountMonthlyAmount: discountMonthlyAmount || undefined,
+      discountYearlyAmount: discountYearlyAmount || undefined,
     });
     res.json({
       message: "Custom discount emails processed",
