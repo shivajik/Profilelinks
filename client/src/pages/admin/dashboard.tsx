@@ -3482,10 +3482,29 @@ function TrialEmailsCard() {
 
   // Custom discount state
   const [customDiscount, setCustomDiscount] = useState("20");
-  const [customCouponCode, setCustomCouponCode] = useState("JOIN-NOW-20");
+  const [customCouponCode, setCustomCouponCode] = useState("");
   const [customMinDays, setCustomMinDays] = useState("7");
   const [customProcessing, setCustomProcessing] = useState(false);
   const [customResult, setCustomResult] = useState<{ emailsSent: string[]; skipped: string[]; errors: string[] } | null>(null);
+  const [availableCoupons, setAvailableCoupons] = useState<{ code: string; discountPercent: string; isActive: boolean }[]>([]);
+
+  useEffect(() => {
+    fetch("/api/admin/promo-codes")
+      .then(r => r.ok ? r.json() : [])
+      .then((codes: any[]) => {
+        const active = codes.filter((c: any) => c.isActive).map((c: any) => ({
+          code: c.code,
+          discountPercent: c.discountPercent || c.discount_percent || "0",
+          isActive: c.isActive,
+        }));
+        setAvailableCoupons(active);
+        if (active.length > 0 && !customCouponCode) {
+          setCustomCouponCode(active[0].code);
+          setCustomDiscount(active[0].discountPercent);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleTrigger = async () => {
     setProcessing(true);
@@ -3556,7 +3575,7 @@ function TrialEmailsCard() {
             Send a discount email to users whose trial expired more than N days ago. Each "N days" threshold acts as a unique email — users won't receive the same threshold email twice.
           </p>
           <div className="grid grid-cols-3 gap-2">
-            <div>
+            {/* <div>
               <Label className="text-xs">Discount %</Label>
               <Input
                 type="number"
@@ -3567,15 +3586,28 @@ function TrialEmailsCard() {
                 placeholder="20"
                 className="h-8 text-sm"
               />
-            </div>
+            </div> */}
             <div>
               <Label className="text-xs">Coupon Code</Label>
-              <Input
+              <Select
                 value={customCouponCode}
-                onChange={(e) => setCustomCouponCode(e.target.value.toUpperCase())}
-                placeholder="JOIN-NOW-20"
-                className="h-8 text-sm uppercase"
-              />
+                onValueChange={(val) => {
+                  setCustomCouponCode(val);
+                  const found = availableCoupons.find(c => c.code === val);
+                  if (found) setCustomDiscount(found.discountPercent);
+                }}
+              >
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder="Select coupon" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableCoupons.map(c => (
+                    <SelectItem key={c.code} value={c.code}>
+                      {c.code} ({c.discountPercent}%)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label className="text-xs">Min Days Expired</Label>
@@ -3592,9 +3624,8 @@ function TrialEmailsCard() {
           <div className="bg-muted/50 rounded-md p-2 text-xs text-muted-foreground space-y-1">
             <p>📋 <strong>How it works:</strong></p>
             <p>• Sends to users whose trial expired ≥ <strong>{customMinDays} days</strong> ago</p>
-            <p>• Users who already received this exact threshold email will be skipped</p>
+            <p>• Users who already received <strong>any</strong> custom discount email will be skipped (prevents spam)</p>
             <p>• Users who already have an active paid plan will be skipped</p>
-            <p>• Example: If you send at "7 days" then later at "10 days", a user at 11 days gets the "10 days" email but NOT the "7 days" one again</p>
           </div>
           <Button onClick={handleCustomDiscount} disabled={customProcessing} size="sm" variant="outline">
             {customProcessing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}

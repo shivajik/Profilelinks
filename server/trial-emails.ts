@@ -57,6 +57,17 @@ async function hasCustomDiscountBeenSent(userId: string, minDaysExpired: number)
   }
 }
 
+async function hasRecentCustomDiscountBeenSent(userId: string, cooldownHours: number = 72): Promise<boolean> {
+  try {
+    const result = await db.execute(
+      sql`SELECT 1 FROM trial_email_log WHERE user_id = ${userId} AND email_type LIKE 'trial_custom_discount_%' AND sent_at > NOW() - INTERVAL '1 hour' * ${cooldownHours} LIMIT 1`
+    );
+    return (result.rows?.length ?? 0) > 0;
+  } catch {
+    return false;
+  }
+}
+
 async function logEmailSent(userId: string, emailType: string): Promise<void> {
   try {
     await db.execute(
@@ -202,11 +213,11 @@ export async function processCustomDiscountEmails(options: {
         continue;
       }
 
-      // Check if this exact email type was already sent to this user
-      const alreadySent = await hasCustomDiscountBeenSent(sub.userId, options.minDaysExpired);
-      if (alreadySent) {
+      // Check if ANY custom discount email was already sent to this user (prevent spam)
+      const anyDiscountSent = await hasRecentCustomDiscountBeenSent(sub.userId, 72);
+      if (anyDiscountSent) {
         const userRows = await db.select({ email: users.email }).from(users).where(eq(users.id, sub.userId)).limit(1);
-        result.skipped.push(`${userRows[0]?.email || sub.userId} (already sent for ${options.minDaysExpired}+ days)`);
+        result.skipped.push(`${userRows[0]?.email || sub.userId} (already received a custom discount email)`);
         continue;
       }
 
