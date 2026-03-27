@@ -297,8 +297,8 @@ export default function PricingPage() {
                 isCurrentPlan={currentPlanId === plan.id}
                 loading={payingPlanId === plan.id}
                 onSelect={handleSelectPlan}
-                discountPercent={appliedPromo && appliedPromo.discountType !== "money" && (!appliedPromo.planId || appliedPromo.planId === plan.id) ? appliedPromo.discountPercent : undefined}
-                discountAmount={appliedPromo && appliedPromo.discountType === "money" && (!appliedPromo.planId || appliedPromo.planId === plan.id)
+                discountPercent={appliedPromo && appliedPromo.discountType !== "money" && (!appliedPromo.planId || appliedPromo.planId === plan.id) && (!appliedPromo.billingCycleScope || appliedPromo.billingCycleScope === "both" || appliedPromo.billingCycleScope === billingCycle) ? appliedPromo.discountPercent : undefined}
+                discountAmount={appliedPromo && appliedPromo.discountType === "money" && (!appliedPromo.planId || appliedPromo.planId === plan.id) && (!appliedPromo.billingCycleScope || appliedPromo.billingCycleScope === "both" || appliedPromo.billingCycleScope === billingCycle)
                   ? (billingCycle === "yearly" ? appliedPromo.discountYearlyAmount : appliedPromo.discountMonthlyAmount)
                   : undefined}
               />

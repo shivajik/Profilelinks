@@ -1,7 +1,7 @@
 import { db } from "./storage";
 import { userSubscriptions, pricingPlans, users } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
-import { sendEmailViaNodemailer } from "./email";
+import { sendEmail } from "./email";
 
 // Email types for trial sequence
 const TRIAL_EMAIL_TYPES = {
@@ -360,7 +360,7 @@ export async function processCustomDiscountEmails(options: {
 
 async function sendTrialReminderEmail(to: string, name: string, planName: string, hoursLeft: number, appUrl: string): Promise<void> {
   try {
-    await sendEmailViaNodemailer({
+    await sendEmail({
       to,
       subject: `Your VisiCardly ${planName} trial is expiring soon`,
       html: buildModernEmail({
@@ -393,7 +393,7 @@ async function sendTrialReminderEmail(to: string, name: string, planName: string
 
 async function sendTrialExpiredEmail(to: string, name: string, planName: string, appUrl: string): Promise<void> {
   try {
-    await sendEmailViaNodemailer({
+    await sendEmail({
       to,
       subject: `Your VisiCardly ${planName} trial has expired`,
       html: buildModernEmail({
@@ -444,7 +444,7 @@ async function sendTrialDiscountEmail(
     const display = buildDiscountDisplay(discountInfo);
     const billingUrl = `${appUrl}/dashboard?section=billing&promoCode=${encodeURIComponent(discountInfo.couponCode)}`;
     
-    await sendEmailViaNodemailer({
+    await sendEmail({
       to,
       subject: `🎁 Special ${display.subjectPrefix} — Upgrade your VisiCardly plan!`,
       html: buildModernEmail({

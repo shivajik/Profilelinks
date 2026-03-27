@@ -40,7 +40,7 @@ export async function sendEmailViaNodemailer(opts: {
   }
 }
 
-// ── SendGrid — ONLY for Email Blast ─────────────────────────────────────
+// ── SendGrid — Primary email transport ─────────────────────────────────────
 
 async function getSendGridConfig(): Promise<{
   apiKey: string;
@@ -104,6 +104,27 @@ async function sendEmailViaSendGrid(opts: {
     console.error(`[SendGrid] Failed to send email to ${opts.to}: ${friendly}`, err);
     return { ok: false, error: friendly };
   }
+}
+
+// ── Unified email sender: SendGrid primary, NodeMailer fallback ──────────
+export async function sendEmail(opts: {
+  to: string;
+  subject: string;
+  html: string;
+}): Promise<boolean> {
+  // Try SendGrid first
+  const sgResult = await sendEmailViaSendGrid(opts);
+  if (sgResult.ok) return true;
+
+  // Fallback to NodeMailer if SendGrid is not configured
+  if (sgResult.error?.includes("not configured")) {
+    console.warn(`[Email] SendGrid not configured, falling back to NodeMailer for ${opts.to}`);
+    return sendEmailViaNodemailer(opts);
+  }
+
+  // SendGrid was configured but failed — don't fallback, report error
+  console.error(`[Email] SendGrid failed for ${opts.to}: ${sgResult.error}`);
+  return false;
 }
 
 // ── Modern Email Template Wrapper ──────────────────────────────────────
@@ -212,7 +233,7 @@ export async function sendInviteEmail(opts: {
   inviteLink: string;
   role: string;
 }): Promise<boolean> {
-  return sendEmailViaNodemailer({
+  return sendEmail({
     to: opts.to,
     subject: `You've been invited to join ${opts.teamName}`,
     html: emailWrapper({
@@ -244,7 +265,7 @@ export async function sendCredentialsEmail(opts: {
   loginUrl: string;
   tempPassword: string;
 }): Promise<boolean> {
-  return sendEmailViaNodemailer({
+  return sendEmail({
     to: opts.to,
     subject: `Your account for ${opts.teamName} has been created`,
     html: emailWrapper({
@@ -281,7 +302,7 @@ export async function sendVerificationOTP(opts: {
   to: string;
   otp: string;
 }): Promise<boolean> {
-  return sendEmailViaNodemailer({
+  return sendEmail({
     to: opts.to,
     subject: `Your VisiCardly Verification Code: ${opts.otp}`,
     html: emailWrapper({
@@ -303,7 +324,7 @@ export async function sendPasswordResetOTP(opts: {
   to: string;
   otp: string;
 }): Promise<boolean> {
-  return sendEmailViaNodemailer({
+  return sendEmail({
     to: opts.to,
     subject: `Password Reset Code: ${opts.otp}`,
     html: emailWrapper({
@@ -326,7 +347,7 @@ export async function sendSignupOTP(opts: {
   otp: string;
 }): Promise<boolean> {
   const appUrl = process.env.APP_URL || 'https://visicardly.com';
-  return sendEmailViaNodemailer({
+  return sendEmail({
     to: opts.to,
     subject: `Your VisiCardly sign up code: ${opts.otp}`,
     html: emailWrapper({
@@ -362,7 +383,7 @@ export async function sendPackageUpgradeEmail(opts: {
   previousPlan: string;
 }): Promise<boolean> {
   const appUrl = process.env.APP_URL || 'https://visicardly.com';
-  return sendEmailViaNodemailer({
+  return sendEmail({
     to: opts.to,
     subject: `Your VisiCardly plan is now ${opts.planName}`,
     html: emailWrapper({
@@ -390,7 +411,7 @@ export async function sendPackageExpiryEmail(opts: {
   expiryDate: string;
 }): Promise<boolean> {
   const appUrl = process.env.APP_URL || 'https://visicardly.com';
-  return sendEmailViaNodemailer({
+  return sendEmail({
     to: opts.to,
     subject: `Your ${opts.planName} plan is expiring soon`,
     html: emailWrapper({
@@ -415,7 +436,7 @@ export async function sendWelcomeEmail(opts: {
   username: string;
 }): Promise<boolean> {
   const appUrl = process.env.APP_URL || 'https://visicardly.com';
-  return sendEmailViaNodemailer({
+  return sendEmail({
     to: opts.to,
     subject: `Welcome to VisiCardly, ${opts.username}!`,
     html: emailWrapper({
@@ -461,7 +482,7 @@ export async function sendPaymentConfirmationEmail(opts: {
   paymentId?: string;
 }): Promise<boolean> {
   const appUrl = process.env.APP_URL || 'https://visicardly.com';
-  return sendEmailViaNodemailer({
+  return sendEmail({
     to: opts.to,
     subject: `Payment Confirmation — ${opts.planName} Plan`,
     html: emailWrapper({
@@ -590,7 +611,7 @@ export async function sendContactFormEmail(opts: {
   message: string;
   profileName: string;
 }): Promise<boolean> {
-  return sendEmailViaNodemailer({
+  return sendEmail({
     to: opts.to,
     subject: `New Contact Form Submission — ${opts.subject}`,
     html: emailWrapper({

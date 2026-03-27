@@ -2788,10 +2788,10 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Invalid email address" });
       }
 
-      const { sendEmailViaNodemailer } = await import("./email");
+      const { sendEmail } = await import("./email");
       const adminEmail = process.env.EMAIL || "support@visicardly.com";
 
-      await sendEmailViaNodemailer({
+      await sendEmail({
         to: adminEmail,
         subject: `New Website Contact — ${name}`,
         html: `
