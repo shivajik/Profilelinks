@@ -257,3 +257,105 @@ export async function getEffectivePlanForPublicProfile(userId: string): Promise<
     whiteLabelEnabled: !isFree && limits.whiteLabelEnabled,
   };
 }
+
+/**
+ * Lightweight plan status check for PUBLIC profile rendering.
+ * Skips all count queries (currentLinks, currentPages, etc.) since
+ * public profiles only need to know plan features, not usage counts.
+ * Reduces DB queries from ~12 to ~2-4.
+ */
+
+// Separate cache for public plan status (longer TTL since it changes rarely)
+const publicPlanCache = new Map<string, { data: PublicPlanStatus; timestamp: number }>();
+const PUBLIC_CACHE_TTL = 30000; // 30 seconds
+
+export interface PublicPlanStatus {
+  isFree: boolean;
+  maxLinks: number;
+  maxPages: number;
+  maxBlocks: number;
+  maxSocials: number;
+  menuBuilderEnabled: boolean;
+  whiteLabelEnabled: boolean;
+  themeCategories: string[];
+}
+
+export async function getPublicPlanStatus(userId: string): Promise<PublicPlanStatus> {
+  const cached = publicPlanCache.get(userId);
+  if (cached && Date.now() - cached.timestamp < PUBLIC_CACHE_TTL) {
+    return cached.data;
+  }
+
+  const FREE_RESULT: PublicPlanStatus = {
+    isFree: true,
+    maxLinks: 5, maxPages: 1, maxBlocks: 10, maxSocials: 3,
+    menuBuilderEnabled: false, whiteLabelEnabled: false,
+    themeCategories: ["starter"],
+  };
+
+  // Single query: get active subscription + plan details
+  const subs = await db
+    .select({
+      maxLinks: pricingPlans.maxLinks,
+      maxPages: pricingPlans.maxPages,
+      maxBlocks: pricingPlans.maxBlocks,
+      maxSocials: pricingPlans.maxSocials,
+      menuBuilderEnabled: pricingPlans.menuBuilderEnabled,
+      whiteLabelEnabled: pricingPlans.whiteLabelEnabled,
+      themeCategories: pricingPlans.themeCategories,
+      isTrial: userSubscriptions.isTrial,
+      trialEndsAt: userSubscriptions.trialEndsAt,
+    })
+    .from(userSubscriptions)
+    .innerJoin(pricingPlans, eq(userSubscriptions.planId, pricingPlans.id))
+    .where(and(eq(userSubscriptions.userId, userId), eq(userSubscriptions.status, "active")))
+    .limit(1);
+
+  let sub = subs[0];
+
+  // Check trial expiry
+  if (sub?.isTrial && sub.trialEndsAt && new Date(sub.trialEndsAt) < new Date()) {
+    // Expired trial — fire-and-forget status update
+    db.update(userSubscriptions)
+      .set({ status: "expired", updatedAt: new Date() })
+      .where(and(eq(userSubscriptions.userId, userId), eq(userSubscriptions.status, "active"), eq(userSubscriptions.isTrial, true)))
+      .catch(() => {});
+    sub = undefined as any;
+  }
+
+  if (!sub) {
+    // Check if user is a team MEMBER and should inherit owner's plan
+    const memberRow = await db
+      .select({ teamId: teamMembers.teamId, role: teamMembers.role })
+      .from(teamMembers)
+      .where(and(eq(teamMembers.userId, userId), eq(teamMembers.status, "activated")))
+      .limit(1);
+
+    if (memberRow.length > 0 && memberRow[0].role !== "owner") {
+      const teamRow = await db.select({ ownerId: teams.ownerId }).from(teams).where(eq(teams.id, memberRow[0].teamId)).limit(1);
+      if (teamRow.length > 0 && teamRow[0].ownerId !== userId) {
+        // Recurse for owner (will hit cache on second call)
+        const ownerStatus = await getPublicPlanStatus(teamRow[0].ownerId);
+        publicPlanCache.set(userId, { data: ownerStatus, timestamp: Date.now() });
+        return ownerStatus;
+      }
+    }
+
+    publicPlanCache.set(userId, { data: FREE_RESULT, timestamp: Date.now() });
+    return FREE_RESULT;
+  }
+
+  const result: PublicPlanStatus = {
+    isFree: false,
+    maxLinks: sub.maxLinks,
+    maxPages: sub.maxPages,
+    maxBlocks: sub.maxBlocks ?? 20,
+    maxSocials: sub.maxSocials ?? 5,
+    menuBuilderEnabled: sub.menuBuilderEnabled ?? false,
+    whiteLabelEnabled: sub.whiteLabelEnabled ?? false,
+    themeCategories: (sub.themeCategories as string[]) ?? ["starter"],
+  };
+
+  publicPlanCache.set(userId, { data: result, timestamp: Date.now() });
+  return result;
+}

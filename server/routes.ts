@@ -2367,15 +2367,15 @@ export async function registerRoutes(
       const companySlug = (req.params.companySlug || "").toLowerCase();
       const memberUsername = req.params.memberUsername;
 
+      // Phase 1: Resolve user + team in parallel
       const [user, teamBySlug] = await Promise.all([
         storage.getUserByUsername(memberUsername),
         storage.getTeamBySlug(companySlug),
       ]);
 
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
+      if (!user) return res.status(404).json({ message: "User not found" });
 
+      // Phase 2: Memberships + direct member check in parallel
       const [memberships, memberDirect] = await Promise.all([
         storage.getTeamMembershipsByUserId(user.id),
         teamBySlug ? storage.getTeamMemberByUserId(teamBySlug.id, user.id) : Promise.resolve(undefined),
@@ -2392,30 +2392,27 @@ export async function registerRoutes(
       let team = membershipBySlug?.team ?? teamBySlug;
       let member: any = membershipBySlug ?? memberDirect ?? null;
 
-      if (!team) {
-        return res.status(404).json({ message: "Company not found" });
-      }
+      if (!team) return res.status(404).json({ message: "Company not found" });
 
       if (!member) {
         member = await storage.getTeamMemberByUserId(team.id, user.id);
       }
 
       const isTeamUser = user.teamId === team.id || team.ownerId === user.id;
-      if (!member && !isTeamUser) {
-        return res.status(404).json({ message: "Member not found in this team" });
-      }
+      if (!member && !isTeamUser) return res.status(404).json({ message: "Member not found in this team" });
+      if (member && member.status !== "activated") return res.status(404).json({ message: "Member not found in this team" });
 
-      if (member && member.status !== "activated") {
-        return res.status(404).json({ message: "Member not found in this team" });
-      }
-
-      // Always use the team OWNER's pages and blocks for team member profiles
       const effectiveUserId = team.ownerId;
 
-      const [ownerPages, userSocials, templates] = await Promise.all([
+      // Phase 3: Fetch ALL needed data in ONE parallel batch
+      const { getPublicPlanStatus } = await import("./plan-limits");
+      const [ownerPages, userSocials, templates, branches, ownerUser, planStatus] = await Promise.all([
         storage.getPagesByUserId(effectiveUserId),
         storage.getSocialsByUserId(user.id),
         storage.getTeamTemplates(team.id),
+        storage.getTeamBranches(team.id),
+        storage.getUser(team.ownerId),
+        getPublicPlanStatus(team.ownerId),
       ]);
 
       const pageSlug = req.query.page as string | undefined;
@@ -2425,6 +2422,7 @@ export async function registerRoutes(
         if (found) currentPage = found;
       }
 
+      // Phase 4: Links + blocks for current page
       const [userLinks, pageBlocks] = await Promise.all([
         currentPage ? storage.getLinksByPageId(currentPage.id) : storage.getLinksByUserId(effectiveUserId),
         currentPage ? storage.getBlocksByPageId(currentPage.id) : storage.getBlocksByUserId(effectiveUserId),
@@ -2436,19 +2434,12 @@ export async function registerRoutes(
       const defaultTemplate = templates.find((t) => t.isDefault) || templates[0];
       const tData: any = defaultTemplate?.templateData || {};
 
-      // Fetch branch data for member
       let memberBranch: any = null;
       let headBranch: any = null;
-      try {
-        const branches = await storage.getTeamBranches(team.id);
-        headBranch = branches.find((b: any) => b.isHeadBranch) || null;
-        if (member?.branchId) {
-          memberBranch = branches.find((b: any) => b.id === member.branchId) || null;
-        }
-      } catch (_) {}
-
-      // Fetch owner user to get services/products visibility flags
-      const ownerUser = await storage.getUser(team.ownerId);
+      headBranch = branches.find((b: any) => b.isHeadBranch) || null;
+      if (member?.branchId) {
+        memberBranch = branches.find((b: any) => b.id === member.branchId) || null;
+      }
 
       const teamBranding: Record<string, any> = {
         companyLogo: tData.companyLogo || team.logoUrl || undefined,
@@ -2485,7 +2476,6 @@ export async function registerRoutes(
       if (member?.businessName) (publicUser as any).displayName = member.businessName;
       if (member?.businessProfileImage) (publicUser as any).profileImage = member.businessProfileImage;
       if (member?.businessBio) (publicUser as any).bio = member.businessBio;
-      // Team owner's template ALWAYS overrides member's personal template
       if (tData.template) (publicUser as any).template = tData.template;
 
       if (req.query.preview === "1") {
@@ -2494,32 +2484,26 @@ export async function registerRoutes(
         res.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
       }
 
-      // Check plan limits for team owner and filter premium features
-      const ownerPlanLimits = await getUserPlanLimits(team.ownerId);
-      const { getEffectivePlanForPublicProfile } = await import("./plan-limits");
-      const effectivePlan = await getEffectivePlanForPublicProfile(team.ownerId);
-
-      if (effectivePlan.isFree) {
+      if (planStatus.isFree) {
         (publicUser as any).template = "minimal";
         (publicUser as any).planRestricted = true;
-        (teamBranding as any).menuUrl = undefined;
-        // Restrict company socials to plan limit
+        teamBranding.menuUrl = undefined;
         if (teamBranding.companySocials && Array.isArray(teamBranding.companySocials)) {
-          teamBranding.companySocials = teamBranding.companySocials.slice(0, ownerPlanLimits.maxSocials);
+          teamBranding.companySocials = teamBranding.companySocials.slice(0, planStatus.maxSocials);
         }
       }
 
       res.json({
         user: publicUser,
-        links: effectivePlan.isFree ? userLinks.slice(0, ownerPlanLimits.maxLinks) : userLinks,
-        blocks: effectivePlan.isFree ? pageBlocks.slice(0, ownerPlanLimits.maxBlocks) : pageBlocks,
-        socials: effectivePlan.isFree ? userSocials.slice(0, ownerPlanLimits.maxSocials) : userSocials,
-        pages: effectivePlan.isFree
-          ? ownerPages.slice(0, ownerPlanLimits.maxPages).map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome }))
+        links: planStatus.isFree ? userLinks.slice(0, planStatus.maxLinks) : userLinks,
+        blocks: planStatus.isFree ? pageBlocks.slice(0, planStatus.maxBlocks) : pageBlocks,
+        socials: planStatus.isFree ? userSocials.slice(0, planStatus.maxSocials) : userSocials,
+        pages: planStatus.isFree
+          ? ownerPages.slice(0, planStatus.maxPages).map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome }))
           : ownerPages.map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome })),
         currentPage: currentPage ? { id: currentPage.id, title: currentPage.title, slug: currentPage.slug, isHome: currentPage.isHome } : null,
         teamBranding,
-        planRestricted: effectivePlan.isFree,
+        planRestricted: planStatus.isFree,
       });
     } catch (error: any) {
       console.error("Team member profile error:", error);
@@ -2574,13 +2558,15 @@ export async function registerRoutes(
       // Determine effective owner for plan checks
       const effectiveOwnerId = (teamId && teamData) ? teamData.ownerId : user.id;
 
-      // Phase 4: Fetch pages + branches + affiliate + planLimits ALL IN PARALLEL
+      // Phase 4: Fetch pages + branches + affiliate + planStatus ALL IN PARALLEL
+      // Uses lightweight getPublicPlanStatus instead of heavy getUserPlanLimits
+      const { getPublicPlanStatus } = await import("./plan-limits");
       const pageSlug = req.query.page as string | undefined;
-      const [displayPages, branches, affiliateRows, planLimits] = await Promise.all([
+      const [displayPages, branches, affiliateRows, planStatus] = await Promise.all([
         storage.getPagesByUserId(effectiveUserId),
         teamId ? storage.getTeamBranches(teamId) : Promise.resolve([]),
         db.select().from(affiliates).where(eq(affiliates.userId, user.id)).limit(1).catch(() => []),
-        getUserPlanLimits(effectiveOwnerId),
+        getPublicPlanStatus(effectiveOwnerId),
       ]);
 
       let displayCurrentPage = displayPages.find((p) => p.isHome) || displayPages[0] || null;
@@ -2605,7 +2591,6 @@ export async function registerRoutes(
         const defaultTemplate = templates.find((t: any) => t.isDefault) || templates[0];
         const tData: any = defaultTemplate?.templateData || {};
 
-        // Use branches already fetched in Phase 4
         let memberBranchData: any = null;
         let headBranchData: any = null;
         headBranchData = branches.find((b: any) => b.isHeadBranch) || null;
@@ -2641,20 +2626,10 @@ export async function registerRoutes(
           menuUrl: user.showMenuOnProfile && teamData?.slug ? `/${teamData.slug}/menu` : undefined,
         };
 
-        if (member?.businessName) {
-          (publicUser as any).displayName = member.businessName;
-        }
-        if (member?.businessProfileImage) {
-          (publicUser as any).profileImage = member.businessProfileImage;
-        }
-        if (member?.businessBio) {
-          (publicUser as any).bio = member.businessBio;
-        }
-
-        // Team owner's template ALWAYS overrides member's personal template
-        if (tData.template) {
-          (publicUser as any).template = tData.template;
-        }
+        if (member?.businessName) (publicUser as any).displayName = member.businessName;
+        if (member?.businessProfileImage) (publicUser as any).profileImage = member.businessProfileImage;
+        if (member?.businessBio) (publicUser as any).bio = member.businessBio;
+        if (tData.template) (publicUser as any).template = tData.template;
       }
 
       if (req.query.preview === "1") {
@@ -2667,7 +2642,7 @@ export async function registerRoutes(
         res.set("Vercel-CDN-Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
       }
 
-      // Affiliate info from already-fetched data (no extra query)
+      // Affiliate info from already-fetched data
       const aff = affiliateRows[0];
       const affiliateInfo = aff && aff.isActive
         ? { isAffiliate: true, referralCode: aff.referralCode }
@@ -2680,40 +2655,32 @@ export async function registerRoutes(
         teamBranding.teamSlug = teamData?.slug || undefined;
       }
 
-      // Compute effective plan inline (no second call to getUserPlanLimits)
-      const isFree = !planLimits.hasActivePlan || planLimits.trialExpired;
-      const effectivePlan = {
-        isFree,
-        allowedThemeCategories: isFree ? ["starter"] : planLimits.themeCategories,
-        menuBuilderEnabled: !isFree && planLimits.menuBuilderEnabled,
-      };
-
-      if (effectivePlan.isFree) {
+      if (planStatus.isFree) {
         (publicUser as any).effectiveTemplate = (publicUser as any).template || "minimal";
         (publicUser as any).template = "minimal";
         (publicUser as any).planRestricted = true;
         
-        if (teamBranding && !effectivePlan.menuBuilderEnabled) {
+        if (teamBranding && !planStatus.menuBuilderEnabled) {
           teamBranding.menuUrl = undefined;
         }
         if (teamBranding?.companySocials && Array.isArray(teamBranding.companySocials)) {
-          teamBranding.companySocials = teamBranding.companySocials.slice(0, planLimits.maxSocials);
+          teamBranding.companySocials = teamBranding.companySocials.slice(0, planStatus.maxSocials);
         }
       }
 
       res.json({
         user: publicUser,
-        links: effectivePlan.isFree ? displayLinks.slice(0, planLimits.maxLinks) : displayLinks,
-        blocks: effectivePlan.isFree ? displayBlocks.slice(0, planLimits.maxBlocks) : displayBlocks,
-        socials: effectivePlan.isFree ? userSocials.slice(0, planLimits.maxSocials) : userSocials,
-        pages: effectivePlan.isFree 
-          ? displayPages.slice(0, planLimits.maxPages).map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome }))
+        links: planStatus.isFree ? displayLinks.slice(0, planStatus.maxLinks) : displayLinks,
+        blocks: planStatus.isFree ? displayBlocks.slice(0, planStatus.maxBlocks) : displayBlocks,
+        socials: planStatus.isFree ? userSocials.slice(0, planStatus.maxSocials) : userSocials,
+        pages: planStatus.isFree 
+          ? displayPages.slice(0, planStatus.maxPages).map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome }))
           : displayPages.map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome })),
         currentPage: displayCurrentPage ? { id: displayCurrentPage.id, title: displayCurrentPage.title, slug: displayCurrentPage.slug, isHome: displayCurrentPage.isHome } : null,
         teamBranding,
         affiliateInfo,
-        planRestricted: effectivePlan.isFree,
-        allowedThemeCategories: effectivePlan.allowedThemeCategories,
+        planRestricted: planStatus.isFree,
+        allowedThemeCategories: planStatus.isFree ? ["starter"] : planStatus.themeCategories,
       });
     } catch (error: any) {
       console.error("Profile load error:", error);
