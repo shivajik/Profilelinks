@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -88,6 +89,7 @@ type PublicProfile = {
   currentPage: PageInfo | null;
   teamBranding?: TeamBranding | null;
   affiliateInfo?: { isAffiliate: boolean; referralCode?: string };
+  whiteLabelEnabled?: boolean;
 };
 
 export default function PublicProfile(props?: any) {
@@ -136,15 +138,8 @@ export default function PublicProfile(props?: any) {
     placeholderData: keepPreviousData,
   });
 
-  // Check white-label status
-  const { data: whiteLabelData } = useQuery<{ whiteLabelEnabled: boolean }>({
-    queryKey: ["/api/white-label", username],
-    queryFn: async () => {
-      const res = await fetch(`/api/white-label/${username}`);
-      return res.json();
-    },
-    enabled: !!username,
-  });
+  // Use white-label status from profile response (no separate API call needed)
+  const whiteLabelEnabled = data?.whiteLabelEnabled ?? false;
 
   const viewTracked = useRef<string | null>(null);
   const currentPage = data?.currentPage ?? null;
@@ -215,8 +210,30 @@ export default function PublicProfile(props?: any) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      <div className="min-h-screen bg-background">
+        <div className="max-w-2xl mx-auto px-6 py-12">
+          {/* Skeleton profile header */}
+          <div className="flex items-center justify-between gap-4 mb-6">
+            <Skeleton className="h-8 w-8 rounded-full" />
+            <Skeleton className="h-8 w-8 rounded-full" />
+          </div>
+          <div className="flex flex-col items-center gap-4 mb-8">
+            <Skeleton className="w-24 h-24 rounded-full" />
+            <Skeleton className="h-6 w-40" />
+            <Skeleton className="h-4 w-60" />
+            <div className="flex gap-2 mt-2">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="w-8 h-8 rounded-full" />
+              ))}
+            </div>
+          </div>
+          {/* Skeleton content blocks */}
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-14 w-full rounded-xl" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -505,7 +522,7 @@ export default function PublicProfile(props?: any) {
           />
         )}
 
-        {whiteLabelData !== undefined && !whiteLabelData.whiteLabelEnabled && (
+        {!whiteLabelEnabled && (
           <div className="mt-12 text-center space-y-1">
             <p className="text-xs" style={{ opacity: 0.4 }}>
               <span className={template.textColor}>Powered by </span>

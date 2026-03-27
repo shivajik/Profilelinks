@@ -17,7 +17,7 @@ import adminRouter from "./admin-routes";
 import paymentRouter from "./payment-routes";
 import affiliateRouter from "./affiliate-routes";
 import ltdRouter from "./ltd-routes";
-import { getUserPlanLimits } from "./plan-limits";
+import { getUserPlanLimits, getPublicPlanStatus } from "./plan-limits";
 import { sendInviteEmail, sendCredentialsEmail } from "./email";
 import { rateLimit } from "./rate-limit";
 
@@ -2367,7 +2367,7 @@ export async function registerRoutes(
       const companySlug = (req.params.companySlug || "").toLowerCase();
       const memberUsername = req.params.memberUsername;
 
-      // Phase 1: Resolve user + team in parallel
+      // Phase 1: Resolve user + team + memberships ALL in parallel
       const [user, teamBySlug] = await Promise.all([
         storage.getUserByUsername(memberUsername),
         storage.getTeamBySlug(companySlug),
@@ -2375,22 +2375,25 @@ export async function registerRoutes(
 
       if (!user) return res.status(404).json({ message: "User not found" });
 
-      // Phase 2: Memberships + direct member check in parallel
-      const [memberships, memberDirect] = await Promise.all([
-        storage.getTeamMembershipsByUserId(user.id),
-        teamBySlug ? storage.getTeamMemberByUserId(teamBySlug.id, user.id) : Promise.resolve(undefined),
-      ]);
+      // Phase 2: Resolve member + fetch ALL data in ONE batch
+      const memberDirect = teamBySlug ? await storage.getTeamMemberByUserId(teamBySlug.id, user.id) : undefined;
 
-      const activeMemberships = memberships.filter((m) => m.status === "activated");
-      const slugifyTeamName = (name: string) =>
-        name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").substring(0, 50) || "team";
+      let team = teamBySlug;
+      let member: any = memberDirect ?? null;
 
-      const membershipBySlug = activeMemberships.find(
-        (m) => (m.team.slug || "").toLowerCase() === companySlug || slugifyTeamName(m.team.name) === companySlug,
-      );
-
-      let team = membershipBySlug?.team ?? teamBySlug;
-      let member: any = membershipBySlug ?? memberDirect ?? null;
+      if (!team) {
+        // Fallback: check memberships
+        const memberships = await storage.getTeamMembershipsByUserId(user.id);
+        const slugifyTeamName = (name: string) =>
+          name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").substring(0, 50) || "team";
+        const membershipBySlug = memberships
+          .filter((m) => m.status === "activated")
+          .find((m) => (m.team.slug || "").toLowerCase() === companySlug || slugifyTeamName(m.team.name) === companySlug);
+        if (membershipBySlug) {
+          team = membershipBySlug.team;
+          member = membershipBySlug;
+        }
+      }
 
       if (!team) return res.status(404).json({ message: "Company not found" });
 
@@ -2404,8 +2407,8 @@ export async function registerRoutes(
 
       const effectiveUserId = team.ownerId;
 
-      // Phase 3: Fetch ALL needed data in ONE parallel batch
-      const { getPublicPlanStatus } = await import("./plan-limits");
+      // Phase 3: Fetch ALL needed data + links/blocks in ONE parallel batch
+      const pageSlug = req.query.page as string | undefined;
       const [ownerPages, userSocials, templates, branches, ownerUser, planStatus] = await Promise.all([
         storage.getPagesByUserId(effectiveUserId),
         storage.getSocialsByUserId(user.id),
@@ -2415,7 +2418,6 @@ export async function registerRoutes(
         getPublicPlanStatus(team.ownerId),
       ]);
 
-      const pageSlug = req.query.page as string | undefined;
       let currentPage = ownerPages.find((p) => p.isHome) || ownerPages[0] || null;
       if (pageSlug) {
         const found = ownerPages.find((p) => p.slug === pageSlug);
@@ -2440,6 +2442,9 @@ export async function registerRoutes(
       if (member?.branchId) {
         memberBranch = branches.find((b: any) => b.id === member.branchId) || null;
       }
+
+      // Compute white-label status inline (eliminates separate API call)
+      const whiteLabelEnabled = user.whiteLabelEnabled || ownerUser?.whiteLabelEnabled || false;
 
       const teamBranding: Record<string, any> = {
         companyLogo: tData.companyLogo || team.logoUrl || undefined,
@@ -2503,6 +2508,7 @@ export async function registerRoutes(
           : ownerPages.map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome })),
         currentPage: currentPage ? { id: currentPage.id, title: currentPage.title, slug: currentPage.slug, isHome: currentPage.isHome } : null,
         teamBranding,
+        whiteLabelEnabled,
         planRestricted: planStatus.isFree,
       });
     } catch (error: any) {
@@ -2513,7 +2519,7 @@ export async function registerRoutes(
 
   app.get("/api/profile/:username", async (req, res) => {
     try {
-      // Phase 1: Resolve user by username or team slug
+      // Phase 1: Resolve user by username or team slug (parallel)
       const [userByName, teamBySlug] = await Promise.all([
         storage.getUserByUsername(req.params.username),
         storage.getTeamBySlug(req.params.username),
@@ -2530,7 +2536,7 @@ export async function registerRoutes(
 
       let teamId = user.accountType === "team" ? user.teamId : null;
 
-      // Phase 2: Fetch socials + memberships
+      // Phase 2: Fetch socials + memberships + member in parallel
       const [userSocials, memberships, memberDirect] = await Promise.all([
         storage.getSocialsByUserId(user.id),
         teamId ? Promise.resolve([]) : storage.getTeamMembershipsByUserId(user.id),
@@ -2546,22 +2552,22 @@ export async function registerRoutes(
         }
       }
 
-      // Phase 3: Fetch team data + templates
-      const [teamData, templates] = teamId
-        ? await Promise.all([storage.getTeam(teamId), storage.getTeamTemplates(teamId)])
-        : [null, [] as any[]];
+      // Phase 3: Fetch team data + templates + pages + branches + affiliate + planStatus ALL IN PARALLEL
+      const pageSlug = req.query.page as string | undefined;
+      const effectiveOwnerId_precompute = teamId ? undefined : user.id;
 
-      // Determine effective user: team members show the team owner's pages/blocks
+      // We need teamData to know effectiveUserId, so fetch team + templates first if teamId exists
+      let teamData: any = null;
+      let templates: any[] = [];
+      if (teamId) {
+        [teamData, templates] = await Promise.all([storage.getTeam(teamId), storage.getTeamTemplates(teamId)]);
+      }
+
       const isTeamMemberNotOwner = teamId && teamData && teamData.ownerId !== user.id;
       const effectiveUserId = isTeamMemberNotOwner ? teamData!.ownerId : user.id;
-
-      // Determine effective owner for plan checks
       const effectiveOwnerId = (teamId && teamData) ? teamData.ownerId : user.id;
 
-      // Phase 4: Fetch pages + branches + affiliate + planStatus ALL IN PARALLEL
-      // Uses lightweight getPublicPlanStatus instead of heavy getUserPlanLimits
-      const { getPublicPlanStatus } = await import("./plan-limits");
-      const pageSlug = req.query.page as string | undefined;
+      // Phase 4: Fetch pages + branches + affiliate + planStatus + links/blocks ALL IN PARALLEL
       const [displayPages, branches, affiliateRows, planStatus] = await Promise.all([
         storage.getPagesByUserId(effectiveUserId),
         teamId ? storage.getTeamBranches(teamId) : Promise.resolve([]),
@@ -2584,6 +2590,13 @@ export async function registerRoutes(
       const { password: _, email: __, apiKey: _apiKey, ...publicUser } = user;
       (publicUser as any).emailVerified = user.emailVerified || false;
       (publicUser as any).useOriginalSocialColors = user.useOriginalSocialColors || false;
+
+      // Compute white-label status inline (eliminates separate API call)
+      let whiteLabelEnabled = user.whiteLabelEnabled || false;
+      if (!whiteLabelEnabled && teamId && teamData) {
+        const owner = teamData.ownerId === user.id ? user : await storage.getUser(teamData.ownerId);
+        if (owner?.whiteLabelEnabled) whiteLabelEnabled = true;
+      }
 
       let teamBranding: Record<string, any> | null = null;
 
@@ -2679,6 +2692,7 @@ export async function registerRoutes(
         currentPage: displayCurrentPage ? { id: displayCurrentPage.id, title: displayCurrentPage.title, slug: displayCurrentPage.slug, isHome: displayCurrentPage.isHome } : null,
         teamBranding,
         affiliateInfo,
+        whiteLabelEnabled,
         planRestricted: planStatus.isFree,
         allowedThemeCategories: planStatus.isFree ? ["starter"] : planStatus.themeCategories,
       });
