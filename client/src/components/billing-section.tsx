@@ -107,7 +107,15 @@ export function BillingSection({ autoSelectPlanId, autoPromoCode }: { autoSelect
   // Promo code state
   const [promoInput, setPromoInput] = useState("");
   const [promoValidating, setPromoValidating] = useState(false);
-  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPercent: number; discountType?: string; discountMonthlyAmount?: number; discountYearlyAmount?: number; planId?: string | null } | null>(null);
+  const [appliedPromo, setAppliedPromo] = useState<{
+    code: string;
+    discountPercent: number;
+    discountType?: string;
+    discountMonthlyAmount?: number;
+    discountYearlyAmount?: number;
+    planId?: string | null;
+    billingCycleScope?: "monthly" | "yearly" | "both";
+  } | null>(null);
 
   // Retry pending payment
   const [retryingPaymentId, setRetryingPaymentId] = useState<string | null>(null);
@@ -197,7 +205,7 @@ export function BillingSection({ autoSelectPlanId, autoPromoCode }: { autoSelect
           const res = await fetch("/api/promo-codes/validate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ code: autoPromoCode.trim() }),
+            body: JSON.stringify({ code: autoPromoCode.trim(), billingCycle }),
           });
           const data = await res.json();
           if (res.ok) {
@@ -208,6 +216,7 @@ export function BillingSection({ autoSelectPlanId, autoPromoCode }: { autoSelect
               discountMonthlyAmount: data.discountMonthlyAmount || 0,
               discountYearlyAmount: data.discountYearlyAmount || 0,
               planId: data.planId || null,
+              billingCycleScope: data.billingCycleScope || "both",
             });
             const desc = data.discountType === "money"
               ? `₹${billingCycle === "yearly" ? data.discountYearlyAmount : data.discountMonthlyAmount} off will be applied.`
@@ -217,8 +226,18 @@ export function BillingSection({ autoSelectPlanId, autoPromoCode }: { autoSelect
         } catch {}
       })();
     }
-  }, [autoPromoCode, promoAutoApplied, appliedPromo, loading]);
+  }, [autoPromoCode, promoAutoApplied, appliedPromo, loading, billingCycle, toast]);
 
+  useEffect(() => {
+    if (!appliedPromo?.billingCycleScope || appliedPromo.billingCycleScope === "both") return;
+    if (appliedPromo.billingCycleScope !== billingCycle) {
+      setAppliedPromo(null);
+      toast({
+        title: "Promo code removed",
+        description: `This promo is valid for ${appliedPromo.billingCycleScope} billing only.`,
+      });
+    }
+  }, [appliedPromo, billingCycle, toast]);
 
   const validatePromo = async () => {
     if (!promoInput.trim()) return;
@@ -227,7 +246,7 @@ export function BillingSection({ autoSelectPlanId, autoPromoCode }: { autoSelect
       const res = await fetch("/api/promo-codes/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: promoInput.trim() }),
+        body: JSON.stringify({ code: promoInput.trim(), billingCycle }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
@@ -238,6 +257,7 @@ export function BillingSection({ autoSelectPlanId, autoPromoCode }: { autoSelect
         discountMonthlyAmount: data.discountMonthlyAmount || 0,
         discountYearlyAmount: data.discountYearlyAmount || 0,
         planId: data.planId || null,
+        billingCycleScope: data.billingCycleScope || "both",
       });
       const desc = data.discountType === "money"
         ? `₹${billingCycle === "yearly" ? data.discountYearlyAmount : data.discountMonthlyAmount} off will be applied.`
@@ -531,8 +551,8 @@ export function BillingSection({ autoSelectPlanId, autoPromoCode }: { autoSelect
               isTrial={subscription?.planId === plan.id && subscription?.status === "active" && !!subscription?.isTrial}
               loading={payingPlanId === plan.id}
               onSelect={handleSelectPlan}
-              discountPercent={appliedPromo && appliedPromo.discountType !== "money" && (!appliedPromo.planId || appliedPromo.planId === plan.id) ? appliedPromo.discountPercent : undefined}
-              discountAmount={appliedPromo && appliedPromo.discountType === "money" && (!appliedPromo.planId || appliedPromo.planId === plan.id)
+              discountPercent={appliedPromo && appliedPromo.discountType !== "money" && (!appliedPromo.planId || appliedPromo.planId === plan.id) && (!appliedPromo.billingCycleScope || appliedPromo.billingCycleScope === "both" || appliedPromo.billingCycleScope === billingCycle) ? appliedPromo.discountPercent : undefined}
+              discountAmount={appliedPromo && appliedPromo.discountType === "money" && (!appliedPromo.planId || appliedPromo.planId === plan.id) && (!appliedPromo.billingCycleScope || appliedPromo.billingCycleScope === "both" || appliedPromo.billingCycleScope === billingCycle)
                 ? (billingCycle === "yearly" ? appliedPromo.discountYearlyAmount : appliedPromo.discountMonthlyAmount)
                 : undefined}
             />

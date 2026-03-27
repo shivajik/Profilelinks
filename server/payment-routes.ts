@@ -17,6 +17,14 @@ import { fromZodError } from "zod-validation-error";
 
 const router = Router();
 
+function normalizeBillingCycleScope(scope: unknown): "monthly" | "yearly" | "both" {
+  const normalized = String(scope ?? "").trim().toLowerCase();
+  if (["monthly", "month", "monthly only", "monthly_only"].includes(normalized)) return "monthly";
+  if (["yearly", "annual", "annually", "year", "yearly only", "yearly_only"].includes(normalized)) return "yearly";
+  if (normalized === "both") return "both";
+  return "both";
+}
+
 function requireAuth(req: Request, res: Response, next: () => void) {
   if (!req.session.userId) {
     return res.status(401).json({ message: "Unauthorized" });
@@ -116,7 +124,7 @@ router.post("/api/payments/create-order", requireAuth as any, async (req: Reques
       if (code.planId && code.planId !== planId) return res.status(400).json({ message: "This coupon is not valid for the selected plan" });
 
       // Check billing cycle scope
-      const codeBillingScope = (code as any).billingCycleScope || "both";
+      const codeBillingScope = normalizeBillingCycleScope((code as any).billingCycleScope);
       if (codeBillingScope !== "both" && codeBillingScope !== billingCycle) {
         return res.status(400).json({ message: `This coupon is only valid for ${codeBillingScope} billing` });
       }
@@ -131,13 +139,7 @@ router.post("/api/payments/create-order", requireAuth as any, async (req: Reques
       } else {
         // Percentage discount
         const discount = parseFloat(code.discountPercent);
-        if (codeBillingScope === "monthly" && billingCycle === "yearly") {
-          const monthlyPrice = useUsd ? parseFloat(plan.monthlyPriceUsd) : parseFloat(plan.monthlyPrice);
-          const monthlyDiscount = Math.round(monthlyPrice * (discount / 100));
-          price = Math.max(0, price - monthlyDiscount);
-        } else {
-          price = Math.max(0, Math.round(price * (1 - discount / 100)));
-        }
+        price = Math.max(0, Math.round(price * (1 - discount / 100)));
       }
       appliedPromoId = code.id;
     }
@@ -368,7 +370,9 @@ router.post("/api/payments/verify", requireAuth as any, async (req: Request, res
       if (paymentPlan && code && code.isActive && (!code.maxUses || code.maxUses === 0 || code.currentUses < code.maxUses) && (!code.expiresAt || new Date(code.expiresAt) > new Date())) {
         const scopeMatches = paymentPlan.isLtd ? code.appliesToLtd : code.appliesToRegular;
         const planMatches = !code.planId || code.planId === planId;
-        if (scopeMatches && planMatches) {
+        const codeBillingScope = normalizeBillingCycleScope((code as any).billingCycleScope);
+        const billingScopeMatches = codeBillingScope === "both" || codeBillingScope === billingCycle;
+        if (scopeMatches && planMatches && billingScopeMatches) {
           await db.update(promoCodes).set({ currentUses: code.currentUses + 1 }).where(eq(promoCodes.id, code.id));
         }
       }

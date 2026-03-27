@@ -181,6 +181,7 @@ router.get("/api/admin/promo-codes", requireAdminAuth, async (req: Request, res:
         isActive: promoCodes.isActive,
         appliesToLtd: promoCodes.appliesToLtd,
         appliesToRegular: promoCodes.appliesToRegular,
+        billingCycleScope: promoCodes.billingCycleScope,
         planId: promoCodes.planId,
         expiresAt: promoCodes.expiresAt,
         createdAt: promoCodes.createdAt,
@@ -225,6 +226,7 @@ router.post("/api/admin/promo-codes", requireAdminAuth, async (req: Request, res
       expiresAt: result.data.expiresAt ? new Date(result.data.expiresAt) : null,
       appliesToLtd: result.data.appliesToLtd,
       appliesToRegular: result.data.appliesToRegular,
+      billingCycleScope: result.data.billingCycleScope,
       planId: result.data.planId || null,
     }).returning();
     res.status(201).json(code);
@@ -250,6 +252,7 @@ router.patch("/api/admin/promo-codes/:id", requireAdminAuth, async (req: Request
     if (result.data.expiresAt !== undefined) updateData.expiresAt = result.data.expiresAt ? new Date(result.data.expiresAt) : null;
     if (result.data.appliesToLtd !== undefined) updateData.appliesToLtd = result.data.appliesToLtd;
     if (result.data.appliesToRegular !== undefined) updateData.appliesToRegular = result.data.appliesToRegular;
+    if (result.data.billingCycleScope !== undefined) updateData.billingCycleScope = result.data.billingCycleScope;
     if (result.data.planId !== undefined) updateData.planId = result.data.planId || null;
 
     const nextLtd = updateData.appliesToLtd;

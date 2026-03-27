@@ -48,7 +48,8 @@ export default function PricingPage() {
 
   const [promoInput, setPromoInput] = useState("");
   const [promoValidating, setPromoValidating] = useState(false);
-  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPercent: number; discountType?: string; discountMonthlyAmount?: number; discountYearlyAmount?: number; planId?: string | null; billingCycleScope?: string } | null>(null);
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPercent: number; discountType?: string; discountMonthlyAmount?: number; discountYearlyAmount?: number; planId?: string | null; billingCycleScope?: "monthly" | "yearly" | "both" } | null>(null);
+  const isPromoScopeValid = !appliedPromo?.billingCycleScope || appliedPromo.billingCycleScope === "both" || appliedPromo.billingCycleScope === billingCycle;
 
   useEffect(() => {
     fetch("/api/pricing/plans")
@@ -102,6 +103,17 @@ export default function PricingPage() {
     setAppliedPromo(null);
     setPromoInput("");
   };
+
+  useEffect(() => {
+    if (!appliedPromo?.billingCycleScope || appliedPromo.billingCycleScope === "both") return;
+    if (appliedPromo.billingCycleScope !== billingCycle) {
+      setAppliedPromo(null);
+      toast({
+        title: "Promo code removed",
+        description: `This promo is valid for ${appliedPromo.billingCycleScope} billing only.`,
+      });
+    }
+  }, [appliedPromo, billingCycle, toast]);
 
   const handleSelectPlan = useCallback(async (plan: PricingPlan) => {
     if (!user) {
@@ -297,8 +309,8 @@ export default function PricingPage() {
                 isCurrentPlan={currentPlanId === plan.id}
                 loading={payingPlanId === plan.id}
                 onSelect={handleSelectPlan}
-                discountPercent={appliedPromo && appliedPromo.discountType !== "money" && (!appliedPromo.planId || appliedPromo.planId === plan.id) && (!appliedPromo.billingCycleScope || appliedPromo.billingCycleScope === "both" || appliedPromo.billingCycleScope === billingCycle) ? appliedPromo.discountPercent : undefined}
-                discountAmount={appliedPromo && appliedPromo.discountType === "money" && (!appliedPromo.planId || appliedPromo.planId === plan.id) && (!appliedPromo.billingCycleScope || appliedPromo.billingCycleScope === "both" || appliedPromo.billingCycleScope === billingCycle)
+                discountPercent={appliedPromo && appliedPromo.discountType !== "money" && (!appliedPromo.planId || appliedPromo.planId === plan.id) && isPromoScopeValid ? appliedPromo.discountPercent : undefined}
+                discountAmount={appliedPromo && appliedPromo.discountType === "money" && (!appliedPromo.planId || appliedPromo.planId === plan.id) && isPromoScopeValid
                   ? (billingCycle === "yearly" ? appliedPromo.discountYearlyAmount : appliedPromo.discountMonthlyAmount)
                   : undefined}
               />
