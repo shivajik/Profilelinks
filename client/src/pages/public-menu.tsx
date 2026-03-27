@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { QRCodeSVG } from "qrcode.react";
 import { Loader2, Copy, Check, Package, QrCode, Phone, Mail, MapPin, Globe, Clock, MessageCircle } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { SocialIcon } from "@/components/social-icon";
 
 interface MenuSection {
@@ -75,6 +76,7 @@ interface PublicMenuData {
   socials: SocialLink[];
   teamBranding: TeamBranding | null;
   affiliateInfo?: { isAffiliate: boolean; referralCode?: string };
+  whiteLabelEnabled?: boolean;
 }
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -111,14 +113,8 @@ export default function PublicMenu() {
     return () => window.removeEventListener("message", handler);
   }, [isEmbed, refetch]);
 
-  const { data: whiteLabelData } = useQuery<{ whiteLabelEnabled: boolean }>({
-    queryKey: ["/api/white-label", username],
-    queryFn: async () => {
-      const res = await fetch(`/api/white-label/${username}`);
-      return res.json();
-    },
-    enabled: !!username,
-  });
+  // White-label status now comes from the menu API response directly
+  const whiteLabelEnabled = data?.whiteLabelEnabled ?? false;
 
   const sortedSections = data?.sections?.sort((a, b) => a.position - b.position) || [];
 
@@ -185,8 +181,45 @@ export default function PublicMenu() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      <div className="min-h-screen bg-background">
+        <div className="max-w-lg mx-auto px-4 py-8">
+          {/* Header skeleton */}
+          <div className="text-center mb-6">
+            <div className="flex justify-end gap-2 mb-4">
+              <Skeleton className="w-9 h-9 rounded-md" />
+              <Skeleton className="w-9 h-9 rounded-md" />
+            </div>
+            <Skeleton className="w-20 h-20 rounded-full mx-auto mb-3" />
+            <Skeleton className="h-7 w-48 mx-auto mb-2" />
+            <Skeleton className="h-4 w-64 mx-auto" />
+            <Skeleton className="w-16 h-1 rounded-full mx-auto mt-4" />
+          </div>
+          {/* Category tabs skeleton */}
+          <div className="flex gap-2 mb-4">
+            <Skeleton className="h-9 w-20 rounded-full" />
+            <Skeleton className="h-9 w-24 rounded-full" />
+            <Skeleton className="h-9 w-16 rounded-full" />
+            <Skeleton className="h-9 w-28 rounded-full" />
+          </div>
+          {/* Menu items skeleton */}
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="rounded-xl p-3 bg-muted/30">
+                <div className="flex items-start gap-3">
+                  <Skeleton className="w-20 h-20 rounded-lg shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="flex justify-between">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-4 w-12" />
+                    </div>
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-2/3" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -454,7 +487,7 @@ export default function PublicMenu() {
         )}
 
         {/* Footer */}
-        {whiteLabelData !== undefined && !whiteLabelData.whiteLabelEnabled && (
+        {!whiteLabelEnabled && (
           <div className="text-center mt-10 space-y-1">
             <p className={`text-xs ${template.textColor} opacity-40`}>
               Powered by <span className="font-semibold" style={{ color: template.accent, opacity: 1 }}>VisiCardly</span>

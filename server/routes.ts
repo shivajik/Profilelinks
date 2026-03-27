@@ -3398,13 +3398,20 @@ export async function registerRoutes(
 
       const { password: _, email: __, apiKey: _apiKey, ...publicUser } = user;
 
-      // Get team branding if applicable
+      // Get team branding + affiliate + white-label in parallel
       let teamBranding: any = null;
-      if (user.accountType === "team" && user.teamId) {
-        const [team, templates] = await Promise.all([
-          storage.getTeam(user.teamId),
-          storage.getTeamTemplates(user.teamId),
-        ]);
+      let affiliateInfo: { isAffiliate: boolean; referralCode?: string } = { isAffiliate: false };
+      let whiteLabelEnabled = user.whiteLabelEnabled || false;
+
+      const teamBrandingPromise = (user.accountType === "team" && user.teamId)
+        ? Promise.all([storage.getTeam(user.teamId), storage.getTeamTemplates(user.teamId)])
+        : Promise.resolve(null);
+      const affiliatePromise = db.select().from(affiliates).where(eq(affiliates.userId, user.id)).limit(1).catch(() => []);
+
+      const [teamResult, affiliateRows] = await Promise.all([teamBrandingPromise, affiliatePromise]);
+
+      if (teamResult) {
+        const [team, templates] = teamResult;
         const defaultTemplate = templates.find(t => t.isDefault) || templates[0];
         const tData: any = defaultTemplate?.templateData || {};
         teamBranding = {
@@ -3413,16 +3420,17 @@ export async function registerRoutes(
           themeColor: tData.themeColor,
           coverPhoto: tData.coverPhoto || undefined,
         };
+        // Check owner's white-label if team member
+        if (!whiteLabelEnabled && team) {
+          const owner = team.ownerId === user.id ? user : await storage.getUser(team.ownerId);
+          if (owner?.whiteLabelEnabled) whiteLabelEnabled = true;
+        }
       }
 
-      // Check if user is an affiliate
-      let affiliateInfo: { isAffiliate: boolean; referralCode?: string } = { isAffiliate: false };
-      try {
-        const [aff] = await db.select().from(affiliates).where(eq(affiliates.userId, user.id));
-        if (aff && aff.isActive) {
-          affiliateInfo = { isAffiliate: true, referralCode: aff.referralCode };
-        }
-      } catch (_) {}
+      const aff = affiliateRows[0];
+      if (aff && (aff as any).isActive) {
+        affiliateInfo = { isAffiliate: true, referralCode: (aff as any).referralCode };
+      }
 
       res.json({
         user: {
@@ -3445,6 +3453,7 @@ export async function registerRoutes(
         socials: menuSocialLinks,
         teamBranding,
         affiliateInfo,
+        whiteLabelEnabled,
       });
     } catch (error: any) {
       console.error("Public menu load error:", error);
