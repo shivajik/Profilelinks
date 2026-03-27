@@ -2529,6 +2529,7 @@ export async function registerRoutes(
 
   app.get("/api/profile/:username", async (req, res) => {
     try {
+      // Phase 1: Resolve user by username or team slug
       const [userByName, teamBySlug] = await Promise.all([
         storage.getUserByUsername(req.params.username),
         storage.getTeamBySlug(req.params.username),
@@ -2545,7 +2546,7 @@ export async function registerRoutes(
 
       let teamId = user.accountType === "team" ? user.teamId : null;
 
-      // Phase 1: Fetch socials + memberships (no pages yet — we need to know effective user first)
+      // Phase 2: Fetch socials + memberships
       const [userSocials, memberships, memberDirect] = await Promise.all([
         storage.getSocialsByUserId(user.id),
         teamId ? Promise.resolve([]) : storage.getTeamMembershipsByUserId(user.id),
@@ -2561,7 +2562,7 @@ export async function registerRoutes(
         }
       }
 
-      // Phase 2: Fetch team data (needed to determine ownerId for members)
+      // Phase 3: Fetch team data + templates
       const [teamData, templates] = teamId
         ? await Promise.all([storage.getTeam(teamId), storage.getTeamTemplates(teamId)])
         : [null, [] as any[]];
@@ -2570,16 +2571,25 @@ export async function registerRoutes(
       const isTeamMemberNotOwner = teamId && teamData && teamData.ownerId !== user.id;
       const effectiveUserId = isTeamMemberNotOwner ? teamData!.ownerId : user.id;
 
-      // Phase 3: Fetch pages for the effective user
+      // Determine effective owner for plan checks
+      const effectiveOwnerId = (teamId && teamData) ? teamData.ownerId : user.id;
+
+      // Phase 4: Fetch pages + branches + affiliate + planLimits ALL IN PARALLEL
       const pageSlug = req.query.page as string | undefined;
-      const displayPages = await storage.getPagesByUserId(effectiveUserId);
+      const [displayPages, branches, affiliateRows, planLimits] = await Promise.all([
+        storage.getPagesByUserId(effectiveUserId),
+        teamId ? storage.getTeamBranches(teamId) : Promise.resolve([]),
+        db.select().from(affiliates).where(eq(affiliates.userId, user.id)).limit(1).catch(() => []),
+        getUserPlanLimits(effectiveOwnerId),
+      ]);
+
       let displayCurrentPage = displayPages.find((p) => p.isHome) || displayPages[0] || null;
       if (pageSlug) {
         const found = displayPages.find((p) => p.slug === pageSlug);
         if (found) displayCurrentPage = found;
       }
 
-      // Phase 4: Fetch links and blocks for the current page
+      // Phase 5: Fetch links and blocks for the current page
       const [displayLinks, displayBlocks] = await Promise.all([
         displayCurrentPage ? storage.getLinksByPageId(displayCurrentPage.id) : storage.getLinksByUserId(effectiveUserId),
         displayCurrentPage ? storage.getBlocksByPageId(displayCurrentPage.id) : storage.getBlocksByUserId(effectiveUserId),
@@ -2595,16 +2605,13 @@ export async function registerRoutes(
         const defaultTemplate = templates.find((t: any) => t.isDefault) || templates[0];
         const tData: any = defaultTemplate?.templateData || {};
 
-        // Fetch branch data (already parallelized with team data above)
+        // Use branches already fetched in Phase 4
         let memberBranchData: any = null;
         let headBranchData: any = null;
-        try {
-          const branches = await storage.getTeamBranches(teamId);
-          headBranchData = branches.find((b: any) => b.isHeadBranch) || null;
-          if (member?.branchId) {
-            memberBranchData = branches.find((b: any) => b.id === member.branchId) || null;
-          }
-        } catch (_) {}
+        headBranchData = branches.find((b: any) => b.isHeadBranch) || null;
+        if (member?.branchId) {
+          memberBranchData = branches.find((b: any) => b.id === member.branchId) || null;
+        }
 
         teamBranding = {
           companyLogo: tData.companyLogo || teamData?.logoUrl || undefined,
@@ -2660,14 +2667,11 @@ export async function registerRoutes(
         res.set("Vercel-CDN-Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
       }
 
-      // Check if user is an affiliate
-      let affiliateInfo: { isAffiliate: boolean; referralCode?: string } = { isAffiliate: false };
-      try {
-        const [aff] = await db.select().from(affiliates).where(eq(affiliates.userId, user.id));
-        if (aff && aff.isActive) {
-          affiliateInfo = { isAffiliate: true, referralCode: aff.referralCode };
-        }
-      } catch (_) {}
+      // Affiliate info from already-fetched data (no extra query)
+      const aff = affiliateRows[0];
+      const affiliateInfo = aff && aff.isActive
+        ? { isAffiliate: true, referralCode: aff.referralCode }
+        : { isAffiliate: false };
 
       // Add services/products visibility flags to teamBranding
       if (teamBranding && teamId) {
@@ -2676,27 +2680,22 @@ export async function registerRoutes(
         teamBranding.teamSlug = teamData?.slug || undefined;
       }
 
-      // Check plan limits and filter premium features for free/expired trial users
-      // Determine the effective owner: for team members, use the team owner's plan
-      let effectiveOwnerId = user.id;
-      if (teamId && teamData) {
-        effectiveOwnerId = teamData.ownerId;
-      }
-      const planLimits = await getUserPlanLimits(effectiveOwnerId);
-      const { getEffectivePlanForPublicProfile } = await import("./plan-limits");
-      const effectivePlan = await getEffectivePlanForPublicProfile(effectiveOwnerId);
+      // Compute effective plan inline (no second call to getUserPlanLimits)
+      const isFree = !planLimits.hasActivePlan || planLimits.trialExpired;
+      const effectivePlan = {
+        isFree,
+        allowedThemeCategories: isFree ? ["starter"] : planLimits.themeCategories,
+        menuBuilderEnabled: !isFree && planLimits.menuBuilderEnabled,
+      };
 
       if (effectivePlan.isFree) {
-        // For free plan, force minimal template for public viewing
         (publicUser as any).effectiveTemplate = (publicUser as any).template || "minimal";
         (publicUser as any).template = "minimal";
         (publicUser as any).planRestricted = true;
         
-        // Remove menu URL if menu builder not available
         if (teamBranding && !effectivePlan.menuBuilderEnabled) {
           teamBranding.menuUrl = undefined;
         }
-        // Restrict company socials to plan limit
         if (teamBranding?.companySocials && Array.isArray(teamBranding.companySocials)) {
           teamBranding.companySocials = teamBranding.companySocials.slice(0, planLimits.maxSocials);
         }
