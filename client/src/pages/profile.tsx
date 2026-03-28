@@ -447,7 +447,7 @@ export default function PublicProfile(props?: any) {
           >
             <Share2 className="w-5 h-5" />
           </Button>
-          {/* <Button
+          <Button
             variant="ghost"
             size="icon"
             onClick={() => setWalletOpen(true)}
@@ -455,7 +455,7 @@ export default function PublicProfile(props?: any) {
             data-testid="button-wallet"
           >
             <Wallet className="w-5 h-5" />
-          </Button> */}
+          </Button>
         </div>
 
         {/* Lightbox overlay */}
