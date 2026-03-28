@@ -95,23 +95,38 @@ export async function registerRoutes(
     app.set("trust proxy", 1);
   }
 
-  app.use(
-    session({
-      store: new PgSession({
-        pool: sessionPool,
-        createTableIfMissing: true,
-      }),
-      secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex"),
-      resave: false,
-      saveUninitialized: false,
-      cookie: {
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-        httpOnly: true,
-        secure: isProduction,
-        sameSite: "lax",
-      },
-    })
-  );
+  const sessionMiddleware = session({
+    store: new PgSession({
+      pool: sessionPool,
+      createTableIfMissing: true,
+    }),
+    secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex"),
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "lax",
+    },
+  });
+
+  // Skip session middleware for public read-only routes (saves ~100-500ms per request)
+  const PUBLIC_SKIP_PATTERNS = [
+    /^\/api\/profile\//,
+    /^\/api\/menu\//,
+    /^\/api\/invites\//,
+    /^\/api\/contact-form/,
+    /^\/api\/google-wallet\/status$/,
+    /^\/api\/apple-wallet\/status$/,
+  ];
+
+  app.use((req, res, next) => {
+    if (req.method === "GET" && PUBLIC_SKIP_PATTERNS.some(p => p.test(req.path))) {
+      return next();
+    }
+    return sessionMiddleware(req, res, next);
+  });
 
   // Rate limiters
   const authLimiter = rateLimit("auth", 10, 15 * 60 * 1000); // 10 attempts per 15 min
@@ -2389,8 +2404,12 @@ export async function registerRoutes(
 
       if (req.query.preview === "1") {
         res.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+        res.set("CDN-Cache-Control", "no-store");
+        res.set("Vercel-CDN-Cache-Control", "no-store");
       } else {
         res.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+        res.set("CDN-Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+        res.set("Vercel-CDN-Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
       }
 
       res.json(result);
@@ -3100,7 +3119,7 @@ export async function registerRoutes(
 
   // ── Public Menu Endpoint (optimised single-query) ──────────────────────────
   const menuCache = new Map<string, { data: any; ts: number }>();
-  const MENU_CACHE_TTL = 30_000; // 30 seconds
+  const MENU_CACHE_TTL = 60_000; // 60 seconds
 
   app.get("/api/menu/:username", async (req, res) => {
     try {

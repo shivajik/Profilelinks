@@ -39,7 +39,7 @@ interface CacheEntry {
 const responseCache = new Map<string, CacheEntry>();
 /** Reverse map: userId → Set of cache keys that include that user's data */
 const userToCacheKeys = new Map<string, Set<string>>();
-const CACHE_TTL = 30_000;
+const CACHE_TTL = 60_000; // 60s response cache
 
 function cacheGet(key: string): ProfileResult | null {
   const entry = responseCache.get(key);
@@ -71,7 +71,7 @@ export function invalidateProfileCache(userId: string) {
 // ── Plan cache (30 s TTL) ────────────────────────────────────────────────────
 
 const planCache = new Map<string, { data: any; ts: number }>();
-const PLAN_TTL = 30_000;
+const PLAN_TTL = 300_000; // 5 min plan cache
 
 function getCachedPlan(ownerId: string) {
   const c = planCache.get(ownerId);
@@ -302,6 +302,21 @@ export async function loadProfileByUsername(
         END AS effective_user_id
       FROM resolved_user ru LEFT JOIN resolved_team rt ON TRUE
       LIMIT 1
+    ),
+    target_page AS (
+      SELECT id FROM pages
+      WHERE user_id = (SELECT effective_user_id FROM effective_ids)
+        AND CASE
+          WHEN $2::text IS NOT NULL THEN slug = $2
+          ELSE is_home = true
+        END
+      LIMIT 1
+    ),
+    fallback_page AS (
+      SELECT COALESCE(
+        (SELECT id FROM target_page),
+        (SELECT id FROM pages WHERE user_id = (SELECT effective_user_id FROM effective_ids) ORDER BY position LIMIT 1)
+      ) AS id
     )
     SELECT
       ru.id AS user_id, ru.username, ru.display_name, ru.bio, ru.profile_image,
@@ -323,26 +338,17 @@ export async function loadProfileByUsername(
       owner_u.show_menu_on_profile AS owner_show_menu,
       owner_u.show_services_on_profile AS owner_show_services,
       owner_u.show_products_on_profile AS owner_show_products,
-      -- All data fetched in one round-trip via JSON subqueries
       (SELECT COALESCE(json_agg(s ORDER BY s.position), '[]'::json)
        FROM socials s WHERE s.user_id = ru.id) AS socials_json,
       (SELECT COALESCE(json_agg(p ORDER BY p.position), '[]'::json)
        FROM (SELECT id, title, slug, is_home, position FROM pages WHERE user_id = ei.effective_user_id) p) AS pages_json,
       (SELECT COALESCE(json_agg(l ORDER BY l.position), '[]'::json)
        FROM links l WHERE l.user_id = ei.effective_user_id AND l.active = true
-         AND ($2::text IS NULL OR l.page_id = (
-           SELECT id FROM pages WHERE user_id = ei.effective_user_id AND slug = $2 LIMIT 1
-         ) OR (
-           $2 IS NULL AND l.page_id = (SELECT id FROM pages WHERE user_id = ei.effective_user_id AND is_home = true LIMIT 1)
-         ))
+         AND l.page_id = (SELECT id FROM fallback_page)
       ) AS links_json,
       (SELECT COALESCE(json_agg(b ORDER BY b.position), '[]'::json)
        FROM blocks b WHERE b.user_id = ei.effective_user_id AND b.active = true
-         AND b.page_id = COALESCE(
-           (SELECT id FROM pages WHERE user_id = ei.effective_user_id AND ($2::text IS NOT NULL AND slug = $2) LIMIT 1),
-           (SELECT id FROM pages WHERE user_id = ei.effective_user_id AND is_home = true LIMIT 1),
-           (SELECT id FROM pages WHERE user_id = ei.effective_user_id ORDER BY position LIMIT 1)
-         )
+         AND b.page_id = (SELECT id FROM fallback_page)
       ) AS blocks_json,
       (SELECT COALESCE(json_agg(tb ORDER BY tb.created_at), '[]'::json)
        FROM team_branches tb WHERE tb.team_id = rt.id) AS branches_json,
@@ -491,6 +497,21 @@ export async function loadTeamMemberProfile(
       LEFT JOIN users owner_u ON owner_u.id = t.owner_id AND t.owner_id != u.id
       WHERE u.username = $2
       LIMIT 1
+    ),
+    target_page AS (
+      SELECT id FROM pages
+      WHERE user_id = (SELECT effective_user_id FROM base)
+        AND CASE
+          WHEN $3::text IS NOT NULL THEN slug = $3
+          ELSE is_home = true
+        END
+      LIMIT 1
+    ),
+    fallback_page AS (
+      SELECT COALESCE(
+        (SELECT id FROM target_page),
+        (SELECT id FROM pages WHERE user_id = (SELECT effective_user_id FROM base) ORDER BY position LIMIT 1)
+      ) AS id
     )
     SELECT b.*,
       (SELECT COALESCE(json_agg(s ORDER BY s.position), '[]'::json)
@@ -499,19 +520,11 @@ export async function loadTeamMemberProfile(
        FROM (SELECT id, title, slug, is_home, position FROM pages WHERE user_id = b.effective_user_id) p) AS pages_json,
       (SELECT COALESCE(json_agg(l ORDER BY l.position), '[]'::json)
        FROM links l WHERE l.user_id = b.effective_user_id AND l.active = true
-         AND l.page_id = COALESCE(
-           (SELECT id FROM pages WHERE user_id = b.effective_user_id AND ($3::text IS NOT NULL AND slug = $3) LIMIT 1),
-           (SELECT id FROM pages WHERE user_id = b.effective_user_id AND is_home = true LIMIT 1),
-           (SELECT id FROM pages WHERE user_id = b.effective_user_id ORDER BY position LIMIT 1)
-         )
+         AND l.page_id = (SELECT id FROM fallback_page)
       ) AS links_json,
       (SELECT COALESCE(json_agg(bl ORDER BY bl.position), '[]'::json)
        FROM blocks bl WHERE bl.user_id = b.effective_user_id AND bl.active = true
-         AND bl.page_id = COALESCE(
-           (SELECT id FROM pages WHERE user_id = b.effective_user_id AND ($3::text IS NOT NULL AND slug = $3) LIMIT 1),
-           (SELECT id FROM pages WHERE user_id = b.effective_user_id AND is_home = true LIMIT 1),
-           (SELECT id FROM pages WHERE user_id = b.effective_user_id ORDER BY position LIMIT 1)
-         )
+         AND bl.page_id = (SELECT id FROM fallback_page)
       ) AS blocks_json,
       (SELECT COALESCE(json_agg(tb ORDER BY tb.created_at), '[]'::json)
        FROM team_branches tb WHERE tb.team_id = b.team_id_resolved) AS branches_json,

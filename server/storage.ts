@@ -76,6 +76,9 @@ if (dbUrl) {
     connectionTimeoutMillis: 5000,
   });
   _db = drizzle(pool);
+  // Warm pool: establish connections eagerly to avoid cold-start latency
+  pool.query('SELECT 1').catch(() => {});
+
 } else {
   console.warn("⚠️  No database URL found. Server will start but database operations will fail.");
 }
