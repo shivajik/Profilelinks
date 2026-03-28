@@ -1,11 +1,14 @@
 /**
  * Ultra-optimized profile data loader.
- * Uses a SINGLE SQL query with JSON sub-selects to fetch everything
- * in ONE database round-trip instead of 3 sequential rounds.
  *
- * The query returns: user, team, member, template, owner flags,
- * socials, pages, links, blocks, branches, affiliate, plan status
- * — all via CTEs and correlated JSON subqueries.
+ * Uses a SINGLE SQL query with JSON sub-selects to fetch everything
+ * in ONE database round-trip, plus a 30-second in-memory response cache
+ * with per-user invalidation so cached hits return in <5ms.
+ *
+ * Strategies:
+ *   1. Single CTE mega-query — all data in 1 round-trip (no sequential calls)
+ *   2. In-memory response cache — 30 s TTL, invalidated on any write
+ *   3. Plan cache — 30 s TTL, avoids repeated subscription lookups
  */
 
 import { dbPool } from "./storage";
@@ -26,7 +29,47 @@ export interface ProfileResult {
   allowedThemeCategories?: string[];
 }
 
-// ── Plan cache ───────────────────────────────────────────────────────────────
+// ── Response cache (30 s TTL) ────────────────────────────────────────────────
+
+interface CacheEntry {
+  data: ProfileResult;
+  ts: number;
+}
+
+const responseCache = new Map<string, CacheEntry>();
+/** Reverse map: userId → Set of cache keys that include that user's data */
+const userToCacheKeys = new Map<string, Set<string>>();
+const CACHE_TTL = 30_000;
+
+function cacheGet(key: string): ProfileResult | null {
+  const entry = responseCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > CACHE_TTL) {
+    responseCache.delete(key);
+    return null;
+  }
+  return entry.data;
+}
+
+function cacheSet(key: string, data: ProfileResult, ...userIds: (string | undefined)[]) {
+  responseCache.set(key, { data, ts: Date.now() });
+  for (const uid of userIds) {
+    if (!uid) continue;
+    if (!userToCacheKeys.has(uid)) userToCacheKeys.set(uid, new Set());
+    userToCacheKeys.get(uid)!.add(key);
+  }
+}
+
+/** Invalidate all cache entries that involve a given userId. */
+export function invalidateProfileCache(userId: string) {
+  const keys = userToCacheKeys.get(userId);
+  if (!keys) return;
+  for (const key of keys) responseCache.delete(key);
+  userToCacheKeys.delete(userId);
+}
+
+// ── Plan cache (30 s TTL) ────────────────────────────────────────────────────
+
 const planCache = new Map<string, { data: any; ts: number }>();
 const PLAN_TTL = 30_000;
 
@@ -194,6 +237,24 @@ function applyPlanRestrictions(
   };
 }
 
+function resolvePlan(m: any, ownerId: string): any {
+  let planStatus = getCachedPlan(ownerId);
+  if (!planStatus) {
+    planStatus = parsePlanRow(m.plan_json);
+    if (planStatus?.isTrial && planStatus.trialEndsAt && new Date(planStatus.trialEndsAt) < new Date()) {
+      dbPool?.query(
+        `UPDATE user_subscriptions SET status = 'expired', updated_at = NOW()
+         WHERE user_id = $1 AND status = 'active' AND is_trial = true`,
+        [ownerId]
+      ).catch(() => {});
+      planStatus = null;
+    }
+    if (!planStatus) planStatus = FREE_PLAN;
+    planCache.set(ownerId, { data: planStatus, ts: Date.now() });
+  }
+  return planStatus;
+}
+
 // ── Main loader for /api/profile/:username ───────────────────────────────────
 
 export async function loadProfileByUsername(
@@ -203,18 +264,29 @@ export async function loadProfileByUsername(
 ): Promise<ProfileResult | null> {
   if (!dbPool) return null;
 
-  // SINGLE MEGA-QUERY: resolve user + team + member + template + all related data via JSON subqueries
+  const cacheKey = `u:${username}:${pageSlug || ""}`;
+
+  // Serve from cache (skip for preview requests)
+  if (!isPreview) {
+    const cached = cacheGet(cacheKey);
+    if (cached) return cached;
+  }
+
+  const t0 = Date.now();
+
+  // SINGLE MEGA-QUERY: resolve user + team + member + template + all data via JSON subqueries
   const { rows } = await dbPool.query(`
     WITH resolved_user AS (
       SELECT u.* FROM users u WHERE u.username = $1
       UNION ALL
       SELECT u.* FROM teams t JOIN users u ON u.id = t.owner_id WHERE t.slug = $1
+        AND NOT EXISTS (SELECT 1 FROM users ux WHERE ux.username = $1)
       LIMIT 1
     ),
     resolved_team AS (
       SELECT t.* FROM teams t
-      WHERE t.id = (SELECT team_id FROM resolved_user)
-         OR t.owner_id = (SELECT id FROM resolved_user)
+      WHERE t.id = (SELECT team_id FROM resolved_user LIMIT 1)
+         OR t.owner_id = (SELECT id FROM resolved_user LIMIT 1)
          OR t.slug = $1
       LIMIT 1
     ),
@@ -251,12 +323,29 @@ export async function loadProfileByUsername(
       owner_u.show_menu_on_profile AS owner_show_menu,
       owner_u.show_services_on_profile AS owner_show_services,
       owner_u.show_products_on_profile AS owner_show_products,
-      -- JSON aggregated subqueries: ALL data in one round trip
-      (SELECT COALESCE(json_agg(s ORDER BY s.position), '[]'::json) FROM socials s WHERE s.user_id = ru.id) AS socials_json,
-      (SELECT COALESCE(json_agg(p ORDER BY p.position), '[]'::json) FROM (SELECT id, title, slug, is_home, position FROM pages WHERE user_id = ei.effective_user_id) p) AS pages_json,
-      (SELECT COALESCE(json_agg(l ORDER BY l.position), '[]'::json) FROM links l WHERE l.user_id = ei.effective_user_id) AS links_json,
-      (SELECT COALESCE(json_agg(b ORDER BY b.position), '[]'::json) FROM blocks b WHERE b.user_id = ei.effective_user_id) AS blocks_json,
-      (SELECT COALESCE(json_agg(tb), '[]'::json) FROM team_branches tb WHERE tb.team_id = rt.id) AS branches_json,
+      -- All data fetched in one round-trip via JSON subqueries
+      (SELECT COALESCE(json_agg(s ORDER BY s.position), '[]'::json)
+       FROM socials s WHERE s.user_id = ru.id) AS socials_json,
+      (SELECT COALESCE(json_agg(p ORDER BY p.position), '[]'::json)
+       FROM (SELECT id, title, slug, is_home, position FROM pages WHERE user_id = ei.effective_user_id) p) AS pages_json,
+      (SELECT COALESCE(json_agg(l ORDER BY l.position), '[]'::json)
+       FROM links l WHERE l.user_id = ei.effective_user_id AND l.active = true
+         AND ($2::text IS NULL OR l.page_id = (
+           SELECT id FROM pages WHERE user_id = ei.effective_user_id AND slug = $2 LIMIT 1
+         ) OR (
+           $2 IS NULL AND l.page_id = (SELECT id FROM pages WHERE user_id = ei.effective_user_id AND is_home = true LIMIT 1)
+         ))
+      ) AS links_json,
+      (SELECT COALESCE(json_agg(b ORDER BY b.position), '[]'::json)
+       FROM blocks b WHERE b.user_id = ei.effective_user_id AND b.active = true
+         AND b.page_id = COALESCE(
+           (SELECT id FROM pages WHERE user_id = ei.effective_user_id AND ($2::text IS NOT NULL AND slug = $2) LIMIT 1),
+           (SELECT id FROM pages WHERE user_id = ei.effective_user_id AND is_home = true LIMIT 1),
+           (SELECT id FROM pages WHERE user_id = ei.effective_user_id ORDER BY position LIMIT 1)
+         )
+      ) AS blocks_json,
+      (SELECT COALESCE(json_agg(tb ORDER BY tb.created_at), '[]'::json)
+       FROM team_branches tb WHERE tb.team_id = rt.id) AS branches_json,
       (SELECT row_to_json(a) FROM affiliates a WHERE a.user_id = ru.id AND a.is_active = true LIMIT 1) AS affiliate_json,
       (SELECT row_to_json(sub) FROM (
         SELECT pp.max_links, pp.max_pages, pp.max_blocks, pp.max_socials,
@@ -274,7 +363,9 @@ export async function loadProfileByUsername(
     LEFT JOIN team_templates tt ON tt.team_id = rt.id AND tt.is_default = true
     LEFT JOIN users owner_u ON owner_u.id = rt.owner_id AND rt.owner_id != ru.id
     LIMIT 1
-  `, [username]);
+  `, [username, pageSlug || null]);
+
+  console.log(`[profile] ${username} fetched in ${Date.now() - t0}ms`);
 
   if (!rows.length) return null;
   const m = rows[0];
@@ -287,9 +378,11 @@ export async function loadProfileByUsername(
 
   // Parse JSON aggregated data (already fetched, no extra queries)
   const allPages = normalizePages(m.pages_json || []);
-  const allLinksRaw = m.links_json || [];
-  const allBlocksRaw = m.blocks_json || [];
   const branches = m.branches_json || [];
+
+  // Blocks/links already filtered by page in SQL
+  const normalizedLinks = normalizeLinks(m.links_json || []);
+  const normalizedBlocks = normalizeBlocks(m.blocks_json || []);
 
   // Resolve current page
   let currentPage = allPages.find((p) => p.isHome) || allPages[0] || null;
@@ -298,38 +391,13 @@ export async function loadProfileByUsername(
     if (found) currentPage = found;
   }
 
-  // Filter links/blocks by page (in JS, not SQL)
-  const pageFilteredLinks = currentPage
-    ? allLinksRaw.filter((l: any) => l.page_id === currentPage!.id)
-    : allLinksRaw;
-  const pageFilteredBlocks = currentPage
-    ? allBlocksRaw.filter((b: any) => b.page_id === currentPage!.id)
-    : allBlocksRaw;
-
-  // Parse plan status
+  // Plan status
   const ownerId = teamOwnerId || userId;
-  let planStatus = getCachedPlan(ownerId);
-  if (!planStatus) {
-    const planRow = m.plan_json;
-    planStatus = parsePlanRow(planRow);
-    if (planStatus && planStatus.isTrial && planStatus.trialEndsAt && new Date(planStatus.trialEndsAt) < new Date()) {
-      // Expired trial — fire-and-forget
-      dbPool.query(
-        `UPDATE user_subscriptions SET status = 'expired', updated_at = NOW()
-         WHERE user_id = $1 AND status = 'active' AND is_trial = true`,
-        [ownerId]
-      ).catch(() => {});
-      planStatus = null;
-    }
-    if (!planStatus) planStatus = FREE_PLAN;
-    planCache.set(ownerId, { data: planStatus, ts: Date.now() });
-  }
+  const planStatus = resolvePlan(m, ownerId);
 
   // Build response
   const publicUser = buildPublicUser(m);
   const normalizedSocials = normalizeSocials(m.socials_json || []);
-  const normalizedLinks = normalizeLinks(pageFilteredLinks);
-  const normalizedBlocks = normalizeBlocks(pageFilteredBlocks);
 
   // Team branding
   let teamBranding: Record<string, any> | null = null;
@@ -354,7 +422,7 @@ export async function loadProfileByUsername(
     normalizedLinks, normalizedBlocks, normalizedSocials, allPages,
   );
 
-  return {
+  const result: ProfileResult = {
     user: publicUser,
     links: restricted.links,
     blocks: restricted.blocks,
@@ -367,9 +435,16 @@ export async function loadProfileByUsername(
     planRestricted: restricted.planRestricted,
     allowedThemeCategories: restricted.allowedThemeCategories,
   };
+
+  // Store in response cache (both userId and ownerId as invalidation keys)
+  if (!isPreview) {
+    cacheSet(cacheKey, result, userId, ownerId !== userId ? ownerId : undefined);
+  }
+
+  return result;
 }
 
-// ── Loader for /api/profile/:companySlug/:memberUsername ──────────────────────
+// ── Loader for /api/profile/:companySlug/:memberUsername ─────────────────────
 
 export async function loadTeamMemberProfile(
   companySlug: string,
@@ -377,6 +452,13 @@ export async function loadTeamMemberProfile(
   pageSlug?: string,
 ): Promise<ProfileResult | null> {
   if (!dbPool) return null;
+
+  const cacheKey = `m:${companySlug}:${memberUsername}:${pageSlug || ""}`;
+
+  const cached = cacheGet(cacheKey);
+  if (cached) return cached;
+
+  const t0 = Date.now();
 
   // SINGLE MEGA-QUERY for team member profiles
   const { rows } = await dbPool.query(`
@@ -388,6 +470,7 @@ export async function loadTeamMemberProfile(
         u.business_phone, u.contact_form_enabled, u.contact_form_email,
         u.meeting_link, u.show_menu_on_profile, u.show_services_on_profile,
         u.show_products_on_profile, u.is_disabled, u.onboarding_completed,
+        u.show_company_on_services, u.show_company_on_products,
         t.id AS team_id_resolved, t.name AS team_name, t.slug AS team_slug,
         t.website_url AS team_website, t.logo_url AS team_logo, t.owner_id AS team_owner_id,
         tm.id AS member_id, tm.role AS member_role, tm.job_title AS member_job_title,
@@ -410,11 +493,28 @@ export async function loadTeamMemberProfile(
       LIMIT 1
     )
     SELECT b.*,
-      (SELECT COALESCE(json_agg(s ORDER BY s.position), '[]'::json) FROM socials s WHERE s.user_id = b.user_id) AS socials_json,
-      (SELECT COALESCE(json_agg(p ORDER BY p.position), '[]'::json) FROM (SELECT id, title, slug, is_home, position FROM pages WHERE user_id = b.effective_user_id) p) AS pages_json,
-      (SELECT COALESCE(json_agg(l ORDER BY l.position), '[]'::json) FROM links l WHERE l.user_id = b.effective_user_id) AS links_json,
-      (SELECT COALESCE(json_agg(bl ORDER BY bl.position), '[]'::json) FROM blocks bl WHERE bl.user_id = b.effective_user_id) AS blocks_json,
-      (SELECT COALESCE(json_agg(tb), '[]'::json) FROM team_branches tb WHERE tb.team_id = b.team_id_resolved) AS branches_json,
+      (SELECT COALESCE(json_agg(s ORDER BY s.position), '[]'::json)
+       FROM socials s WHERE s.user_id = b.user_id) AS socials_json,
+      (SELECT COALESCE(json_agg(p ORDER BY p.position), '[]'::json)
+       FROM (SELECT id, title, slug, is_home, position FROM pages WHERE user_id = b.effective_user_id) p) AS pages_json,
+      (SELECT COALESCE(json_agg(l ORDER BY l.position), '[]'::json)
+       FROM links l WHERE l.user_id = b.effective_user_id AND l.active = true
+         AND l.page_id = COALESCE(
+           (SELECT id FROM pages WHERE user_id = b.effective_user_id AND ($3::text IS NOT NULL AND slug = $3) LIMIT 1),
+           (SELECT id FROM pages WHERE user_id = b.effective_user_id AND is_home = true LIMIT 1),
+           (SELECT id FROM pages WHERE user_id = b.effective_user_id ORDER BY position LIMIT 1)
+         )
+      ) AS links_json,
+      (SELECT COALESCE(json_agg(bl ORDER BY bl.position), '[]'::json)
+       FROM blocks bl WHERE bl.user_id = b.effective_user_id AND bl.active = true
+         AND bl.page_id = COALESCE(
+           (SELECT id FROM pages WHERE user_id = b.effective_user_id AND ($3::text IS NOT NULL AND slug = $3) LIMIT 1),
+           (SELECT id FROM pages WHERE user_id = b.effective_user_id AND is_home = true LIMIT 1),
+           (SELECT id FROM pages WHERE user_id = b.effective_user_id ORDER BY position LIMIT 1)
+         )
+      ) AS blocks_json,
+      (SELECT COALESCE(json_agg(tb ORDER BY tb.created_at), '[]'::json)
+       FROM team_branches tb WHERE tb.team_id = b.team_id_resolved) AS branches_json,
       (SELECT row_to_json(sub) FROM (
         SELECT pp.max_links, pp.max_pages, pp.max_blocks, pp.max_socials,
                pp.menu_builder_enabled, pp.white_label_enabled, pp.theme_categories,
@@ -426,7 +526,9 @@ export async function loadTeamMemberProfile(
       ) sub) AS plan_json
     FROM base b
     LIMIT 1
-  `, [companySlug.toLowerCase(), memberUsername]);
+  `, [companySlug.toLowerCase(), memberUsername, pageSlug || null]);
+
+  console.log(`[profile] ${companySlug}/${memberUsername} fetched in ${Date.now() - t0}ms`);
 
   if (!rows.length) return null;
   const m = rows[0];
@@ -441,9 +543,10 @@ export async function loadTeamMemberProfile(
 
   // Parse data
   const allPages = normalizePages(m.pages_json || []);
-  const allLinksRaw = m.links_json || [];
-  const allBlocksRaw = m.blocks_json || [];
   const branches = m.branches_json || [];
+
+  const normalizedLinks = normalizeLinks(m.links_json || []);
+  const normalizedBlocks = normalizeBlocks(m.blocks_json || []);
 
   let currentPage = allPages.find((p) => p.isHome) || allPages[0] || null;
   if (pageSlug) {
@@ -451,29 +554,9 @@ export async function loadTeamMemberProfile(
     if (found) currentPage = found;
   }
 
-  const pageFilteredLinks = currentPage
-    ? allLinksRaw.filter((l: any) => l.page_id === currentPage!.id)
-    : allLinksRaw;
-  const pageFilteredBlocks = currentPage
-    ? allBlocksRaw.filter((b: any) => b.page_id === currentPage!.id)
-    : allBlocksRaw;
-
   // Plan status
   const ownerId = m.team_owner_id;
-  let planStatus = getCachedPlan(ownerId);
-  if (!planStatus) {
-    planStatus = parsePlanRow(m.plan_json);
-    if (planStatus && planStatus.isTrial && planStatus.trialEndsAt && new Date(planStatus.trialEndsAt) < new Date()) {
-      dbPool.query(
-        `UPDATE user_subscriptions SET status = 'expired', updated_at = NOW()
-         WHERE user_id = $1 AND status = 'active' AND is_trial = true`,
-        [ownerId]
-      ).catch(() => {});
-      planStatus = null;
-    }
-    if (!planStatus) planStatus = FREE_PLAN;
-    planCache.set(ownerId, { data: planStatus, ts: Date.now() });
-  }
+  const planStatus = resolvePlan(m, ownerId);
 
   // Build response
   const publicUser = buildPublicUser(m);
@@ -485,15 +568,13 @@ export async function loadTeamMemberProfile(
   const whiteLabelEnabled = m.white_label_enabled || m.owner_white_label || false;
 
   const normalizedSocials = normalizeSocials(m.socials_json || []);
-  const normalizedLinks = normalizeLinks(pageFilteredLinks);
-  const normalizedBlocks = normalizeBlocks(pageFilteredBlocks);
 
   const restricted = applyPlanRestrictions(
     publicUser, planStatus, teamBranding,
     normalizedLinks, normalizedBlocks, normalizedSocials, allPages,
   );
 
-  return {
+  const result: ProfileResult = {
     user: publicUser,
     links: restricted.links,
     blocks: restricted.blocks,
@@ -506,4 +587,9 @@ export async function loadTeamMemberProfile(
     planRestricted: restricted.planRestricted,
     allowedThemeCategories: restricted.allowedThemeCategories,
   };
+
+  // Cache — invalidate on member userId or team ownerId writes
+  cacheSet(cacheKey, result, m.user_id, ownerId);
+
+  return result;
 }

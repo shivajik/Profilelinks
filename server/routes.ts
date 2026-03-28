@@ -20,7 +20,7 @@ import ltdRouter from "./ltd-routes";
 import { getUserPlanLimits, getPublicPlanStatus, getPublicPlanStatusDirect } from "./plan-limits";
 import { sendInviteEmail, sendCredentialsEmail } from "./email";
 import { rateLimit } from "./rate-limit";
-import { loadProfileByUsername, loadTeamMemberProfile } from "./profile-query";
+import { loadProfileByUsername, loadTeamMemberProfile, invalidateProfileCache } from "./profile-query";
 
 declare module "express-session" {
   interface SessionData {
@@ -605,6 +605,7 @@ export async function registerRoutes(
         } catch { /* ignore sync errors */ }
       }
 
+      invalidateProfileCache(req.session.userId!);
       const { password: _, ...safeUser } = updated;
       res.json(safeUser);
     } catch (error: any) {
@@ -830,6 +831,7 @@ export async function registerRoutes(
         isHome: false,
         userId: req.session.userId!,
       });
+      invalidateProfileCache(req.session.userId!);
       res.status(201).json(page);
     } catch (error: any) {
       res.status(500).json({ message: "Failed to create page" });
@@ -846,6 +848,7 @@ export async function registerRoutes(
       if (!updated) {
         return res.status(404).json({ message: "Page not found" });
       }
+      invalidateProfileCache(req.session.userId!);
       res.json(updated);
     } catch (error: any) {
       res.status(500).json({ message: "Failed to update page" });
@@ -857,6 +860,7 @@ export async function registerRoutes(
     if (!deleted) {
       return res.status(400).json({ message: "Page not found or not authorized" });
     }
+    invalidateProfileCache(req.session.userId!);
     res.json({ message: "Deleted" });
   });
 
@@ -968,6 +972,7 @@ export async function registerRoutes(
         ...result.data,
         userId: req.session.userId!,
       });
+      invalidateProfileCache(req.session.userId!);
       res.status(201).json(social);
     } catch (error: any) {
       res.status(500).json({ message: "Failed to create social" });
@@ -984,6 +989,7 @@ export async function registerRoutes(
       if (!updated) {
         return res.status(404).json({ message: "Social not found" });
       }
+      invalidateProfileCache(req.session.userId!);
       res.json(updated);
     } catch (error: any) {
       res.status(500).json({ message: "Failed to update social" });
@@ -997,6 +1003,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "socialIds must be an array" });
       }
       await storage.reorderSocials(req.session.userId!, socialIds);
+      invalidateProfileCache(req.session.userId!);
       res.json({ message: "Reordered" });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to reorder socials" });
@@ -1008,6 +1015,7 @@ export async function registerRoutes(
     if (!deleted) {
       return res.status(404).json({ message: "Social not found" });
     }
+    invalidateProfileCache(req.session.userId!);
     res.json({ message: "Deleted" });
   });
 
@@ -1055,6 +1063,7 @@ export async function registerRoutes(
         position: maxPos + 1,
         active: true,
       });
+      invalidateProfileCache(req.session.userId!);
       res.status(201).json(block);
     } catch (error: any) {
       console.error("Block creation error:", error);
@@ -1072,6 +1081,7 @@ export async function registerRoutes(
       if (!updated) {
         return res.status(404).json({ message: "Block not found" });
       }
+      invalidateProfileCache(req.session.userId!);
       res.json(updated);
     } catch (error: any) {
       res.status(500).json({ message: "Failed to update block" });
@@ -1083,6 +1093,7 @@ export async function registerRoutes(
     if (!deleted) {
       return res.status(404).json({ message: "Block not found" });
     }
+    invalidateProfileCache(req.session.userId!);
     res.json({ message: "Deleted" });
   });
 
@@ -1093,6 +1104,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "blockIds must be an array" });
       }
       await storage.reorderBlocks(req.session.userId!, blockIds);
+      invalidateProfileCache(req.session.userId!);
       res.json({ message: "Reordered" });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to reorder blocks" });
@@ -1758,6 +1770,7 @@ export async function registerRoutes(
       if (profileImage !== undefined) updates.profileImage = profileImage;
       if (Object.keys(updates).length > 0) {
         await storage.updateUser(member.userId, updates);
+        invalidateProfileCache(member.userId);
       }
       res.json({ message: "Profile updated" });
     } catch (error: any) {
@@ -1854,6 +1867,7 @@ export async function registerRoutes(
       if (!updated) {
         return res.status(404).json({ message: "Template not found" });
       }
+      invalidateProfileCache(req.session.userId!);
       res.json(updated);
     } catch (error: any) {
       res.status(500).json({ message: "Failed to update template" });

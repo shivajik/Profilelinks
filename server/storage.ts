@@ -314,6 +314,13 @@ if (pool) pool.query(`
   );
   CREATE INDEX IF NOT EXISTS idx_trial_email_log_user_id ON trial_email_log(user_id);
 
+  -- Performance indexes for profile API
+  CREATE INDEX IF NOT EXISTS idx_user_subscriptions_user_id ON user_subscriptions(user_id, status);
+  CREATE INDEX IF NOT EXISTS idx_blocks_user_active ON blocks(user_id, page_id, active);
+  CREATE INDEX IF NOT EXISTS idx_links_user_page ON links(user_id, page_id, active);
+  CREATE INDEX IF NOT EXISTS idx_team_templates_default ON team_templates(team_id, is_default);
+  CREATE INDEX IF NOT EXISTS idx_pages_user_home ON pages(user_id, is_home, position);
+
   -- Default trial discount setting
   INSERT INTO app_settings (key, value, updated_at)
   VALUES ('trial_discount_percent', '20', now())
