@@ -20,6 +20,7 @@ import ltdRouter from "./ltd-routes";
 import { getUserPlanLimits, getPublicPlanStatus, getPublicPlanStatusDirect } from "./plan-limits";
 import { sendInviteEmail, sendCredentialsEmail } from "./email";
 import { rateLimit } from "./rate-limit";
+import { loadProfileByUsername, loadTeamMemberProfile } from "./profile-query";
 
 declare module "express-session" {
   interface SessionData {
@@ -2361,10 +2362,9 @@ export async function registerRoutes(
     }
   });
 
-  // Team member profile by company slug + username (OPTIMIZED — 3 queries instead of 10+)
+  // Team member profile by company slug + username (SINGLE QUERY)
   app.get("/api/profile/:companySlug/:memberUsername", async (req, res) => {
     try {
-      const { loadTeamMemberProfile } = await import("./profile-query");
       const result = await loadTeamMemberProfile(
         req.params.companySlug,
         req.params.memberUsername,
@@ -2386,10 +2386,9 @@ export async function registerRoutes(
     }
   });
 
-  // Public profile by username or team slug (OPTIMIZED — 3 queries instead of 10+)
+  // Public profile by username or team slug (SINGLE QUERY)
   app.get("/api/profile/:username", async (req, res) => {
     try {
-      const { loadProfileByUsername } = await import("./profile-query");
       const result = await loadProfileByUsername(
         req.params.username,
         req.query.page as string | undefined,
