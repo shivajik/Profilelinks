@@ -3084,89 +3084,181 @@ export async function registerRoutes(
     res.json({ message: "Deleted" });
   });
 
-  // ── Public Menu Endpoint ────────────────────────────────────────────────────
+  // ── Public Menu Endpoint (optimised single-query) ──────────────────────────
+  const menuCache = new Map<string, { data: any; ts: number }>();
+  const MENU_CACHE_TTL = 30_000; // 30 seconds
+
   app.get("/api/menu/:username", async (req, res) => {
     try {
-      // Resolve by username first, then by team slug
-      let user = await storage.getUserByUsername(req.params.username);
-      if (!user) {
-        const teamBySlug = await storage.getTeamBySlug(req.params.username);
-        if (teamBySlug) {
-          user = await storage.getUser(teamBySlug.ownerId);
+      const uname = req.params.username;
+      const isPreview = req.query.preview === "1";
+
+      // Serve from cache if fresh
+      if (!isPreview) {
+        const cached = menuCache.get(uname);
+        if (cached && Date.now() - cached.ts < MENU_CACHE_TTL) {
+          res.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+          return res.json(cached.data);
         }
       }
-      if (!user) {
+
+      // Single mega-query: resolve user (by username OR team slug), then fetch all menu data in one round-trip
+      const result = await db.execute(sql`
+        WITH resolved_user AS (
+          SELECT u.* FROM users u WHERE u.username = ${uname}
+          UNION ALL
+          SELECT u.* FROM teams t JOIN users u ON u.id = t.owner_id WHERE t.slug = ${uname}
+            AND NOT EXISTS (SELECT 1 FROM users u2 WHERE u2.username = ${uname})
+          LIMIT 1
+        ),
+        uid AS (SELECT id FROM resolved_user LIMIT 1),
+        menu_sections_data AS (
+          SELECT json_agg(row_to_json(ms) ORDER BY ms.position) AS data
+          FROM menu_sections ms WHERE ms.user_id = (SELECT id FROM uid) AND ms.active = true
+        ),
+        menu_products_data AS (
+          SELECT json_agg(row_to_json(mp) ORDER BY mp.position) AS data
+          FROM menu_products mp WHERE mp.user_id = (SELECT id FROM uid) AND mp.active = true
+        ),
+        opening_hours_data AS (
+          SELECT json_agg(row_to_json(oh) ORDER BY oh.day_of_week) AS data
+          FROM menu_opening_hours oh WHERE oh.user_id = (SELECT id FROM uid)
+        ),
+        socials_data AS (
+          SELECT json_agg(row_to_json(ms) ORDER BY ms.position) AS data
+          FROM menu_socials ms WHERE ms.user_id = (SELECT id FROM uid)
+        ),
+        affiliate_data AS (
+          SELECT json_agg(row_to_json(a)) AS data
+          FROM affiliates a WHERE a.user_id = (SELECT id FROM uid) AND a.is_active = true
+          LIMIT 1
+        ),
+        team_data AS (
+          SELECT json_agg(row_to_json(t)) AS data
+          FROM teams t
+          JOIN resolved_user ru ON (ru.account_type = 'team' AND ru.team_id IS NOT NULL AND t.id = ru.team_id)
+        ),
+        team_template_data AS (
+          SELECT json_agg(row_to_json(tt)) AS data
+          FROM team_templates tt
+          JOIN resolved_user ru ON (ru.account_type = 'team' AND ru.team_id IS NOT NULL AND tt.team_id = ru.team_id)
+        )
+        SELECT
+          row_to_json(ru) AS "user",
+          (SELECT data FROM menu_sections_data) AS sections,
+          (SELECT data FROM menu_products_data) AS products,
+          (SELECT data FROM opening_hours_data) AS opening_hours,
+          (SELECT data FROM socials_data) AS socials,
+          (SELECT data FROM affiliate_data) AS affiliate,
+          (SELECT data FROM team_data) AS team,
+          (SELECT data FROM team_template_data) AS team_templates
+        FROM resolved_user ru
+        LIMIT 1
+      `);
+
+      const row = (result as any).rows?.[0] || (result as any)[0];
+      if (!row || !row.user) {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const [sections, products, openingHours, menuSocialLinks] = await Promise.all([
-        storage.getMenuSectionsByUserId(user.id),
-        storage.getMenuProductsByUserId(user.id),
-        storage.getOpeningHoursByUserId(user.id),
-        storage.getMenuSocialsByUserId(user.id),
-      ]);
-      const activeSections = sections.filter(s => s.active);
-      const activeProducts = products.filter(p => p.active);
+      const userData = row.user;
+      const sectionsRaw = row.sections || [];
+      const productsRaw = row.products || [];
+      const openingHoursRaw = row.opening_hours || [];
+      const socialsRaw = row.socials || [];
+      const affiliateRaw = row.affiliate;
+      const teamRaw = row.team;
+      const teamTemplatesRaw = row.team_templates;
 
-      const { password: _, email: __, apiKey: _apiKey, ...publicUser } = user;
+      // Map snake_case to camelCase for sections
+      const sections = sectionsRaw.map((s: any) => ({
+        id: s.id, name: s.name, description: s.description,
+        position: s.position,
+      }));
 
-      // Get team branding + affiliate + white-label in parallel
+      // Map products
+      const products = productsRaw.map((p: any) => ({
+        id: p.id, sectionId: p.section_id, name: p.name,
+        description: p.description, price: p.price,
+        imageUrl: p.image_url, position: p.position,
+      }));
+
+      // Map opening hours
+      const openingHours = openingHoursRaw.map((h: any) => ({
+        dayOfWeek: h.day_of_week, openTime: h.open_time,
+        closeTime: h.close_time, isClosed: h.is_closed,
+      }));
+
+      // Map socials
+      const socials = socialsRaw.map((s: any) => ({
+        id: s.id, platform: s.platform, url: s.url, position: s.position,
+      }));
+
+      // Build team branding
       let teamBranding: any = null;
-      let affiliateInfo: { isAffiliate: boolean; referralCode?: string } = { isAffiliate: false };
-      let whiteLabelEnabled = user.whiteLabelEnabled || false;
+      let whiteLabelEnabled = userData.white_label_enabled || false;
 
-      const teamBrandingPromise = (user.accountType === "team" && user.teamId)
-        ? Promise.all([storage.getTeam(user.teamId), storage.getTeamTemplates(user.teamId)])
-        : Promise.resolve(null);
-      const affiliatePromise = db.select().from(affiliates).where(eq(affiliates.userId, user.id)).limit(1).catch(() => []);
-
-      const [teamResult, affiliateRows] = await Promise.all([teamBrandingPromise, affiliatePromise]);
-
-      if (teamResult) {
-        const [team, templates] = teamResult;
-        const defaultTemplate = templates.find(t => t.isDefault) || templates[0];
-        const tData: any = defaultTemplate?.templateData || {};
+      if (userData.account_type === "team" && userData.team_id && teamRaw?.length) {
+        const team = teamRaw[0];
+        const templates = teamTemplatesRaw || [];
+        const defaultTemplate = templates.find((t: any) => t.is_default) || templates[0];
+        const tData = defaultTemplate?.template_data || {};
         teamBranding = {
-          companyLogo: tData.companyLogo || team?.logoUrl,
-          companyName: tData.companyName || team?.name,
+          companyLogo: tData.companyLogo || team.logo_url,
+          companyName: tData.companyName || team.name,
           themeColor: tData.themeColor,
           coverPhoto: tData.coverPhoto || undefined,
         };
-        // Check owner's white-label if team member
-        if (!whiteLabelEnabled && team) {
-          const owner = team.ownerId === user.id ? user : await storage.getUser(team.ownerId);
+        // Check owner white-label (owner IS this user in most cases)
+        if (!whiteLabelEnabled && team.owner_id !== userData.id) {
+          // Need to check owner's white-label - rare case, acceptable extra query
+          const owner = await storage.getUser(team.owner_id);
           if (owner?.whiteLabelEnabled) whiteLabelEnabled = true;
         }
       }
 
-      const aff = affiliateRows[0];
-      if (aff && (aff as any).isActive) {
-        affiliateInfo = { isAffiliate: true, referralCode: (aff as any).referralCode };
+      // Affiliate info
+      let affiliateInfo: { isAffiliate: boolean; referralCode?: string } = { isAffiliate: false };
+      if (affiliateRaw?.length) {
+        affiliateInfo = { isAffiliate: true, referralCode: affiliateRaw[0].referral_code };
       }
 
-      res.json({
+      const responseData = {
         user: {
-          ...publicUser,
-          menuTemplate: user.menuTemplate,
-          menuDisplayName: user.menuDisplayName,
-          menuProfileImage: user.menuProfileImage,
-          menuAccentColor: user.menuAccentColor,
-          menuDescription: user.menuDescription,
-          menuPhone: user.menuPhone,
-          menuEmail: user.menuEmail,
-          menuAddress: user.menuAddress,
-          menuGoogleMapsUrl: user.menuGoogleMapsUrl,
-          menuWhatsapp: user.menuWhatsapp,
-          menuWebsite: user.menuWebsite,
+          id: userData.id,
+          username: userData.username,
+          displayName: userData.display_name,
+          bio: userData.bio,
+          profileImage: userData.profile_image,
+          template: userData.template,
+          menuTemplate: userData.menu_template,
+          menuDisplayName: userData.menu_display_name,
+          menuProfileImage: userData.menu_profile_image,
+          menuAccentColor: userData.menu_accent_color,
+          menuDescription: userData.menu_description,
+          menuPhone: userData.menu_phone,
+          menuEmail: userData.menu_email,
+          menuAddress: userData.menu_address,
+          menuGoogleMapsUrl: userData.menu_google_maps_url,
+          menuWhatsapp: userData.menu_whatsapp,
+          menuWebsite: userData.menu_website,
         },
-        sections: activeSections,
-        products: activeProducts,
+        sections,
+        products,
         openingHours,
-        socials: menuSocialLinks,
+        socials,
         teamBranding,
         affiliateInfo,
         whiteLabelEnabled,
-      });
+      };
+
+      // Cache the response
+      if (!isPreview) {
+        menuCache.set(uname, { data: responseData, ts: Date.now() });
+        res.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+      }
+
+      res.json(responseData);
     } catch (error: any) {
       console.error("Public menu load error:", error);
       res.status(500).json({ message: "Failed to load menu" });

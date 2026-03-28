@@ -236,6 +236,11 @@ if (pool) pool.query(`
   CREATE INDEX IF NOT EXISTS idx_team_templates_team_id ON team_templates(team_id);
   CREATE INDEX IF NOT EXISTS idx_team_branches_team_id ON team_branches(team_id);
   CREATE INDEX IF NOT EXISTS idx_saved_qr_codes_user_id ON saved_qr_codes(user_id);
+  CREATE INDEX IF NOT EXISTS idx_menu_sections_user_id ON menu_sections(user_id);
+  CREATE INDEX IF NOT EXISTS idx_menu_products_user_id ON menu_products(user_id);
+  CREATE INDEX IF NOT EXISTS idx_menu_opening_hours_user_id ON menu_opening_hours(user_id);
+  CREATE INDEX IF NOT EXISTS idx_menu_socials_user_id ON menu_socials(user_id);
+  CREATE INDEX IF NOT EXISTS idx_affiliates_user_id ON affiliates(user_id);
 
   CREATE TABLE IF NOT EXISTS ltd_codes (
     id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
