@@ -81,6 +81,7 @@ if (dbUrl) {
 }
 
 export const db = _db as ReturnType<typeof drizzle>;
+export const dbPool = pool;
 
 // ── Auto-migrate: add missing columns ─────────────────────────────────────
 if (pool) pool.query(`

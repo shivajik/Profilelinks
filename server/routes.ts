@@ -2361,131 +2361,17 @@ export async function registerRoutes(
     }
   });
 
-  // Team member profile by company slug + username
+  // Team member profile by company slug + username (OPTIMIZED — 3 queries instead of 10+)
   app.get("/api/profile/:companySlug/:memberUsername", async (req, res) => {
     try {
-      const companySlug = (req.params.companySlug || "").toLowerCase();
-      const memberUsername = req.params.memberUsername;
+      const { loadTeamMemberProfile } = await import("./profile-query");
+      const result = await loadTeamMemberProfile(
+        req.params.companySlug,
+        req.params.memberUsername,
+        req.query.page as string | undefined,
+      );
 
-      // Phase 1: Resolve user + team in parallel
-      const [user, teamBySlug] = await Promise.all([
-        storage.getUserByUsername(memberUsername),
-        storage.getTeamBySlug(companySlug),
-      ]);
-
-      if (!user) return res.status(404).json({ message: "User not found" });
-
-      let team = teamBySlug;
-      let member: any = null;
-
-      if (!team) {
-        // Fallback: check memberships (rare path)
-        const memberships = await storage.getTeamMembershipsByUserId(user.id);
-        const slugifyTeamName = (name: string) =>
-          name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").substring(0, 50) || "team";
-        const membershipBySlug = memberships
-          .filter((m) => m.status === "activated")
-          .find((m) => (m.team.slug || "").toLowerCase() === companySlug || slugifyTeamName(m.team.name) === companySlug);
-        if (membershipBySlug) {
-          team = membershipBySlug.team;
-          member = membershipBySlug;
-        }
-      }
-
-      if (!team) return res.status(404).json({ message: "Company not found" });
-
-      const effectiveUserId = team.ownerId;
-      const pageSlug = req.query.page as string | undefined;
-
-      // Phase 2: Fetch ALL data in ONE parallel batch (member + pages + socials + templates + branches + ownerUser + planStatus)
-      const needOwnerFetch = team.ownerId !== user.id;
-      const [
-        memberDirect,
-        ownerPages,
-        userSocials,
-        templates,
-        branches,
-        ownerUser,
-        planStatus,
-      ] = await Promise.all([
-        !member && teamBySlug ? storage.getTeamMemberByUserId(team.id, user.id) : Promise.resolve(member),
-        storage.getPagesByUserId(effectiveUserId),
-        storage.getSocialsByUserId(user.id),
-        storage.getTeamTemplates(team.id),
-        storage.getTeamBranches(team.id),
-        needOwnerFetch ? storage.getUser(team.ownerId) : Promise.resolve(user),
-        getPublicPlanStatusDirect(team.ownerId),
-      ]);
-
-      if (!member) member = memberDirect;
-
-      const isTeamUser = user.teamId === team.id || team.ownerId === user.id;
-      if (!member && !isTeamUser) return res.status(404).json({ message: "Member not found in this team" });
-      if (member && member.status !== "activated") return res.status(404).json({ message: "Member not found in this team" });
-
-      let currentPage = ownerPages.find((p) => p.isHome) || ownerPages[0] || null;
-      if (pageSlug) {
-        const found = ownerPages.find((p) => p.slug === pageSlug);
-        if (found) currentPage = found;
-      }
-
-      // Phase 3: Links + blocks for current page
-      const [userLinks, pageBlocks] = await Promise.all([
-        currentPage ? storage.getLinksByPageId(currentPage.id) : storage.getLinksByUserId(effectiveUserId),
-        currentPage ? storage.getBlocksByPageId(currentPage.id) : storage.getBlocksByUserId(effectiveUserId),
-      ]);
-
-      const { password: _, email: __, ...publicUser } = user;
-      (publicUser as any).emailVerified = user.emailVerified || false;
-
-      const defaultTemplate = templates.find((t) => t.isDefault) || templates[0];
-      const tData: any = defaultTemplate?.templateData || {};
-
-      let memberBranch: any = null;
-      let headBranch: any = null;
-      headBranch = branches.find((b: any) => b.isHeadBranch) || null;
-      if (member?.branchId) {
-        memberBranch = branches.find((b: any) => b.id === member.branchId) || null;
-      }
-
-      const whiteLabelEnabled = user.whiteLabelEnabled || ownerUser?.whiteLabelEnabled || false;
-
-      const teamBranding: Record<string, any> = {
-        companyLogo: tData.companyLogo || team.logoUrl || undefined,
-        coverPhoto: tData.coverPhoto || undefined,
-        companyName: tData.companyName || team.name || undefined,
-        companyPhone: tData.companyPhone || undefined,
-        companyEmail: tData.companyEmail || undefined,
-        companyWebsite: tData.companyWebsite || team.websiteUrl || undefined,
-        companyAddress: tData.companyAddress || undefined,
-        companyContact: tData.companyContact || undefined,
-        themeColor: tData.themeColor || undefined,
-        font: tData.font || undefined,
-        jobTitle: member?.jobTitle || undefined,
-        teamName: team.name || undefined,
-        memberEmail: user.email || undefined,
-        memberPhone: member?.businessPhone || undefined,
-        companySocials: tData.companySocials || undefined,
-        headBranch: headBranch ? { name: headBranch.name, address: headBranch.address, phone: headBranch.phone, email: headBranch.email } : undefined,
-        memberBranch: memberBranch ? { name: memberBranch.name, address: memberBranch.address, phone: memberBranch.phone, email: memberBranch.email } : undefined,
-        companyProfileUrl: tData.companyProfileUrl || undefined,
-        productProfileUrl: tData.productProfileUrl || undefined,
-        productUrls: tData.productUrls || undefined,
-        companyBrochureUrl: tData.companyBrochureUrl || undefined,
-        contactFormEnabled: tData.contactFormEnabled || false,
-        contactFormFields: tData.contactFormFields || undefined,
-        meetingLink: tData.meetingLink || undefined,
-        meetingLinkLabel: tData.meetingLinkLabel || undefined,
-        showServicesOnProfile: ownerUser?.showServicesOnProfile || false,
-        showProductsOnProfile: ownerUser?.showProductsOnProfile || false,
-        teamSlug: team.slug || undefined,
-        menuUrl: ownerUser?.showMenuOnProfile && team.slug ? `/${team.slug}/menu` : undefined,
-      };
-
-      if (member?.businessName) (publicUser as any).displayName = member.businessName;
-      if (member?.businessProfileImage) (publicUser as any).profileImage = member.businessProfileImage;
-      if (member?.businessBio) (publicUser as any).bio = member.businessBio;
-      if (tData.template) (publicUser as any).template = tData.template;
+      if (!result) return res.status(404).json({ message: "Profile not found" });
 
       if (req.query.preview === "1") {
         res.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
@@ -2493,229 +2379,24 @@ export async function registerRoutes(
         res.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
       }
 
-      if (planStatus.isFree) {
-        (publicUser as any).template = "minimal";
-        (publicUser as any).planRestricted = true;
-        teamBranding.menuUrl = undefined;
-        if (teamBranding.companySocials && Array.isArray(teamBranding.companySocials)) {
-          teamBranding.companySocials = teamBranding.companySocials.slice(0, planStatus.maxSocials);
-        }
-      }
-
-      res.json({
-        user: publicUser,
-        links: planStatus.isFree ? userLinks.slice(0, planStatus.maxLinks) : userLinks,
-        blocks: planStatus.isFree ? pageBlocks.slice(0, planStatus.maxBlocks) : pageBlocks,
-        socials: planStatus.isFree ? userSocials.slice(0, planStatus.maxSocials) : userSocials,
-        pages: planStatus.isFree
-          ? ownerPages.slice(0, planStatus.maxPages).map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome }))
-          : ownerPages.map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome })),
-        currentPage: currentPage ? { id: currentPage.id, title: currentPage.title, slug: currentPage.slug, isHome: currentPage.isHome } : null,
-        teamBranding,
-        whiteLabelEnabled,
-        planRestricted: planStatus.isFree,
-      });
+      res.json(result);
     } catch (error: any) {
       console.error("Team member profile error:", error);
       res.status(500).json({ message: "Failed to load profile" });
     }
   });
 
+  // Public profile by username or team slug (OPTIMIZED — 3 queries instead of 10+)
   app.get("/api/profile/:username", async (req, res) => {
     try {
-      // Phase 1: Resolve user by username or team slug (parallel)
-      const [userByName, teamBySlug] = await Promise.all([
-        storage.getUserByUsername(req.params.username),
-        storage.getTeamBySlug(req.params.username),
-      ]);
+      const { loadProfileByUsername } = await import("./profile-query");
+      const result = await loadProfileByUsername(
+        req.params.username,
+        req.query.page as string | undefined,
+        req.query.preview === "1",
+      );
 
-      let user = userByName;
-      if (!user && teamBySlug) {
-        user = await storage.getUser(teamBySlug.ownerId);
-      }
-
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      let teamId = user.accountType === "team" ? user.teamId : null;
-
-      // Phase 2: Fetch EVERYTHING we can in parallel.
-      // If teamId is known, we can fetch team + templates + socials + member + pages + branches + affiliate + planStatus ALL AT ONCE.
-      // If teamId is unknown, we need memberships first (rare path for non-team users).
-      let member: any = null;
-      let teamData: any = null;
-      let templates: any[] = [];
-      let userSocials: any[] = [];
-      let displayPages: any[] = [];
-      let branches: any[] = [];
-      let affiliateRows: any[] = [];
-      let planStatus: any;
-
-      if (teamId) {
-        // FAST PATH: teamId known — fetch everything in ONE parallel batch
-        const [
-          socialsResult,
-          memberResult,
-          teamResult,
-          templatesResult,
-          pagesResult,
-          branchesResult,
-          affiliateResult,
-          planResult,
-        ] = await Promise.all([
-          storage.getSocialsByUserId(user.id),
-          storage.getTeamMemberByUserId(teamId, user.id),
-          teamBySlug && teamBySlug.id === teamId ? Promise.resolve(teamBySlug) : storage.getTeam(teamId),
-          storage.getTeamTemplates(teamId),
-          // We don't know effectiveUserId yet, but for team owners it's user.id
-          // For team members, we'll need to re-fetch — but this is optimistic
-          storage.getPagesByUserId(user.id),
-          storage.getTeamBranches(teamId),
-          db.select().from(affiliates).where(eq(affiliates.userId, user.id)).limit(1).catch(() => []),
-          getPublicPlanStatusDirect(user.id), // optimistic — will fix below
-        ]);
-
-        userSocials = socialsResult;
-        member = memberResult;
-        teamData = teamResult;
-        templates = templatesResult;
-        branches = branchesResult;
-        affiliateRows = affiliateResult;
-
-        // Check if user is a member (not owner) — need owner's pages & plan
-        const isTeamMemberNotOwner = teamData && teamData.ownerId !== user.id;
-        if (isTeamMemberNotOwner) {
-          // Re-fetch pages for the owner and correct plan status
-          const [ownerPages, ownerPlan] = await Promise.all([
-            storage.getPagesByUserId(teamData.ownerId),
-            getPublicPlanStatusDirect(teamData.ownerId),
-          ]);
-          displayPages = ownerPages;
-          planStatus = ownerPlan;
-        } else {
-          displayPages = pagesResult;
-          planStatus = planResult;
-        }
-      } else {
-        // SLOW PATH: no teamId — need memberships to find team
-        const [socialsResult, memberships, affiliateResult] = await Promise.all([
-          storage.getSocialsByUserId(user.id),
-          storage.getTeamMembershipsByUserId(user.id),
-          db.select().from(affiliates).where(eq(affiliates.userId, user.id)).limit(1).catch(() => []),
-        ]);
-
-        userSocials = socialsResult;
-        affiliateRows = affiliateResult;
-
-        const activeMembership = memberships.find(m => m.status === "activated");
-        if (activeMembership) {
-          teamId = activeMembership.teamId;
-          member = activeMembership;
-          teamData = activeMembership.team;
-
-          const effectiveOwnerId = teamData.ownerId;
-          const [templatesResult, pagesResult, branchesResult, planResult] = await Promise.all([
-            storage.getTeamTemplates(teamId),
-            storage.getPagesByUserId(teamData.ownerId !== user.id ? teamData.ownerId : user.id),
-            storage.getTeamBranches(teamId),
-            getPublicPlanStatusDirect(effectiveOwnerId),
-          ]);
-          templates = templatesResult;
-          displayPages = pagesResult;
-          branches = branchesResult;
-          planStatus = planResult;
-        } else {
-          // Pure personal profile — no team
-          const [pagesResult, planResult] = await Promise.all([
-            storage.getPagesByUserId(user.id),
-            getPublicPlanStatusDirect(user.id),
-          ]);
-          displayPages = pagesResult;
-          planStatus = planResult;
-        }
-      }
-
-      const effectiveUserId = (teamId && teamData && teamData.ownerId !== user.id) ? teamData.ownerId : user.id;
-      const pageSlug = req.query.page as string | undefined;
-
-      let displayCurrentPage = displayPages.find((p: any) => p.isHome) || displayPages[0] || null;
-      if (pageSlug) {
-        const found = displayPages.find((p: any) => p.slug === pageSlug);
-        if (found) displayCurrentPage = found;
-      }
-
-      // Phase 3: Fetch links and blocks for the current page
-      const [displayLinks, displayBlocks] = await Promise.all([
-        displayCurrentPage ? storage.getLinksByPageId(displayCurrentPage.id) : storage.getLinksByUserId(effectiveUserId),
-        displayCurrentPage ? storage.getBlocksByPageId(displayCurrentPage.id) : storage.getBlocksByUserId(effectiveUserId),
-      ]);
-
-      const { password: _, email: __, apiKey: _apiKey, ...publicUser } = user;
-      (publicUser as any).emailVerified = user.emailVerified || false;
-      (publicUser as any).useOriginalSocialColors = user.useOriginalSocialColors || false;
-
-      // Compute white-label status inline
-      let whiteLabelEnabled = user.whiteLabelEnabled || false;
-      if (!whiteLabelEnabled && teamData) {
-        if (teamData.ownerId === user.id) {
-          // user IS the owner, already checked
-        } else {
-          // Check owner's white label — fetch only if needed
-          const owner = await storage.getUser(teamData.ownerId);
-          if (owner?.whiteLabelEnabled) whiteLabelEnabled = true;
-        }
-      }
-
-      let teamBranding: Record<string, any> | null = null;
-
-      if (teamId && teamData) {
-        const defaultTemplate = templates.find((t: any) => t.isDefault) || templates[0];
-        const tData: any = defaultTemplate?.templateData || {};
-
-        let memberBranchData: any = null;
-        let headBranchData: any = null;
-        headBranchData = branches.find((b: any) => b.isHeadBranch) || null;
-        if (member?.branchId) {
-          memberBranchData = branches.find((b: any) => b.id === member.branchId) || null;
-        }
-
-        teamBranding = {
-          companyLogo: tData.companyLogo || teamData?.logoUrl || undefined,
-          coverPhoto: tData.coverPhoto || undefined,
-          companyName: tData.companyName || teamData?.name || undefined,
-          companyPhone: tData.companyPhone || undefined,
-          companyEmail: tData.companyEmail || undefined,
-          companyWebsite: tData.companyWebsite || teamData?.websiteUrl || undefined,
-          companyAddress: tData.companyAddress || undefined,
-          companyContact: tData.companyContact || undefined,
-          themeColor: tData.themeColor || undefined,
-          font: tData.font || undefined,
-          jobTitle: member?.jobTitle || undefined,
-          teamName: teamData?.name || undefined,
-          memberPhone: member?.businessPhone || undefined,
-          companySocials: tData.companySocials || undefined,
-          headBranch: headBranchData ? { name: headBranchData.name, address: headBranchData.address, phone: headBranchData.phone, email: headBranchData.email } : undefined,
-          memberBranch: memberBranchData ? { name: memberBranchData.name, address: memberBranchData.address, phone: memberBranchData.phone, email: memberBranchData.email } : undefined,
-          companyProfileUrl: tData.companyProfileUrl || undefined,
-          productProfileUrl: tData.productProfileUrl || undefined,
-          productUrls: tData.productUrls || undefined,
-          companyBrochureUrl: tData.companyBrochureUrl || undefined,
-          contactFormEnabled: tData.contactFormEnabled || false,
-          contactFormFields: tData.contactFormFields || undefined,
-          meetingLink: tData.meetingLink || undefined,
-          meetingLinkLabel: tData.meetingLinkLabel || undefined,
-          showServicesOnProfile: user.showServicesOnProfile || false,
-          showProductsOnProfile: user.showProductsOnProfile || false,
-          teamSlug: teamData?.slug || undefined,
-          menuUrl: user.showMenuOnProfile && teamData?.slug ? `/${teamData.slug}/menu` : undefined,
-        };
-
-        if (member?.businessName) (publicUser as any).displayName = member.businessName;
-        if (member?.businessProfileImage) (publicUser as any).profileImage = member.businessProfileImage;
-        if (member?.businessBio) (publicUser as any).bio = member.businessBio;
-        if (tData.template) (publicUser as any).template = tData.template;
-      }
+      if (!result) return res.status(404).json({ message: "User not found" });
 
       if (req.query.preview === "1") {
         res.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
@@ -2727,40 +2408,7 @@ export async function registerRoutes(
         res.set("Vercel-CDN-Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
       }
 
-      // Affiliate info from already-fetched data
-      const aff = affiliateRows[0];
-      const affiliateInfo = aff && aff.isActive
-        ? { isAffiliate: true, referralCode: aff.referralCode }
-        : { isAffiliate: false };
-
-      if (planStatus.isFree) {
-        (publicUser as any).effectiveTemplate = (publicUser as any).template || "minimal";
-        (publicUser as any).template = "minimal";
-        (publicUser as any).planRestricted = true;
-        
-        if (teamBranding && !planStatus.menuBuilderEnabled) {
-          teamBranding.menuUrl = undefined;
-        }
-        if (teamBranding?.companySocials && Array.isArray(teamBranding.companySocials)) {
-          teamBranding.companySocials = teamBranding.companySocials.slice(0, planStatus.maxSocials);
-        }
-      }
-
-      res.json({
-        user: publicUser,
-        links: planStatus.isFree ? displayLinks.slice(0, planStatus.maxLinks) : displayLinks,
-        blocks: planStatus.isFree ? displayBlocks.slice(0, planStatus.maxBlocks) : displayBlocks,
-        socials: planStatus.isFree ? userSocials.slice(0, planStatus.maxSocials) : userSocials,
-        pages: planStatus.isFree 
-          ? displayPages.slice(0, planStatus.maxPages).map((p: any) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome }))
-          : displayPages.map((p: any) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome })),
-        currentPage: displayCurrentPage ? { id: displayCurrentPage.id, title: displayCurrentPage.title, slug: displayCurrentPage.slug, isHome: displayCurrentPage.isHome } : null,
-        teamBranding,
-        affiliateInfo,
-        whiteLabelEnabled,
-        planRestricted: planStatus.isFree,
-        allowedThemeCategories: planStatus.isFree ? ["starter"] : planStatus.themeCategories,
-      });
+      res.json(result);
     } catch (error: any) {
       console.error("Profile load error:", error);
       res.status(500).json({ message: "Failed to load profile" });
