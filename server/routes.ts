@@ -17,7 +17,7 @@ import adminRouter from "./admin-routes";
 import paymentRouter from "./payment-routes";
 import affiliateRouter from "./affiliate-routes";
 import ltdRouter from "./ltd-routes";
-import { getUserPlanLimits, getPublicPlanStatus } from "./plan-limits";
+import { getUserPlanLimits, getPublicPlanStatus, getPublicPlanStatusDirect } from "./plan-limits";
 import { sendInviteEmail, sendCredentialsEmail } from "./email";
 import { rateLimit } from "./rate-limit";
 
@@ -2367,7 +2367,7 @@ export async function registerRoutes(
       const companySlug = (req.params.companySlug || "").toLowerCase();
       const memberUsername = req.params.memberUsername;
 
-      // Phase 1: Resolve user + team + memberships ALL in parallel
+      // Phase 1: Resolve user + team in parallel
       const [user, teamBySlug] = await Promise.all([
         storage.getUserByUsername(memberUsername),
         storage.getTeamBySlug(companySlug),
@@ -2375,14 +2375,11 @@ export async function registerRoutes(
 
       if (!user) return res.status(404).json({ message: "User not found" });
 
-      // Phase 2: Resolve member + fetch ALL data in ONE batch
-      const memberDirect = teamBySlug ? await storage.getTeamMemberByUserId(teamBySlug.id, user.id) : undefined;
-
       let team = teamBySlug;
-      let member: any = memberDirect ?? null;
+      let member: any = null;
 
       if (!team) {
-        // Fallback: check memberships
+        // Fallback: check memberships (rare path)
         const memberships = await storage.getTeamMembershipsByUserId(user.id);
         const slugifyTeamName = (name: string) =>
           name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").substring(0, 50) || "team";
@@ -2397,26 +2394,34 @@ export async function registerRoutes(
 
       if (!team) return res.status(404).json({ message: "Company not found" });
 
-      if (!member) {
-        member = await storage.getTeamMemberByUserId(team.id, user.id);
-      }
-
-      const isTeamUser = user.teamId === team.id || team.ownerId === user.id;
-      if (!member && !isTeamUser) return res.status(404).json({ message: "Member not found in this team" });
-      if (member && member.status !== "activated") return res.status(404).json({ message: "Member not found in this team" });
-
       const effectiveUserId = team.ownerId;
-
-      // Phase 3: Fetch ALL needed data + links/blocks in ONE parallel batch
       const pageSlug = req.query.page as string | undefined;
-      const [ownerPages, userSocials, templates, branches, ownerUser, planStatus] = await Promise.all([
+
+      // Phase 2: Fetch ALL data in ONE parallel batch (member + pages + socials + templates + branches + ownerUser + planStatus)
+      const needOwnerFetch = team.ownerId !== user.id;
+      const [
+        memberDirect,
+        ownerPages,
+        userSocials,
+        templates,
+        branches,
+        ownerUser,
+        planStatus,
+      ] = await Promise.all([
+        !member && teamBySlug ? storage.getTeamMemberByUserId(team.id, user.id) : Promise.resolve(member),
         storage.getPagesByUserId(effectiveUserId),
         storage.getSocialsByUserId(user.id),
         storage.getTeamTemplates(team.id),
         storage.getTeamBranches(team.id),
-        storage.getUser(team.ownerId),
-        getPublicPlanStatus(team.ownerId),
+        needOwnerFetch ? storage.getUser(team.ownerId) : Promise.resolve(user),
+        getPublicPlanStatusDirect(team.ownerId),
       ]);
+
+      if (!member) member = memberDirect;
+
+      const isTeamUser = user.teamId === team.id || team.ownerId === user.id;
+      if (!member && !isTeamUser) return res.status(404).json({ message: "Member not found in this team" });
+      if (member && member.status !== "activated") return res.status(404).json({ message: "Member not found in this team" });
 
       let currentPage = ownerPages.find((p) => p.isHome) || ownerPages[0] || null;
       if (pageSlug) {
@@ -2424,7 +2429,7 @@ export async function registerRoutes(
         if (found) currentPage = found;
       }
 
-      // Phase 4: Links + blocks for current page
+      // Phase 3: Links + blocks for current page
       const [userLinks, pageBlocks] = await Promise.all([
         currentPage ? storage.getLinksByPageId(currentPage.id) : storage.getLinksByUserId(effectiveUserId),
         currentPage ? storage.getBlocksByPageId(currentPage.id) : storage.getBlocksByUserId(effectiveUserId),
@@ -2443,7 +2448,6 @@ export async function registerRoutes(
         memberBranch = branches.find((b: any) => b.id === member.branchId) || null;
       }
 
-      // Compute white-label status inline (eliminates separate API call)
       const whiteLabelEnabled = user.whiteLabelEnabled || ownerUser?.whiteLabelEnabled || false;
 
       const teamBranding: Record<string, any> = {
@@ -2536,52 +2540,112 @@ export async function registerRoutes(
 
       let teamId = user.accountType === "team" ? user.teamId : null;
 
-      // Phase 2: Fetch socials + memberships + member in parallel
-      const [userSocials, memberships, memberDirect] = await Promise.all([
-        storage.getSocialsByUserId(user.id),
-        teamId ? Promise.resolve([]) : storage.getTeamMembershipsByUserId(user.id),
-        teamId ? storage.getTeamMemberByUserId(teamId, user.id) : Promise.resolve(undefined),
-      ]);
+      // Phase 2: Fetch EVERYTHING we can in parallel.
+      // If teamId is known, we can fetch team + templates + socials + member + pages + branches + affiliate + planStatus ALL AT ONCE.
+      // If teamId is unknown, we need memberships first (rare path for non-team users).
+      let member: any = null;
+      let teamData: any = null;
+      let templates: any[] = [];
+      let userSocials: any[] = [];
+      let displayPages: any[] = [];
+      let branches: any[] = [];
+      let affiliateRows: any[] = [];
+      let planStatus: any;
 
-      let member: any = memberDirect ?? null;
-      if (!teamId) {
+      if (teamId) {
+        // FAST PATH: teamId known — fetch everything in ONE parallel batch
+        const [
+          socialsResult,
+          memberResult,
+          teamResult,
+          templatesResult,
+          pagesResult,
+          branchesResult,
+          affiliateResult,
+          planResult,
+        ] = await Promise.all([
+          storage.getSocialsByUserId(user.id),
+          storage.getTeamMemberByUserId(teamId, user.id),
+          teamBySlug && teamBySlug.id === teamId ? Promise.resolve(teamBySlug) : storage.getTeam(teamId),
+          storage.getTeamTemplates(teamId),
+          // We don't know effectiveUserId yet, but for team owners it's user.id
+          // For team members, we'll need to re-fetch — but this is optimistic
+          storage.getPagesByUserId(user.id),
+          storage.getTeamBranches(teamId),
+          db.select().from(affiliates).where(eq(affiliates.userId, user.id)).limit(1).catch(() => []),
+          getPublicPlanStatusDirect(user.id), // optimistic — will fix below
+        ]);
+
+        userSocials = socialsResult;
+        member = memberResult;
+        teamData = teamResult;
+        templates = templatesResult;
+        branches = branchesResult;
+        affiliateRows = affiliateResult;
+
+        // Check if user is a member (not owner) — need owner's pages & plan
+        const isTeamMemberNotOwner = teamData && teamData.ownerId !== user.id;
+        if (isTeamMemberNotOwner) {
+          // Re-fetch pages for the owner and correct plan status
+          const [ownerPages, ownerPlan] = await Promise.all([
+            storage.getPagesByUserId(teamData.ownerId),
+            getPublicPlanStatusDirect(teamData.ownerId),
+          ]);
+          displayPages = ownerPages;
+          planStatus = ownerPlan;
+        } else {
+          displayPages = pagesResult;
+          planStatus = planResult;
+        }
+      } else {
+        // SLOW PATH: no teamId — need memberships to find team
+        const [socialsResult, memberships, affiliateResult] = await Promise.all([
+          storage.getSocialsByUserId(user.id),
+          storage.getTeamMembershipsByUserId(user.id),
+          db.select().from(affiliates).where(eq(affiliates.userId, user.id)).limit(1).catch(() => []),
+        ]);
+
+        userSocials = socialsResult;
+        affiliateRows = affiliateResult;
+
         const activeMembership = memberships.find(m => m.status === "activated");
         if (activeMembership) {
           teamId = activeMembership.teamId;
           member = activeMembership;
+          teamData = activeMembership.team;
+
+          const effectiveOwnerId = teamData.ownerId;
+          const [templatesResult, pagesResult, branchesResult, planResult] = await Promise.all([
+            storage.getTeamTemplates(teamId),
+            storage.getPagesByUserId(teamData.ownerId !== user.id ? teamData.ownerId : user.id),
+            storage.getTeamBranches(teamId),
+            getPublicPlanStatusDirect(effectiveOwnerId),
+          ]);
+          templates = templatesResult;
+          displayPages = pagesResult;
+          branches = branchesResult;
+          planStatus = planResult;
+        } else {
+          // Pure personal profile — no team
+          const [pagesResult, planResult] = await Promise.all([
+            storage.getPagesByUserId(user.id),
+            getPublicPlanStatusDirect(user.id),
+          ]);
+          displayPages = pagesResult;
+          planStatus = planResult;
         }
       }
 
-      // Phase 3: Fetch team data + templates + pages + branches + affiliate + planStatus ALL IN PARALLEL
+      const effectiveUserId = (teamId && teamData && teamData.ownerId !== user.id) ? teamData.ownerId : user.id;
       const pageSlug = req.query.page as string | undefined;
-      const effectiveOwnerId_precompute = teamId ? undefined : user.id;
 
-      // We need teamData to know effectiveUserId, so fetch team + templates first if teamId exists
-      let teamData: any = null;
-      let templates: any[] = [];
-      if (teamId) {
-        [teamData, templates] = await Promise.all([storage.getTeam(teamId), storage.getTeamTemplates(teamId)]);
-      }
-
-      const isTeamMemberNotOwner = teamId && teamData && teamData.ownerId !== user.id;
-      const effectiveUserId = isTeamMemberNotOwner ? teamData!.ownerId : user.id;
-      const effectiveOwnerId = (teamId && teamData) ? teamData.ownerId : user.id;
-
-      // Phase 4: Fetch pages + branches + affiliate + planStatus + links/blocks ALL IN PARALLEL
-      const [displayPages, branches, affiliateRows, planStatus] = await Promise.all([
-        storage.getPagesByUserId(effectiveUserId),
-        teamId ? storage.getTeamBranches(teamId) : Promise.resolve([]),
-        db.select().from(affiliates).where(eq(affiliates.userId, user.id)).limit(1).catch(() => []),
-        getPublicPlanStatus(effectiveOwnerId),
-      ]);
-
-      let displayCurrentPage = displayPages.find((p) => p.isHome) || displayPages[0] || null;
+      let displayCurrentPage = displayPages.find((p: any) => p.isHome) || displayPages[0] || null;
       if (pageSlug) {
-        const found = displayPages.find((p) => p.slug === pageSlug);
+        const found = displayPages.find((p: any) => p.slug === pageSlug);
         if (found) displayCurrentPage = found;
       }
 
-      // Phase 5: Fetch links and blocks for the current page
+      // Phase 3: Fetch links and blocks for the current page
       const [displayLinks, displayBlocks] = await Promise.all([
         displayCurrentPage ? storage.getLinksByPageId(displayCurrentPage.id) : storage.getLinksByUserId(effectiveUserId),
         displayCurrentPage ? storage.getBlocksByPageId(displayCurrentPage.id) : storage.getBlocksByUserId(effectiveUserId),
@@ -2591,11 +2655,16 @@ export async function registerRoutes(
       (publicUser as any).emailVerified = user.emailVerified || false;
       (publicUser as any).useOriginalSocialColors = user.useOriginalSocialColors || false;
 
-      // Compute white-label status inline (eliminates separate API call)
+      // Compute white-label status inline
       let whiteLabelEnabled = user.whiteLabelEnabled || false;
-      if (!whiteLabelEnabled && teamId && teamData) {
-        const owner = teamData.ownerId === user.id ? user : await storage.getUser(teamData.ownerId);
-        if (owner?.whiteLabelEnabled) whiteLabelEnabled = true;
+      if (!whiteLabelEnabled && teamData) {
+        if (teamData.ownerId === user.id) {
+          // user IS the owner, already checked
+        } else {
+          // Check owner's white label — fetch only if needed
+          const owner = await storage.getUser(teamData.ownerId);
+          if (owner?.whiteLabelEnabled) whiteLabelEnabled = true;
+        }
       }
 
       let teamBranding: Record<string, any> | null = null;
@@ -2636,6 +2705,9 @@ export async function registerRoutes(
           contactFormFields: tData.contactFormFields || undefined,
           meetingLink: tData.meetingLink || undefined,
           meetingLinkLabel: tData.meetingLinkLabel || undefined,
+          showServicesOnProfile: user.showServicesOnProfile || false,
+          showProductsOnProfile: user.showProductsOnProfile || false,
+          teamSlug: teamData?.slug || undefined,
           menuUrl: user.showMenuOnProfile && teamData?.slug ? `/${teamData.slug}/menu` : undefined,
         };
 
@@ -2661,13 +2733,6 @@ export async function registerRoutes(
         ? { isAffiliate: true, referralCode: aff.referralCode }
         : { isAffiliate: false };
 
-      // Add services/products visibility flags to teamBranding
-      if (teamBranding && teamId) {
-        teamBranding.showServicesOnProfile = user.showServicesOnProfile || false;
-        teamBranding.showProductsOnProfile = user.showProductsOnProfile || false;
-        teamBranding.teamSlug = teamData?.slug || undefined;
-      }
-
       if (planStatus.isFree) {
         (publicUser as any).effectiveTemplate = (publicUser as any).template || "minimal";
         (publicUser as any).template = "minimal";
@@ -2687,8 +2752,8 @@ export async function registerRoutes(
         blocks: planStatus.isFree ? displayBlocks.slice(0, planStatus.maxBlocks) : displayBlocks,
         socials: planStatus.isFree ? userSocials.slice(0, planStatus.maxSocials) : userSocials,
         pages: planStatus.isFree 
-          ? displayPages.slice(0, planStatus.maxPages).map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome }))
-          : displayPages.map((p) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome })),
+          ? displayPages.slice(0, planStatus.maxPages).map((p: any) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome }))
+          : displayPages.map((p: any) => ({ id: p.id, title: p.title, slug: p.slug, isHome: p.isHome })),
         currentPage: displayCurrentPage ? { id: displayCurrentPage.id, title: displayCurrentPage.title, slug: displayCurrentPage.slug, isHome: displayCurrentPage.isHome } : null,
         teamBranding,
         affiliateInfo,

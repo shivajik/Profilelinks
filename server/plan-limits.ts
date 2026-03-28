@@ -359,3 +359,68 @@ export async function getPublicPlanStatus(userId: string): Promise<PublicPlanSta
   publicPlanCache.set(userId, { data: result, timestamp: Date.now() });
   return result;
 }
+
+/**
+ * Direct plan status lookup when we ALREADY know the owner.
+ * Skips the team member → team → owner resolution chain.
+ * Saves 2 sequential DB queries in the critical path.
+ */
+export async function getPublicPlanStatusDirect(ownerId: string): Promise<PublicPlanStatus> {
+  const cached = publicPlanCache.get(ownerId);
+  if (cached && Date.now() - cached.timestamp < PUBLIC_CACHE_TTL) {
+    return cached.data;
+  }
+
+  const FREE_RESULT: PublicPlanStatus = {
+    isFree: true,
+    maxLinks: 5, maxPages: 1, maxBlocks: 10, maxSocials: 3,
+    menuBuilderEnabled: false, whiteLabelEnabled: false,
+    themeCategories: ["starter"],
+  };
+
+  const subs = await db
+    .select({
+      maxLinks: pricingPlans.maxLinks,
+      maxPages: pricingPlans.maxPages,
+      maxBlocks: pricingPlans.maxBlocks,
+      maxSocials: pricingPlans.maxSocials,
+      menuBuilderEnabled: pricingPlans.menuBuilderEnabled,
+      whiteLabelEnabled: pricingPlans.whiteLabelEnabled,
+      themeCategories: pricingPlans.themeCategories,
+      isTrial: userSubscriptions.isTrial,
+      trialEndsAt: userSubscriptions.trialEndsAt,
+    })
+    .from(userSubscriptions)
+    .innerJoin(pricingPlans, eq(userSubscriptions.planId, pricingPlans.id))
+    .where(and(eq(userSubscriptions.userId, ownerId), eq(userSubscriptions.status, "active")))
+    .limit(1);
+
+  let sub = subs[0];
+
+  if (sub?.isTrial && sub.trialEndsAt && new Date(sub.trialEndsAt) < new Date()) {
+    db.update(userSubscriptions)
+      .set({ status: "expired", updatedAt: new Date() })
+      .where(and(eq(userSubscriptions.userId, ownerId), eq(userSubscriptions.status, "active"), eq(userSubscriptions.isTrial, true)))
+      .catch(() => {});
+    sub = undefined as any;
+  }
+
+  if (!sub) {
+    publicPlanCache.set(ownerId, { data: FREE_RESULT, timestamp: Date.now() });
+    return FREE_RESULT;
+  }
+
+  const result: PublicPlanStatus = {
+    isFree: false,
+    maxLinks: sub.maxLinks,
+    maxPages: sub.maxPages,
+    maxBlocks: sub.maxBlocks ?? 20,
+    maxSocials: sub.maxSocials ?? 5,
+    menuBuilderEnabled: sub.menuBuilderEnabled ?? false,
+    whiteLabelEnabled: sub.whiteLabelEnabled ?? false,
+    themeCategories: (sub.themeCategories as string[]) ?? ["starter"],
+  };
+
+  publicPlanCache.set(ownerId, { data: result, timestamp: Date.now() });
+  return result;
+}

@@ -70,6 +70,10 @@ if (dbUrl) {
   pool = new pg.Pool({
     connectionString: dbUrl,
     ssl: { rejectUnauthorized: false },
+    max: 10,
+    min: 2,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000,
   });
   _db = drizzle(pool);
 } else {
