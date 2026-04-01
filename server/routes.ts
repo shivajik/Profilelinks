@@ -3410,6 +3410,12 @@ export async function registerRoutes(
         }
       }
 
+      // Fetch social links for the user
+      const userSocials = await storage.getSocialsByUserId(user.id);
+      const socialLinks = (userSocials || [])
+        .filter((s: any) => s.url)
+        .map((s: any) => ({ platform: s.platform, url: s.url }));
+
       const profileUrl = `${req.protocol}://${req.get("host")}/${profileSlug}`;
       const objectId = `card_${username}_${Date.now()}`;
 
@@ -3424,6 +3430,7 @@ export async function registerRoutes(
         address: teamBranding?.companyAddress || undefined,
         profileImage: user.profileImage || teamBranding?.companyLogo || undefined,
         profileUrl,
+        socials: socialLinks,
       });
 
       res.json({ walletUrl });

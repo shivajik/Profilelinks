@@ -11,6 +11,11 @@ export function isGoogleWalletConfigured(): boolean {
   return !!(GOOGLE_WALLET_ISSUER_ID && GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL && GOOGLE_WALLET_PRIVATE_KEY);
 }
 
+interface SocialLink {
+  platform: string;
+  url: string;
+}
+
 interface BusinessCardData {
   objectId: string;
   name: string;
@@ -22,6 +27,7 @@ interface BusinessCardData {
   address?: string;
   profileImage?: string;
   profileUrl: string;
+  socials?: SocialLink[];
 }
 
 export function createGoogleWalletPassUrl(data: BusinessCardData): string {
@@ -46,8 +52,9 @@ export function createGoogleWalletPassUrl(data: BusinessCardData): string {
       defaultValue: { language: "en", value: (data.name || "Contact").substring(0, 40) },
     },
     textModulesData: [
-      ...(data.phone ? [{ id: "phone", header: "Phone", body: data.phone.substring(0, 30) }] : []),
+      ...(data.phone ? [{ id: "phone", header: "Phone", body: data.phone.substring(0, 50) }] : []),
       ...(data.email ? [{ id: "email", header: "Email", body: data.email.substring(0, 50) }] : []),
+      ...(data.address ? [{ id: "address", header: "Address", body: data.address.substring(0, 200) }] : []),
     ],
     linksModuleData: {
       uris: [
@@ -56,6 +63,19 @@ export function createGoogleWalletPassUrl(data: BusinessCardData): string {
           description: "View Digital Card",
           id: "profile_link",
         },
+        ...(data.website ? [{
+          uri: data.website.startsWith("http") ? data.website : `https://${data.website}`,
+          description: "Website",
+          id: "website_link",
+        }] : []),
+        ...(data.socials || [])
+          .filter(s => s.url && s.url.startsWith("http"))
+          .slice(0, 8)
+          .map((s, i) => ({
+            uri: s.url,
+            description: s.platform.charAt(0).toUpperCase() + s.platform.slice(1),
+            id: `social_${i}`,
+          })),
       ],
     },
     barcode: {
