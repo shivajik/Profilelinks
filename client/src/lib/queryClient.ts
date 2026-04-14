@@ -2,7 +2,7 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { Capacitor } from "@capacitor/core";
 
 // When running inside Capacitor (native app), API calls must go to the production backend
-const API_BASE = Capacitor.isNativePlatform() ? "https://www.visicardly.com" : "";
+const API_BASE = Capacitor.isNativePlatform() ? "https://visicardly-app.vercel.app" : "";
 
 export function buildApiUrl(url: string) {
   return url.startsWith("/") ? `${API_BASE}${url}` : url;
