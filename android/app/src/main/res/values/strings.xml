@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Visicardly</string>
+    <string name="title_activity_main">Visicardly</string>
+    <string name="package_name">com.visicardly.app</string>
+    <string name="custom_url_scheme">com.visicardly.app</string>
+</resources>
