@@ -7,7 +7,7 @@ import logoPath from "/logo.png";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiFetch, apiRequest, queryClient } from "@/lib/queryClient";
 import { Eye, EyeOff, ArrowLeft, Loader2, Sparkles, Link2, Palette, Globe, User, Users, CheckCircle2, XCircle, Mail, CreditCard } from "lucide-react";
 import { Link as WouterLink } from "wouter";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
@@ -341,7 +341,7 @@ function RegisterForm({
     setChecking(true);
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/auth/username-available?username=${encodeURIComponent(val)}`);
+        const res = await apiFetch(`/api/auth/username-available?username=${encodeURIComponent(val)}`);
         if (res.ok) {
           const data = await res.json();
           setAvailable(data.available);
@@ -353,7 +353,7 @@ function RegisterForm({
   };
 
   const sendOtp = async () => {
-    const res = await fetch("/api/auth/send-signup-otp", {
+    const res = await apiFetch("/api/auth/send-signup-otp", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
@@ -369,7 +369,7 @@ function RegisterForm({
     e.preventDefault();
     setLoading(true);
     try {
-      const verifyRes = await fetch("/api/auth/verify-email", {
+      const verifyRes = await apiFetch("/api/auth/verify-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -408,7 +408,7 @@ function RegisterForm({
     if (otp.length !== 6) return;
     setOtpLoading(true);
     try {
-      const verifyRes = await fetch("/api/auth/verify-signup-otp", {
+      const verifyRes = await apiFetch("/api/auth/verify-signup-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, otp }),
@@ -425,10 +425,10 @@ function RegisterForm({
       await queryClient.refetchQueries({ queryKey: ["/api/auth/me"] });
       if (refCode) {
         try {
-          const meRes = await fetch("/api/auth/me");
+          const meRes = await apiFetch("/api/auth/me");
           if (meRes.ok) {
             const me = await meRes.json();
-            await fetch("/api/affiliate/track", {
+            await apiFetch("/api/affiliate/track", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ referralCode: refCode, userId: me.id }),
@@ -603,7 +603,7 @@ function ForgotPasswordFlow({
     if (!email || loading) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/forgot-password", {
+      const res = await apiFetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -631,7 +631,7 @@ function ForgotPasswordFlow({
     if (loading) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/forgot-password", {
+      const res = await apiFetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -654,7 +654,7 @@ function ForgotPasswordFlow({
     if (otp.length !== 6 || loading) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/verify-reset-otp", {
+      const res = await apiFetch("/api/auth/verify-reset-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, otp }),
@@ -684,7 +684,7 @@ function ForgotPasswordFlow({
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/reset-password", {
+      const res = await apiFetch("/api/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, otp, newPassword }),

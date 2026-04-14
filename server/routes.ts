@@ -56,6 +56,21 @@ const upload = multer({
   },
 });
 
+const allowedCorsOrigins = new Set([
+  "http://localhost",
+  "https://localhost",
+  "capacitor://localhost",
+  "ionic://localhost",
+  "https://visicardly.com",
+  "https://www.visicardly.com",
+]);
+
+function isAllowedCorsOrigin(origin?: string) {
+  if (!origin) return false;
+  if (allowedCorsOrigins.has(origin)) return true;
+  return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -90,6 +105,24 @@ export async function registerRoutes(
 
   app.use("/uploads", express.static(uploadsDir));
 
+  app.use((req, res, next) => {
+    const origin = req.get("origin");
+
+    if (isAllowedCorsOrigin(origin)) {
+      res.header("Access-Control-Allow-Origin", origin);
+      res.header("Vary", "Origin");
+      res.header("Access-Control-Allow-Credentials", "true");
+      res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+      res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+    }
+
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(204);
+    }
+
+    return next();
+  });
+
   const isProduction = process.env.NODE_ENV === "production" || !!process.env.VERCEL;
   if (isProduction) {
     app.set("trust proxy", 1);
@@ -107,7 +140,7 @@ export async function registerRoutes(
       maxAge: 30 * 24 * 60 * 60 * 1000,
       httpOnly: true,
       secure: isProduction,
-      sameSite: "lax",
+      sameSite: isProduction ? "none" : "lax",
     },
   });
 
@@ -508,7 +541,11 @@ export async function registerRoutes(
   app.post("/api/auth/logout", (req, res) => {
     req.session.destroy((err) => {
       if (err) return res.status(500).json({ message: "Logout failed" });
-      res.clearCookie("connect.sid");
+      res.clearCookie("connect.sid", {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? "none" : "lax",
+      });
       res.json({ message: "Logged out" });
     });
   });
