@@ -205,7 +205,7 @@ export default function Dashboard() {
   const refreshMenuPreview = useCallback(() => {
     menuIframeRef.current?.contentWindow?.postMessage("visicardly:menu-refresh", "*");
   }, []);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
   const [mobileDesignTab, setMobileDesignTab] = useState<"editor" | "theme">("editor");
   const handlePreviewMode = (mode: "mobile" | "desktop") => {
     setPreviewMode(mode);
