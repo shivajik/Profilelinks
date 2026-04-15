@@ -56,6 +56,21 @@ const upload = multer({
   },
 });
 
+const allowedCorsOrigins = new Set([
+  "http://localhost",
+  "https://localhost",
+  "capacitor://localhost",
+  "ionic://localhost",
+  "https://visicardly.com",
+  "https://www.visicardly.com",
+]);
+
+function isAllowedCorsOrigin(origin?: string) {
+  if (!origin) return false;
+  if (allowedCorsOrigins.has(origin)) return true;
+  return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -90,6 +105,24 @@ export async function registerRoutes(
 
   app.use("/uploads", express.static(uploadsDir));
 
+  app.use((req, res, next) => {
+    const origin = req.get("origin");
+
+    if (isAllowedCorsOrigin(origin)) {
+      res.header("Access-Control-Allow-Origin", origin);
+      res.header("Vary", "Origin");
+      res.header("Access-Control-Allow-Credentials", "true");
+      res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+      res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+    }
+
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(204);
+    }
+
+    return next();
+  });
+
   const isProduction = process.env.NODE_ENV === "production" || !!process.env.VERCEL;
   if (isProduction) {
     app.set("trust proxy", 1);
@@ -107,7 +140,7 @@ export async function registerRoutes(
       maxAge: 30 * 24 * 60 * 60 * 1000,
       httpOnly: true,
       secure: isProduction,
-      sameSite: "lax",
+      sameSite: isProduction ? "none" : "lax",
     },
   });
 
@@ -508,7 +541,11 @@ export async function registerRoutes(
   app.post("/api/auth/logout", (req, res) => {
     req.session.destroy((err) => {
       if (err) return res.status(500).json({ message: "Logout failed" });
-      res.clearCookie("connect.sid");
+      res.clearCookie("connect.sid", {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? "none" : "lax",
+      });
       res.json({ message: "Logged out" });
     });
   });
@@ -2906,11 +2943,12 @@ export async function registerRoutes(
   // ── Menu Settings (Appearance) ────────────────────────────────────────────
   app.get("/api/menu/settings", requireAuth, async (req, res) => {
     try {
-      const user = await storage.getUser(req.session.userId!);
+      const menuOwnerId = await resolveMenuOwnerId(req.session.userId!);
+      const user = await storage.getUser(menuOwnerId);
       if (!user) return res.status(404).json({ message: "User not found" });
       const [openingHours, menuSocialLinks] = await Promise.all([
-        storage.getOpeningHoursByUserId(req.session.userId!),
-        storage.getMenuSocialsByUserId(req.session.userId!),
+        storage.getOpeningHoursByUserId(menuOwnerId),
+        storage.getMenuSocialsByUserId(menuOwnerId),
       ]);
 
       // Get team template data for auto-sync defaults
@@ -2962,7 +3000,8 @@ export async function registerRoutes(
     try {
       const result = updateMenuSettingsSchema.safeParse(req.body);
       if (!result.success) return res.status(400).json({ message: fromZodError(result.error).message });
-      const updated = await storage.updateUser(req.session.userId!, result.data);
+      const menuOwnerId = await resolveMenuOwnerId(req.session.userId!);
+      const updated = await storage.updateUser(menuOwnerId, result.data);
       if (!updated) return res.status(404).json({ message: "User not found" });
       res.json({
         menuTemplate: updated.menuTemplate,
@@ -2987,7 +3026,8 @@ export async function registerRoutes(
     try {
       const result = upsertOpeningHoursSchema.safeParse(req.body);
       if (!result.success) return res.status(400).json({ message: fromZodError(result.error).message });
-      const hours = await storage.upsertOpeningHours(req.session.userId!, result.data.hours);
+      const menuOwnerId = await resolveMenuOwnerId(req.session.userId!);
+      const hours = await storage.upsertOpeningHours(menuOwnerId, result.data.hours);
       res.json(hours);
     } catch (error: any) {
       res.status(500).json({ message: "Failed to save opening hours" });
@@ -2995,8 +3035,20 @@ export async function registerRoutes(
   });
 
   // ── Menu Builder Routes ─────────────────────────────────────────────────────
+
+  // Helper: resolve the effective menu owner userId (team owner for team members, self otherwise)
+  async function resolveMenuOwnerId(userId: string): Promise<string> {
+    const user = await storage.getUser(userId);
+    if (user?.teamId) {
+      const team = await storage.getTeam(user.teamId);
+      if (team?.ownerId) return team.ownerId;
+    }
+    return userId;
+  }
+
   app.get("/api/menu/sections", requireAuth, async (req, res) => {
-    const sections = await storage.getMenuSectionsByUserId(req.session.userId!);
+    const menuOwnerId = await resolveMenuOwnerId(req.session.userId!);
+    const sections = await storage.getMenuSectionsByUserId(menuOwnerId);
     res.json(sections);
   });
 
@@ -3009,7 +3061,8 @@ export async function registerRoutes(
       if (!limits.menuBuilderEnabled) {
         return res.status(403).json({ message: "Menu builder is not available on your plan. Please upgrade." });
       }
-      const section = await storage.createMenuSection({ ...result.data, userId: req.session.userId!, active: true });
+      const menuOwnerId = await resolveMenuOwnerId(req.session.userId!);
+      const section = await storage.createMenuSection({ ...result.data, userId: menuOwnerId, active: true });
       res.status(201).json(section);
     } catch (error: any) {
       res.status(500).json({ message: "Failed to create section" });
@@ -3020,7 +3073,8 @@ export async function registerRoutes(
     try {
       const result = updateMenuSectionSchema.safeParse(req.body);
       if (!result.success) return res.status(400).json({ message: fromZodError(result.error).message });
-      const updated = await storage.updateMenuSection(req.params.id as string, req.session.userId!, result.data);
+      const menuOwnerId = await resolveMenuOwnerId(req.session.userId!);
+      const updated = await storage.updateMenuSection(req.params.id as string, menuOwnerId, result.data);
       if (!updated) return res.status(404).json({ message: "Section not found" });
       res.json(updated);
     } catch (error: any) {
@@ -3029,7 +3083,8 @@ export async function registerRoutes(
   });
 
   app.delete("/api/menu/sections/:id", requireAuth, async (req, res) => {
-    const deleted = await storage.deleteMenuSection(req.params.id as string, req.session.userId!);
+    const menuOwnerId = await resolveMenuOwnerId(req.session.userId!);
+    const deleted = await storage.deleteMenuSection(req.params.id as string, menuOwnerId);
     if (!deleted) return res.status(404).json({ message: "Section not found" });
     res.json({ message: "Deleted" });
   });
@@ -3040,7 +3095,8 @@ export async function registerRoutes(
       const products = await storage.getMenuProductsBySectionId(sectionId);
       return res.json(products);
     }
-    const products = await storage.getMenuProductsByUserId(req.session.userId!);
+    const menuOwnerId = await resolveMenuOwnerId(req.session.userId!);
+    const products = await storage.getMenuProductsByUserId(menuOwnerId);
     res.json(products);
   });
 
@@ -3052,7 +3108,8 @@ export async function registerRoutes(
       if (!limits.menuBuilderEnabled) {
         return res.status(403).json({ message: "Menu builder is not available on your plan. Please upgrade." });
       }
-      const product = await storage.createMenuProduct({ ...result.data, userId: req.session.userId!, active: true });
+      const menuOwnerId = await resolveMenuOwnerId(req.session.userId!);
+      const product = await storage.createMenuProduct({ ...result.data, userId: menuOwnerId, active: true });
       res.status(201).json(product);
     } catch (error: any) {
       res.status(500).json({ message: "Failed to create product" });
@@ -3063,7 +3120,8 @@ export async function registerRoutes(
     try {
       const result = updateMenuProductSchema.safeParse(req.body);
       if (!result.success) return res.status(400).json({ message: fromZodError(result.error).message });
-      const updated = await storage.updateMenuProduct(req.params.id as string, req.session.userId!, result.data);
+      const menuOwnerId = await resolveMenuOwnerId(req.session.userId!);
+      const updated = await storage.updateMenuProduct(req.params.id as string, menuOwnerId, result.data);
       if (!updated) return res.status(404).json({ message: "Product not found" });
       res.json(updated);
     } catch (error: any) {
@@ -3072,14 +3130,16 @@ export async function registerRoutes(
   });
 
   app.delete("/api/menu/products/:id", requireAuth, async (req, res) => {
-    const deleted = await storage.deleteMenuProduct(req.params.id as string, req.session.userId!);
+    const menuOwnerId = await resolveMenuOwnerId(req.session.userId!);
+    const deleted = await storage.deleteMenuProduct(req.params.id as string, menuOwnerId);
     if (!deleted) return res.status(404).json({ message: "Product not found" });
     res.json({ message: "Deleted" });
   });
 
   // ── Menu Social Links ─────────────────────────────────────────────────────
   app.get("/api/menu/socials", requireAuth, async (req, res) => {
-    const menuSocialsList = await storage.getMenuSocialsByUserId(req.session.userId!);
+    const menuOwnerId = await resolveMenuOwnerId(req.session.userId!);
+    const menuSocialsList = await storage.getMenuSocialsByUserId(menuOwnerId);
     res.json(menuSocialsList);
   });
 
@@ -3092,7 +3152,8 @@ export async function registerRoutes(
       if (limits.currentSocials >= limits.maxSocials) {
         return res.status(403).json({ message: `Social link limit reached (${limits.maxSocials}). Upgrade your plan to add more.` });
       }
-      const social = await storage.createMenuSocial({ ...result.data, userId: req.session.userId! });
+      const menuOwnerId = await resolveMenuOwnerId(req.session.userId!);
+      const social = await storage.createMenuSocial({ ...result.data, userId: menuOwnerId });
       res.status(201).json(social);
     } catch (error: any) {
       res.status(500).json({ message: "Failed to create menu social" });
@@ -3103,7 +3164,8 @@ export async function registerRoutes(
     try {
       const result = updateMenuSocialSchema.safeParse(req.body);
       if (!result.success) return res.status(400).json({ message: fromZodError(result.error).message });
-      const updated = await storage.updateMenuSocial(req.params.id as string, req.session.userId!, result.data);
+      const menuOwnerId = await resolveMenuOwnerId(req.session.userId!);
+      const updated = await storage.updateMenuSocial(req.params.id as string, menuOwnerId, result.data);
       if (!updated) return res.status(404).json({ message: "Menu social not found" });
       res.json(updated);
     } catch (error: any) {
@@ -3112,7 +3174,8 @@ export async function registerRoutes(
   });
 
   app.delete("/api/menu/socials/:id", requireAuth, async (req, res) => {
-    const deleted = await storage.deleteMenuSocial(req.params.id as string, req.session.userId!);
+    const menuOwnerId = await resolveMenuOwnerId(req.session.userId!);
+    const deleted = await storage.deleteMenuSocial(req.params.id as string, menuOwnerId);
     if (!deleted) return res.status(404).json({ message: "Menu social not found" });
     res.json({ message: "Deleted" });
   });
