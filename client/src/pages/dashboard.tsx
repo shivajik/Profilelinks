@@ -206,6 +206,7 @@ export default function Dashboard() {
     menuIframeRef.current?.contentWindow?.postMessage("visicardly:menu-refresh", "*");
   }, []);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileDesignTab, setMobileDesignTab] = useState<"editor" | "theme">("editor");
   const handlePreviewMode = (mode: "mobile" | "desktop") => {
     setPreviewMode(mode);
     if (mode === "desktop") {
@@ -633,6 +634,19 @@ export default function Dashboard() {
         </Sidebar>
 
         <div className="flex-1 flex flex-col min-w-0">
+          {/* Mobile top bar — visible only on small screens */}
+          <div className="md:hidden sticky top-0 z-20 bg-card border-b flex items-center gap-3 px-3 py-2.5">
+            <SidebarTrigger data-testid="mobile-sidebar-trigger" />
+            <span className="text-sm font-semibold text-foreground truncate capitalize">
+              {[...sidebarItems, ...teamSidebarItems].find(i => i.id === activeSection)?.label || activeSection}
+            </span>
+            <div className="ml-auto flex items-center gap-1">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleLogout}>
+                <LogOut className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+
           {/* Task 2: Trial expired banner — shown across all dashboard sections */}
           {planLimits?.trialExpired && (
             <div className="border-b border-destructive/40 bg-destructive/5 px-4 py-2.5 flex items-center gap-3 shrink-0">
@@ -646,8 +660,33 @@ export default function Dashboard() {
               </Button>
             </div>
           )}
-          <div className="flex-1 flex overflow-hidden min-h-0">
-             <div className={`overflow-y-auto border-r bg-background w-full ${activeSection === "design" ? "flex-1 md:min-w-[300px] md:max-w-[420px]" : ""} ${activeSection === "menu-setup" ? "shrink-0 md:w-[380px]" : ""} ${["team-members", "team-templates", "contacts", "billing", "usage", "affiliate", "business-profile"].includes(activeSection) ? "flex-1 md:max-w-none" : ""} ${!["design", "menu-setup", "team-members", "team-templates", "contacts", "billing", "usage", "affiliate", "business-profile"].includes(activeSection) ? "flex-1" : ""}`}>
+          {/* Mobile design tab switcher */}
+          {activeSection === "design" && (
+            <div className="md:hidden flex border-b bg-card shrink-0">
+              <button
+                onClick={() => setMobileDesignTab("editor")}
+                className={`flex-1 py-2.5 text-sm font-medium text-center transition-colors ${
+                  mobileDesignTab === "editor"
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-muted-foreground"
+                }`}
+              >
+                Editor
+              </button>
+              <button
+                onClick={() => setMobileDesignTab("theme")}
+                className={`flex-1 py-2.5 text-sm font-medium text-center transition-colors ${
+                  mobileDesignTab === "theme"
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-muted-foreground"
+                }`}
+              >
+                Theme
+              </button>
+            </div>
+          )}
+          <div className={`flex-1 flex overflow-hidden min-h-0 pb-14 md:pb-0 ${activeSection === "design" ? "flex-col md:flex-row" : ""}`}>
+             <div className={`overflow-y-auto border-r bg-background w-full ${activeSection === "design" ? `flex-1 md:min-w-[300px] md:max-w-[420px] ${mobileDesignTab !== "editor" ? "hidden md:block" : ""}` : ""} ${activeSection === "menu-setup" ? "shrink-0 md:w-[380px]" : ""} ${["team-members", "team-templates", "contacts", "billing", "usage", "affiliate", "business-profile"].includes(activeSection) ? "flex-1 md:max-w-none" : ""} ${!["design", "menu-setup", "team-members", "team-templates", "contacts", "billing", "usage", "affiliate", "business-profile"].includes(activeSection) ? "flex-1" : ""}`}>
               {activeSection === "billing" && <BillingSection autoSelectPlanId={new URLSearchParams(search).get("planId")} autoPromoCode={new URLSearchParams(search).get("promoCode")} />}
               {activeSection === "business-profile" && <BusinessProfileSection onNavigateToTemplates={isTeamOwnerOrAdmin ? () => setActiveSection("team-templates") : undefined} />}
               {activeSection === "affiliate" && affiliateData && (
@@ -1562,7 +1601,7 @@ export default function Dashboard() {
 
             {/* Design panel - always visible when design section is active */}
             {activeSection === "design" && (
-              <div className="w-[280px] border-l bg-background overflow-y-auto shrink-0">
+              <div className={`h-full w-full md:w-[280px] border-t md:border-t-0 md:border-l bg-background overflow-y-auto shrink-0 ${mobileDesignTab !== "theme" ? "hidden md:block" : ""}`}>
                 <DesignPanel
                   currentTemplateId={user.template || "minimal"}
                   onSelectTemplate={(id) => templateMutation.mutate(id)}
@@ -1599,6 +1638,39 @@ export default function Dashboard() {
         message={limitMessage}
         onUpgrade={() => setActiveSection("billing")}
       />
+      {/* Mobile bottom navigation */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-card border-t flex items-center justify-around py-1.5 px-1">
+        {[
+          { id: "design", icon: Palette, label: "Design" },
+          { id: "settings", icon: Settings, label: "Settings" },
+          { id: "qrcodes", icon: QrCode, label: "QR Codes" },
+          { id: "analytics", icon: BarChart3, label: "Analytics" },
+          { id: "billing", icon: CreditCard, label: "Billing" },
+        ].filter(item => {
+          if (item.id === "billing" && isTeamMember) return false;
+          return true;
+        }).map((item) => (
+          <button
+            key={item.id}
+            onClick={() => setActiveSection(item.id)}
+            className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-md text-[10px] font-medium transition-colors min-w-0 ${
+              activeSection === item.id
+                ? "text-primary"
+                : "text-muted-foreground"
+            }`}
+          >
+            <item.icon className="w-4 h-4" />
+            <span className="truncate">{item.label}</span>
+          </button>
+        ))}
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-md text-[10px] font-medium text-muted-foreground"
+        >
+          <MoreVertical className="w-4 h-4" />
+          <span>More</span>
+        </button>
+      </div>
     </SidebarProvider>
   );
 }
