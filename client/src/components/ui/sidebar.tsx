@@ -69,6 +69,13 @@ function SidebarProvider({
   const isMobile = useIsMobile()
   const [openMobile, setOpenMobile] = React.useState(false)
 
+  // Sync openMobile with controlled open prop on mobile
+  React.useEffect(() => {
+    if (isMobile && openProp !== undefined) {
+      setOpenMobile(openProp)
+    }
+  }, [isMobile, openProp])
+
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
   const [_open, _setOpen] = React.useState(defaultOpen)
@@ -113,6 +120,18 @@ function SidebarProvider({
   // This makes it easier to style the sidebar with Tailwind classes.
   const state = open ? "expanded" : "collapsed"
 
+  // Wrap setOpenMobile to also sync parent's onOpenChange
+  const handleSetOpenMobile = React.useCallback(
+    (value: boolean | ((prev: boolean) => boolean)) => {
+      const newVal = typeof value === "function" ? value(openMobile) : value
+      setOpenMobile(newVal)
+      if (setOpenProp) {
+        setOpenProp(newVal)
+      }
+    },
+    [openMobile, setOpenProp]
+  )
+
   const contextValue = React.useMemo<SidebarContextProps>(
     () => ({
       state,
@@ -120,10 +139,10 @@ function SidebarProvider({
       setOpen,
       isMobile,
       openMobile,
-      setOpenMobile,
+      setOpenMobile: handleSetOpenMobile,
       toggleSidebar,
     }),
-    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
+    [state, open, setOpen, isMobile, openMobile, handleSetOpenMobile, toggleSidebar]
   )
 
   return (
