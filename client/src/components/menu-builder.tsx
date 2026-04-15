@@ -137,24 +137,30 @@ export function MenuBuilder({ onSave }: { onSave?: () => void } = {}) {
 
   const createSectionMutation = useMutation({
     mutationFn: async (data: { name: string; description?: string }) => {
-      await apiRequest("POST", "/api/menu/sections", data);
+      const res = await apiRequest("POST", "/api/menu/sections", data);
+      return await res.json();
     },
-    onSuccess: () => {
-      invalidateMenu();
+    onSuccess: (newSection: MenuSection) => {
+      queryClient.setQueryData<MenuSection[]>(["/api/menu/sections"], (old = []) => [...old, newSection]);
       setSectionDialog({ open: false });
       toast({ title: "Section created!" });
+      onSave?.();
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const updateSectionMutation = useMutation({
     mutationFn: async ({ id, ...data }: { id: string; name?: string; description?: string; active?: boolean }) => {
-      await apiRequest("PATCH", `/api/menu/sections/${id}`, data);
+      const res = await apiRequest("PATCH", `/api/menu/sections/${id}`, data);
+      return await res.json();
     },
-    onSuccess: () => {
-      invalidateMenu();
+    onSuccess: (updated: MenuSection) => {
+      queryClient.setQueryData<MenuSection[]>(["/api/menu/sections"], (old = []) =>
+        old.map(s => s.id === updated.id ? updated : s)
+      );
       setSectionDialog({ open: false });
       toast({ title: "Section updated!" });
+      onSave?.();
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -162,33 +168,42 @@ export function MenuBuilder({ onSave }: { onSave?: () => void } = {}) {
   const deleteSectionMutation = useMutation({
     mutationFn: async (id: string) => {
       await apiRequest("DELETE", `/api/menu/sections/${id}`);
+      return id;
     },
-    onSuccess: () => {
-      invalidateMenu();
+    onSuccess: (id: string) => {
+      queryClient.setQueryData<MenuSection[]>(["/api/menu/sections"], (old = []) => old.filter(s => s.id !== id));
+      queryClient.setQueryData<MenuProduct[]>(["/api/menu/products"], (old = []) => old.filter(p => p.sectionId !== id));
       toast({ title: "Section deleted!" });
+      onSave?.();
     },
   });
 
   const createProductMutation = useMutation({
     mutationFn: async (data: { sectionId: string; name: string; description?: string; price?: string; imageUrl?: string }) => {
-      await apiRequest("POST", "/api/menu/products", data);
+      const res = await apiRequest("POST", "/api/menu/products", data);
+      return await res.json();
     },
-    onSuccess: () => {
-      invalidateMenu();
+    onSuccess: (newProduct: MenuProduct) => {
+      queryClient.setQueryData<MenuProduct[]>(["/api/menu/products"], (old = []) => [...old, newProduct]);
       setProductDialog({ open: false });
       toast({ title: "Product added!" });
+      onSave?.();
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const updateProductMutation = useMutation({
     mutationFn: async ({ id, ...data }: { id: string; name?: string; description?: string; price?: string; imageUrl?: string; active?: boolean }) => {
-      await apiRequest("PATCH", `/api/menu/products/${id}`, data);
+      const res = await apiRequest("PATCH", `/api/menu/products/${id}`, data);
+      return await res.json();
     },
-    onSuccess: () => {
-      invalidateMenu();
+    onSuccess: (updated: MenuProduct) => {
+      queryClient.setQueryData<MenuProduct[]>(["/api/menu/products"], (old = []) =>
+        old.map(p => p.id === updated.id ? updated : p)
+      );
       setProductDialog({ open: false });
       toast({ title: "Product updated!" });
+      onSave?.();
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -196,10 +211,12 @@ export function MenuBuilder({ onSave }: { onSave?: () => void } = {}) {
   const deleteProductMutation = useMutation({
     mutationFn: async (id: string) => {
       await apiRequest("DELETE", `/api/menu/products/${id}`);
+      return id;
     },
-    onSuccess: () => {
-      invalidateMenu();
+    onSuccess: (id: string) => {
+      queryClient.setQueryData<MenuProduct[]>(["/api/menu/products"], (old = []) => old.filter(p => p.id !== id));
       toast({ title: "Product deleted!" });
+      onSave?.();
     },
   });
 

@@ -145,17 +145,24 @@ export async function registerRoutes(
   });
 
   // Skip session middleware for public read-only routes (saves ~100-500ms per request)
+  // Only skip session for truly public read-only endpoints
+  // Do NOT skip for /api/menu/sections, /api/menu/products, /api/menu/settings, /api/menu/socials etc.
+  const MENU_AUTH_PATHS = ["sections", "products", "settings", "socials", "opening-hours"];
   const PUBLIC_SKIP_PATTERNS = [
     /^\/api\/profile\//,
-    /^\/api\/menu\//,
     /^\/api\/invites\//,
     /^\/api\/contact-form/,
     /^\/api\/google-wallet\/status$/,
     /^\/api\/apple-wallet\/status$/,
   ];
+  const isPublicMenuRoute = (path: string) => {
+    if (!path.startsWith("/api/menu/")) return false;
+    const segment = path.replace("/api/menu/", "").split("/")[0];
+    return !MENU_AUTH_PATHS.includes(segment);
+  };
 
   app.use((req, res, next) => {
-    if (req.method === "GET" && PUBLIC_SKIP_PATTERNS.some(p => p.test(req.path))) {
+    if (req.method === "GET" && (PUBLIC_SKIP_PATTERNS.some(p => p.test(req.path)) || isPublicMenuRoute(req.path))) {
       return next();
     }
     return sessionMiddleware(req, res, next);
@@ -184,7 +191,7 @@ export async function registerRoutes(
 
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       signupOtpStore.set(normalizedEmail, { otp, expiresAt: Date.now() + 10 * 60 * 1000, verified: false, attempts: 0 });
-
+console.log(`Generated OTP for ${normalizedEmail}: ${otp}`); // Log OTP for debugging (remove in production)  
       const { sendSignupOTP } = await import("./email");
       const sent = await sendSignupOTP({ to: normalizedEmail, otp });
       if (!sent) return res.status(500).json({ message: "Failed to send OTP email" });
