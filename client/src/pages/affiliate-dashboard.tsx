@@ -1,3 +1,4 @@
+import { getSiteOrigin } from "@/lib/queryClient";
 import { useState, useEffect } from "react";
 import { useLocation, Link as WouterLink } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -64,7 +65,7 @@ export default function AffiliateDashboard() {
   }, [user, authLoading, navigate]);
 
   const referralLink = data
-    ? `${window.location.origin}/auth?ref=${data.affiliate.referralCode}`
+    ? `${getSiteOrigin()}/auth?ref=${data.affiliate.referralCode}`
     : "";
 
   const copyLink = () => {

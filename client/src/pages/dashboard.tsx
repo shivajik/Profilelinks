@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { toPng } from "html-to-image";
 import { useLocation, Redirect, useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, getSiteOrigin } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
 import logoPath from "/logo.png";
 import { TEMPLATES, getTemplate, LAYOUT_LABELS, THEME_CATEGORIES } from "@/lib/templates";
@@ -513,12 +513,12 @@ export default function Dashboard() {
   // Restaurant owners: profile URL uses username, team slug is for menu
   const teamSlug = teamData?.slug;
   const profileUrl = isTeamMember && teamSlug
-    ? `${window.location.origin}/${teamSlug}/${user.username}`
+    ? `${getSiteOrigin()}/${teamSlug}/${user.username}`
     : isTeamAccount && isRestaurant
-    ? `${window.location.origin}/${user.username}`
+    ? `${getSiteOrigin()}/${user.username}`
     : isTeamAccount && teamSlug
-    ? `${window.location.origin}/${teamSlug}`
-    : `${window.location.origin}/${user.username}`;
+    ? `${getSiteOrigin()}/${teamSlug}`
+    : `${getSiteOrigin()}/${user.username}`;
 
   const isIndividual = !isTeamAccount;
 
@@ -753,9 +753,9 @@ export default function Dashboard() {
                     <CardHeader><CardTitle className="text-base">Your Referral Link</CardTitle></CardHeader>
                     <CardContent>
                       <div className="flex gap-2">
-                        <Input value={`${window.location.origin}/auth?ref=${affiliateData.affiliate.referralCode}`} readOnly className="font-mono text-xs" />
+                        <Input value={`${getSiteOrigin()}/auth?ref=${affiliateData.affiliate.referralCode}`} readOnly className="font-mono text-xs" />
                         <Button variant="outline" size="sm" onClick={() => {
-                          navigator.clipboard.writeText(`${window.location.origin}/auth?ref=${affiliateData.affiliate.referralCode}`);
+                          navigator.clipboard.writeText(`${getSiteOrigin()}/auth?ref=${affiliateData.affiliate.referralCode}`);
                           toast({ title: "Copied!", description: "Referral link copied." });
                         }}>
                           <Copy className="h-4 w-4 mr-1" /> Copy
@@ -842,7 +842,7 @@ export default function Dashboard() {
                       </p>
                       <div className="flex gap-2">
                         <Input
-                          value={`${window.location.origin}/auth`}
+                          value={`${getSiteOrigin()}/auth`}
                           readOnly
                           className="font-mono text-xs"
                         />
@@ -850,7 +850,7 @@ export default function Dashboard() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            navigator.clipboard.writeText(`${window.location.origin}/auth`);
+                            navigator.clipboard.writeText(`${getSiteOrigin()}/auth`);
                             toast({ title: "Link copied!", description: "Share it with your friends." });
                           }}
                         >
@@ -2434,7 +2434,7 @@ function ApiAccessCard() {
   });
 
   const apiKey = user?.apiKey;
-  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+  const baseUrl = typeof window !== "undefined" ? getSiteOrigin() : "";
   const curlExample = `curl -H "X-API-Key: ${apiKey || 'YOUR_API_KEY'}" ${baseUrl}/api/v1/data`;
 
   const copyKey = () => {
@@ -2591,7 +2591,7 @@ function AnalyticsPanel({ username }: { username: string }) {
             </p>
             <div className="flex items-center gap-2 justify-center">
               <code className="text-xs bg-muted px-2 py-1 rounded" data-testid="text-profile-url-analytics">
-                {window.location.origin}/{username}
+                {getSiteOrigin()}/{username}
               </code>
             </div>
           </CardContent>
@@ -5154,9 +5154,9 @@ function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, isSelf, to
             <div className="space-y-1.5">
               <Label className="text-xs">Public Profile URL</Label>
               <div className="flex items-center gap-2">
-                <Input readOnly value={`${window.location.origin}/${member.user.username}`} className="text-xs h-9 bg-muted/50" />
+                <Input readOnly value={`${getSiteOrigin()}/${member.user.username}`} className="text-xs h-9 bg-muted/50" />
                 <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => {
-                  navigator.clipboard.writeText(`${window.location.origin}/${member.user.username}`);
+                  navigator.clipboard.writeText(`${getSiteOrigin()}/${member.user.username}`);
                   toast({ title: "Profile URL copied" });
                 }}>
                   <Copy className="w-3.5 h-3.5" />
@@ -5293,7 +5293,7 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
       setInviteEmail("");
       setInviteRole("member");
       if (data.invites && data.invites[0]?.token) {
-        const link = `${window.location.origin}/invite/${data.invites[0].token}`;
+        const link = `${getSiteOrigin()}/invite/${data.invites[0].token}`;
         setInviteLink(link);
       } else {
         setInviteOpen(false);
@@ -5709,7 +5709,7 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
                               variant="ghost"
                               size="sm"
                               onClick={() => {
-                                const link = `${window.location.origin}/invite/${invite.token}`;
+                                const link = `${getSiteOrigin()}/invite/${invite.token}`;
                                 navigator.clipboard.writeText(link);
                                 toast({ title: "Invite link copied!" });
                               }}
@@ -6038,7 +6038,7 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
               <p className="text-xs text-muted-foreground">
                 We have sent an email to <span className="font-medium text-foreground">{createdCredentials?.email}</span> with the login credentials and temporary password.
                 The team member can also log in at{" "}
-                <span className="font-mono font-medium text-foreground">{window.location.origin}/auth</span>{" "}
+                <span className="font-mono font-medium text-foreground">{getSiteOrigin()}/auth</span>{" "}
                 using the email and temporary password above. They can change their password after logging in via Settings.
               </p>
             </div>
@@ -8312,7 +8312,7 @@ function ServicesProductsPanel({ teamId, teamSlug, type, businessType }: { teamI
   const label = type === "services" ? "Services" : "Products";
   const Icon = type === "services" ? Briefcase : UtensilsCrossed;
   const isSalon = businessType?.toLowerCase() === "beauty & salon";
-  const pageUrl = `${window.location.origin}/${teamSlug}/${type === "services" ? "service" : "product"}`;
+  const pageUrl = `${getSiteOrigin()}/${teamSlug}/${type === "services" ? "service" : "product"}`;
   const [copied, setCopied] = useState(false);
 
   // Fetch the team's templates to get default branding

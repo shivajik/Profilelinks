@@ -1,3 +1,4 @@
+import { getSiteOrigin } from "@/lib/queryClient";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -253,7 +254,7 @@ export default function PublicMenu() {
   const brandColor = user.menuAccentColor || teamBranding?.themeColor || template.accent;
   const menuDescription = user.menuDescription || user.bio;
   const coverPhoto = teamBranding?.coverPhoto || user.profileImage;
-  const menuUrl = typeof window !== "undefined" ? `${window.location.origin}/${username}/menu` : `/${username}/menu`;
+  const menuUrl = typeof window !== "undefined" ? `${getSiteOrigin()}/${username}/menu` : `/${username}/menu`;
   const defaultCurrencySymbol = "₹";
   const layoutStyle = user.menuLayoutStyle || "list";
 

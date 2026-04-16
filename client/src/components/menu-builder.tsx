@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, getSiteOrigin } from "@/lib/queryClient";
 import { DEFAULT_MENU_CATEGORIES, type DefaultMenuCategory } from "@/lib/default-menu-items";
 import { useAuth } from "@/lib/auth";
 import { usePlanLimits } from "@/hooks/use-plan-limits";
@@ -1117,7 +1117,7 @@ function MenuLinkPanel({ username, template: templateId, teamSlug, isRestaurant 
   const [showQr, setShowQr] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   // Restaurant: menu URL uses team slug; profile uses username
-  const menuUrl = `${window.location.origin}/${teamSlug || username}/menu`;
+  const menuUrl = `${getSiteOrigin()}/${teamSlug || username}/menu`;
   const template = getTemplate(templateId);
   const brandColor = template.accent;
 

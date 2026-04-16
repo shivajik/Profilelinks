@@ -1,3 +1,4 @@
+import { getSiteOrigin } from "@/lib/queryClient";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
@@ -188,7 +189,7 @@ export default function PublicProfile(props?: any) {
     document.title = title;
 
     const bio = u.bio || `Check out ${dn}'s profile on VisiCardly`;
-    const pUrl = typeof window !== "undefined" ? `${window.location.origin}/${username}` : `/${username}`;
+    const pUrl = typeof window !== "undefined" ? `${getSiteOrigin()}/${username}` : `/${username}`;
     const updateMeta = (selector: string, attr: string, value: string) => {
       const el = document.querySelector(selector);
       if (el) el.setAttribute(attr, value);
@@ -199,7 +200,7 @@ export default function PublicProfile(props?: any) {
     updateMeta('meta[name="twitter:title"]', 'content', title);
     updateMeta('meta[name="twitter:description"]', 'content', bio);
     if (u.profileImage) {
-      const imgUrl = u.profileImage.startsWith('http') ? u.profileImage : `${window.location.origin}${u.profileImage}`;
+      const imgUrl = u.profileImage.startsWith('http') ? u.profileImage : `${getSiteOrigin()}${u.profileImage}`;
       updateMeta('meta[property="og:image"]', 'content', imgUrl);
       updateMeta('meta[name="twitter:image"]', 'content', imgUrl);
     }
@@ -285,7 +286,7 @@ export default function PublicProfile(props?: any) {
   const hasMultiplePages = dynamicPages.length > 0;
   const hasBlocks = activeBlocks.length > 0;
 
-  const profileUrl = typeof window !== "undefined" ? `${window.location.origin}/${username}` : `/${username}`;
+  const profileUrl = typeof window !== "undefined" ? `${getSiteOrigin()}/${username}` : `/${username}`;
   const displayName = user.displayName || user.username;
 
   function handleCopyUrl() {

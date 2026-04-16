@@ -4,6 +4,14 @@ import { Capacitor } from "@capacitor/core";
 // When running inside Capacitor (native app), API calls must go to the production backend
 const API_BASE = Capacitor.isNativePlatform() ? "https://visicardly-app.vercel.app" : "";
 
+// Public-facing site origin for display URLs (profile links, share links, etc.)
+const SITE_ORIGIN = Capacitor.isNativePlatform() ? "https://visicardly.com" : (typeof window !== "undefined" ? window.location.origin : "");
+
+/** Returns the correct public site origin, even inside Capacitor where window.location.origin is localhost */
+export function getSiteOrigin(): string {
+  return SITE_ORIGIN;
+}
+
 export function buildApiUrl(url: string) {
   return url.startsWith("/") ? `${API_BASE}${url}` : url;
 }
