@@ -106,24 +106,33 @@ async function sendEmailViaSendGrid(opts: {
   }
 }
 
-// ── Unified email sender: SendGrid primary, NodeMailer fallback ──────────
+// ── Unified email sender: NodeMailer primary, SendGrid fallback ──────────
 export async function sendEmail(opts: {
   to: string;
   subject: string;
   html: string;
 }): Promise<boolean> {
-  // Try SendGrid first
+  // Try NodeMailer first (primary)
+  if (process.env.EMAIL && process.env.PASS) {
+    const nmResult = await sendEmailViaNodemailer(opts);
+    if (nmResult) return true;
+    console.warn(`[Email] NodeMailer failed for ${opts.to}, trying SendGrid fallback...`);
+  }
+
+  // Fallback to SendGrid if NodeMailer is not configured or failed
   const sgResult = await sendEmailViaSendGrid(opts);
   if (sgResult.ok) return true;
 
-  // Fallback to NodeMailer if SendGrid is not configured
   if (sgResult.error?.includes("not configured")) {
-    console.warn(`[Email] SendGrid not configured, falling back to NodeMailer for ${opts.to}`);
+    // Neither configured — try NodeMailer anyway as last resort
+    if (!process.env.EMAIL || !process.env.PASS) {
+      console.error(`[Email] No email transport configured. Set EMAIL and PASS env vars for NodeMailer.`);
+      return false;
+    }
     return sendEmailViaNodemailer(opts);
   }
 
-  // SendGrid was configured but failed — don't fallback, report error
-  console.error(`[Email] SendGrid failed for ${opts.to}: ${sgResult.error}`);
+  console.error(`[Email] All transports failed for ${opts.to}: ${sgResult.error}`);
   return false;
 }
 
@@ -541,7 +550,7 @@ export async function sendPaymentConfirmationEmail(opts: {
   });
 }
 
-// ── Email Blast — uses SendGrid exclusively ───────────────────────────────
+// ── Email Blast — uses NodeMailer primary, SendGrid fallback ──────────────
 
 export async function sendBulkTemplateEmail(opts: {
   subject: string;
@@ -552,9 +561,11 @@ export async function sendBulkTemplateEmail(opts: {
   let failed = 0;
   const errors: string[] = [];
 
-  const config = await getSendGridConfig();
-  if (!config) {
-    const msg = "SendGrid not configured — set your API key in Admin → Settings before sending email blasts";
+  const hasNodemailer = !!(process.env.EMAIL && process.env.PASS);
+  const sgConfig = await getSendGridConfig();
+
+  if (!hasNodemailer && !sgConfig) {
+    const msg = "No email transport configured — set EMAIL and PASS env vars for NodeMailer, or configure SendGrid in Admin → Settings";
     console.error(`[Email Blast] ${msg}`);
     return { sent: 0, failed: opts.recipients.length, total: opts.recipients.length, errors: [msg] };
   }
@@ -573,24 +584,27 @@ export async function sendBulkTemplateEmail(opts: {
         .replace(/\{\{email\}\}/g, recipient.email || "")
         .replace(/\{\{displayName\}\}/g, recipient.displayName || recipient.username || "");
 
-      const result = await sendEmailViaSendGrid({
+      const emailHtml = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 20px;">
+          ${personalizedBody}
+          <hr style="border: none; border-top: 1px solid #e4e4e7; margin: 30px 0;" />
+          <p style="color: #a1a1aa; font-size: 12px;">VisiCardly · Digital Business Cards</p>
+        </div>
+      `;
+
+      // Try NodeMailer first, then SendGrid fallback
+      const emailSent = await sendEmail({
         to: recipient.email,
         subject: personalizedSubject,
-        html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 20px;">
-            ${personalizedBody}
-            <hr style="border: none; border-top: 1px solid #e4e4e7; margin: 30px 0;" />
-            <p style="color: #a1a1aa; font-size: 12px;">VisiCardly · Digital Business Cards</p>
-          </div>
-        `,
+        html: emailHtml,
       });
 
-      if (result.ok) {
+      if (emailSent) {
         sent++;
       } else {
         failed++;
-        if (result.error && !errors.includes(result.error)) {
-          errors.push(result.error);
+        if (!errors.includes("Email delivery failed")) {
+          errors.push("Email delivery failed");
         }
       }
     } catch (err: any) {

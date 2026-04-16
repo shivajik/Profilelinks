@@ -116,7 +116,11 @@ export default function PublicMenu() {
   // White-label status now comes from the menu API response directly
   const whiteLabelEnabled = data?.whiteLabelEnabled ?? false;
 
-  const sortedSections = data?.sections?.sort((a, b) => a.position - b.position) || [];
+  // Filter out sections that have no products, then sort by position
+  const allSections = data?.sections?.sort((a, b) => a.position - b.position) || [];
+  const sortedSections = allSections.filter(section => 
+    (data?.products || []).some(p => p.sectionId === section.id)
+  );
 
   // Set initial active tab
   useEffect(() => {
