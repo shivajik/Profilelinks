@@ -59,6 +59,8 @@ interface MenuUser {
   menuGoogleMapsUrl: string | null;
   menuWhatsapp: string | null;
   menuWebsite: string | null;
+  menuHideOpeningHours: boolean;
+  menuLayoutStyle: string;
 }
 
 interface TeamBranding {
@@ -252,6 +254,18 @@ export default function PublicMenu() {
   const menuDescription = user.menuDescription || user.bio;
   const coverPhoto = teamBranding?.coverPhoto || user.profileImage;
   const menuUrl = typeof window !== "undefined" ? `${window.location.origin}/${username}/menu` : `/${username}/menu`;
+  const defaultCurrencySymbol = "₹";
+  const layoutStyle = user.menuLayoutStyle || "list";
+
+  // Format price: if price already starts with a symbol (non-digit), use as-is; otherwise prepend default symbol
+  const formatPrice = (price: string | null) => {
+    if (!price) return null;
+    const trimmed = price.trim();
+    // If price already starts with a non-digit character (currency symbol), use as-is
+    if (/^[^\d]/.test(trimmed)) return trimmed;
+    return `${defaultCurrencySymbol}${trimmed}`;
+  };
+  const hideOpeningHours = user.menuHideOpeningHours;
 
   const hasContact = user.menuPhone || user.menuEmail || user.menuAddress || user.menuWhatsapp || user.menuWebsite || user.menuGoogleMapsUrl;
 
@@ -371,7 +385,30 @@ export default function PublicMenu() {
                     <h2 className={`text-lg font-bold ${template.textColor}`}>{section.name}</h2>
                     {section.description && <p className={`text-xs ${template.textColor} opacity-60 mt-0.5`}>{section.description}</p>}
                   </div>
-                  {sectionProducts.length > 0 && (
+                  {sectionProducts.length > 0 && layoutStyle === "grid" ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      {sectionProducts.map((product) => (
+                        <div key={product.id} className={`rounded-xl overflow-hidden ${template.cardBg} backdrop-blur-sm flex flex-col`}>
+                          {product.imageUrl ? (
+                            <img src={product.imageUrl} alt={product.name} className="w-full aspect-square object-cover" />
+                          ) : (
+                            <div className="w-full aspect-square flex items-center justify-center" style={{ backgroundColor: brandColor + "15" }}>
+                              <Package className="w-10 h-10" style={{ color: brandColor + "60" }} />
+                            </div>
+                          )}
+                          <div className="p-2.5 flex flex-col flex-1">
+                            <h3 className={`text-sm font-semibold ${template.cardTextColor} line-clamp-1`}>{product.name}</h3>
+                            {product.description && <p className={`text-xs mt-0.5 ${template.cardTextColor} opacity-60 line-clamp-2 flex-1`}>{product.description}</p>}
+                            {product.price && (
+                              <span className="text-sm font-bold mt-1.5" style={{ color: brandColor }}>
+                                {formatPrice(product.price)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : sectionProducts.length > 0 ? (
                     <div className="space-y-3">
                       {sectionProducts.map((product) => (
                         <div key={product.id} className={`rounded-xl overflow-hidden ${template.cardBg} backdrop-blur-sm p-3`}>
@@ -386,7 +423,7 @@ export default function PublicMenu() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-2">
                                 <h3 className={`text-sm font-semibold ${template.cardTextColor}`}>{product.name}</h3>
-                                {product.price && <span className="text-sm font-bold shrink-0" style={{ color: brandColor }}>{product.price}</span>}
+                                {product.price && <span className="text-sm font-bold shrink-0" style={{ color: brandColor }}>{formatPrice(product.price)}</span>}
                               </div>
                               {product.description && <p className={`text-xs mt-1 ${template.cardTextColor} opacity-60 line-clamp-2`}>{product.description}</p>}
                             </div>
@@ -394,7 +431,7 @@ export default function PublicMenu() {
                         </div>
                       ))}
                     </div>
-                  )}
+                  ) : null}
                 </div>
               );
             })}
@@ -470,7 +507,7 @@ export default function PublicMenu() {
         )}
 
         {/* Opening Hours - AFTER menu */}
-        {openingHours.length > 0 && (
+        {!hideOpeningHours && openingHours.length > 0 && (
           <div className={`rounded-xl overflow-hidden ${template.cardBg} backdrop-blur-sm mt-4 p-4`}>
             <h3 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${template.cardTextColor}`}>
               <Clock className="w-4 h-4" style={{ color: brandColor }} /> Opening Hours
