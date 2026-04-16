@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { apiFetch, queryClient, apiRequest } from "@/lib/queryClient" ;
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -43,7 +43,7 @@ export function CsvImportExport({ teamId, teamSlug, members, branches: externalB
   const { data: branches = [] } = useQuery<any[]>({
     queryKey: ["/api/teams", teamId, "branches"],
     queryFn: async () => {
-      const res = await fetch(`/api/teams/${teamId}/branches`, { credentials: "include" });
+      const res = await apiFetch(`/api/teams/${teamId}/branches`, { credentials: "include" });
       if (!res.ok) return [];
       return res.json();
     },

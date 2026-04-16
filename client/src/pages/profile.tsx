@@ -1,4 +1,4 @@
-import { getSiteOrigin } from "@/lib/queryClient";
+import { apiFetch, getSiteOrigin } from "@/lib/queryClient";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
@@ -298,7 +298,7 @@ export default function PublicProfile(props?: any) {
   async function handleSaveToWallet() {
     setWalletLoading(true);
     try {
-      const res = await fetch("/api/google-wallet/pass", {
+      const res = await apiFetch("/api/google-wallet/pass", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username }),
@@ -317,7 +317,7 @@ export default function PublicProfile(props?: any) {
   async function handleSaveToAppleWallet() {
     setAppleWalletLoading(true);
     try {
-      const res = await fetch("/api/apple-wallet/pass", {
+      const res = await apiFetch("/api/apple-wallet/pass", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username }),
@@ -401,7 +401,7 @@ export default function PublicProfile(props?: any) {
   async function handleSaveContactToApp() {
     setSavingContact(true);
     try {
-      const res = await fetch("/api/contacts", {
+      const res = await apiFetch("/api/contacts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(contactFormData),

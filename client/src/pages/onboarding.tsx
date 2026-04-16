@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation, Redirect } from "wouter";
 import { useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { apiFetch, queryClient, apiRequest } from "@/lib/queryClient" ;
 import { useAuth } from "@/lib/auth";
 import logoPath from "/logo.png";
 import { TEMPLATES } from "@/lib/templates";
@@ -415,7 +415,7 @@ function WorkspaceStep({
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const res = await apiFetch("/api/upload", { method: "POST", body: formData });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.message || "Upload failed");
@@ -736,7 +736,7 @@ function ProfileStep({
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const res = await fetch("/api/upload", {
+      const res = await apiFetch("/api/upload", {
         method: "POST",
         body: formData,
       });
@@ -967,7 +967,7 @@ function UrlStep({
     setChecking(true);
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/auth/username-available?username=${encodeURIComponent(val)}`, { credentials: "include" });
+        const res = await apiFetch(`/api/auth/username-available?username=${encodeURIComponent(val)}`, { credentials: "include" });
         if (res.ok) {
           const data = await res.json();
           setAvailable(data.available);

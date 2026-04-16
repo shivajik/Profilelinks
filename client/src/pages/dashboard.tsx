@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { toPng } from "html-to-image";
 import { useLocation, Redirect, useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest, getSiteOrigin } from "@/lib/queryClient";
+import { queryClient, apiRequest, getSiteOrigin, apiFetch } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
 import logoPath from "/logo.png";
 import { TEMPLATES, getTemplate, LAYOUT_LABELS, THEME_CATEGORIES } from "@/lib/templates";
@@ -255,7 +255,7 @@ export default function Dashboard() {
     queryKey: ["/api/blocks", { pageId: currentPage?.id }],
     queryFn: async () => {
       if (!currentPage) return [];
-      const res = await fetch(`/api/blocks?pageId=${currentPage.id}`, { credentials: "include" });
+      const res = await apiFetch(`/api/blocks?pageId=${currentPage.id}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch blocks");
       return res.json();
     },
@@ -274,7 +274,7 @@ export default function Dashboard() {
     queryKey: ["/api/teams", user?.teamId],
     queryFn: async () => {
       if (!user?.teamId) return null;
-      const res = await fetch(`/api/teams/${user.teamId}`, { credentials: "include" });
+      const res = await apiFetch(`/api/teams/${user.teamId}`, { credentials: "include" });
       if (!res.ok) return null;
       return res.json();
     },
@@ -293,7 +293,7 @@ export default function Dashboard() {
     queryFn: async () => {
       const slug = teamData?.slug;
       if (!slug) return null;
-      const res = await fetch(`/api/profile/${slug}?preview=1`);
+      const res = await apiFetch(`/api/profile/${slug}?preview=1`);
       if (!res.ok) return null;
       return res.json();
     },
@@ -305,7 +305,7 @@ export default function Dashboard() {
     queryKey: ["/api/teams", user?.teamId, "templates"],
     queryFn: async () => {
       if (!user?.teamId) return [];
-      const res = await fetch(`/api/teams/${user.teamId}/templates`, { credentials: "include" });
+      const res = await apiFetch(`/api/teams/${user.teamId}/templates`, { credentials: "include" });
       if (!res.ok) return [];
       return res.json();
     },
@@ -959,7 +959,7 @@ export default function Dashboard() {
                             const formData = new FormData();
                             formData.append("file", file);
                             try {
-                              const res = await fetch("/api/upload", { method: "POST", body: formData });
+                              const res = await apiFetch("/api/upload", { method: "POST", body: formData });
                               if (res.ok) {
                                 const data = await res.json();
                                 await apiRequest("PATCH", "/api/auth/profile", { profileImage: data.url });
@@ -1045,7 +1045,7 @@ export default function Dashboard() {
                             const formData = new FormData();
                             formData.append("file", file);
                             try {
-                              const res = await fetch("/api/upload", { method: "POST", body: formData });
+                              const res = await apiFetch("/api/upload", { method: "POST", body: formData });
                               if (res.ok) {
                                 const data = await res.json();
                                 await apiRequest("PATCH", "/api/auth/profile", { coverImage: data.url });
@@ -1120,7 +1120,7 @@ export default function Dashboard() {
                       checked={user?.showMenuOnProfile || false}
                       onCheckedChange={async (checked) => {
                         try {
-                          await fetch("/api/auth/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ showMenuOnProfile: checked }) });
+                          await apiFetch("/api/auth/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ showMenuOnProfile: checked }) });
                           queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
                           toast({ title: checked ? "Menu will show on profile" : "Menu hidden from profile" });
                         } catch { toast({ title: "Failed to update", variant: "destructive" }); }
@@ -1140,7 +1140,7 @@ export default function Dashboard() {
                       checked={user?.showServicesOnProfile || false}
                       onCheckedChange={async (checked) => {
                         try {
-                          await fetch("/api/auth/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ showServicesOnProfile: checked }) });
+                          await apiFetch("/api/auth/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ showServicesOnProfile: checked }) });
                           queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
                           toast({ title: checked ? "Services visible on profile" : "Services hidden from profile" });
                         } catch { toast({ title: "Failed to update", variant: "destructive" }); }
@@ -1160,7 +1160,7 @@ export default function Dashboard() {
                       checked={user?.showProductsOnProfile || false}
                       onCheckedChange={async (checked) => {
                         try {
-                          await fetch("/api/auth/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ showProductsOnProfile: checked }) });
+                          await apiFetch("/api/auth/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ showProductsOnProfile: checked }) });
                           queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
                           toast({ title: checked ? "Products visible on profile" : "Products hidden from profile" });
                         } catch { toast({ title: "Failed to update", variant: "destructive" }); }
@@ -1823,7 +1823,7 @@ function SettingsPanel({
     }
     setCheckingUsername(true);
     try {
-      const res = await fetch(`/api/auth/username-available?username=${encodeURIComponent(username)}`, { credentials: "include" });
+      const res = await apiFetch(`/api/auth/username-available?username=${encodeURIComponent(username)}`, { credentials: "include" });
       const data = await res.json();
       setUsernameAvailable(data.available);
     } catch {
@@ -1866,7 +1866,7 @@ function SettingsPanel({
                   const formData = new FormData();
                   formData.append("file", file);
                   try {
-                    const res = await fetch("/api/upload", { method: "POST", body: formData });
+                    const res = await apiFetch("/api/upload", { method: "POST", body: formData });
                     if (res.ok) {
                       const data = await res.json();
                       profileMutation.mutate({ profileImage: data.url });
@@ -2396,7 +2396,7 @@ function ApiAccessCard() {
     queryKey: ["/api/teams", user?.teamId],
     queryFn: async () => {
       if (!user?.teamId) return null;
-      const res = await fetch(`/api/teams/${user.teamId}`, { credentials: "include" });
+      const res = await apiFetch(`/api/teams/${user.teamId}`, { credentials: "include" });
       if (!res.ok) return null;
       return res.json();
     },
@@ -2748,7 +2748,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
   const { data: savedQRCodes = [], isLoading: qrLoading } = useQuery<SavedQRCode[]>({
     queryKey: ["/api/qrcodes", { type: "profile" }],
     queryFn: async () => {
-      const res = await fetch("/api/qrcodes?type=profile", { credentials: "include" });
+      const res = await apiFetch("/api/qrcodes?type=profile", { credentials: "include" });
       if (!res.ok) return [];
       return res.json();
     },
@@ -4975,7 +4975,7 @@ function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, isSelf, to
   const { data: editBranches = [] } = useQuery<any[]>({
     queryKey: ["/api/teams", teamId, "branches"],
     queryFn: async () => {
-      const res = await fetch(`/api/teams/${teamId}/branches`, { credentials: "include" });
+      const res = await apiFetch(`/api/teams/${teamId}/branches`, { credentials: "include" });
       if (!res.ok) return [];
       return res.json();
     },
@@ -5023,7 +5023,7 @@ function EditMemberDialog({ member, isOpen, onClose, teamId, isAdmin, isSelf, to
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+      const res = await apiFetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
       if (res.ok) {
         const { url } = await res.json();
         setEditProfileImage(url);
@@ -5228,7 +5228,7 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
   const { data: members = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/teams", teamId, "members"],
     queryFn: async () => {
-      const res = await fetch(`/api/teams/${teamId}/members`, { credentials: "include" });
+      const res = await apiFetch(`/api/teams/${teamId}/members`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch members");
       return res.json();
     },
@@ -5237,7 +5237,7 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
   const { data: templates = [] } = useQuery<any[]>({
     queryKey: ["/api/teams", teamId, "templates"],
     queryFn: async () => {
-      const res = await fetch(`/api/teams/${teamId}/templates`, { credentials: "include" });
+      const res = await apiFetch(`/api/teams/${teamId}/templates`, { credentials: "include" });
       if (!res.ok) return [];
       return res.json();
     },
@@ -5246,7 +5246,7 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
   const { data: branches = [] } = useQuery<any[]>({
     queryKey: ["/api/teams", teamId, "branches"],
     queryFn: async () => {
-      const res = await fetch(`/api/teams/${teamId}/branches`, { credentials: "include" });
+      const res = await apiFetch(`/api/teams/${teamId}/branches`, { credentials: "include" });
       if (!res.ok) return [];
       return res.json();
     },
@@ -5255,7 +5255,7 @@ function TeamMembersPanel({ teamId, currentUserId, teamSlug }: { teamId: string;
   const { data: invitations = [] } = useQuery<any[]>({
     queryKey: ["/api/teams", teamId, "invites"],
     queryFn: async () => {
-      const res = await fetch(`/api/teams/${teamId}/invites`, { credentials: "include" });
+      const res = await apiFetch(`/api/teams/${teamId}/invites`, { credentials: "include" });
       if (!res.ok) return [];
       return res.json();
     },
@@ -6120,7 +6120,7 @@ function MemberAnalyticsContent({ userId }: { userId: string }) {
   const { data, isLoading } = useQuery<any>({
     queryKey: ["/api/analytics/member", userId],
     queryFn: async () => {
-      const res = await fetch(`/api/analytics/member/${userId}`, { credentials: "include" });
+      const res = await apiFetch(`/api/analytics/member/${userId}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch analytics");
       return res.json();
     },
@@ -6343,7 +6343,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
   const { data: templates = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/teams", teamId, "templates"],
     queryFn: async () => {
-      const res = await fetch(`/api/teams/${teamId}/templates`, { credentials: "include" });
+      const res = await apiFetch(`/api/teams/${teamId}/templates`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch templates");
       return res.json();
     },
@@ -6470,7 +6470,7 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
     const fd = new FormData();
     fd.append("file", file);
     try {
-      const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+      const res = await apiFetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
       if (res.ok) {
         const { url } = await res.json();
         updateField(field, url);
@@ -7820,7 +7820,7 @@ function ContactsPanel({ teamId, userId, isTeamMember = false }: { teamId: strin
   const { data: contacts = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/contacts", { type: contactType }],
     queryFn: async () => {
-      const res = await fetch(`/api/contacts?type=${contactType}`, { credentials: "include" });
+      const res = await apiFetch(`/api/contacts?type=${contactType}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch contacts");
       return res.json();
     },
@@ -8319,7 +8319,7 @@ function ServicesProductsPanel({ teamId, teamSlug, type, businessType }: { teamI
   const { data: templates = [] } = useQuery<any[]>({
     queryKey: ["/api/teams", teamId, "templates"],
     queryFn: async () => {
-      const res = await fetch(`/api/teams/${teamId}/templates`, { credentials: "include" });
+      const res = await apiFetch(`/api/teams/${teamId}/templates`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
@@ -8339,7 +8339,7 @@ function ServicesProductsPanel({ teamId, teamSlug, type, businessType }: { teamI
   const { data: fetchedItems = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/teams", teamId, type],
     queryFn: async () => {
-      const res = await fetch(`/api/teams/${teamId}/${type}`, { credentials: "include" });
+      const res = await apiFetch(`/api/teams/${teamId}/${type}`, { credentials: "include" });
       if (!res.ok) return [];
       return res.json();
     },
@@ -8449,7 +8449,7 @@ function ServicesProductsPanel({ teamId, teamSlug, type, businessType }: { teamI
           onCheckedChange={async (checked) => {
             const field = type === "services" ? "showCompanyOnServices" : "showCompanyOnProducts";
             try {
-              await fetch("/api/auth/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ [field]: checked }) });
+              await apiFetch("/api/auth/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ [field]: checked }) });
               queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
               toast({ title: checked ? "Company profile visible" : "Company profile hidden" });
             } catch { toast({ title: "Failed to update", variant: "destructive" }); }

@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "wouter";
 import { Loader2, Briefcase, Package, ArrowLeft, Phone, Mail, Globe, MapPin } from "lucide-react";
@@ -39,7 +40,7 @@ export default function PublicServicesProducts({ type }: { type: "services" | "p
   }>({
     queryKey: ["/api/public", slug, type],
     queryFn: async () => {
-      const res = await fetch(`/api/public/${slug}/${type}`);
+      const res = await apiFetch(`/api/public/${slug}/${type}`);
       if (!res.ok) throw new Error("Not found");
       return res.json();
     },

@@ -1,4 +1,4 @@
-import { getSiteOrigin } from "@/lib/queryClient";
+import { apiFetch, getSiteOrigin } from "@/lib/queryClient";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -98,7 +98,7 @@ export default function PublicMenu() {
   const { data, isLoading, error, refetch } = useQuery<PublicMenuData>({
     queryKey: ["/api/menu", username],
     queryFn: async () => {
-      const res = await fetch(`/api/menu/${username}`);
+      const res = await apiFetch(`/api/menu/${username}`);
       if (!res.ok) throw new Error("Not found");
       return res.json();
     },

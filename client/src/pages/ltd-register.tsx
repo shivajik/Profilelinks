@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/queryClient";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Link as WouterLink } from "wouter";
@@ -88,7 +89,7 @@ export default function LtdRegisterPage() {
     setCheckingUsername(true);
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/auth/username-available?username=${encodeURIComponent(val)}`);
+        const res = await apiFetch(`/api/auth/username-available?username=${encodeURIComponent(val)}`);
         if (res.ok) {
           const data = await res.json();
           setUsernameAvailable(data.available);
@@ -110,7 +111,7 @@ export default function LtdRegisterPage() {
     if (!code.trim()) return;
     setValidating(true);
     try {
-      const res = await fetch("/api/ltd/validate", {
+      const res = await apiFetch("/api/ltd/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: code.trim() }),
@@ -140,7 +141,7 @@ export default function LtdRegisterPage() {
     }
     setSubmitting(true);
     try {
-      const res = await fetch("/api/ltd/register", {
+      const res = await apiFetch("/api/ltd/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: code.trim(), email, username, displayName, password }),

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { apiFetch, queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,7 +28,7 @@ export function BranchManager({ teamId }: { teamId: string }) {
   const { data: branches = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/teams", teamId, "branches"],
     queryFn: async () => {
-      const res = await fetch(`/api/teams/${teamId}/branches`, { credentials: "include" });
+      const res = await apiFetch(`/api/teams/${teamId}/branches`, { credentials: "include" });
       if (!res.ok) return [];
       return res.json();
     },

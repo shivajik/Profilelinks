@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/queryClient";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -390,7 +391,7 @@ function ContactFormSection({ teamBranding, brandColor }: { teamBranding: TeamBr
     try {
       const companyEmail = teamBranding.companyEmail;
       const companyName = teamBranding.companyName || "Company";
-      await fetch("/api/contact-form", {
+      await apiFetch("/api/contact-form", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...formData, companyEmail, companyName }),
@@ -595,7 +596,7 @@ function InlineServicesProducts({ slug, type, brandColor }: { slug: string; type
   const { data, isLoading } = useQuery<{ items: Array<{ id: string; title: string; description: string | null; price: string | null; imageUrl: string | null; url: string | null }> }>({
     queryKey: ["/api/public", slug, type],
     queryFn: async () => {
-      const res = await fetch(`/api/public/${slug}/${type}`);
+      const res = await apiFetch(`/api/public/${slug}/${type}`);
       if (!res.ok) throw new Error("Not found");
       return res.json();
     },

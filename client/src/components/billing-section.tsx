@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/queryClient";
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
@@ -129,7 +130,7 @@ export function BillingSection({ autoSelectPlanId, autoPromoCode }: { autoSelect
 
     setHistoryLoading(true);
     try {
-      const r = await fetch("/api/payments/history");
+      const r = await apiFetch("/api/payments/history");
       if (r.ok) {
         const d = await r.json();
 
@@ -202,7 +203,7 @@ export function BillingSection({ autoSelectPlanId, autoPromoCode }: { autoSelect
       // Auto-validate the promo code
       (async () => {
         try {
-          const res = await fetch("/api/promo-codes/validate", {
+          const res = await apiFetch("/api/promo-codes/validate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ code: autoPromoCode.trim(), billingCycle }),
@@ -243,7 +244,7 @@ export function BillingSection({ autoSelectPlanId, autoPromoCode }: { autoSelect
     if (!promoInput.trim()) return;
     setPromoValidating(true);
     try {
-      const res = await fetch("/api/promo-codes/validate", {
+      const res = await apiFetch("/api/promo-codes/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: promoInput.trim(), billingCycle }),
@@ -282,7 +283,7 @@ export function BillingSection({ autoSelectPlanId, autoPromoCode }: { autoSelect
     setRetryingPaymentId(payment.id);
     try {
       // Fetch order details to resume payment
-      const res = await fetch("/api/payments/resume-order", {
+      const res = await apiFetch("/api/payments/resume-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ paymentId: payment.id }),
@@ -306,7 +307,7 @@ export function BillingSection({ autoSelectPlanId, autoPromoCode }: { autoSelect
           razorpay_signature: string;
         }) => {
           try {
-            const verifyRes = await fetch("/api/payments/verify", {
+            const verifyRes = await apiFetch("/api/payments/verify", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -345,7 +346,7 @@ export function BillingSection({ autoSelectPlanId, autoPromoCode }: { autoSelect
 
     setPayingPlanId(plan.id);
     try {
-      const res = await fetch("/api/payments/create-order", {
+      const res = await apiFetch("/api/payments/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ planId: plan.id, billingCycle, currency, promoCode: appliedPromo?.code || undefined }),
@@ -376,7 +377,7 @@ export function BillingSection({ autoSelectPlanId, autoPromoCode }: { autoSelect
           razorpay_signature: string;
         }) => {
           try {
-            const verifyRes = await fetch("/api/payments/verify", {
+            const verifyRes = await apiFetch("/api/payments/verify", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({

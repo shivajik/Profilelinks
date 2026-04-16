@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { apiFetch, queryClient, apiRequest } from "@/lib/queryClient" ;
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -80,7 +80,7 @@ export function BusinessProfileSection({ onNavigateToTemplates }: { onNavigateTo
     const formData = new FormData();
     formData.append("file", file);
     try {
-      const res = await fetch("/api/upload", {
+      const res = await apiFetch("/api/upload", {
         method: "POST",
         credentials: "include",
         body: formData,

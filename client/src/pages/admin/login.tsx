@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/queryClient";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
@@ -47,7 +48,7 @@ export default function AdminLogin() {
   const onLogin = async (data: LoginForm) => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/login", {
+      const res = await apiFetch("/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -66,7 +67,7 @@ export default function AdminLogin() {
   const onSetup = async (data: SeedForm) => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/seed", {
+      const res = await apiFetch("/api/admin/seed", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiFetch, apiRequest } from "@/lib/queryClient" ;
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ export default function InviteAccept() {
   const { data: invite, isLoading, error } = useQuery<{ email: string; role: string; teamName: string }>({
     queryKey: ["/api/invites", token],
     queryFn: async () => {
-      const res = await fetch(`/api/invites/${token}`);
+      const res = await apiFetch(`/api/invites/${token}`);
       if (!res.ok) throw new Error("Invalid or expired invite");
       return res.json();
     },

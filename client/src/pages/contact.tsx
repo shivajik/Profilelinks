@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/queryClient";
 import { useState } from "react";
 import { Mail, MessageCircle, Phone, User, Send, Loader2 } from "lucide-react";
 import LegalLayout from "@/components/legal-layout";
@@ -30,7 +31,7 @@ export default function ContactPage() {
     setSending(true);
     try {
 
-      const res = await fetch("/api/website-contact", {
+      const res = await apiFetch("/api/website-contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

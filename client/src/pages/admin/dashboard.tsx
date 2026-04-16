@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/queryClient";
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
@@ -265,8 +266,8 @@ export default function AdminDashboard() {
       .catch(() => navigate("/admin/login"));
   }, [navigate]);
 
-  const fetchStats      = useCallback(async () => { const r = await fetch("/api/admin/stats");    if (r.ok) setStats(await r.json()); }, []);
-  const fetchPlans      = useCallback(async () => { const r = await fetch("/api/admin/plans");    if (r.ok) setPlans(await r.json()); }, []);
+  const fetchStats      = useCallback(async () => { const r = await apiFetch("/api/admin/stats");    if (r.ok) setStats(await r.json()); }, []);
+  const fetchPlans      = useCallback(async () => { const r = await apiFetch("/api/admin/plans");    if (r.ok) setPlans(await r.json()); }, []);
   const [totalUsersCount, setTotalUsersCount] = useState(0);
   const [totalUserPages, setTotalUserPages] = useState(1);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -280,7 +281,7 @@ export default function AdminDashboard() {
     if (f && f !== "all") params.set("accountType", f);
     if (pf && pf !== "all") params.set("planName", pf);
     setLoadingUsers(true);
-    const r = await fetch(`/api/admin/users?${params}`);
+    const r = await apiFetch(`/api/admin/users?${params}`);
     if (r.ok) {
       const d = await r.json();
       setAdminUsers(d.users ?? []);
@@ -303,7 +304,7 @@ export default function AdminDashboard() {
     if (s) params.set("search", s);
     if (f && f !== "all") params.set("status", f);
     setLoadingPayments(true);
-    const r = await fetch(`/api/admin/payments?${params}`);
+    const r = await apiFetch(`/api/admin/payments?${params}`);
     if (r.ok) {
       const d = await r.json();
       setAdminPayments(d.payments ?? []);
@@ -318,8 +319,8 @@ export default function AdminDashboard() {
     }
     setLoadingPayments(false);
   }, []);
-  const fetchAffiliates = useCallback(async () => { const r = await fetch("/api/admin/affiliates"); if (r.ok) setAdminAffiliates(await r.json()); }, []);
-  const fetchPromoCodes = useCallback(async () => { const r = await fetch("/api/admin/promo-codes"); if (r.ok) setAdminPromoCodes(await r.json()); }, []);
+  const fetchAffiliates = useCallback(async () => { const r = await apiFetch("/api/admin/affiliates"); if (r.ok) setAdminAffiliates(await r.json()); }, []);
+  const fetchPromoCodes = useCallback(async () => { const r = await apiFetch("/api/admin/promo-codes"); if (r.ok) setAdminPromoCodes(await r.json()); }, []);
   const fetchLtdData = useCallback(async () => {
     const [codesRes, settingsRes] = await Promise.all([fetch("/api/admin/ltd/codes"), fetch("/api/admin/ltd/settings")]);
     if (codesRes.ok) setLtdCodes(await codesRes.json());
@@ -334,7 +335,7 @@ export default function AdminDashboard() {
   useEffect(() => { if (admin) refreshAll(); }, [admin, refreshAll]);
 
   const handleLogout = async () => {
-    await fetch("/api/admin/logout", { method: "POST" });
+    await apiFetch("/api/admin/logout", { method: "POST" });
     navigate("/admin/login");
   };
 
@@ -342,7 +343,7 @@ export default function AdminDashboard() {
   const toggleUserStatus = async (u: UserRow) => {
     setTogglingUserId(u.id);
     try {
-      const r = await fetch(`/api/admin/users/${u.id}/toggle-status`, { method: "PATCH" });
+      const r = await apiFetch(`/api/admin/users/${u.id}/toggle-status`, { method: "PATCH" });
       const j = await r.json();
       if (!r.ok) throw new Error(j.message);
       toast({ title: j.message });
@@ -358,7 +359,7 @@ export default function AdminDashboard() {
     if (!confirm(`Permanently delete user "${u.username}"? This cannot be undone.`)) return;
     setDeletingUserId(u.id);
     try {
-      const r = await fetch(`/api/admin/users/${u.id}`, { method: "DELETE" });
+      const r = await apiFetch(`/api/admin/users/${u.id}`, { method: "DELETE" });
       const j = await r.json();
       if (!r.ok) throw new Error(j.message);
       toast({ title: "User deleted" });
@@ -377,7 +378,7 @@ export default function AdminDashboard() {
     if (!confirm(`Permanently delete ${ids.length} user(s)? This cannot be undone.`)) return;
     setBulkActionLoading(true);
     try {
-      const r = await fetch("/api/admin/users/bulk-delete", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids }) });
+      const r = await apiFetch("/api/admin/users/bulk-delete", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids }) });
       const j = await r.json();
       if (!r.ok) throw new Error(j.message);
       toast({ title: j.message });
@@ -393,7 +394,7 @@ export default function AdminDashboard() {
     if (!ids.length) return;
     setBulkActionLoading(true);
     try {
-      const r = await fetch("/api/admin/users/bulk-toggle-status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids, disable }) });
+      const r = await apiFetch("/api/admin/users/bulk-toggle-status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids, disable }) });
       const j = await r.json();
       if (!r.ok) throw new Error(j.message);
       toast({ title: j.message });
@@ -418,7 +419,7 @@ export default function AdminDashboard() {
     const features = (data.featuresText ?? "").split("\n").map((f) => f.trim()).filter(Boolean);
     try {
       const isEdit = !!planDialog.plan;
-      const res = await fetch(isEdit ? `/api/admin/plans/${planDialog.plan!.id}` : "/api/admin/plans", {
+      const res = await apiFetch(isEdit ? `/api/admin/plans/${planDialog.plan!.id}` : "/api/admin/plans", {
         method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...data, features, featuresText: undefined }),
@@ -435,7 +436,7 @@ export default function AdminDashboard() {
     if (!confirm("Delete this plan?")) return;
     setDeletingPlanId(id);
     try {
-      const res = await fetch(`/api/admin/plans/${id}`, { method: "DELETE" });
+      const res = await apiFetch(`/api/admin/plans/${id}`, { method: "DELETE" });
       const json = await res.json();
       if (!res.ok) throw new Error(json.message);
       toast({ title: "Plan deleted" }); fetchPlans(); fetchStats();
@@ -448,7 +449,7 @@ export default function AdminDashboard() {
     setLoadingUserDetail(true);
     setActiveSection("user-detail");
     try {
-      const r = await fetch(`/api/admin/users/${userId}`);
+      const r = await apiFetch(`/api/admin/users/${userId}`);
       if (r.ok) setUserDetailData(await r.json());
     } catch { /* ignore */ }
     setLoadingUserDetail(false);
@@ -462,7 +463,7 @@ export default function AdminDashboard() {
       if (reportEndDate) params.set("endDate", reportEndDate);
       if (reportStatus !== "all") params.set("status", reportStatus);
       if (reportPlanId !== "all") params.set("planId", reportPlanId);
-      const r = await fetch(`/api/admin/reports/download?${params}`);
+      const r = await apiFetch(`/api/admin/reports/download?${params}`);
       if (!r.ok) throw new Error("Download failed");
       const blob = await r.blob();
       const url = URL.createObjectURL(blob);
@@ -675,7 +676,7 @@ export default function AdminDashboard() {
                       if (userSearchApplied) params.set("search", userSearchApplied);
                       if (userTypeFilter !== "all") params.set("accountType", userTypeFilter);
                       if (userPlanFilter !== "all") params.set("planName", userPlanFilter);
-                      const r = await fetch(`/api/admin/users?${params}`);
+                      const r = await apiFetch(`/api/admin/users?${params}`);
                       if (!r.ok) throw new Error("Export failed");
                       const d = await r.json();
                       const rows = (d.users || []).map((u: UserRow) => [
@@ -918,7 +919,7 @@ export default function AdminDashboard() {
                 <Button onClick={openNewPlan}><Plus className="h-4 w-4 mr-2" /> New Plan</Button>
                 <Button variant="outline" onClick={async () => {
                   try {
-                    const r = await fetch("/api/admin/seed-team-packages", { method: "POST" });
+                    const r = await apiFetch("/api/admin/seed-team-packages", { method: "POST" });
                     const j = await r.json();
                     if (!r.ok) throw new Error(j.message);
                     toast({ title: "Team packages seeded!", description: j.message });
@@ -1246,7 +1247,7 @@ export default function AdminDashboard() {
                     onAdd={async (userId: string) => {
                       setCreatingAffiliate(true);
                       try {
-                        const r = await fetch("/api/admin/affiliates", {
+                        const r = await apiFetch("/api/admin/affiliates", {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ userId, commissionRate: parseFloat(affiliateRate) }),
@@ -1311,7 +1312,7 @@ export default function AdminDashboard() {
                               <Button
                                 variant="outline" size="sm"
                                 onClick={async () => {
-                                  const r = await fetch(`/api/admin/affiliates/${a.id}`, {
+                                  const r = await apiFetch(`/api/admin/affiliates/${a.id}`, {
                                     method: "PATCH",
                                     headers: { "Content-Type": "application/json" },
                                     body: JSON.stringify({ isActive: !a.isActive }),
@@ -1327,7 +1328,7 @@ export default function AdminDashboard() {
                                 onClick={async () => {
                                   if (!confirm("Delete this affiliate?")) return;
                                   setDeletingAffiliateId(a.id);
-                                  const r = await fetch(`/api/admin/affiliates/${a.id}`, { method: "DELETE" });
+                                  const r = await apiFetch(`/api/admin/affiliates/${a.id}`, { method: "DELETE" });
                                   if (r.ok) { toast({ title: "Affiliate removed" }); fetchAffiliates(); }
                                   setDeletingAffiliateId(null);
                                 }}
@@ -1416,7 +1417,7 @@ export default function AdminDashboard() {
                               <Button
                                 variant="outline" size="sm"
                                 onClick={async () => {
-                                  const r = await fetch(`/api/admin/promo-codes/${p.id}`, {
+                                  const r = await apiFetch(`/api/admin/promo-codes/${p.id}`, {
                                     method: "PATCH",
                                     headers: { "Content-Type": "application/json" },
                                     body: JSON.stringify({ isActive: !p.isActive }),
@@ -1431,7 +1432,7 @@ export default function AdminDashboard() {
                                 onClick={async () => {
                                   if (!confirm("Delete this promo code?")) return;
                                   setDeletingPromoId(p.id);
-                                  const r = await fetch(`/api/admin/promo-codes/${p.id}`, { method: "DELETE" });
+                                  const r = await apiFetch(`/api/admin/promo-codes/${p.id}`, { method: "DELETE" });
                                   if (r.ok) { toast({ title: "Promo code deleted" }); fetchPromoCodes(); }
                                   setDeletingPromoId(null);
                                 }}
@@ -1492,7 +1493,7 @@ export default function AdminDashboard() {
                         onClick={async () => {
                           setLtdPageLoading(true);
                           try {
-                            const r = await fetch("/api/admin/ltd/settings", {
+                            const r = await apiFetch("/api/admin/ltd/settings", {
                               method: "POST", headers: { "Content-Type": "application/json" },
                               body: JSON.stringify({ ltdPageEnabled: !ltdPageEnabled }),
                             });
@@ -1552,7 +1553,7 @@ export default function AdminDashboard() {
                         onClick={async () => {
                           setLtdPurchasePageLoading(true);
                           try {
-                            const r = await fetch("/api/admin/ltd/settings", {
+                            const r = await apiFetch("/api/admin/ltd/settings", {
                               method: "POST", headers: { "Content-Type": "application/json" },
                               body: JSON.stringify({ ltdPurchasePageEnabled: !ltdPurchasePageEnabled }),
                             });
@@ -1634,7 +1635,7 @@ export default function AdminDashboard() {
                             <div className="flex items-center gap-1.5">
                               <Button variant="outline" size="sm"
                                 onClick={async () => {
-                                  const r = await fetch(`/api/admin/ltd/codes/${c.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isActive: !c.isActive }) });
+                                  const r = await apiFetch(`/api/admin/ltd/codes/${c.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isActive: !c.isActive }) });
                                   if (r.ok) { toast({ title: c.isActive ? "Deactivated" : "Activated" }); fetchLtdData(); }
                                 }}
                                 className={c.isActive ? "text-yellow-600 hover:bg-yellow-50" : "text-green-600 hover:bg-green-50"}
@@ -1646,7 +1647,7 @@ export default function AdminDashboard() {
                                 onClick={async () => {
                                   if (!confirm(`Delete code "${c.code}"?`)) return;
                                   setLtdDeletingId(c.id);
-                                  const r = await fetch(`/api/admin/ltd/codes/${c.id}`, { method: "DELETE" });
+                                  const r = await apiFetch(`/api/admin/ltd/codes/${c.id}`, { method: "DELETE" });
                                   if (r.ok) { toast({ title: "Code deleted" }); fetchLtdData(); }
                                   setLtdDeletingId(null);
                                 }}
@@ -1714,7 +1715,7 @@ export default function AdminDashboard() {
                       setLtdSaving(true);
                       try {
                         const resolvedPlanId = ltdNewPlanId && ltdNewPlanId !== "__none__" ? ltdNewPlanId : undefined;
-                        const r = await fetch("/api/admin/ltd/codes", {
+                        const r = await apiFetch("/api/admin/ltd/codes", {
                           method: "POST", headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ code: ltdNewCode.trim(), planId: resolvedPlanId, signupAccountType: ltdNewSignupType, notes: ltdNewNotes || undefined }),
                         });
@@ -1809,7 +1810,7 @@ export default function AdminDashboard() {
                           setLtdSaving(true);
                           try {
                             const resolvedPlanId = ltdBulkPlanId && ltdBulkPlanId !== "__none__" ? ltdBulkPlanId : undefined;
-                            const r = await fetch("/api/admin/ltd/codes/bulk", {
+                            const r = await apiFetch("/api/admin/ltd/codes/bulk", {
                               method: "POST", headers: { "Content-Type": "application/json" },
                               body: JSON.stringify({ count: parseInt(ltdBulkCount) || 1, prefix: ltdBulkPrefix || "LTD", planId: resolvedPlanId, signupAccountType: ltdBulkSignupType, notes: ltdBulkNotes || undefined }),
                             });
@@ -2446,7 +2447,7 @@ export default function AdminDashboard() {
               onClick={async () => {
                 setSavingPromo(true);
                 try {
-                  const res = await fetch("/api/admin/promo-codes", {
+                  const res = await apiFetch("/api/admin/promo-codes", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -2545,7 +2546,7 @@ export default function AdminDashboard() {
               onClick={async () => {
                 setAssigningPlan(true);
                 try {
-                  const r = await fetch(`/api/admin/users/${assignPlanDialog.userId}/assign-plan`, {
+                  const r = await apiFetch(`/api/admin/users/${assignPlanDialog.userId}/assign-plan`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -2604,7 +2605,7 @@ function EmailBlastSection({ plans }: { plans: PricingPlan[] }) {
   useEffect(() => {
     if (!searchQuery.trim()) { setSearchResults([]); return; }
     const timer = setTimeout(async () => {
-      const r = await fetch(`/api/admin/users?search=${encodeURIComponent(searchQuery)}&limit=10`);
+      const r = await apiFetch(`/api/admin/users?search=${encodeURIComponent(searchQuery)}&limit=10`);
       if (r.ok) {
         const d = await r.json();
         setSearchResults((d.users || []).filter((u: any) => !selectedUsers.some(s => s.id === u.id)));
@@ -2642,7 +2643,7 @@ function EmailBlastSection({ plans }: { plans: PricingPlan[] }) {
 
     setSending(true);
     try {
-      const r = await fetch("/api/admin/email-blast", {
+      const r = await apiFetch("/api/admin/email-blast", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -2840,7 +2841,7 @@ function RazorpaySettingsSection({ admin }: { admin: { name: string; email: stri
       const body: Record<string, string> = { razorpayEnvironment: environment };
       if (keyId.trim()) body.razorpayKeyId = keyId.trim();
       if (keySecret.trim()) body.razorpayKeySecret = keySecret.trim();
-      const r = await fetch("/api/admin/settings/payment-keys", {
+      const r = await apiFetch("/api/admin/settings/payment-keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -2851,7 +2852,7 @@ function RazorpaySettingsSection({ admin }: { admin: { name: string; email: stri
       setKeyId("");
       setKeySecret("");
       // Refresh masked keys
-      const r2 = await fetch("/api/admin/settings/payment-keys");
+      const r2 = await apiFetch("/api/admin/settings/payment-keys");
       if (r2.ok) setMaskedKeys(await r2.json());
     } catch (err: any) {
       toast({ title: "Failed", description: err.message, variant: "destructive" });
@@ -2997,7 +2998,7 @@ function TrackingSettings() {
       const body: Record<string, string> = {};
       if (ga4Id.trim()) body.ga4MeasurementId = ga4Id.trim();
       if (fbPixelId.trim()) body.fbPixelId = fbPixelId.trim();
-      const r = await fetch("/api/admin/settings/tracking", {
+      const r = await apiFetch("/api/admin/settings/tracking", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -3007,7 +3008,7 @@ function TrackingSettings() {
       toast({ title: "Tracking settings saved!" });
       setGa4Id("");
       setFbPixelId("");
-      const r2 = await fetch("/api/admin/settings/tracking");
+      const r2 = await apiFetch("/api/admin/settings/tracking");
       if (r2.ok) {
         const d = await r2.json();
         setCurrentGa4(d.ga4_measurement_id || "");
@@ -3023,7 +3024,7 @@ function TrackingSettings() {
     setSaving(true);
     try {
       const body = key === "ga4" ? { ga4MeasurementId: "" } : { fbPixelId: "" };
-      const r = await fetch("/api/admin/settings/tracking", {
+      const r = await apiFetch("/api/admin/settings/tracking", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -3115,7 +3116,7 @@ function CleanSignupsSettings() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const r = await fetch("/api/admin/settings/cleansignups-key", {
+      const r = await apiFetch("/api/admin/settings/cleansignups-key", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ apiKey: apiKey.trim() }),
@@ -3125,7 +3126,7 @@ function CleanSignupsSettings() {
       toast({ title: j.message });
       setApiKey("");
       // Refresh
-      const r2 = await fetch("/api/admin/settings/cleansignups-key");
+      const r2 = await apiFetch("/api/admin/settings/cleansignups-key");
       if (r2.ok) {
         const d = await r2.json();
         setMaskedKey(d.masked);
@@ -3140,7 +3141,7 @@ function CleanSignupsSettings() {
   const handleDisable = async () => {
     setSaving(true);
     try {
-      const r = await fetch("/api/admin/settings/cleansignups-key", {
+      const r = await apiFetch("/api/admin/settings/cleansignups-key", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ apiKey: "" }),
@@ -3351,7 +3352,7 @@ function SendGridSettings() {
       if (apiKey.trim()) body.apiKey = apiKey.trim();
       if (fromEmail.trim()) body.fromEmail = fromEmail.trim();
       if (fromName.trim()) body.fromName = fromName.trim();
-      const r = await fetch("/api/admin/settings/sendgrid", {
+      const r = await apiFetch("/api/admin/settings/sendgrid", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -3361,7 +3362,7 @@ function SendGridSettings() {
       toast({ title: "SendGrid settings saved!" });
       setApiKey("");
       // Refresh
-      const r2 = await fetch("/api/admin/settings/sendgrid");
+      const r2 = await apiFetch("/api/admin/settings/sendgrid");
       if (r2.ok) {
         const d = await r2.json();
         setMaskedKey(d.apiKey || "");
@@ -3378,7 +3379,7 @@ function SendGridSettings() {
   const handleDisable = async () => {
     setSaving(true);
     try {
-      const r = await fetch("/api/admin/settings/sendgrid", {
+      const r = await apiFetch("/api/admin/settings/sendgrid", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ apiKey: "" }),
@@ -3512,7 +3513,7 @@ function TrialEmailsCard() {
   const handleTrigger = async () => {
     setProcessing(true);
     try {
-      const r = await fetch("/api/admin/trigger-trial-emails", { method: "POST" });
+      const r = await apiFetch("/api/admin/trigger-trial-emails", { method: "POST" });
       const j = await r.json();
       if (!r.ok) throw new Error(j.message);
       toast({ title: "Trial emails processed", description: `Sent: ${j.emailsSent?.length || 0} emails` });
@@ -3530,7 +3531,7 @@ function TrialEmailsCard() {
     setCustomProcessing(true);
     setCustomResult(null);
     try {
-      const r = await fetch("/api/admin/send-custom-discount", {
+      const r = await apiFetch("/api/admin/send-custom-discount", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/queryClient";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import { Link as WouterLink } from "wouter";
@@ -205,7 +206,7 @@ export default function LtdPurchasePage() {
     setCheckingUsername(true);
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/auth/username-available?username=${encodeURIComponent(val)}`);
+        const res = await apiFetch(`/api/auth/username-available?username=${encodeURIComponent(val)}`);
         if (res.ok) {
           const data = await res.json();
           setUsernameAvailable(data.available);
@@ -223,7 +224,7 @@ export default function LtdPurchasePage() {
 
     setPromoValidating(true);
     try {
-      const res = await fetch("/api/promo-codes/validate", {
+      const res = await apiFetch("/api/promo-codes/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: promoInput.trim(), planId: selectedPlanId || undefined, isLtd: true }),
@@ -263,7 +264,7 @@ export default function LtdPurchasePage() {
     }
     setSubmitting(true);
     try {
-      const res = await fetch("/api/ltd/purchase-register", {
+      const res = await apiFetch("/api/ltd/purchase-register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, username, displayName, password, planId: selectedPlanId }),
@@ -287,7 +288,7 @@ export default function LtdPurchasePage() {
       const loaded = await loadRazorpayScript();
       if (!loaded) throw new Error("Failed to load payment gateway");
 
-      const res = await fetch("/api/payments/create-order", {
+      const res = await apiFetch("/api/payments/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -315,7 +316,7 @@ export default function LtdPurchasePage() {
         order_id: data.orderId,
         handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
           try {
-            const verifyRes = await fetch("/api/payments/verify", {
+            const verifyRes = await apiFetch("/api/payments/verify", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({

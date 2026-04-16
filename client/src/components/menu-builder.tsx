@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest, getSiteOrigin } from "@/lib/queryClient";
+import { apiFetch, queryClient, apiRequest, getSiteOrigin } from "@/lib/queryClient" ;
 import { DEFAULT_MENU_CATEGORIES, type DefaultMenuCategory } from "@/lib/default-menu-items";
 import { useAuth } from "@/lib/auth";
 import { usePlanLimits } from "@/hooks/use-plan-limits";
@@ -96,7 +96,7 @@ export function MenuBuilder({ onSave }: { onSave?: () => void } = {}) {
     queryKey: ["/api/teams", user?.teamId],
     queryFn: async () => {
       if (!user?.teamId) return null;
-      const res = await fetch(`/api/teams/${user.teamId}`, { credentials: "include" });
+      const res = await apiFetch(`/api/teams/${user.teamId}`, { credentials: "include" });
       if (!res.ok) return null;
       return res.json();
     },
@@ -223,7 +223,7 @@ export function MenuBuilder({ onSave }: { onSave?: () => void } = {}) {
   const handleImageUpload = async (file: File) => {
     const formData = new FormData();
     formData.append("file", file);
-    const res = await fetch("/api/upload", { method: "POST", body: formData, credentials: "include" });
+    const res = await apiFetch("/api/upload", { method: "POST", body: formData, credentials: "include" });
     if (!res.ok) throw new Error("Upload failed");
     const { url } = await res.json();
     setProductImage(url);
@@ -822,7 +822,7 @@ export function MenuAppearancePanel({ onSave }: { onSave?: () => void } = {}) {
   const handleLogoUpload = async (file: File) => {
     const formData = new FormData();
     formData.append("file", file);
-    const res = await fetch("/api/upload", { method: "POST", body: formData, credentials: "include" });
+    const res = await apiFetch("/api/upload", { method: "POST", body: formData, credentials: "include" });
     if (!res.ok) throw new Error("Upload failed");
     const { url } = await res.json();
     setMenuProfileImage(url);
