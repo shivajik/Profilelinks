@@ -207,6 +207,7 @@ export default function Dashboard() {
   }, []);
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
   const [mobileDesignTab, setMobileDesignTab] = useState<"editor" | "theme">("editor");
+  const [mobileMenuTab, setMobileMenuTab] = useState<"builder" | "preview" | "appearance">("builder");
   const handlePreviewMode = (mode: "mobile" | "desktop") => {
     setPreviewMode(mode);
     if (mode === "desktop") {
@@ -685,8 +686,43 @@ export default function Dashboard() {
               </button>
             </div>
           )}
+          {/* Mobile menu-setup tab switcher */}
+          {activeSection === "menu-setup" && (
+            <div className="md:hidden flex border-b bg-card shrink-0">
+              <button
+                onClick={() => setMobileMenuTab("builder")}
+                className={`flex-1 py-2.5 text-sm font-medium text-center transition-colors ${
+                  mobileMenuTab === "builder"
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-muted-foreground"
+                }`}
+              >
+                Builder
+              </button>
+              <button
+                onClick={() => setMobileMenuTab("preview")}
+                className={`flex-1 py-2.5 text-sm font-medium text-center transition-colors ${
+                  mobileMenuTab === "preview"
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-muted-foreground"
+                }`}
+              >
+                Preview
+              </button>
+              <button
+                onClick={() => setMobileMenuTab("appearance")}
+                className={`flex-1 py-2.5 text-sm font-medium text-center transition-colors ${
+                  mobileMenuTab === "appearance"
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-muted-foreground"
+                }`}
+              >
+                Appearance
+              </button>
+            </div>
+          )}
           <div className={`flex-1 flex overflow-hidden min-h-0 pb-14 md:pb-0 ${activeSection === "design" ? "flex-col md:flex-row" : ""}`}>
-             <div className={`overflow-y-auto border-r bg-background w-full ${activeSection === "design" ? `flex-1 md:min-w-[300px] md:max-w-[420px] ${mobileDesignTab !== "editor" ? "hidden md:block" : ""}` : ""} ${activeSection === "menu-setup" ? "shrink-0 md:w-[380px]" : ""} ${["team-members", "team-templates", "contacts", "billing", "usage", "affiliate", "business-profile"].includes(activeSection) ? "flex-1 md:max-w-none" : ""} ${!["design", "menu-setup", "team-members", "team-templates", "contacts", "billing", "usage", "affiliate", "business-profile"].includes(activeSection) ? "flex-1" : ""}`}>
+             <div className={`overflow-y-auto border-r bg-background w-full ${activeSection === "design" ? `flex-1 md:min-w-[300px] md:max-w-[420px] ${mobileDesignTab !== "editor" ? "hidden md:block" : ""}` : ""} ${activeSection === "menu-setup" ? `shrink-0 md:w-[380px] ${mobileMenuTab !== "builder" ? "hidden md:block" : ""}` : ""} ${["team-members", "team-templates", "contacts", "billing", "usage", "affiliate", "business-profile"].includes(activeSection) ? "flex-1 md:max-w-none" : ""} ${!["design", "menu-setup", "team-members", "team-templates", "contacts", "billing", "usage", "affiliate", "business-profile"].includes(activeSection) ? "flex-1" : ""}`}>
               {activeSection === "billing" && <BillingSection autoSelectPlanId={new URLSearchParams(search).get("planId")} autoPromoCode={new URLSearchParams(search).get("promoCode")} />}
               {activeSection === "business-profile" && <BusinessProfileSection onNavigateToTemplates={isTeamOwnerOrAdmin ? () => setActiveSection("team-templates") : undefined} />}
               {activeSection === "affiliate" && affiliateData && (
@@ -1540,7 +1576,7 @@ export default function Dashboard() {
 
             {/* Menu Setup - middle Column: Preview */}
             {planLimits?.menuBuilderEnabled && (
-            <div className={`${activeSection === "menu-setup" ? "hidden md:flex" : "hidden"} flex-1 min-w-0 border-l bg-muted/20 flex-col items-center justify-start overflow-y-auto`}>
+            <div className={`${activeSection === "menu-setup" ? `${mobileMenuTab === "preview" ? "flex" : "hidden"} md:flex` : "hidden"} flex-1 min-w-0 border-l bg-muted/20 flex-col items-center justify-start overflow-y-auto`}>
               {/* Preview header */}
               <div className="w-full flex items-center justify-between px-4 py-2.5 border-b bg-background sticky top-0 z-10">
                 <div className="flex items-center gap-2">
@@ -1592,7 +1628,7 @@ export default function Dashboard() {
             )}
             {/* Menu Setup - right Column: Appearance & Info */}
             {planLimits?.menuBuilderEnabled && (
-            <div className={`${activeSection === "menu-setup" ? "hidden md:flex" : "hidden"} flex-col overflow-y-auto border-l bg-background shrink-0`} style={{ width: "340px" }}>
+            <div className={`${activeSection === "menu-setup" ? `${mobileMenuTab === "appearance" ? "flex" : "hidden"} md:flex` : "hidden"} flex-col overflow-y-auto border-l bg-background shrink-0 w-full md:w-[340px]`}>
               <MenuAppearancePanel onSave={refreshMenuPreview} />
             </div>
             )}

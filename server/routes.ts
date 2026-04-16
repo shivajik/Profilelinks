@@ -2994,6 +2994,8 @@ console.log(`Generated OTP for ${normalizedEmail}: ${otp}`); // Log OTP for debu
         menuGoogleMapsUrl: user.menuGoogleMapsUrl,
         menuWhatsapp: user.menuWhatsapp,
         menuWebsite: user.menuWebsite,
+        menuHideOpeningHours: user.menuHideOpeningHours,
+        menuLayoutStyle: user.menuLayoutStyle,
         openingHours,
         menuSocials: menuSocialLinks,
         teamDefaults,
@@ -3022,6 +3024,8 @@ console.log(`Generated OTP for ${normalizedEmail}: ${otp}`); // Log OTP for debu
         menuGoogleMapsUrl: updated.menuGoogleMapsUrl,
         menuWhatsapp: updated.menuWhatsapp,
         menuWebsite: updated.menuWebsite,
+        menuHideOpeningHours: updated.menuHideOpeningHours,
+        menuLayoutStyle: updated.menuLayoutStyle,
       });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to update menu settings" });
@@ -3345,6 +3349,8 @@ console.log(`Generated OTP for ${normalizedEmail}: ${otp}`); // Log OTP for debu
           menuGoogleMapsUrl: userData.menu_google_maps_url,
           menuWhatsapp: userData.menu_whatsapp,
           menuWebsite: userData.menu_website,
+          menuHideOpeningHours: userData.menu_hide_opening_hours || false,
+          menuLayoutStyle: userData.menu_layout_style || "list",
         },
         sections,
         products,

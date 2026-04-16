@@ -110,6 +110,8 @@ if (pool) pool.query(`
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS menu_google_maps_url text;
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS menu_whatsapp text;
   ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS menu_website text;
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS menu_hide_opening_hours boolean NOT NULL DEFAULT false;
+  ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS menu_layout_style text DEFAULT 'list';
   
   CREATE TABLE IF NOT EXISTS menu_sections (
     id varchar PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -643,6 +643,8 @@ export function MenuAppearancePanel({ onSave }: { onSave?: () => void } = {}) {
     menuGoogleMapsUrl: string | null;
     menuWhatsapp: string | null;
     menuWebsite: string | null;
+    menuHideOpeningHours: boolean;
+    menuLayoutStyle: string | null;
     openingHours: { id: string; dayOfWeek: number; openTime: string | null; closeTime: string | null; isClosed: boolean }[];
     menuSocials: { id: string; platform: string; url: string; position: number }[];
     teamDefaults: {
@@ -677,6 +679,8 @@ export function MenuAppearancePanel({ onSave }: { onSave?: () => void } = {}) {
   const [menuGoogleMapsUrl, setMenuGoogleMapsUrl] = useState("");
   const [menuWhatsapp, setMenuWhatsapp] = useState("");
   const [menuWebsite, setMenuWebsite] = useState("");
+  const [menuHideOpeningHours, setMenuHideOpeningHours] = useState(false);
+  const [menuLayoutStyle, setMenuLayoutStyle] = useState<string>("list");
   const [initialized, setInitialized] = useState(false);
 
   const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -699,6 +703,8 @@ export function MenuAppearancePanel({ onSave }: { onSave?: () => void } = {}) {
     setMenuGoogleMapsUrl(settings.menuGoogleMapsUrl || "");
     setMenuWhatsapp(settings.menuWhatsapp || "");
     setMenuWebsite(settings.menuWebsite || td?.website || "");
+    setMenuHideOpeningHours(settings.menuHideOpeningHours || false);
+    setMenuLayoutStyle(settings.menuLayoutStyle || "list");
     if (settings.openingHours && settings.openingHours.length > 0) {
       const merged = defaultHours.map(d => {
         const saved = settings.openingHours.find(h => h.dayOfWeek === d.dayOfWeek);
@@ -803,6 +809,8 @@ export function MenuAppearancePanel({ onSave }: { onSave?: () => void } = {}) {
       menuGoogleMapsUrl: menuGoogleMapsUrl || null,
       menuWhatsapp: menuWhatsapp || null,
       menuWebsite: menuWebsite || null,
+      menuHideOpeningHours,
+      menuLayoutStyle: menuLayoutStyle || null,
     });
     saveHoursMutation.mutate(openingHours);
     // Also save any pending social link that was filled but not yet added
@@ -893,6 +901,30 @@ export function MenuAppearancePanel({ onSave }: { onSave?: () => void } = {}) {
               </div>
             </div>
 
+            {/* Menu Layout Style */}
+            <div>
+              <Label className="text-xs">Menu Layout</Label>
+              <div className="flex gap-2 mt-1">
+                <Button
+                  variant={menuLayoutStyle === "list" ? "default" : "outline"}
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => setMenuLayoutStyle("list")}
+                >
+                  List View
+                </Button>
+                <Button
+                  variant={menuLayoutStyle === "grid" ? "default" : "outline"}
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => setMenuLayoutStyle("grid")}
+                >
+                  Grid View
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Grid shows items in a 2-column card layout</p>
+            </div>
+
             {/* Contact Information */}
             <div className="border-t pt-4">
               <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
@@ -928,9 +960,15 @@ export function MenuAppearancePanel({ onSave }: { onSave?: () => void } = {}) {
 
             {/* Opening Hours */}
             <div className="border-t pt-4">
-              <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                <Clock className="w-4 h-4 text-primary" /> Opening Hours
-              </h4>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-medium flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-primary" /> Opening Hours
+                </h4>
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-muted-foreground">Hide on menu</Label>
+                  <Switch checked={menuHideOpeningHours} onCheckedChange={setMenuHideOpeningHours} className="scale-75" />
+                </div>
+              </div>
               <div className="space-y-1.5">
                 {openingHours.map((h) => (
                   <div key={h.dayOfWeek} className="flex items-center gap-1.5">

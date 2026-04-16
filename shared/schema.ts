@@ -29,6 +29,8 @@ export const users = pgTable("users", {
   menuGoogleMapsUrl: text("menu_google_maps_url"),
   menuWhatsapp: text("menu_whatsapp"),
   menuWebsite: text("menu_website"),
+  menuHideOpeningHours: boolean("menu_hide_opening_hours").notNull().default(false),
+  menuLayoutStyle: text("menu_layout_style").default("list"),
   createdAt: timestamp("created_at").defaultNow(),
   emailVerified: boolean("email_verified").notNull().default(false),
   whiteLabelEnabled: boolean("white_label_enabled").notNull().default(false),
@@ -366,6 +368,8 @@ export const updateMenuSettingsSchema = z.object({
   menuGoogleMapsUrl: z.string().max(500).optional().nullable(),
   menuWhatsapp: z.string().max(50).optional().nullable(),
   menuWebsite: z.string().max(300).optional().nullable(),
+  menuHideOpeningHours: z.boolean().optional(),
+  menuLayoutStyle: z.enum(["list", "grid"]).optional().nullable(),
 });
 
 export const upsertOpeningHoursSchema = z.object({
