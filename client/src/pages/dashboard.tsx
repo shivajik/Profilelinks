@@ -206,7 +206,7 @@ export default function Dashboard() {
     menuIframeRef.current?.contentWindow?.postMessage("visicardly:menu-refresh", "*");
   }, []);
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
-  const [mobileDesignTab, setMobileDesignTab] = useState<"editor" | "theme">("editor");
+  const [mobileDesignTab, setMobileDesignTab] = useState<"editor" | "preview" | "theme">("editor");
   const [mobileMenuTab, setMobileMenuTab] = useState<"builder" | "preview" | "appearance">("builder");
   const handlePreviewMode = (mode: "mobile" | "desktop") => {
     setPreviewMode(mode);
@@ -673,6 +673,16 @@ export default function Dashboard() {
                 }`}
               >
                 Editor
+              </button>
+              <button
+                onClick={() => setMobileDesignTab("preview")}
+                className={`flex-1 py-2.5 text-sm font-medium text-center transition-colors ${
+                  mobileDesignTab === "preview"
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-muted-foreground"
+                }`}
+              >
+                Preview
               </button>
               <button
                 onClick={() => setMobileDesignTab("theme")}
@@ -1418,7 +1428,7 @@ export default function Dashboard() {
               )}
             </div>
 
-            <div className={`${activeSection === "design" ? "hidden md:flex" : "hidden"} flex-1 bg-muted/30 items-center justify-center p-6`}>
+            <div className={`${activeSection === "design" ? `${mobileDesignTab === "preview" ? "flex" : "hidden"} md:flex` : "hidden"} flex-1 bg-muted/30 items-center justify-center p-6`}>
               <div className="flex flex-col items-center gap-3">
               {isTeamAccount ? (
                   isTeamMember ? (
