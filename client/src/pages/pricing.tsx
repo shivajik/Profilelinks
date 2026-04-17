@@ -53,7 +53,7 @@ export default function PricingPage() {
   const isPromoScopeValid = !appliedPromo?.billingCycleScope || appliedPromo.billingCycleScope === "both" || appliedPromo.billingCycleScope === billingCycle;
 
   useEffect(() => {
-    fetch("/api/pricing/plans")
+   apiFetch("/api/pricing/plans")
       .then((r) => r.json())
       .then((data) => { setPlans(Array.isArray(data) ? data : []); })
       .catch(() => setPlans([]))
@@ -62,7 +62,7 @@ export default function PricingPage() {
 
   useEffect(() => {
     if (!user) return;
-    fetch("/api/payments/subscription")
+   apiFetch("/api/payments/subscription")
       .then((r) => r.json())
       .then((sub) => { if (sub?.planId) setCurrentPlanId(sub.planId); })
       .catch(() => {});

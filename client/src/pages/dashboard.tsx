@@ -317,7 +317,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user) return;
-    fetch("/api/affiliate/dashboard", { credentials: "include" })
+   apiFetch("/api/affiliate/dashboard", { credentials: "include" })
       .then(r => { if (r.ok) return r.json(); throw new Error(); })
       .then(d => { setIsAffiliate(true); setAffiliateData(d); })
       .catch(() => setIsAffiliate(false));

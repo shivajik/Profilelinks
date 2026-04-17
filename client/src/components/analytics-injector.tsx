@@ -1,8 +1,9 @@
+import { apiFetch } from "@/lib/queryClient";
 import { useEffect } from "react";
 
 export function AnalyticsInjector() {
   useEffect(() => {
-    fetch("/api/settings/tracking")
+   apiFetch("/api/settings/tracking")
       .then((r) => r.json())
       .then((settings: Record<string, string>) => {
         const ga4Id = settings["ga4_measurement_id"];

@@ -36,7 +36,7 @@ export default function AdminLogin() {
   const seedForm = useForm<SeedForm>({ resolver: zodResolver(seedSchema) });
 
   useEffect(() => {
-    fetch("/api/admin/exists")
+   apiFetch("/api/admin/exists")
       .then((r) => r.json())
       .then((d) => {
         setAdminExists(d.exists);

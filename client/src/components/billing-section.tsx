@@ -157,8 +157,8 @@ export function BillingSection({ autoSelectPlanId, autoPromoCode }: { autoSelect
 
     try {
 
-      const plansFetch = fetch("/api/pricing/plans").then((r) => r.json()).catch(() => []);
-      const subFetch = fetch("/api/payments/subscription").then((r) => r.json()).catch(() => null);
+      const plansFetch =apiFetch("/api/pricing/plans").then((r) => r.json()).catch(() => []);
+      const subFetch =apiFetch("/api/payments/subscription").then((r) => r.json()).catch(() => null);
 
       const [plansData, subData] = await Promise.all([
         plansFetch,

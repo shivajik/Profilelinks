@@ -150,7 +150,7 @@ export default function PublicProfile(props?: any) {
     const slug = currentPage?.slug || "home";
     if (username && viewTracked.current !== slug) {
       viewTracked.current = slug;
-      fetch("/api/analytics/track", {
+     apiFetch("/api/analytics/track", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -165,7 +165,7 @@ export default function PublicProfile(props?: any) {
 
   const trackClick = useCallback((blockId?: string) => {
     if (!username) return;
-    fetch("/api/analytics/track", {
+   apiFetch("/api/analytics/track", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

@@ -19,6 +19,7 @@ import {
 } from "@shared/schema";
 import { eq, desc, count, sql, and, or, ilike, inArray } from "drizzle-orm";
 import { fromZodError } from "zod-validation-error";
+import { apiFetch } from "@/lib/queryClient";
 
 const router = Router();
 
@@ -985,7 +986,7 @@ router.post("/api/auth/verify-email", async (req: Request, res: Response) => {
     }
 
     // Call CleanSignups API
-    const response = await fetch("https://api.cleansignups.com/api/dashboard/verify", {
+    const response = await apiFetch("https://api.cleansignups.com/api/dashboard/verify", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,

@@ -53,7 +53,7 @@ export default function AffiliateDashboard() {
     if (authLoading) return;
     if (!user) { navigate("/auth"); return; }
 
-    fetch("/api/affiliate/dashboard")
+   apiFetch("/api/affiliate/dashboard")
       .then(r => {
         if (r.status === 404) { setNotAffiliate(true); setLoading(false); return null; }
         if (!r.ok) throw new Error();

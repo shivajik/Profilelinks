@@ -150,14 +150,14 @@ export default function LtdPurchasePage() {
   const [currency, setCurrency] = useState<"INR" | "USD">("INR");
 
   useEffect(() => {
-    fetch("/api/ltd/purchase-status")
+   apiFetch("/api/ltd/purchase-status")
       .then((r) => r.json())
       .then((d) => setPageEnabled(d.enabled))
       .catch(() => setPageEnabled(false));
   }, []);
 
   useEffect(() => {
-    fetch("/api/ltd/plans")
+   apiFetch("/api/ltd/plans")
       .then((r) => r.json())
       .then((d) => {
         setPlans(Array.isArray(d) ? d : []);

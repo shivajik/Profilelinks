@@ -14,6 +14,7 @@ import {
 } from "@shared/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
 import { fromZodError } from "zod-validation-error";
+import { apiFetch } from "@/lib/queryClient";
 
 const router = Router();
 
@@ -212,7 +213,7 @@ router.post("/api/payments/create-order", requireAuth as any, async (req: Reques
     };
 
     const authHeader = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
-    const response = await fetch("https://api.razorpay.com/v1/orders", {
+    const response = await apiFetch("https://api.razorpay.com/v1/orders", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

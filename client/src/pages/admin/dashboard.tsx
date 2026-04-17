@@ -260,7 +260,7 @@ export default function AdminDashboard() {
 
   // ── Auth check ─────────────────────────────────────────────────────────────
   useEffect(() => {
-    fetch("/api/admin/me")
+   apiFetch("/api/admin/me")
       .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then(setAdmin)
       .catch(() => navigate("/admin/login"));
@@ -322,7 +322,7 @@ export default function AdminDashboard() {
   const fetchAffiliates = useCallback(async () => { const r = await apiFetch("/api/admin/affiliates"); if (r.ok) setAdminAffiliates(await r.json()); }, []);
   const fetchPromoCodes = useCallback(async () => { const r = await apiFetch("/api/admin/promo-codes"); if (r.ok) setAdminPromoCodes(await r.json()); }, []);
   const fetchLtdData = useCallback(async () => {
-    const [codesRes, settingsRes] = await Promise.all([fetch("/api/admin/ltd/codes"), fetch("/api/admin/ltd/settings")]);
+    const [codesRes, settingsRes] = await Promise.all([apiFetch("/api/admin/ltd/codes"),apiFetch("/api/admin/ltd/settings")]);
     if (codesRes.ok) setLtdCodes(await codesRes.json());
     if (settingsRes.ok) { const d = await settingsRes.json(); setLtdPageEnabled(d.ltdPageEnabled); setLtdPurchasePageEnabled(d.ltdPurchasePageEnabled); }
   }, []);
@@ -722,7 +722,7 @@ export default function AdminDashboard() {
                             const ids = adminUsers.filter(u => selectedUserIds.has(u.id) && !u.isDisabled).map(u => u.id);
                             if (ids.length === 0) return;
                             setBulkActionLoading(true);
-                            fetch("/api/admin/users/bulk-toggle-status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids, disable: true }) })
+                           apiFetch("/api/admin/users/bulk-toggle-status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids, disable: true }) })
                               .then(r => r.json()).then(d => { toast({ title: d.message ?? "Done" }); setSelectedUserIds(new Set()); fetchUsers(); })
                               .catch(() => toast({ title: "Failed", variant: "destructive" }))
                               .finally(() => setBulkActionLoading(false));
@@ -738,7 +738,7 @@ export default function AdminDashboard() {
                             const ids = adminUsers.filter(u => selectedUserIds.has(u.id) && u.isDisabled).map(u => u.id);
                             if (ids.length === 0) return;
                             setBulkActionLoading(true);
-                            fetch("/api/admin/users/bulk-toggle-status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids, disable: false }) })
+                           apiFetch("/api/admin/users/bulk-toggle-status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids, disable: false }) })
                               .then(r => r.json()).then(d => { toast({ title: d.message ?? "Done" }); setSelectedUserIds(new Set()); fetchUsers(); })
                               .catch(() => toast({ title: "Failed", variant: "destructive" }))
                               .finally(() => setBulkActionLoading(false));
@@ -2825,7 +2825,7 @@ function RazorpaySettingsSection({ admin }: { admin: { name: string; email: stri
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    fetch("/api/admin/settings/payment-keys")
+   apiFetch("/api/admin/settings/payment-keys")
       .then(r => r.ok ? r.json() : {})
       .then((data: Record<string, string>) => {
         setMaskedKeys(data);
@@ -2983,7 +2983,7 @@ function TrackingSettings() {
   const [currentFb, setCurrentFb] = useState("");
 
   useEffect(() => {
-    fetch("/api/admin/settings/tracking")
+   apiFetch("/api/admin/settings/tracking")
       .then(r => r.ok ? r.json() : {})
       .then((data: any) => {
         if (data.ga4_measurement_id) setCurrentGa4(data.ga4_measurement_id);
@@ -3104,7 +3104,7 @@ function CleanSignupsSettings() {
   const [isSet, setIsSet] = useState(false);
 
   useEffect(() => {
-    fetch("/api/admin/settings/cleansignups-key")
+   apiFetch("/api/admin/settings/cleansignups-key")
       .then(r => r.ok ? r.json() : { masked: "", isSet: false })
       .then((data: { masked: string; isSet: boolean }) => {
         setMaskedKey(data.masked);
@@ -3334,7 +3334,7 @@ function SendGridSettings() {
   const [currentFromName, setCurrentFromName] = useState("");
 
   useEffect(() => {
-    fetch("/api/admin/settings/sendgrid")
+   apiFetch("/api/admin/settings/sendgrid")
       .then(r => r.ok ? r.json() : {})
       .then((data: any) => {
         if (data.apiKey) setMaskedKey(data.apiKey);
@@ -3490,7 +3490,7 @@ function TrialEmailsCard() {
   const [availableCoupons, setAvailableCoupons] = useState<{ code: string; discountPercent: string; discountType: string; discountMonthlyAmount: string; discountYearlyAmount: string; isActive: boolean }[]>([]);
 
   useEffect(() => {
-    fetch("/api/admin/promo-codes")
+   apiFetch("/api/admin/promo-codes")
       .then(r => r.ok ? r.json() : [])
       .then((codes: any[]) => {
         const active = codes.filter((c: any) => c.isActive).map((c: any) => ({

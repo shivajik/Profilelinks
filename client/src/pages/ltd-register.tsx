@@ -101,7 +101,7 @@ export default function LtdRegisterPage() {
   };
 
   useEffect(() => {
-    fetch("/api/ltd/status")
+   apiFetch("/api/ltd/status")
       .then(r => r.json())
       .then(d => setPageEnabled(d.enabled))
       .catch(() => setPageEnabled(false));
