@@ -1,4 +1,4 @@
-import { getSiteOrigin } from "@/lib/queryClient";
+import { apiFetch, getSiteOrigin } from "@/lib/queryClient";
 import { useState, useEffect } from "react";
 import { useLocation, Link as WouterLink } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -53,15 +53,44 @@ export default function AffiliateDashboard() {
     if (authLoading) return;
     if (!user) { navigate("/auth"); return; }
 
-   apiFetch("/api/affiliate/dashboard")
-      .then(r => {
-        if (r.status === 404) { setNotAffiliate(true); setLoading(false); return null; }
-        if (!r.ok) throw new Error();
-        return r.json();
-      })
-      .then(d => { if (d) setData(d); })
-      .catch(() => setNotAffiliate(true))
-      .finally(() => setLoading(false));
+    let isActive = true;
+
+    const loadDashboard = async () => {
+      try {
+        const response = await apiFetch("/api/affiliate/dashboard");
+
+        if (!isActive) return;
+
+        if (response.status === 404) {
+          setNotAffiliate(true);
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error("Failed to load affiliate dashboard");
+        }
+
+        const dashboardData: DashboardData = await response.json();
+        if (isActive) {
+          setData(dashboardData);
+        }
+      } catch {
+        if (isActive) {
+          setNotAffiliate(true);
+        }
+      } finally {
+        if (isActive) {
+          setLoading(false);
+        }
+      }
+    };
+
+    setLoading(true);
+    void loadDashboard();
+
+    return () => {
+      isActive = false;
+    };
   }, [user, authLoading, navigate]);
 
   const referralLink = data

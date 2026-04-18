@@ -87,6 +87,7 @@ export default function AuthPage() {
   const { login, register, user } = useAuth();
   const { toast } = useToast();
   const [demoLoading, setDemoLoading] = useState<"personal" | "team" | null>(null);
+  const isNative = useIsNativeApp();
 
   const handleDemoLogin = async (type: "personal" | "team") => {
     setDemoLoading(type);
@@ -118,8 +119,6 @@ export default function AuthPage() {
     }
     return <Redirect to={user.onboardingCompleted ? "/dashboard" : `/onboarding${selectedPlanId ? `?planId=${selectedPlanId}` : ""}`} />;
   }
-
-  const isNative = useIsNativeApp();
 
   return (
     <div className="min-h-screen-safe bg-background flex flex-col lg:flex-row">
@@ -526,7 +525,7 @@ function RegisterForm({
       <div className="space-y-1.5">
         <Label htmlFor="reg-username" className="text-sm font-medium">Username</Label>
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">visicardly.com/</span>
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground sm:text-sm">visicardly.com/</span>
           <Input
             id="reg-username"
             value={username}
@@ -536,11 +535,14 @@ function RegisterForm({
               setAvailable(null);
               checkUsername(val);
             }}
-            className="pl-[115px] native-input"
+            className="native-input !pl-[8rem] pr-10"
             placeholder="yourname"
             required
             minLength={3}
             maxLength={30}
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             data-testid="input-register-username"
           />
           {checking && (
@@ -575,6 +577,8 @@ function RegisterForm({
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
+          autoCapitalize="none"
+          autoCorrect="off"
           data-testid="input-register-email"
         />
       </div>
@@ -589,6 +593,8 @@ function RegisterForm({
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={6}
+            autoCapitalize="none"
+            autoCorrect="off"
             data-testid="input-register-password"
           />
           <button
