@@ -1,11 +1,12 @@
-import { lazy, Suspense } from "react";
-import { Switch, Route } from "wouter";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider } from "@/lib/auth";
+import { AuthProvider, useAuth } from "@/lib/auth";
 import { Loader2 } from "lucide-react";
+import { useIsNativeApp } from "@/hooks/use-native-app";
 
 // Eagerly loaded (critical path)
 import Landing from "@/pages/landing";
@@ -45,11 +46,30 @@ function PageLoader() {
   );
 }
 
+/**
+ * Root entry: in the native mobile app, skip the marketing landing page.
+ * - Logged in → /dashboard
+ * - Not logged in → /auth
+ * On the web, show the regular landing page.
+ */
+function RootEntry() {
+  const isNative = useIsNativeApp();
+  const { user, isLoading } = useAuth();
+
+  if (!isNative) return <Landing />;
+  if (isLoading) return <PageLoader />;
+  if (user) {
+    if ((user as any).mustChangePassword) return <Redirect to="/change-password" />;
+    return <Redirect to={user.onboardingCompleted ? "/dashboard" : "/onboarding"} />;
+  }
+  return <Redirect to="/auth" />;
+}
+
 function Router() {
   return (
     <Suspense fallback={<PageLoader />}>
       <Switch>
-        <Route path="/" component={Landing} />
+        <Route path="/" component={RootEntry} />
         <Route path="/restaurant" component={RestaurantLanding} />
         <Route path="/auth" component={AuthPage} />
         <Route path="/onboarding" component={Onboarding} />

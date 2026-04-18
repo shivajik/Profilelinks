@@ -11,6 +11,7 @@ import { apiFetch, apiRequest, queryClient } from "@/lib/queryClient";
 import { Eye, EyeOff, ArrowLeft, Loader2, Sparkles, Link2, Palette, Globe, User, Users, CheckCircle2, XCircle, Mail, CreditCard } from "lucide-react";
 import { Link as WouterLink } from "wouter";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { useIsNativeApp } from "@/hooks/use-native-app";
 
 const FEATURES = [
   { icon: Link2, text: "Unlimited links in one page" },
@@ -118,9 +119,12 @@ export default function AuthPage() {
     return <Redirect to={user.onboardingCompleted ? "/dashboard" : `/onboarding${selectedPlanId ? `?planId=${selectedPlanId}` : ""}`} />;
   }
 
+  const isNative = useIsNativeApp();
+
   return (
-    <div className="min-h-screen bg-background flex flex-col lg:flex-row">
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden items-center justify-center p-12 auth-left-panel">
+    <div className="min-h-screen-safe bg-background flex flex-col lg:flex-row">
+      {/* Marketing left panel — hidden on native app and on mobile web */}
+      <div className={`hidden lg:flex lg:w-1/2 relative overflow-hidden items-center justify-center p-12 auth-left-panel ${isNative ? "lg:hidden" : ""}`}>
         <div className="landing-orb landing-orb-1" />
         <div className="landing-orb landing-orb-2" />
         <div className="relative z-10 max-w-md">
@@ -148,17 +152,30 @@ export default function AuthPage() {
       </div>
 
       <div className="flex-1 flex flex-col">
-        <div className="p-6 flex items-center justify-between gap-4 flex-wrap">
-          <WouterLink href="/">
-            <Button variant="ghost" size="sm" data-testid="button-back-home">
-              <ArrowLeft className="w-4 h-4" />
-              Back
-            </Button>
-          </WouterLink>
-            <img src={logoPath} alt="VisiCardly" className="lg:hidden w-16 h-12 object-contain" data-testid="text-auth-logo-mobile" />
+        {/* Native-style top bar with safe-area padding */}
+        <div className="pt-safe">
+          <div className="px-5 pt-4 pb-2 flex items-center justify-between gap-4">
+            {isNative ? (
+              <div className="w-9 h-9" aria-hidden />
+            ) : (
+              <WouterLink href="/">
+                <Button variant="ghost" size="sm" data-testid="button-back-home">
+                  <ArrowLeft className="w-4 h-4" />
+                  Back
+                </Button>
+              </WouterLink>
+            )}
+            <img
+              src={logoPath}
+              alt="VisiCardly"
+              className={`${isNative ? "" : "lg:hidden"} w-14 h-10 object-contain`}
+              data-testid="text-auth-logo-mobile"
+            />
+            <div className="w-9 h-9" aria-hidden />
+          </div>
         </div>
 
-        <div className="flex-1 flex items-center justify-center px-6 pb-16">
+        <div className="flex-1 flex items-start lg:items-center justify-center px-5 pt-6 pb-10">
           <div className="w-full max-w-sm">
             {showForgotPassword ? (
               <ForgotPasswordFlow
@@ -171,17 +188,21 @@ export default function AuthPage() {
               />
             ) : (
               <>
-                <div className="mb-8">
-                  <h1 className="text-2xl font-extrabold tracking-tight text-foreground mb-1.5" data-testid="text-auth-heading">
+                {/* App-style hero icon for native feel */}
+                <div className="flex flex-col items-center text-center mb-7">
+                  <h1
+                    className="text-[26px] leading-tight font-extrabold tracking-tight text-foreground mb-1.5"
+                    data-testid="text-auth-heading"
+                  >
                     {tab === "login" ? "Welcome back" : "Create your account"}
                   </h1>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground max-w-[18rem]">
                     {tab === "login"
                       ? "Log in to manage your VisiCardly page."
                       : "Get started for free. No credit card required."}
                   </p>
                   {tab === "register" && selectedPlanName && (
-                    <div className="mt-3 flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-lg px-3 py-2">
+                    <div className="mt-3 flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-xl px-3 py-2">
                       <CreditCard className="h-4 w-4 text-primary shrink-0" />
                       <span className="text-sm text-foreground">
                         Selected plan: <span className="font-semibold text-primary">{decodeURIComponent(selectedPlanName)}</span>
@@ -190,25 +211,32 @@ export default function AuthPage() {
                   )}
                 </div>
 
-                <div className="flex mb-6 bg-muted rounded-md p-1 gap-1 flex-wrap">
-                  <Button
-                    variant={tab === "login" ? "secondary" : "ghost"}
-                    size="sm"
+                {/* Segmented control — iOS-style pill */}
+                <div className="flex mb-6 bg-muted rounded-full p-1 gap-1">
+                  <button
+                    type="button"
                     onClick={() => setTab("login")}
-                    className={`flex-1 ${tab === "login" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"}`}
+                    className={`flex-1 h-10 rounded-full text-sm font-medium transition-all ${
+                      tab === "login"
+                        ? "bg-background shadow-sm text-foreground"
+                        : "text-muted-foreground"
+                    }`}
                     data-testid="button-tab-login"
                   >
                     Log in
-                  </Button>
-                  <Button
-                    variant={tab === "register" ? "secondary" : "ghost"}
-                    size="sm"
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setTab("register")}
-                    className={`flex-1 ${tab === "register" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"}`}
+                    className={`flex-1 h-10 rounded-full text-sm font-medium transition-all ${
+                      tab === "register"
+                        ? "bg-background shadow-sm text-foreground"
+                        : "text-muted-foreground"
+                    }`}
                     data-testid="button-tab-register"
                   >
                     Sign up
-                  </Button>
+                  </button>
                 </div>
 
                 {tab === "login" ? (
@@ -220,11 +248,11 @@ export default function AuthPage() {
                         toast({ title: "Login failed", description: e.message, variant: "destructive" });
                       }
                     }} />
-                    <div className="mt-3 text-center">
+                    <div className="mt-4 text-center">
                       <button
                         type="button"
                         onClick={() => setShowForgotPassword(true)}
-                        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                        className="text-sm font-medium text-primary hover:underline"
                         data-testid="link-forgot-password"
                       >
                         Forgot Password?
@@ -238,7 +266,7 @@ export default function AuthPage() {
                   />
                 )}
 
-                <p className="text-xs text-muted-foreground text-center mt-8">
+                <p className="text-xs text-muted-foreground text-center mt-8 leading-relaxed">
                   By continuing, you agree to our{" "}
                   <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">Terms of Service</a>
                   {" "}and{" "}
@@ -248,6 +276,7 @@ export default function AuthPage() {
             )}
           </div>
         </div>
+        <div className="pb-safe" />
       </div>
     </div>
   );
@@ -273,7 +302,7 @@ function LoginForm({ onSubmit }: { onSubmit: (email: string, password: string) =
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-1.5">
         <Label htmlFor="login-email" className="text-sm font-medium">Email</Label>
-        <Input
+        <Input className="native-input"
           id="login-email"
           type="email"
           placeholder="you@example.com"
@@ -286,7 +315,7 @@ function LoginForm({ onSubmit }: { onSubmit: (email: string, password: string) =
       <div className="space-y-1.5">
         <Label htmlFor="login-password" className="text-sm font-medium">Password</Label>
         <div className="relative">
-          <Input
+          <Input className="native-input"
             id="login-password"
             type={showPassword ? "text" : "password"}
             placeholder="Your password"
@@ -305,7 +334,7 @@ function LoginForm({ onSubmit }: { onSubmit: (email: string, password: string) =
           </button>
         </div>
       </div>
-      <Button type="submit" className="w-full" disabled={loading} data-testid="button-submit-login">
+      <Button type="submit" className="w-full native-cta" disabled={loading} data-testid="button-submit-login">
         {loading && <Loader2 className="w-4 h-4 animate-spin" />}
         Log in
       </Button>
@@ -459,7 +488,7 @@ function RegisterForm({
         <OtpInputField value={otp} onChange={setOtp} testId="input-signup-otp" onSubmit={handleVerifyOtp} />
 
         <Button
-          className="w-full"
+          className="w-full native-cta"
           onClick={handleVerifyOtp}
           disabled={otp.length !== 6 || otpLoading}
           data-testid="button-verify-signup-otp"
@@ -507,7 +536,7 @@ function RegisterForm({
               setAvailable(null);
               checkUsername(val);
             }}
-            className="pl-[115px]"
+            className="pl-[115px] native-input"
             placeholder="yourname"
             required
             minLength={3}
@@ -539,7 +568,7 @@ function RegisterForm({
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="reg-email" className="text-sm font-medium">Email</Label>
-        <Input
+        <Input className="native-input"
           id="reg-email"
           type="email"
           placeholder="you@example.com"
@@ -552,7 +581,7 @@ function RegisterForm({
       <div className="space-y-1.5">
         <Label htmlFor="reg-password" className="text-sm font-medium">Password</Label>
         <div className="relative">
-          <Input
+          <Input className="native-input"
             id="reg-password"
             type={showPassword ? "text" : "password"}
             placeholder="At least 6 characters"
@@ -573,7 +602,7 @@ function RegisterForm({
         </div>
         <p className="text-xs text-muted-foreground mt-1">Must be at least 6 characters</p>
       </div>
-      <Button type="submit" className="w-full" disabled={loading || available === false} data-testid="button-submit-register">
+      <Button type="submit" className="w-full native-cta" disabled={loading || available === false} data-testid="button-submit-register">
         {loading && <Loader2 className="w-4 h-4 animate-spin" />}
         Create account
       </Button>
@@ -731,7 +760,7 @@ function ForgotPasswordFlow({
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="forgot-email" className="text-sm font-medium">Email</Label>
-              <Input
+              <Input className="native-input"
                 id="forgot-email"
                 type="email"
                 placeholder="you@example.com"
@@ -740,7 +769,7 @@ function ForgotPasswordFlow({
                 data-testid="input-forgot-email"
               />
             </div>
-            <Button className="w-full" disabled={loading || !email} onClick={handleSendCode} data-testid="button-send-reset-code">
+            <Button className="w-full native-cta" disabled={loading || !email} onClick={handleSendCode} data-testid="button-send-reset-code">
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}
               Send Reset Code
             </Button>
@@ -763,7 +792,7 @@ function ForgotPasswordFlow({
           <OtpInputField value={otp} onChange={setOtp} testId="input-forgot-otp" onSubmit={handleOtpContinue} />
 
           <Button
-            className="w-full"
+            className="w-full native-cta"
             onClick={handleOtpContinue}
             disabled={otp.length !== 6 || loading}
             data-testid="button-verify-forgot-otp"
@@ -798,7 +827,7 @@ function ForgotPasswordFlow({
             <div className="space-y-1.5">
               <Label htmlFor="new-password" className="text-sm font-medium">New Password</Label>
               <div className="relative">
-                <Input
+                <Input className="native-input"
                   id="new-password"
                   type={showNewPassword ? "text" : "password"}
                   placeholder="At least 6 characters"
@@ -819,7 +848,7 @@ function ForgotPasswordFlow({
             <div className="space-y-1.5">
               <Label htmlFor="confirm-password" className="text-sm font-medium">Confirm Password</Label>
               <div className="relative">
-                <Input
+                <Input className="native-input"
                   id="confirm-password"
                   type={showConfirmPassword ? "text" : "password"}
                   placeholder="Confirm your password"
@@ -837,7 +866,7 @@ function ForgotPasswordFlow({
                 </button>
               </div>
             </div>
-            <Button className="w-full" disabled={loading || !newPassword || !confirmPassword} onClick={handleResetSubmit} data-testid="button-reset-password">
+            <Button className="w-full native-cta" disabled={loading || !newPassword || !confirmPassword} onClick={handleResetSubmit} data-testid="button-reset-password">
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}
               Reset Password
             </Button>
