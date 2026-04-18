@@ -524,9 +524,12 @@ function RegisterForm({
     <form onSubmit={handleFormSubmit} className="space-y-4">
       <div className="space-y-1.5">
         <Label htmlFor="reg-username" className="text-sm font-medium">Username</Label>
-        <div className="relative">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground sm:text-sm">visicardly.com/</span>
-          <Input
+        <div className="flex items-center border rounded-xl px-3 h-[3.25rem] focus-within:ring-2 focus-within:ring-primary">
+          <span className="text-muted-foreground text-sm mr-1">
+            <span className="hidden sm:inline">visicardly.com/</span>
+            <span className="sm:hidden">@</span>
+          </span>
+          <input
             id="reg-username"
             value={username}
             onChange={(e) => {
@@ -535,30 +538,15 @@ function RegisterForm({
               setAvailable(null);
               checkUsername(val);
             }}
-            className="native-input !pl-[8rem] pr-10"
+            className="flex-1 bg-transparent outline-none text-sm"
             placeholder="yourname"
-            required
-            minLength={3}
-            maxLength={30}
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            data-testid="input-register-username"
           />
-          {checking && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-            </div>
-          )}
+          {checking && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground ml-2" />}
           {!checking && available === true && username.length >= 3 && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <CheckCircle2 className="w-4 h-4 text-green-500" />
-            </div>
+            <CheckCircle2 className="w-4 h-4 text-green-500 ml-2" />
           )}
           {!checking && available === false && username.length >= 3 && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <XCircle className="w-4 h-4 text-destructive" />
-            </div>
+            <XCircle className="w-4 h-4 text-destructive ml-2" />
           )}
         </div>
         {!checking && available === true && username.length >= 3 && (

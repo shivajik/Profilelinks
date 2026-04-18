@@ -1,23 +1,37 @@
 import { useEffect, useState } from "react";
 
-function detectNative(): boolean {
-  if (typeof window === "undefined") return false;
-  const cap = (window as any)?.Capacitor;
-  return !!cap?.isNativePlatform?.();
-}
+const cap = typeof window !== "undefined" ? (window as any)?.Capacitor : undefined;
 
 /**
  * Detects if the app is running inside a Capacitor native shell.
  * Synchronous initial value to avoid web-landing flash on native.
  */
 export function useIsNativeApp() {
-  const [isNative] = useState<boolean>(() => detectNative());
+  const [isNative] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return cap?.isNativePlatform?.() ?? false;
+  });
+
+  const [isCapacitor] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return cap !== undefined;
+  });
 
   useEffect(() => {
     if (isNative) {
       document.documentElement.classList.add("is-native-app");
     }
-  }, [isNative]);
+    if (isCapacitor) {
+      document.documentElement.classList.add("is-capacitor");
+    }
+  }, [isNative, isCapacitor]);
 
   return isNative;
+}
+
+/**
+ * Check if Capacitor is present (native or web-in-native)
+ */
+export function isCapacitorApp(): boolean {
+  return cap !== undefined;
 }
