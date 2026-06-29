@@ -41,12 +41,12 @@ const STEPS = [
 ];
 
 const BENTO_FEATURES = [
-  { title: "Digital Business Cards", description: "Create professional digital business cards with contact info, company branding, and one-tap vCard sharing.", icon: CreditCard, span: "sm:col-span-2" },
-  { title: "Team Management", description: "Manage team members with roles, branches, branded templates, and bulk CSV import/export.", icon: Users, span: "" },
-  { title: "QR Code Generator", description: "Generate customizable QR codes for your profile, menu, or business card — ready for print.", icon: QrCode, span: "" },
-  { title: "Menu Builder", description: "Build beautiful digital menus for restaurants and cafés with sections, products, hours, and contact info.", icon: UtensilsCrossed, span: "" },
-  { title: "50+ Social Platforms", description: "Connect Instagram, TikTok, YouTube, LinkedIn, X, and dozens more — displayed as sleek icons.", icon: LayoutGrid, span: "" },
-  { title: "Custom Themes & Branding", description: "Choose from professionally designed templates with custom colors, fonts, cover images, and company logos.", icon: Palette, span: "sm:col-span-2" },
+  { title: "Digital Business Cards", description: "Create professional digital business cards with contact info, company branding, and one-tap vCard sharing.", icon: CreditCard, span: "sm:col-span-2", tile: "tile-indigo", iconColor: "text-[hsl(244_85%_45%)]", iconBg: "bg-white/70" },
+  { title: "Team Management", description: "Manage team members with roles, branches, branded templates, and bulk CSV import/export.", icon: Users, span: "", tile: "tile-coral", iconColor: "text-[hsl(14_85%_45%)]", iconBg: "bg-white/70" },
+  { title: "QR Code Generator", description: "Generate customizable QR codes for your profile, menu, or business card — ready for print.", icon: QrCode, span: "", tile: "tile-ink", iconColor: "text-white", iconBg: "bg-white/10" },
+  { title: "Menu Builder", description: "Build beautiful digital menus for restaurants and cafés with sections, products, hours, and contact info.", icon: UtensilsCrossed, span: "", tile: "tile-amber", iconColor: "text-[hsl(28_90%_38%)]", iconBg: "bg-white/70" },
+  { title: "50+ Social Platforms", description: "Connect Instagram, TikTok, YouTube, LinkedIn, X, and dozens more — displayed as sleek icons.", icon: LayoutGrid, span: "", tile: "tile-emerald", iconColor: "text-[hsl(158_75%_30%)]", iconBg: "bg-white/70" },
+  { title: "Custom Themes & Branding", description: "Choose from professionally designed templates with custom colors, fonts, cover images, and company logos.", icon: Palette, span: "sm:col-span-2", tile: "tile-violet", iconColor: "text-[hsl(280_70%_42%)]", iconBg: "bg-white/70" },
 ];
 
 const TESTIMONIALS = [
@@ -143,10 +143,10 @@ export default function Landing() {
           <div className="max-w-6xl mx-auto relative">
             <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-16 items-center">
               <div className="text-center lg:text-left">
-                <div className="inline-flex items-center gap-2 rounded-full landing-glass px-3 py-1 text-[11px] font-medium text-muted-foreground mb-8 landing-mono uppercase">
+                <div className="landing-eyebrow mb-8">
                   <span className="relative flex h-1.5 w-1.5">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-primary opacity-60 animate-ping" />
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-[hsl(14_95%_60%)] opacity-70 animate-ping" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[hsl(14_95%_60%)]" />
                   </span>
                   Your link-in-bio, reimagined
                 </div>
@@ -212,13 +212,13 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* STATS BAR */}
+        {/* STATS BAR — dark inverted */}
         <section className="px-6 -mt-6">
-          <div className="max-w-5xl mx-auto landing-glass rounded-2xl px-6 py-5 grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="max-w-5xl mx-auto rounded-3xl tile-ink border px-8 py-7 grid grid-cols-2 md:grid-cols-4 gap-6 shadow-xl">
             {STATS.map((stat, i) => (
               <div key={i} className="flex flex-col items-center md:items-start">
-                <p className="text-3xl font-bold tracking-tight landing-shine" data-testid={`text-stat-value-${i}`}>{stat.value}</p>
-                <p className="text-[11px] landing-mono uppercase text-muted-foreground mt-1">{stat.label}</p>
+                <p className="text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-br from-white via-[hsl(38_95%_75%)] to-[hsl(14_95%_70%)] bg-clip-text text-transparent" data-testid={`text-stat-value-${i}`}>{stat.value}</p>
+                <p className="text-[11px] landing-mono uppercase text-white/60 mt-1">{stat.label}</p>
               </div>
             ))}
           </div>
@@ -258,21 +258,28 @@ export default function Landing() {
               </p>
             </div>
             <div className="grid md:grid-cols-3 gap-5">
-              {STEPS.map((step, i) => (
-                <div key={i} className="relative landing-glass landing-card-hover rounded-2xl p-7 overflow-hidden">
-                  <div className="flex items-start justify-between mb-6">
-                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
-                      <step.icon className="w-5 h-5 text-primary" />
+              {STEPS.map((step, i) => {
+                const accents = [
+                  { ring: "ring-[hsl(244_85%_58%)]/30", chip: "bg-[hsl(244_85%_58%)]/10 text-[hsl(244_85%_45%)]" },
+                  { ring: "ring-[hsl(14_95%_60%)]/30", chip: "bg-[hsl(14_95%_60%)]/10 text-[hsl(14_85%_45%)]" },
+                  { ring: "ring-[hsl(158_75%_42%)]/30", chip: "bg-[hsl(158_75%_42%)]/10 text-[hsl(158_75%_30%)]" },
+                ][i];
+                return (
+                  <div key={i} className={`relative bg-card border border-border/60 rounded-3xl p-7 overflow-hidden ring-1 ${accents.ring} landing-card-hover shadow-sm`}>
+                    <div className="flex items-start justify-between mb-6">
+                      <span className="landing-mega-num">{String(i+1).padStart(2,'0')}</span>
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${accents.chip}`}>
+                        <step.icon className="w-5 h-5" />
+                      </div>
                     </div>
-                    <span className="text-xs landing-mono text-muted-foreground/70">{step.number}</span>
+                    <h3 className="text-lg font-semibold mb-2 tracking-tight">{step.title}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{step.description}</p>
+                    {i < STEPS.length - 1 && (
+                      <ChevronRight className="hidden md:block absolute top-1/2 -right-3 -translate-y-1/2 w-5 h-5 text-border z-10" />
+                    )}
                   </div>
-                  <h3 className="text-lg font-semibold mb-2 tracking-tight">{step.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{step.description}</p>
-                  {i < STEPS.length - 1 && (
-                    <ChevronRight className="hidden md:block absolute top-1/2 -right-3 -translate-y-1/2 w-5 h-5 text-border z-10" />
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>
@@ -296,14 +303,13 @@ export default function Landing() {
             </div>
             <div className="grid sm:grid-cols-3 gap-4">
               {BENTO_FEATURES.map((feature, i) => (
-                <Card key={i} className={`relative p-6 border-border/60 landing-glass landing-card-hover overflow-hidden ${feature.span}`} data-testid={`card-feature-${i}`}>
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] to-transparent pointer-events-none" />
+                <Card key={i} className={`relative p-7 border ${feature.tile} landing-card-hover overflow-hidden rounded-3xl ${feature.span}`} data-testid={`card-feature-${i}`}>
                   <div className="relative">
-                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center mb-4">
-                      <feature.icon className="w-5 h-5 text-primary" />
+                    <div className={`w-12 h-12 rounded-2xl ${feature.iconBg} backdrop-blur flex items-center justify-center mb-5 shadow-sm`}>
+                      <feature.icon className={`w-5 h-5 ${feature.iconColor}`} />
                     </div>
-                    <h3 className="font-semibold text-foreground mb-1.5 tracking-tight">{feature.title}</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
+                    <h3 className={`font-semibold mb-1.5 tracking-tight text-[17px] ${feature.tile === 'tile-ink' ? 'text-white' : 'text-foreground'}`}>{feature.title}</h3>
+                    <p className={`text-sm leading-relaxed ${feature.tile === 'tile-ink' ? 'text-white/70' : 'text-foreground/65'}`}>{feature.description}</p>
                   </div>
                 </Card>
               ))}
@@ -391,26 +397,25 @@ export default function Landing() {
 
         {/* CTA */}
         <section className="py-24 px-6">
-          <div className="max-w-5xl mx-auto relative overflow-hidden rounded-3xl landing-cta-gradient border border-border/60 p-10 md:p-16 text-center">
-            <div className="landing-orb landing-orb-cta-1" />
-            <div className="landing-orb landing-orb-cta-2" />
+          <div className="max-w-5xl mx-auto relative overflow-hidden rounded-[2rem] landing-dark-cta p-10 md:p-16 text-center shadow-2xl">
+            <div className="absolute inset-0 landing-grid-bg opacity-20 pointer-events-none" />
             <div className="relative">
-              <p className="text-[11px] landing-mono uppercase text-primary mb-3">— Start today</p>
-              <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-5 landing-shine">
-                Ready to claim <span className="italic font-serif text-muted-foreground">your page?</span>
+              <p className="text-[11px] landing-mono uppercase text-[hsl(38_95%_70%)] mb-3">— Start today</p>
+              <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-5 text-white">
+                Ready to claim <span className="italic font-serif bg-gradient-to-r from-[hsl(38_95%_70%)] via-[hsl(14_95%_70%)] to-[hsl(280_85%_75%)] bg-clip-text text-transparent">your page?</span>
               </h2>
-              <p className="text-muted-foreground text-base md:text-lg mb-10 max-w-xl mx-auto leading-relaxed">
+              <p className="text-white/70 text-base md:text-lg mb-10 max-w-xl mx-auto leading-relaxed">
                 Join thousands of creators who use VisiCardly to share their world. Free forever, upgrade anytime — no hidden fees.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 flex-wrap">
                 <WouterLink href="/auth?tab=register">
-                  <Button size="lg" className="rounded-full px-7 shadow-lg shadow-primary/20" data-testid="button-create-page">
+                  <Button size="lg" className="rounded-full px-7 bg-white text-[hsl(230_35%_8%)] hover:bg-white/90 shadow-xl" data-testid="button-create-page">
                     Create your page
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 </WouterLink>
                 <WouterLink href="/pricing">
-                  <Button size="lg" variant="ghost" className="rounded-full px-7">
+                  <Button size="lg" variant="ghost" className="rounded-full px-7 text-white hover:bg-white/10">
                     View pricing
                   </Button>
                 </WouterLink>
