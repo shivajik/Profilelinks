@@ -499,7 +499,9 @@
 .landing-mega-num {
   font-family: var(--font-serif);
   font-size: clamp(4rem, 9vw, 7rem);
-  line-height: 0.85;
+  line-height: 1.05;
+  display: inline-block;
+  padding: 0.05em 0.12em 0.18em;
   font-weight: 400;
   background: linear-gradient(160deg, hsl(244 85% 58%), hsl(280 80% 58%) 40%, hsl(14 95% 60%) 80%);
   -webkit-background-clip: text;
@@ -579,7 +581,8 @@
   font-family: var(--font-serif);
   font-weight: 400;
   letter-spacing: -0.025em;
-  line-height: 0.96;
+  line-height: 1.08;
+  padding-bottom: 0.12em;
 }
 .aurora-display em {
   font-style: italic;
@@ -588,6 +591,28 @@
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
+  display: inline-block;
+  padding: 0.05em 0.12em 0.18em;
+  margin: -0.05em -0.12em -0.18em;
+  line-height: 1.15;
+}
+
+/* Prevent italic-serif descenders/ascenders from getting clipped inside headings */
+h1 .italic.font-serif,
+h2 .italic.font-serif,
+h3 .italic.font-serif {
+  display: inline-block;
+  padding: 0.05em 0.14em 0.22em;
+  margin: -0.05em -0.14em -0.22em;
+  line-height: 1.18;
+}
+
+/* Headings using landing-shine often hold gradient italics — give them breathing room */
+h1.landing-shine,
+h2.landing-shine,
+h3.landing-shine {
+  line-height: 1.15;
+  padding-bottom: 0.12em;
 }
 
 .aurora-chip {
