@@ -60,7 +60,8 @@ export default function Landing() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden text-foreground">
+    <div className="min-h-screen aurora-bg overflow-x-hidden text-foreground">
+
       {/* NAV */}
       <header className="fixed top-4 left-0 right-0 z-[999] px-4">
         <div className="landing-pill-nav max-w-6xl mx-auto flex items-center justify-between gap-4 px-4 sm:px-6 py-2.5 rounded-full">
@@ -135,39 +136,37 @@ export default function Landing() {
 
       <main>
         {/* HERO */}
-        <section className="relative pt-36 pb-24 px-6 overflow-hidden">
-          <div className="absolute inset-0 landing-grid-bg pointer-events-none" />
+        <section className="relative pt-36 pb-20 px-6 overflow-hidden">
           <div className="landing-orb landing-orb-1" />
           <div className="landing-orb landing-orb-2" />
           <div className="landing-orb landing-orb-3" />
           <div className="max-w-6xl mx-auto relative">
-            <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-16 items-center">
+            <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-14 items-center">
               <div className="text-center lg:text-left">
-                <div className="landing-eyebrow mb-8">
+                <div className="aurora-chip mb-7">
                   <span className="relative flex h-1.5 w-1.5">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-[hsl(14_95%_60%)] opacity-70 animate-ping" />
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[hsl(14_95%_60%)]" />
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-[hsl(22_95%_60%)] opacity-70 animate-ping" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[hsl(22_95%_60%)]" />
                   </span>
                   Your link-in-bio, reimagined
                 </div>
-                <h1 className="text-[2.75rem] sm:text-6xl md:text-7xl font-bold tracking-[-0.04em] leading-[0.98] mb-6">
-                  <span className="landing-shine">One link.</span>
+                <h1 className="aurora-display text-[3.25rem] sm:text-[4.5rem] md:text-[5.25rem] mb-6 text-foreground">
+                  One link for
                   <br />
-                  <span className="landing-gradient-text italic font-serif">Infinite</span>
-                  <span className="landing-shine"> possibilities.</span>
+                  <em>everything</em>.
                 </h1>
                 <p className="text-base md:text-lg text-muted-foreground max-w-lg mx-auto lg:mx-0 mb-10 leading-relaxed">
                   A beautifully crafted page that holds every link, profile, menu and card you care about. Share it once — connect everywhere.
                 </p>
                 <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 flex-wrap">
                   <WouterLink href="/auth?tab=register">
-                    <Button size="lg" className="rounded-full px-6 shadow-lg shadow-primary/20" data-testid="button-get-started">
+                    <Button size="lg" className="rounded-full px-7 h-12 shadow-lg shadow-primary/25" data-testid="button-get-started">
                       Get started for free
                       <ArrowRight className="w-4 h-4" />
                     </Button>
                   </WouterLink>
                   <a href="#how-it-works">
-                    <Button variant="ghost" size="lg" className="rounded-full px-6 gap-2" data-testid="button-see-how">
+                    <Button variant="ghost" size="lg" className="rounded-full px-6 gap-2 h-12" data-testid="button-see-how">
                       <MousePointerClick className="w-4 h-4" />
                       See how it works
                     </Button>
@@ -176,34 +175,38 @@ export default function Landing() {
                 <div className="mt-8 flex items-center justify-center lg:justify-start gap-4 text-xs text-muted-foreground flex-wrap">
                   <div className="flex -space-x-2">
                     {["S","J","P","M","A"].map((c,i)=>(
-                      <div key={i} className="w-7 h-7 rounded-full bg-gradient-to-br from-primary/40 to-chart-2/40 border-2 border-background flex items-center justify-center text-[10px] font-bold text-foreground">{c}</div>
+                      <div key={i} className="w-7 h-7 rounded-full bg-gradient-to-br from-[hsl(260_90%_75%)] to-[hsl(22_100%_75%)] border-2 border-background flex items-center justify-center text-[10px] font-bold text-white">{c}</div>
                     ))}
                   </div>
                   <div className="flex items-center gap-1">
-                    {Array.from({length:5}).map((_,i)=>(<Star key={i} className="w-3.5 h-3.5 fill-primary text-primary"/>))}
+                    {Array.from({length:5}).map((_,i)=>(<Star key={i} className="w-3.5 h-3.5 fill-[hsl(22_95%_60%)] text-[hsl(22_95%_60%)]"/>))}
                     <span className="ml-1.5">10,000+ creators trust us</span>
                   </div>
                 </div>
               </div>
               <div className="flex justify-center lg:justify-end">
                 <div className="relative">
-                  <div className="absolute -inset-10 rounded-[2.5rem] landing-phone-glow" />
-                  <div className="hidden md:flex absolute -left-12 top-10 landing-glass rounded-2xl px-3 py-2 items-center gap-2 shadow-xl z-10">
-                    <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center"><Link2 className="w-3.5 h-3.5 text-primary"/></div>
+                  <div className="absolute -inset-12 rounded-[3rem] landing-phone-glow opacity-80" />
+                  <div className="aurora-float-card -left-16 top-8 px-3 py-2 flex items-center gap-2 z-20 hidden md:flex" style={{animationDelay:'-2s'}}>
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[hsl(252_80%_62%)] to-[hsl(320_85%_65%)] flex items-center justify-center"><Link2 className="w-4 h-4 text-white"/></div>
                     <div>
                       <p className="text-[10px] landing-mono uppercase text-muted-foreground">+1 click</p>
                       <p className="text-xs font-semibold">linktap</p>
                     </div>
                   </div>
-                  <div className="hidden md:flex absolute -right-10 bottom-16 landing-glass rounded-2xl px-3 py-2 items-center gap-2 shadow-xl z-10">
-                    <div className="w-7 h-7 rounded-lg bg-chart-2/20 flex items-center justify-center"><QrCode className="w-3.5 h-3.5 text-chart-2"/></div>
+                  <div className="aurora-float-card -right-12 bottom-20 px-3 py-2 flex items-center gap-2 z-20 hidden md:flex">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[hsl(22_95%_60%)] to-[hsl(330_95%_70%)] flex items-center justify-center"><QrCode className="w-4 h-4 text-white"/></div>
                     <div>
                       <p className="text-[10px] landing-mono uppercase text-muted-foreground">scanned</p>
                       <p className="text-xs font-semibold">2.4k today</p>
                     </div>
                   </div>
-                  <div className="relative rounded-[2rem] p-2 landing-glass">
-                    <span className="landing-glow-ring rounded-[2rem]" />
+                  <div className="aurora-float-card right-4 top-1/2 -translate-y-1/2 px-3 py-2 z-20 hidden lg:block" style={{animationDelay:'-4s', right: '-2.5rem'}}>
+                    <p className="text-[10px] landing-mono uppercase text-muted-foreground mb-1">today</p>
+                    <p className="text-sm font-semibold text-foreground">+18.4% visits</p>
+                  </div>
+                  <div className="relative rounded-[2.25rem] p-2 bento-tile">
+                    <span className="landing-glow-ring rounded-[2.25rem]" />
                     <img src={heroPhoneImg} alt="VisiCardly profile page preview" className="relative w-60 md:w-72 rounded-[1.75rem]" data-testid="img-hero-phone" />
                   </div>
                 </div>
@@ -212,17 +215,23 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* STATS BAR — dark inverted */}
-        <section className="px-6 -mt-6">
-          <div className="max-w-5xl mx-auto rounded-3xl tile-ink border px-8 py-7 grid grid-cols-2 md:grid-cols-4 gap-6 shadow-xl">
-            {STATS.map((stat, i) => (
-              <div key={i} className="flex flex-col items-center md:items-start">
-                <p className="text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-br from-white via-[hsl(38_95%_75%)] to-[hsl(14_95%_70%)] bg-clip-text text-transparent" data-testid={`text-stat-value-${i}`}>{stat.value}</p>
-                <p className="text-[11px] landing-mono uppercase text-white/60 mt-1">{stat.label}</p>
-              </div>
-            ))}
+        {/* STATS BENTO */}
+        <section className="px-6">
+          <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4">
+            {STATS.map((stat, i) => {
+              const tints = ["bento-tile-tinted-violet","bento-tile-tinted-peach","bento-tile-tinted-mint","bento-tile-tinted-rose"];
+              return (
+                <div key={i} className={`bento-tile ${tints[i]} px-6 py-7 flex flex-col items-start`}>
+                  <p className="aurora-display text-4xl md:text-5xl text-foreground" data-testid={`text-stat-value-${i}`}>
+                    <em>{stat.value}</em>
+                  </p>
+                  <p className="text-[11px] landing-mono uppercase text-muted-foreground mt-2">{stat.label}</p>
+                </div>
+              );
+            })}
           </div>
         </section>
+
 
         {/* MARQUEE */}
         <section className="py-12 overflow-hidden">
