@@ -24,9 +24,10 @@ import {
 } from "lucide-react";
 import { SiFacebook, SiX, SiInstagram, SiPinterest, SiTumblr } from "react-icons/si";
 import { useAuth } from "@/lib/auth";
-import heroPhoneImg from "@/assets/images/hero-phone.png";
-import { MouseSpotlight, OrbitRings, CountUp, TiltCard, Reveal, Magnetic } from "@/components/landing-interactive";
+import { MouseSpotlight, CountUp, TiltCard, Reveal, Magnetic } from "@/components/landing-interactive";
 import { MeshBlob, SparkleField, LinkStack3D, AnalyticsGraphic, PlatformOrbit, ShapeCluster, StepConnector } from "@/components/landing-graphics";
+import { PhoneFanStack } from "@/components/phone-fan-stack";
+import heroPhoneImg from "@/assets/images/hero-phone.png";
 const TemplateShowcase = lazy(() => import("@/components/template-showcase"));
 
 const STATS = [
@@ -140,13 +141,7 @@ export default function Landing() {
         {/* HERO */}
         <section className="relative pt-36 pb-20 px-6 overflow-hidden">
           <MouseSpotlight />
-          <MeshBlob className="w-[900px] h-[900px] -top-40 -left-40 opacity-50" />
-          <MeshBlob className="w-[700px] h-[700px] -bottom-60 -right-40 opacity-40" />
-          <SparkleField count={28} />
-          <div className="landing-orb landing-orb-1" />
-          <div className="landing-orb landing-orb-2" />
-          <div className="landing-orb landing-orb-3" />
-          <ShapeCluster className="top-24 right-[10%] w-40 h-40 hidden lg:block" />
+          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(60%_45%_at_20%_10%,hsl(252_60%_94%/0.7),transparent_60%),radial-gradient(50%_40%_at_85%_15%,hsl(220_40%_95%/0.7),transparent_65%)]" />
           <div className="max-w-6xl mx-auto relative">
 
             <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-14 items-center">
@@ -195,32 +190,7 @@ export default function Landing() {
                 </div>
               </div>
               <div className="flex justify-center lg:justify-end">
-                <div className="relative">
-                  <OrbitRings />
-                  <div className="absolute -inset-12 rounded-[3rem] landing-phone-glow opacity-80" />
-                  <div className="aurora-float-card -left-16 top-8 px-3 py-2 flex items-center gap-2 z-20 hidden md:flex" style={{animationDelay:'-2s'}}>
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[hsl(252_80%_62%)] to-[hsl(320_85%_65%)] flex items-center justify-center"><Link2 className="w-4 h-4 text-white"/></div>
-                    <div>
-                      <p className="text-[10px] landing-mono uppercase text-muted-foreground">+1 click</p>
-                      <p className="text-xs font-semibold">linktap</p>
-                    </div>
-                  </div>
-                  <div className="aurora-float-card -right-12 bottom-20 px-3 py-2 flex items-center gap-2 z-20 hidden md:flex">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[hsl(22_95%_60%)] to-[hsl(330_95%_70%)] flex items-center justify-center"><QrCode className="w-4 h-4 text-white"/></div>
-                    <div>
-                      <p className="text-[10px] landing-mono uppercase text-muted-foreground">scanned</p>
-                      <p className="text-xs font-semibold">2.4k today</p>
-                    </div>
-                  </div>
-                  <div className="aurora-float-card right-4 top-1/2 -translate-y-1/2 px-3 py-2 z-20 hidden lg:block" style={{animationDelay:'-4s', right: '-2.5rem'}}>
-                    <p className="text-[10px] landing-mono uppercase text-muted-foreground mb-1">today</p>
-                    <p className="text-sm font-semibold text-foreground">+18.4% visits</p>
-                  </div>
-                  <div className="relative rounded-[2.25rem] p-2 bento-tile">
-                    <span className="landing-glow-ring rounded-[2.25rem]" />
-                    <img src={heroPhoneImg} alt="VisiCardly profile page preview" className="relative w-60 md:w-72 rounded-[1.75rem]" data-testid="img-hero-phone" />
-                  </div>
-                </div>
+                <PhoneFanStack />
               </div>
             </div>
           </div>

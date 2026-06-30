@@ -527,11 +527,11 @@
 /* ============ Aurora Pastel premium bento ============ */
 .aurora-bg {
   background:
-    radial-gradient(60% 50% at 12% 8%, hsl(260 100% 92% / 0.9), transparent 60%),
-    radial-gradient(55% 45% at 90% 12%, hsl(22 100% 90% / 0.85), transparent 60%),
-    radial-gradient(50% 45% at 88% 92%, hsl(320 95% 92% / 0.75), transparent 60%),
-    radial-gradient(45% 40% at 8% 90%, hsl(195 100% 92% / 0.7), transparent 60%),
-    hsl(240 100% 99%);
+    radial-gradient(60% 50% at 12% 0%, hsl(256 90% 88% / 0.55), transparent 65%),
+    radial-gradient(55% 45% at 92% 8%, hsl(22 95% 86% / 0.45), transparent 70%),
+    radial-gradient(50% 45% at 85% 95%, hsl(322 85% 88% / 0.45), transparent 70%),
+    radial-gradient(45% 40% at 5% 90%, hsl(174 70% 88% / 0.40), transparent 70%),
+    hsl(248 60% 98.5%);
 }
 
 .aurora-edge {
@@ -564,11 +564,11 @@
     0 8px 20px -8px hsl(260 50% 50% / 0.12);
 }
 
-.bento-tile-tinted-violet { background: linear-gradient(160deg, hsl(260 100% 96%) 0%, hsl(260 90% 92%) 100%); }
-.bento-tile-tinted-peach  { background: linear-gradient(160deg, hsl(22 100% 95%) 0%, hsl(22 100% 90%) 100%); }
-.bento-tile-tinted-mint   { background: linear-gradient(160deg, hsl(165 80% 94%) 0%, hsl(165 70% 88%) 100%); }
-.bento-tile-tinted-rose   { background: linear-gradient(160deg, hsl(330 100% 96%) 0%, hsl(330 90% 92%) 100%); }
-.bento-tile-tinted-sky    { background: linear-gradient(160deg, hsl(200 100% 95%) 0%, hsl(200 90% 90%) 100%); }
+.bento-tile-tinted-violet { background: linear-gradient(160deg, hsl(252 90% 98%) 0%, hsl(256 75% 93%) 100%); }
+.bento-tile-tinted-peach  { background: linear-gradient(160deg, hsl(28 95% 97%) 0%, hsl(20 90% 92%) 100%); }
+.bento-tile-tinted-mint   { background: linear-gradient(160deg, hsl(165 70% 96%) 0%, hsl(170 65% 90%) 100%); }
+.bento-tile-tinted-rose   { background: linear-gradient(160deg, hsl(330 85% 97%) 0%, hsl(322 75% 92%) 100%); }
+.bento-tile-tinted-sky    { background: linear-gradient(160deg, hsl(210 90% 97%) 0%, hsl(205 80% 91%) 100%); }
 .bento-tile-ink {
   background: linear-gradient(160deg, hsl(240 12% 8%) 0%, hsl(252 30% 16%) 100%);
   color: hsl(0 0% 98%);
@@ -583,10 +583,11 @@
 }
 .aurora-display em {
   font-style: italic;
-  background: linear-gradient(120deg, hsl(252 90% 62%) 0%, hsl(320 90% 65%) 50%, hsl(22 100% 60%) 100%);
+  background: linear-gradient(120deg, hsl(256 95% 60%) 0%, hsl(322 90% 58%) 55%, hsl(28 95% 56%) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+  color: transparent;
 }
 
 .aurora-chip {
