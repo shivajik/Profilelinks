@@ -119,7 +119,7 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col lg:flex-row">
+    <div className="min-h-screen aurora-bg flex flex-col lg:flex-row">
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden items-center justify-center p-12 auth-left-panel">
         <div className="landing-orb landing-orb-1" />
         <div className="landing-orb landing-orb-2" />
@@ -172,8 +172,9 @@ export default function AuthPage() {
             ) : (
               <>
                 <div className="mb-8">
-                  <h1 className="text-2xl font-extrabold tracking-tight text-foreground mb-1.5" data-testid="text-auth-heading">
-                    {tab === "login" ? "Welcome back" : "Create your account"}
+                  <div className="aurora-chip mb-4">— {tab === "login" ? "Welcome back" : "Get started"}</div>
+                  <h1 className="aurora-display text-4xl md:text-5xl mb-3" data-testid="text-auth-heading">
+                    {tab === "login" ? <>Welcome <em>back</em></> : <>Create your <em>account</em></>}
                   </h1>
                   <p className="text-sm text-muted-foreground">
                     {tab === "login"

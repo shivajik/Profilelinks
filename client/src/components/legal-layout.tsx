@@ -8,9 +8,11 @@ import logoPath from "/logo.png";
 
 interface LegalLayoutProps {
   children: React.ReactNode;
+  /** Apply the aurora-bg gradient backdrop. Pass false for pages that paint their own backdrop (e.g. ltd-purchase). */
+  aurora?: boolean;
 }
 
-export default function LegalLayout({ children }: LegalLayoutProps) {
+export default function LegalLayout({ children, aurora = true }: LegalLayoutProps) {
   const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -18,46 +20,46 @@ export default function LegalLayout({ children }: LegalLayoutProps) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
+  const NAV_LINKS: { href: string; label: string; testid: string; anchor?: boolean }[] = [
+    { href: "/#how-it-works", label: "How it works", testid: "link-how-it-works" },
+    { href: "/#features", label: "Features", testid: "link-features" },
+    { href: "/#testimonials", label: "Testimonials", testid: "link-testimonials" },
+    { href: "/pricing", label: "Pricing", testid: "link-pricing" },
+    { href: "/docs", label: "Docs", testid: "link-docs" },
+  ];
+
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="sticky top-0 left-0 right-0 z-[999] bg-background/80 backdrop-blur-xl border-b border-border">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 px-6 py-3">
+    <div className={`min-h-screen ${aurora ? "aurora-bg" : "bg-background"} overflow-x-hidden text-foreground flex flex-col`}>
+      {/* Pill nav — mirrors landing page */}
+      <header className="fixed top-4 left-0 right-0 z-[999] px-4">
+        <div className="landing-pill-nav max-w-6xl mx-auto flex items-center justify-between gap-4 px-4 sm:px-6 py-2.5 rounded-full">
           <WouterLink href="/">
-              <img src={logoPath} alt="VisiCardly" className="w-16 h-12 object-contain" data-testid="text-logo" />
+            <img src={logoPath} alt="VisiCardly" className="w-[58px] h-[44px] object-contain" data-testid="text-logo" />
           </WouterLink>
-          <nav className="hidden md:flex items-center gap-6 flex-wrap">
-            <a href="/#how-it-works" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors" data-testid="link-how-it-works">
-              How it works
-            </a>
-            <a href="/#features" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors" data-testid="link-features">
-              Features
-            </a>
-            <a href="/#testimonials" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors" data-testid="link-testimonials">
-              Testimonials
-            </a>
-            <WouterLink href="/pricing">
-              <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-testid="link-pricing">
-                Pricing
-              </span>
-            </WouterLink>
-            <WouterLink href="/docs">
-              <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-testid="link-docs">
-                Docs
-              </span>
-            </WouterLink>
+          <nav className="hidden md:flex items-center gap-1">
+            {NAV_LINKS.map((item) => (
+              <a
+                key={item.testid}
+                href={item.href}
+                data-testid={item.testid}
+                className="text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-full hover-elevate"
+              >
+                {item.label}
+              </a>
+            ))}
           </nav>
-          <div className="hidden md:flex items-center gap-3 flex-wrap">
+          <div className="hidden md:flex items-center gap-2">
             {user ? (
               <WouterLink href="/dashboard">
-                <Button data-testid="button-dashboard">Dashboard</Button>
+                <Button size="sm" className="rounded-full" data-testid="button-dashboard">Dashboard</Button>
               </WouterLink>
             ) : (
               <>
                 <WouterLink href="/auth">
-                  <Button variant="ghost" data-testid="button-login">Log in</Button>
+                  <Button variant="ghost" size="sm" className="rounded-full" data-testid="button-login">Log in</Button>
                 </WouterLink>
                 <WouterLink href="/auth?tab=register">
-                  <Button data-testid="button-signup">Sign up free</Button>
+                  <Button size="sm" className="rounded-full" data-testid="button-signup">Sign up free</Button>
                 </WouterLink>
               </>
             )}
@@ -65,7 +67,7 @@ export default function LegalLayout({ children }: LegalLayoutProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden"
+            className="md:hidden rounded-full"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             data-testid="button-mobile-menu"
           >
@@ -73,39 +75,31 @@ export default function LegalLayout({ children }: LegalLayoutProps) {
           </Button>
         </div>
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-xl">
+          <div className="md:hidden mt-2 mx-auto max-w-6xl landing-glass rounded-2xl">
             <div className="flex flex-col px-6 py-4 gap-3">
-              <a href="/#how-it-works" className="text-sm font-medium text-muted-foreground py-2" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-link-how-it-works">
-                How it works
-              </a>
-              <a href="/#features" className="text-sm font-medium text-muted-foreground py-2" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-link-features">
-                Features
-              </a>
-              <a href="/#testimonials" className="text-sm font-medium text-muted-foreground py-2" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-link-testimonials">
-                Testimonials
-              </a>
-              <WouterLink href="/pricing">
-                <span className="text-sm font-medium text-muted-foreground py-2 cursor-pointer" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-link-pricing">
-                  Pricing
-                </span>
-              </WouterLink>
-              <WouterLink href="/docs">
-                <span className="text-sm font-medium text-muted-foreground py-2 cursor-pointer" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-link-docs">
-                  Docs
-                </span>
-              </WouterLink>
-              <div className="flex items-center gap-3 pt-2 border-t border-border flex-wrap">
+              {NAV_LINKS.map((item) => (
+                <a
+                  key={`m-${item.testid}`}
+                  href={item.href}
+                  data-testid={`mobile-${item.testid}`}
+                  className="text-sm font-medium text-muted-foreground py-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {item.label}
+                </a>
+              ))}
+              <div className="flex items-center gap-3 pt-2 border-t border-border/60 flex-wrap">
                 {user ? (
                   <WouterLink href="/dashboard">
-                    <Button data-testid="mobile-button-dashboard" onClick={() => setMobileMenuOpen(false)}>Dashboard</Button>
+                    <Button className="rounded-full" data-testid="mobile-button-dashboard" onClick={() => setMobileMenuOpen(false)}>Dashboard</Button>
                   </WouterLink>
                 ) : (
                   <>
                     <WouterLink href="/auth">
-                      <Button variant="ghost" data-testid="mobile-button-login" onClick={() => setMobileMenuOpen(false)}>Log in</Button>
+                      <Button variant="ghost" className="rounded-full" data-testid="mobile-button-login" onClick={() => setMobileMenuOpen(false)}>Log in</Button>
                     </WouterLink>
                     <WouterLink href="/auth?tab=register">
-                      <Button data-testid="mobile-button-signup" onClick={() => setMobileMenuOpen(false)}>Sign up free</Button>
+                      <Button className="rounded-full" data-testid="mobile-button-signup" onClick={() => setMobileMenuOpen(false)}>Sign up free</Button>
                     </WouterLink>
                   </>
                 )}
@@ -115,45 +109,48 @@ export default function LegalLayout({ children }: LegalLayoutProps) {
         )}
       </header>
 
-      <main className="flex-1">{children}</main>
+      <main className="flex-1 pt-28 relative">{children}</main>
 
-      <footer className="border-t border-border py-12 px-6">
-        <div className="max-w-6xl mx-auto">
+      <footer className="relative border-t border-border/60 bg-card/40 backdrop-blur-xl py-14 px-6 mt-16">
+        <div className="absolute inset-0 landing-grid-bg opacity-30 pointer-events-none" />
+        <div className="max-w-6xl mx-auto relative">
           <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-10 mb-12">
             <div>
-              <span className="text-xl font-bold tracking-tight text-foreground mb-4 flex items-center gap-2">
-                <img src={logoPath} alt="VisiCardly" className="w-16 h-12 object-contain" />
-              </span>
+              <WouterLink href="/">
+                <img src={logoPath} alt="VisiCardly" className="w-16 h-12 object-contain mb-4 cursor-pointer" />
+              </WouterLink>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 The simplest way to share your online presence. One link for everything.
               </p>
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wider">Product</h4>
+              <h4 className="text-[11px] landing-mono uppercase text-foreground mb-4 tracking-wider">Product</h4>
               <ul className="space-y-2.5">
-                <li><WouterLink href="/pricing" className="text-sm text-muted-foreground hover:text-foreground">Pricing</WouterLink></li>
-                <li><WouterLink href="/docs" className="text-sm text-muted-foreground hover:text-foreground">Documentation</WouterLink></li>
+                <li><WouterLink href="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</WouterLink></li>
+                <li><WouterLink href="/docs" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Documentation</WouterLink></li>
+                <li><a href="/#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wider">Company</h4>
+              <h4 className="text-[11px] landing-mono uppercase text-foreground mb-4 tracking-wider">Company</h4>
               <ul className="space-y-2.5">
-                <li><WouterLink href="/about" className="text-sm text-muted-foreground hover:text-foreground">About</WouterLink></li>
-                <li><WouterLink href="/contact" className="text-sm text-muted-foreground hover:text-foreground">Contact Us</WouterLink></li>
-                <li><WouterLink href="/gdpr" className="text-sm text-muted-foreground hover:text-foreground">GDPR Compliance</WouterLink></li>
+                <li><WouterLink href="/about" className="text-sm text-muted-foreground hover:text-foreground transition-colors">About</WouterLink></li>
+                <li><WouterLink href="/contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contact Us</WouterLink></li>
+                <li><WouterLink href="/gdpr" className="text-sm text-muted-foreground hover:text-foreground transition-colors">GDPR Compliance</WouterLink></li>
               </ul>
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wider">Support</h4>
+              <h4 className="text-[11px] landing-mono uppercase text-foreground mb-4 tracking-wider">Support</h4>
               <ul className="space-y-2.5">
-                <li><WouterLink href="/support" className="text-sm text-muted-foreground hover:text-foreground">Support</WouterLink></li>
-                <li><WouterLink href="/privacy" className="text-sm text-muted-foreground hover:text-foreground">Privacy Policy</WouterLink></li>
-                <li><WouterLink href="/terms" className="text-sm text-muted-foreground hover:text-foreground">Terms of Service</WouterLink></li>
-                <li><WouterLink href="/refund-policy" className="text-sm text-muted-foreground hover:text-foreground">Refund Policy</WouterLink></li>
+                <li><WouterLink href="/support" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Support</WouterLink></li>
+                <li><WouterLink href="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</WouterLink></li>
+                <li><WouterLink href="/terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Terms of Service</WouterLink></li>
+                <li><WouterLink href="/refund-policy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Refund Policy</WouterLink></li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-border pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 flex-wrap">
+          <div className="aurora-divider mb-8" />
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 flex-wrap">
             <span className="text-sm text-muted-foreground">
               © 2026 VisiCardly powered by{" "}
               <a href="https://ksoftsolution.com" target="_blank" rel="noopener noreferrer" className="hover:text-foreground underline">KSoft Solution</a>
@@ -167,8 +164,8 @@ export default function LegalLayout({ children }: LegalLayoutProps) {
               <a href="https://www.tumblr.com/visicardly" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors"><SiTumblr className="w-4 h-4" /></a>
             </div>
             <div className="flex items-center gap-4">
-              <WouterLink href="/terms" className="text-sm text-muted-foreground hover:text-foreground">Terms</WouterLink>
-              <WouterLink href="/privacy" className="text-sm text-muted-foreground hover:text-foreground">Privacy</WouterLink>
+              <WouterLink href="/terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Terms</WouterLink>
+              <WouterLink href="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Privacy</WouterLink>
             </div>
           </div>
         </div>

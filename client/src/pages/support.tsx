@@ -7,9 +7,10 @@ export default function SupportPage() {
   return (
     <LegalLayout>
       <div className="max-w-3xl mx-auto px-6 py-16">
-        <h1 className="text-4xl font-extrabold text-foreground mb-6">Support</h1>
+        <div className="aurora-chip mb-6">— Help center</div>
+        <h1 className="aurora-display text-5xl md:text-6xl mb-5">We're here to <em>help</em></h1>
         <p className="text-lg text-muted-foreground mb-10 leading-relaxed">
-          Need help? We're here for you. Browse our resources or reach out directly.
+          Need help? Browse our resources or reach out directly — we usually reply within one business day.
         </p>
 
         <div className="space-y-6">

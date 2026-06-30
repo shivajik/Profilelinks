@@ -4,8 +4,9 @@ export default function PrivacyPage() {
   return (
     <LegalLayout>
       <div className="max-w-3xl mx-auto px-4 py-12">
-        <h1 className="text-4xl font-bold text-foreground mb-2">Privacy Policy</h1>
-        <p className="text-muted-foreground mb-10">Last updated: February 19, 2026</p>
+        <div className="aurora-chip mb-6">— Privacy</div>
+        <h1 className="aurora-display text-5xl md:text-6xl mb-3">Privacy <em>Policy</em></h1>
+        <p className="text-muted-foreground mb-10 landing-mono text-xs uppercase">Last updated · February 19, 2026</p>
 
         <div className="prose prose-sm max-w-none space-y-8 text-foreground">
           <section>

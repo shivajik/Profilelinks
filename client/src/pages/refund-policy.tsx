@@ -4,8 +4,9 @@ export default function RefundPolicyPage() {
   return (
     <LegalLayout>
       <div className="max-w-3xl mx-auto px-6 py-16 prose prose-sm dark:prose-invert">
-        <h1 className="text-4xl font-extrabold text-foreground mb-6">Refund Policy</h1>
-        <p className="text-muted-foreground">Last updated: February 2026</p>
+        <div className="aurora-chip mb-6 not-prose">— Billing</div>
+        <h1 className="aurora-display text-5xl md:text-6xl mb-3 not-prose">Refund <em>Policy</em></h1>
+        <p className="text-muted-foreground landing-mono text-xs uppercase not-prose mb-8">Last updated · February 2026</p>
 
         <h2>No Refund Policy</h2>
         <p>

@@ -4,8 +4,9 @@ export default function GdprPage() {
   return (
     <LegalLayout>
       <div className="max-w-3xl mx-auto px-6 py-16 prose prose-sm dark:prose-invert">
-        <h1 className="text-4xl font-extrabold text-foreground mb-6">GDPR Compliance</h1>
-        <p className="text-muted-foreground">Last updated: February 2026</p>
+        <div className="aurora-chip mb-6 not-prose">— Compliance</div>
+        <h1 className="aurora-display text-5xl md:text-6xl mb-3 not-prose">GDPR <em>Compliance</em></h1>
+        <p className="text-muted-foreground landing-mono text-xs uppercase not-prose mb-8">Last updated · February 2026</p>
 
         <h2>Our Commitment to Data Protection</h2>
         <p>

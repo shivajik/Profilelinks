@@ -359,16 +359,17 @@ export default function DocsPage() {
         <div className="max-w-5xl mx-auto">
 
           <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold mb-4">
-              VisiCardly Documentation
+            <div className="aurora-chip mb-6 mx-auto">— Documentation</div>
+            <h1 className="aurora-display text-5xl md:text-6xl mb-5">
+              Everything you need to <em>ship</em>.
             </h1>
-
+            <p className="text-muted-foreground max-w-xl mx-auto mb-8">Guides, references and how-tos for every part of VisiCardly.</p>
             <input
               type="text"
               placeholder="Search documentation..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full max-w-md mx-auto px-4 py-2 border rounded-lg bg-background text-foreground"
+              className="w-full max-w-md mx-auto px-4 py-3 rounded-full landing-glass text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
 

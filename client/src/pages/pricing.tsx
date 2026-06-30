@@ -196,10 +196,11 @@ export default function PricingPage() {
   return (
     <LegalLayout>
       <section className="py-12 text-center px-4">
-        <h1 className="text-4xl md:text-5xl font-extrabold text-foreground mb-3">
-          Simple, Transparent Pricing
+        <div className="aurora-chip mb-6 mx-auto">— Pricing</div>
+        <h1 className="aurora-display text-5xl md:text-6xl mb-5">
+          Simple, transparent <em>pricing</em>.
         </h1>
-        <p className="text-md text-muted-foreground max-w-xl mx-auto mb-6">
+        <p className="text-md text-muted-foreground max-w-xl mx-auto mb-8">
           Choose the plan that works for you. Upgrade, downgrade, or cancel anytime.
         </p>
 

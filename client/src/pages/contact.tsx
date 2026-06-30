@@ -57,9 +57,10 @@ export default function ContactPage() {
   return (
     <LegalLayout>
       <div className="max-w-3xl mx-auto px-6 py-16">
-        <h1 className="text-4xl font-extrabold text-foreground mb-6">Contact Us</h1>
+        <div className="aurora-chip mb-6">— Get in touch</div>
+        <h1 className="aurora-display text-5xl md:text-6xl mb-5">Let's <em>talk</em>.</h1>
         <p className="text-lg text-muted-foreground mb-10 leading-relaxed">
-          Have a question, feedback, or need help? We'd love to hear from you.
+          Have a question, feedback, or need help? We'd love to hear from you — we usually reply within a business day.
         </p>
 
         <div className="grid md:grid-cols-2 gap-8 mb-12">

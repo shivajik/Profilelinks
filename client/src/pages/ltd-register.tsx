@@ -171,7 +171,7 @@ export default function LtdRegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row">
+    <div className="min-h-screen aurora-bg flex flex-col md:flex-row">
       {/* Left marketing panel */}
       <div className="md:w-1/2 bg-gradient-to-br from-primary via-purple-600 to-indigo-700 p-10 flex flex-col justify-center text-white">
         <div className="max-w-md mx-auto">

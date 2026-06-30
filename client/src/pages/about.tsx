@@ -7,7 +7,8 @@ export default function AboutPage() {
   return (
     <LegalLayout>
       <div className="max-w-3xl mx-auto px-6 py-16">
-        <h1 className="text-4xl font-extrabold text-foreground mb-6">About VisiCardly</h1>
+        <div className="aurora-chip mb-6">— About us</div>
+        <h1 className="aurora-display text-5xl md:text-6xl mb-5">About <em>VisiCardly</em></h1>
         <p className="text-lg text-muted-foreground mb-10 leading-relaxed">
           VisiCardly is your all-in-one digital business card platform designed for creators, businesses, and teams who want a beautiful, customizable page to share their online presence.
         </p>
