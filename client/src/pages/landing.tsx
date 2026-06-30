@@ -148,8 +148,8 @@ export default function Landing() {
               <div className="text-center lg:text-left">
                 <div className="aurora-chip mb-7">
                   <span className="relative flex h-1.5 w-1.5">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-[hsl(22_95%_60%)] opacity-70 animate-ping" />
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[hsl(22_95%_60%)]" />
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-[hsl(158_75%_42%)] opacity-70 animate-ping" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[hsl(158_75%_42%)]" />
                   </span>
                   Your link-in-bio, reimagined
                 </div>

@@ -2,8 +2,8 @@ import { useRef } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { Sparkles, Zap, Heart } from "lucide-react";
 import templateA from "@/assets/images/template-kunalshah.png";
-import templateB from "@/assets/images/template-glamstudio.png";
-import templateC from "@/assets/images/template-exploreworld.png";
+import templateB from "@/assets/images/template-ksoftsolution.png";
+import templateC from "@/assets/images/template-grandstay.png";
 
 /**
  * Inspired by Liinks but reworked: three fanned phone cards with a

@@ -205,7 +205,8 @@ export default function TemplateShowcase() {
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
-        onMouseLeave={onMouseLeave}
+        onMouseLeave={(e) => { autoScroll.current.paused = false; onMouseLeave(); }}
+        onMouseEnter={() => { autoScroll.current.paused = true; }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
