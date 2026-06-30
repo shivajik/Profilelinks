@@ -25,6 +25,8 @@ import {
 import { SiFacebook, SiX, SiInstagram, SiPinterest, SiTumblr } from "react-icons/si";
 import { useAuth } from "@/lib/auth";
 import heroPhoneImg from "@/assets/images/hero-phone.png";
+import { MouseSpotlight, OrbitRings, CountUp, TiltCard, Reveal, Magnetic } from "@/components/landing-interactive";
+import { MeshBlob, SparkleField, LinkStack3D, AnalyticsGraphic, PlatformOrbit, ShapeCluster, StepConnector } from "@/components/landing-graphics";
 const TemplateShowcase = lazy(() => import("@/components/template-showcase"));
 
 const STATS = [
@@ -137,10 +139,16 @@ export default function Landing() {
       <main>
         {/* HERO */}
         <section className="relative pt-36 pb-20 px-6 overflow-hidden">
+          <MouseSpotlight />
+          <MeshBlob className="w-[900px] h-[900px] -top-40 -left-40 opacity-50" />
+          <MeshBlob className="w-[700px] h-[700px] -bottom-60 -right-40 opacity-40" />
+          <SparkleField count={28} />
           <div className="landing-orb landing-orb-1" />
           <div className="landing-orb landing-orb-2" />
           <div className="landing-orb landing-orb-3" />
+          <ShapeCluster className="top-24 right-[10%] w-40 h-40 hidden lg:block" />
           <div className="max-w-6xl mx-auto relative">
+
             <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-14 items-center">
               <div className="text-center lg:text-left">
                 <div className="aurora-chip mb-7">
@@ -159,12 +167,14 @@ export default function Landing() {
                   A beautifully crafted page that holds every link, profile, menu and card you care about. Share it once — connect everywhere.
                 </p>
                 <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 flex-wrap">
+                  <Magnetic>
                   <WouterLink href="/auth?tab=register">
                     <Button size="lg" className="rounded-full px-7 h-12 shadow-lg shadow-primary/25" data-testid="button-get-started">
                       Get started for free
                       <ArrowRight className="w-4 h-4" />
                     </Button>
                   </WouterLink>
+                  </Magnetic>
                   <a href="#how-it-works">
                     <Button variant="ghost" size="lg" className="rounded-full px-6 gap-2 h-12" data-testid="button-see-how">
                       <MousePointerClick className="w-4 h-4" />
@@ -186,6 +196,7 @@ export default function Landing() {
               </div>
               <div className="flex justify-center lg:justify-end">
                 <div className="relative">
+                  <OrbitRings />
                   <div className="absolute -inset-12 rounded-[3rem] landing-phone-glow opacity-80" />
                   <div className="aurora-float-card -left-16 top-8 px-3 py-2 flex items-center gap-2 z-20 hidden md:flex" style={{animationDelay:'-2s'}}>
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[hsl(252_80%_62%)] to-[hsl(320_85%_65%)] flex items-center justify-center"><Link2 className="w-4 h-4 text-white"/></div>
@@ -221,38 +232,102 @@ export default function Landing() {
             {STATS.map((stat, i) => {
               const tints = ["bento-tile-tinted-violet","bento-tile-tinted-peach","bento-tile-tinted-mint","bento-tile-tinted-rose"];
               return (
-                <div key={i} className={`bento-tile ${tints[i]} px-6 py-7 flex flex-col items-start`}>
-                  <p className="aurora-display text-4xl md:text-5xl text-foreground" data-testid={`text-stat-value-${i}`}>
-                    <em>{stat.value}</em>
-                  </p>
-                  <p className="text-[11px] landing-mono uppercase text-muted-foreground mt-2">{stat.label}</p>
-                </div>
+                <Reveal key={i} delay={i * 0.08}>
+                  <TiltCard className={`bento-tile ${tints[i]} px-6 py-7 flex flex-col items-start rounded-2xl group cursor-default h-full`}>
+                    <p className="aurora-display text-4xl md:text-5xl text-foreground" data-testid={`text-stat-value-${i}`}>
+                      <em><CountUp value={stat.value} /></em>
+                    </p>
+                    <p className="text-[11px] landing-mono uppercase text-muted-foreground mt-2">{stat.label}</p>
+                  </TiltCard>
+                </Reveal>
               );
             })}
           </div>
         </section>
 
-
-        {/* MARQUEE */}
-        <section className="py-12 overflow-hidden">
-          <p className="text-center text-[11px] landing-mono uppercase text-muted-foreground mb-6">Connects with 50+ platforms</p>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
-            <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
-            <div className="landing-marquee">
-              {[...Array(2)].map((_,r)=>(
-                <div key={r} className="flex items-center gap-12 pr-12 text-muted-foreground">
-                  {[SiInstagram, SiFacebook, SiX, SiPinterest, SiTumblr].map((Ic, i)=>(
-                    <Ic key={`s${i}`} className="w-6 h-6 opacity-70 hover:opacity-100 transition-opacity"/>
-                  ))}
-                  {[Link2, Globe, QrCode, CreditCard, UtensilsCrossed, Users, Palette].map((Ic, i)=>(
-                    <Ic key={`l${i}`} className="w-6 h-6 opacity-70 hover:opacity-100 transition-opacity"/>
-                  ))}
-                </div>
-              ))}
+        {/* SHOWCASE — link stack + live analytics */}
+        <section className="relative py-24 px-6 overflow-hidden">
+          <MeshBlob className="w-[700px] h-[700px] top-10 -right-60 opacity-30" />
+          <SparkleField count={14} />
+          <div className="max-w-6xl mx-auto relative">
+            <div className="text-center mb-14">
+              <p className="text-[11px] landing-mono uppercase text-primary mb-3">— A page that performs</p>
+              <h2 className="aurora-display text-4xl md:text-5xl mb-4">
+                Beautiful by default. <em>Smart underneath.</em>
+              </h2>
+              <p className="text-muted-foreground text-base max-w-lg mx-auto">
+                Every tap is tracked. Every link is yours. Watch your audience grow in real time.
+              </p>
+            </div>
+            <div className="grid lg:grid-cols-[1fr_1.1fr] gap-12 items-center">
+              <Reveal>
+                <LinkStack3D />
+              </Reveal>
+              <Reveal delay={0.15}>
+                <AnalyticsGraphic />
+              </Reveal>
             </div>
           </div>
         </section>
+
+
+        {/* PLATFORM CONSTELLATION */}
+        <section className="relative py-24 px-6 overflow-hidden bg-card/30 border-y border-border/60">
+          <div className="absolute inset-0 landing-grid-bg opacity-50 pointer-events-none" />
+          <SparkleField count={18} />
+          <div className="max-w-6xl mx-auto relative grid lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <p className="text-[11px] landing-mono uppercase text-primary mb-3">— One hub, every channel</p>
+              <h2 className="aurora-display text-4xl md:text-5xl mb-5">
+                Your whole internet, <em>orbiting one link</em>.
+              </h2>
+              <p className="text-muted-foreground text-base mb-8 leading-relaxed max-w-md">
+                Pull in 50+ platforms — social, music, video, code, payments and more.
+                Drag, drop, and reorder until it feels exactly like you.
+              </p>
+              <div className="grid grid-cols-2 gap-3 max-w-md">
+                {[
+                  { icon: Globe, label: "Custom domain" },
+                  { icon: QrCode, label: "Print-ready QR" },
+                  { icon: CreditCard, label: "vCard sharing" },
+                  { icon: Zap, label: "Real-time stats" },
+                ].map((f, i) => (
+                  <div key={i} className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white/70 border border-border/60 backdrop-blur">
+                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
+                      <f.icon className="w-3.5 h-3.5 text-primary" />
+                    </div>
+                    <span className="text-xs font-medium text-foreground">{f.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-center">
+              <PlatformOrbit />
+            </div>
+          </div>
+
+          {/* Subtle marquee strip below */}
+          <div className="relative mt-16">
+            <p className="text-center text-[11px] landing-mono uppercase text-muted-foreground mb-5">+ many more</p>
+            <div className="relative overflow-hidden">
+              <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-card/80 to-transparent z-10 pointer-events-none" />
+              <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-card/80 to-transparent z-10 pointer-events-none" />
+              <div className="landing-marquee">
+                {[...Array(2)].map((_, r) => (
+                  <div key={r} className="flex items-center gap-12 pr-12 text-muted-foreground">
+                    {[SiInstagram, SiFacebook, SiX, SiPinterest, SiTumblr].map((Ic, i) => (
+                      <Ic key={`s${i}`} className="w-6 h-6 opacity-60 hover:opacity-100 transition-opacity" />
+                    ))}
+                    {[Link2, Globe, QrCode, CreditCard, UtensilsCrossed, Users, Palette].map((Ic, i) => (
+                      <Ic key={`l${i}`} className="w-6 h-6 opacity-60 hover:opacity-100 transition-opacity" />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
 
         {/* HOW IT WORKS */}
         <section id="how-it-works" className="py-24 px-6">
@@ -312,15 +387,19 @@ export default function Landing() {
             </div>
             <div className="grid sm:grid-cols-3 gap-4">
               {BENTO_FEATURES.map((feature, i) => (
-                <Card key={i} className={`relative p-7 border ${feature.tile} landing-card-hover overflow-hidden rounded-3xl ${feature.span}`} data-testid={`card-feature-${i}`}>
-                  <div className="relative">
-                    <div className={`w-12 h-12 rounded-2xl ${feature.iconBg} backdrop-blur flex items-center justify-center mb-5 shadow-sm`}>
-                      <feature.icon className={`w-5 h-5 ${feature.iconColor}`} />
-                    </div>
-                    <h3 className={`font-semibold mb-1.5 tracking-tight text-[17px] ${feature.tile === 'tile-ink' ? 'text-white' : 'text-foreground'}`}>{feature.title}</h3>
-                    <p className={`text-sm leading-relaxed ${feature.tile === 'tile-ink' ? 'text-white/70' : 'text-foreground/65'}`}>{feature.description}</p>
-                  </div>
-                </Card>
+                <Reveal key={i} delay={i * 0.05} className={feature.span}>
+                  <TiltCard className="group h-full">
+                    <Card className={`relative p-7 border ${feature.tile} landing-card-hover overflow-hidden rounded-3xl h-full`} data-testid={`card-feature-${i}`}>
+                      <div className="relative" style={{ transform: "translateZ(40px)" }}>
+                        <div className={`w-12 h-12 rounded-2xl ${feature.iconBg} backdrop-blur flex items-center justify-center mb-5 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6`}>
+                          <feature.icon className={`w-5 h-5 ${feature.iconColor}`} />
+                        </div>
+                        <h3 className={`font-semibold mb-1.5 tracking-tight text-[17px] ${feature.tile === 'tile-ink' ? 'text-white' : 'text-foreground'}`}>{feature.title}</h3>
+                        <p className={`text-sm leading-relaxed ${feature.tile === 'tile-ink' ? 'text-white/70' : 'text-foreground/65'}`}>{feature.description}</p>
+                      </div>
+                    </Card>
+                  </TiltCard>
+                </Reveal>
               ))}
             </div>
           </div>
