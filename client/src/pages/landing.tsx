@@ -140,62 +140,67 @@ export default function Landing() {
 
       <main>
         {/* HERO */}
-        <section className="relative pt-36 pb-20 px-6 overflow-hidden">
-          <MouseSpotlight />
-          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(60%_45%_at_20%_10%,hsl(252_60%_94%/0.7),transparent_60%),radial-gradient(50%_40%_at_85%_15%,hsl(220_40%_95%/0.7),transparent_65%)]" />
-          <div className="max-w-6xl mx-auto relative">
+  {/* HERO */}
+<section className="relative pt-36 pb-20 px-6 overflow-hidden">
+  <MouseSpotlight />
+  <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(60%_45%_at_20%_10%,hsl(252_60%_94%/0.7),transparent_60%),radial-gradient(50%_40%_at_85%_15%,hsl(220_40%_95%/0.7),transparent_65%)]" />
+  <div className="max-w-6xl mx-auto relative">
 
-            <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-14 items-center">
-              <div className="text-center lg:text-left">
-                <div className="aurora-chip mb-7">
-                  <span className="relative flex h-1.5 w-1.5">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-[hsl(158_75%_42%)] opacity-70 animate-ping" />
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[hsl(158_75%_42%)]" />
-                  </span>
-                  Your link-in-bio, reimagined
-                </div>
-                <h1 className="aurora-display text-[3.25rem] sm:text-[4.5rem] md:text-[5.25rem] mb-6 text-foreground">
-                  One link for
-                  <br />
-                  <em>everything</em>.
-                </h1>
-                <p className="text-base md:text-lg text-muted-foreground max-w-lg mx-auto lg:mx-0 mb-10 leading-relaxed">
-                  A beautifully crafted page that holds every link, profile, menu and card you care about. Share it once — connect everywhere.
-                </p>
-                <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 flex-wrap">
-                  <Magnetic>
-                  <WouterLink href="/auth?tab=register">
-                    <Button size="lg" className="rounded-full px-7 h-12 shadow-lg shadow-primary/25" data-testid="button-get-started">
-                      Get started for free
-                      <ArrowRight className="w-4 h-4" />
-                    </Button>
-                  </WouterLink>
-                  </Magnetic>
-                  <a href="#how-it-works">
-                    <Button variant="ghost" size="lg" className="rounded-full px-6 gap-2 h-12" data-testid="button-see-how">
-                      <MousePointerClick className="w-4 h-4" />
-                      See how it works
-                    </Button>
-                  </a>
-                </div>
-                <div className="mt-8 flex items-center justify-center lg:justify-start gap-4 text-xs text-muted-foreground flex-wrap">
-                  <div className="flex -space-x-2">
-                    {["S","J","P","M","A"].map((c,i)=>(
-                      <div key={i} className="w-7 h-7 rounded-full bg-gradient-to-br from-[hsl(260_90%_75%)] to-[hsl(22_100%_75%)] border-2 border-background flex items-center justify-center text-[10px] font-bold text-white">{c}</div>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {Array.from({length:5}).map((_,i)=>(<Star key={i} className="w-3.5 h-3.5 fill-[hsl(22_95%_60%)] text-[hsl(22_95%_60%)]"/>))}
-                    <span className="ml-1.5">10,000+ creators trust us</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex justify-center lg:justify-end">
-                <HeroRightComposition />
-              </div>
-            </div>
+    {/* CHANGE THIS GRID LAYOUT */}
+    <div className="grid lg:grid-cols-[0.9fr_1.1fr] gap-8 xl:gap-12 items-center">
+      {/* LEFT CONTENT - Reduced width */}
+      <div className="text-center lg:text-left">
+        <div className="aurora-chip mb-6">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-[hsl(158_75%_42%)] opacity-70 animate-ping" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[hsl(158_75%_42%)]" />
+          </span>
+          Your link-in-bio, reimagined
+        </div>
+        <h1 className="aurora-display text-[2.8rem] sm:text-[3.8rem] md:text-[4.5rem] mb-5 text-foreground">
+          One link for
+          <br />
+          <em>everything</em>.
+        </h1>
+        <p className="text-sm md:text-base text-muted-foreground max-w-lg mx-auto lg:mx-0 mb-8 leading-relaxed">
+          A beautifully crafted page that holds every link, profile, menu and card you care about. Share it once — connect everywhere.
+        </p>
+        <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 flex-wrap">
+          <Magnetic>
+            <WouterLink href="/auth?tab=register">
+              <Button size="lg" className="rounded-full px-7 h-11 shadow-lg shadow-primary/25" data-testid="button-get-started">
+                Get started for free
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </WouterLink>
+          </Magnetic>
+          <a href="#how-it-works">
+            <Button variant="ghost" size="lg" className="rounded-full px-5 gap-2 h-11" data-testid="button-see-how">
+              <MousePointerClick className="w-4 h-4" />
+              See how it works
+            </Button>
+          </a>
+        </div>
+        <div className="mt-6 flex items-center justify-center lg:justify-start gap-4 text-xs text-muted-foreground flex-wrap">
+          <div className="flex -space-x-2">
+            {["S","J","P","M","A"].map((c,i)=>(
+              <div key={i} className="w-7 h-7 rounded-full bg-gradient-to-br from-[hsl(260_90%_75%)] to-[hsl(22_100%_75%)] border-2 border-background flex items-center justify-center text-[10px] font-bold text-white">{c}</div>
+            ))}
           </div>
-        </section>
+          <div className="flex items-center gap-1">
+            {Array.from({length:5}).map((_,i)=>(<Star key={i} className="w-3.5 h-3.5 fill-[hsl(22_95%_60%)] text-[hsl(22_95%_60%)]"/>))}
+            <span className="ml-1.5">10,000+ creators trust us</span>
+          </div>
+        </div>
+      </div>
+
+      {/* RIGHT CONTENT - Increased width */}
+      <div className="flex justify-center lg:justify-end">
+        <HeroRightComposition />
+      </div>
+    </div>
+  </div>
+</section>
 
         {/* STATS BENTO */}
         <section className="px-6">
