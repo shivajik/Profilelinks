@@ -27,6 +27,7 @@ import { useAuth } from "@/lib/auth";
 import { MouseSpotlight, CountUp, TiltCard, Reveal, Magnetic } from "@/components/landing-interactive";
 import { MeshBlob, SparkleField, LinkStack3D, AnalyticsGraphic, PlatformOrbit, ShapeCluster, StepConnector } from "@/components/landing-graphics";
 import { PhoneFanStack } from "@/components/phone-fan-stack";
+import { HeroRightComposition } from "@/components/hero-right-composition";
 import heroPhoneImg from "@/assets/images/hero-phone.png";
 const TemplateShowcase = lazy(() => import("@/components/template-showcase"));
 
@@ -190,7 +191,7 @@ export default function Landing() {
                 </div>
               </div>
               <div className="flex justify-center lg:justify-end">
-                <PhoneFanStack />
+                <HeroRightComposition />
               </div>
             </div>
           </div>
