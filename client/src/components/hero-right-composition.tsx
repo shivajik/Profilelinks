@@ -65,9 +65,9 @@ export function HeroRightComposition() {
         </svg>
       </div>
 
-      <div className="relative h-[600px] flex items-center justify-center">
-        {/* Grid: left card | phone | right rail — prevents overlap on the phone */}
-        <div className="relative w-full h-full grid grid-cols-[minmax(0,220px)_260px_minmax(0,240px)] gap-4 md:gap-6 items-center justify-center">
+      <div className="relative h-[480px] sm:h-[560px] md:h-[600px] flex items-center justify-center">
+        {/* Grid: left card | phone | right rail — collapses to just the phone on mobile */}
+        <div className="relative w-full h-full flex md:grid md:grid-cols-[minmax(0,200px)_240px_minmax(0,240px)] lg:grid-cols-[minmax(0,220px)_260px_minmax(0,240px)] gap-4 md:gap-6 items-center justify-center">
 
         {/* LEFT GLASS CARD — "One simple link" */}
         <motion.div
@@ -78,7 +78,7 @@ export function HeroRightComposition() {
             x: { duration: 0.6, delay: 0.2 },
             y: { duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.8 },
           }}
-          className="justify-self-end z-20 hidden sm:block"
+          className="justify-self-end relative z-20 hidden md:block"
         >
           <div
             className="w-[210px] rounded-[24px] p-4 backdrop-blur-xl border"
@@ -121,7 +121,7 @@ export function HeroRightComposition() {
           className="relative z-10 justify-self-center"
         >
           <div
-            className="relative w-[260px] h-[540px] rounded-[44px] p-[6px]"
+            className="relative w-[220px] h-[460px] sm:w-[240px] sm:h-[500px] md:w-[260px] md:h-[540px] rounded-[40px] md:rounded-[44px] p-[5px] md:p-[6px]"
             style={{
               background: "linear-gradient(160deg, #1a1130 0%, #2a1a4a 45%, #1a1130 100%)",
               boxShadow:
