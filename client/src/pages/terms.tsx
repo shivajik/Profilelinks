@@ -1,8 +1,14 @@
 import LegalLayout from "@/components/legal-layout";
+import SEO from "@/components/seo";
 
 export default function TermsPage() {
   return (
     <LegalLayout>
+      <SEO
+        title="Terms of Service — VisiCardly"
+        description="The terms and conditions that govern your use of VisiCardly's digital business card, link-in-bio and digital menu services."
+        path="/terms"
+      />
       <div className="max-w-3xl mx-auto px-4 py-12">
         <div className="aurora-chip mb-6">— Legal</div>
         <h1 className="aurora-display text-5xl md:text-6xl mb-3">Terms of <em>Service</em></h1>

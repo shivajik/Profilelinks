@@ -3,6 +3,7 @@ import { Link as WouterLink } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import logoPath from "/logo.png";
+import SEO from "@/components/seo";
 import {
   ArrowRight,
   Link2,
@@ -65,6 +66,12 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen aurora-bg overflow-x-hidden text-foreground">
+      <SEO
+        title="VisiCardly — Digital Business Cards & Link-in-Bio Pages"
+        description="Create stunning digital business cards, link-in-bio pages, and digital menus. Share your online presence with one custom link or QR code. Free to start."
+        path="/"
+      />
+
 
       {/* NAV */}
       <header className="fixed top-4 left-0 right-0 z-[999] px-4">

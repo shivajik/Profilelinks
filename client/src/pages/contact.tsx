@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Mail, MessageCircle, Phone, User, Send, Loader2 } from "lucide-react";
 import LegalLayout from "@/components/legal-layout";
+import SEO from "@/components/seo";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,11 @@ export default function ContactPage() {
 
   return (
     <LegalLayout>
+      <SEO
+        title="Contact VisiCardly — Get in Touch"
+        description="Have a question, feedback, or need help with VisiCardly? Contact our team — we usually reply within one business day."
+        path="/contact"
+      />
       <div className="max-w-3xl mx-auto px-6 py-16">
         <div className="aurora-chip mb-6">— Get in touch</div>
         <h1 className="aurora-display text-5xl md:text-6xl mb-5">Let's <em>talk</em>.</h1>

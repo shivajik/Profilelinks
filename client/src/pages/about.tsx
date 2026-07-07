@@ -2,10 +2,16 @@ import { Link as WouterLink } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Users, Target, Heart } from "lucide-react";
 import LegalLayout from "@/components/legal-layout";
+import SEO from "@/components/seo";
 
 export default function AboutPage() {
   return (
     <LegalLayout>
+      <SEO
+        title="About VisiCardly — Our Mission & Team"
+        description="Learn about VisiCardly — the platform helping professionals, teams and restaurants share their online presence through digital business cards, bio-links and menus."
+        path="/about"
+      />
       <div className="max-w-3xl mx-auto px-6 py-16">
         <div className="aurora-chip mb-6">— About us</div>
         <h1 className="aurora-display text-5xl md:text-6xl mb-5">About <em>VisiCardly</em></h1>

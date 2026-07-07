@@ -1,0 +1,20 @@
+User-agent: *
+Allow: /
+
+# Private / authenticated routes
+Disallow: /dashboard
+Disallow: /onboarding
+Disallow: /admin
+Disallow: /admin/
+Disallow: /change-password
+Disallow: /invite/
+Disallow: /affiliate
+Disallow: /ltd-purchase
+Disallow: /api/
+
+# AI training / LLM discovery
+Allow: /llms.txt
+Allow: /llms-full.txt
+Allow: /faq.json
+
+Sitemap: https://visicardly.com/sitemap.xml

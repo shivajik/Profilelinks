@@ -7,6 +7,7 @@ import { Loader2, Tag, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import LegalLayout from "@/components/legal-layout";
+import SEO from "@/components/seo";
 
 interface PricingPlan {
   id: string; name: string; description?: string;
@@ -195,6 +196,11 @@ export default function PricingPage() {
 
   return (
     <LegalLayout>
+      <SEO
+        title="Pricing & Plans — VisiCardly"
+        description="Simple, transparent pricing for VisiCardly. Compare free and paid plans for digital business cards, link-in-bio, QR codes, analytics and team accounts."
+        path="/pricing"
+      />
       <section className="py-12 text-center px-4">
         <div className="aurora-chip mb-6 mx-auto">— Pricing</div>
         <h1 className="aurora-display text-5xl md:text-6xl mb-5">

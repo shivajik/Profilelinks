@@ -2,6 +2,8 @@ import { Link as WouterLink } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import LegalLayout from "@/components/legal-layout";
+import SEO from "@/components/seo";
+
 
 import {
   BookOpen,
@@ -355,8 +357,13 @@ export default function DocsPage() {
 
   return (
     <LegalLayout>
+      <SEO
+        title="Documentation & Guides — VisiCardly"
+        description="Full VisiCardly documentation: create digital business cards, link-in-bio pages, digital menus, QR codes, teams, analytics and more. Step-by-step guides."
+        path="/docs"
+      />
       <div className="pt-8 pb-20 px-6">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-6xl mx-auto">
 
           <div className="text-center mb-12">
             <div className="aurora-chip mb-6 mx-auto">— Documentation</div>
@@ -373,41 +380,64 @@ export default function DocsPage() {
             />
           </div>
 
-          <div className="space-y-16">
-            {filteredSections.map((section) => (
-              <div key={section.id}>
-                <div className="flex items-center gap-3 mb-6">
-                  <section.icon className="w-5 h-5 text-primary" />
-                  <h2 className="text-2xl font-bold">{section.title}</h2>
-                </div>
+          <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-10">
+            {/* Sidebar */}
+            <aside className="hidden lg:block">
+              <nav className="sticky top-28 space-y-1 border-l border-border pl-4">
+                <p className="text-[11px] landing-mono uppercase text-muted-foreground mb-3 tracking-wider">
+                  On this page
+                </p>
+                {DOC_SECTIONS.map((section) => (
+                  <a
+                    key={section.id}
+                    href={`#${section.id}`}
+                    className="flex items-center gap-2 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <section.icon className="w-3.5 h-3.5" />
+                    {section.title}
+                  </a>
+                ))}
+              </nav>
+            </aside>
 
-                {section.screenshot && (
-                  <ScreenshotPlaceholder
-                    title={`${section.title} Interface`}
-                    src={`/docs/${section.id}.png`}
-                  />
-                )}
+            {/* Main content */}
+            <div className="space-y-16 min-w-0">
+              {filteredSections.map((section) => (
+                <div key={section.id} id={section.id} className="scroll-mt-28">
+                  <div className="flex items-center gap-3 mb-6">
+                    <section.icon className="w-5 h-5 text-primary" />
+                    <h2 className="text-2xl font-bold">{section.title}</h2>
+                  </div>
 
-                <div className="grid gap-5">
-                  {section.items.map((item, i) => (
-                    <Card key={i}>
-                      <CardHeader>
-                        <CardTitle className="text-base flex items-center gap-2">
-                          <ChevronRight className="w-4 h-4 text-primary" />
-                          {item.title}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm text-muted-foreground">
-                          {item.content}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  ))}
+                  {section.screenshot && (
+                    <ScreenshotPlaceholder
+                      title={`${section.title} Interface`}
+                      src={`/docs/${section.id}.png`}
+                    />
+                  )}
+
+                  <div className="grid gap-5">
+                    {section.items.map((item, i) => (
+                      <Card key={i}>
+                        <CardHeader>
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <ChevronRight className="w-4 h-4 text-primary" />
+                            {item.title}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm text-muted-foreground">
+                            {item.content}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
+
 
           <div className="mt-20 text-center">
             <Zap className="w-10 h-10 text-primary mx-auto mb-4" />

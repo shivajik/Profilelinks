@@ -1,8 +1,14 @@
 import LegalLayout from "@/components/legal-layout";
+import SEO from "@/components/seo";
 
 export default function RefundPolicyPage() {
   return (
     <LegalLayout>
+      <SEO
+        title="Refund Policy — VisiCardly"
+        description="All VisiCardly purchases are final and non-refundable. Read our refund policy, cancellation rules and exceptions for duplicate charges."
+        path="/refund-policy"
+      />
       <div className="max-w-3xl mx-auto px-6 py-16 prose prose-sm dark:prose-invert">
         <div className="aurora-chip mb-6 not-prose">— Billing</div>
         <h1 className="aurora-display text-5xl md:text-6xl mb-3 not-prose">Refund <em>Policy</em></h1>

@@ -2,10 +2,28 @@ import { Link as WouterLink } from "wouter";
 import { Button } from "@/components/ui/button";
 import { HelpCircle, BookOpen, Mail } from "lucide-react";
 import LegalLayout from "@/components/legal-layout";
+import SEO from "@/components/seo";
+
+const FAQ_JSONLD = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: [
+    { "@type": "Question", name: "How do I contact VisiCardly support?", acceptedAnswer: { "@type": "Answer", text: "Email support@visicardly.com or use the contact form. We reply within one business day." } },
+    { "@type": "Question", name: "Where can I find the documentation?", acceptedAnswer: { "@type": "Answer", text: "Full guides are available at visicardly.com/docs covering every feature — profiles, links, QR codes, teams, menus and analytics." } },
+    { "@type": "Question", name: "Is VisiCardly free?", acceptedAnswer: { "@type": "Answer", text: "Yes, a free plan is available. Paid plans unlock QR codes, analytics, multiple pages and team features." } },
+    { "@type": "Question", name: "Do you offer refunds?", acceptedAnswer: { "@type": "Answer", text: "All purchases are final and non-refundable. Contact support for duplicate charges caused by technical errors." } },
+  ],
+};
 
 export default function SupportPage() {
   return (
     <LegalLayout>
+      <SEO
+        title="Support & Help Center — VisiCardly"
+        description="Get help with VisiCardly. Browse the FAQ, read documentation, or contact our support team — we usually reply within one business day."
+        path="/support"
+        jsonLd={FAQ_JSONLD}
+      />
       <div className="max-w-3xl mx-auto px-6 py-16">
         <div className="aurora-chip mb-6">— Help center</div>
         <h1 className="aurora-display text-5xl md:text-6xl mb-5">We're here to <em>help</em></h1>

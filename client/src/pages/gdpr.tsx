@@ -1,8 +1,14 @@
 import LegalLayout from "@/components/legal-layout";
+import SEO from "@/components/seo";
 
 export default function GdprPage() {
   return (
     <LegalLayout>
+      <SEO
+        title="GDPR Compliance — VisiCardly"
+        description="VisiCardly is fully GDPR compliant. Learn how we handle EU personal data, user rights, data-processing agreements and international transfers."
+        path="/gdpr"
+      />
       <div className="max-w-3xl mx-auto px-6 py-16 prose prose-sm dark:prose-invert">
         <div className="aurora-chip mb-6 not-prose">— Compliance</div>
         <h1 className="aurora-display text-5xl md:text-6xl mb-3 not-prose">GDPR <em>Compliance</em></h1>

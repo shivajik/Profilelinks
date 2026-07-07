@@ -1,0 +1,88 @@
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "name": "VisiCardly FAQ",
+  "url": "https://visicardly.com/faq.json",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is VisiCardly?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "VisiCardly is a platform for creating digital business cards, link-in-bio pages, and digital menus. You get one shareable URL (visicardly.com/username) and a QR code that consolidates your online presence."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is VisiCardly free to use?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. VisiCardly offers a free plan that lets you create a public profile with essential features. Paid plans unlock advanced features such as multiple pages, QR codes, analytics, and team accounts."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I share my VisiCardly page?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Every account has a public URL at visicardly.com/username. You can share this link on social media, email signatures, printed business cards, or as a QR code that people scan to open your page."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I use VisiCardly for my restaurant menu?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. The Menu Builder lets restaurants create digital menus with sections, products, prices, images, opening hours, and contact info. Customers open the menu by scanning a QR code."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does VisiCardly support teams?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Team plans let organizations invite members, issue branded digital business cards, apply company templates, and organize members into branches or departments."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I generate QR codes?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Generate QR codes for your profile, menu, or any custom URL. Multiple styles and premium frames are available, and downloads are high-resolution and print-ready."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Do you offer refunds?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "All purchases are final and non-refundable. We recommend trying the free plan first. In case of duplicate charges due to technical errors, contact support@visicardly.com."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is my data secure and GDPR compliant?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. VisiCardly is GDPR compliant. See our Privacy Policy and GDPR page for details on how we collect, store, and process personal data."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I use my own domain?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Premium plans include white-label options that remove VisiCardly branding. Custom domain support is available on higher tiers."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I contact support?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Email support@visicardly.com or use the contact form at visicardly.com/contact. We typically reply within one business day."
+      }
+    }
+  ]
+}

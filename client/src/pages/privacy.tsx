@@ -1,8 +1,14 @@
 import LegalLayout from "@/components/legal-layout";
+import SEO from "@/components/seo";
 
 export default function PrivacyPage() {
   return (
     <LegalLayout>
+      <SEO
+        title="Privacy Policy — VisiCardly"
+        description="How VisiCardly collects, stores and protects your personal data. Read our full privacy policy for details on data usage, cookies and your rights."
+        path="/privacy"
+      />
       <div className="max-w-3xl mx-auto px-4 py-12">
         <div className="aurora-chip mb-6">— Privacy</div>
         <h1 className="aurora-display text-5xl md:text-6xl mb-3">Privacy <em>Policy</em></h1>

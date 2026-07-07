@@ -2,6 +2,7 @@ import { Link as WouterLink } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import logoPath from "/logo.png";
+import SEO from "@/components/seo";
 import {
   ArrowRight,
   UtensilsCrossed,
@@ -108,6 +109,11 @@ export default function RestaurantLanding() {
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
+      <SEO
+        title="Digital Restaurant Menus & QR Menus — VisiCardly"
+        description="Turn your restaurant menu into a beautiful digital, QR-scannable experience. Update items in real time, add photos, prices and opening hours — no printing required."
+        path="/restaurant"
+      />
       <header className="fixed top-0 left-0 right-0 z-[999] bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 px-6 py-3">
           <WouterLink href="/">

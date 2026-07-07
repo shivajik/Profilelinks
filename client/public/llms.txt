@@ -1,0 +1,37 @@
+# VisiCardly
+
+> VisiCardly is an all-in-one platform for creating digital business cards, link-in-bio pages, digital menus, and team business card portals — sharable via a single custom link or QR code.
+
+## Core Features
+
+- Digital business cards with contact details, social links, and QR codes
+- Link-in-bio pages with multiple customizable blocks (links, video, audio, text, images)
+- Digital menu builder for restaurants and product catalogs
+- Team accounts with company templates, branches, and branded business cards
+- QR code generator with premium templates and custom URL support
+- Multi-page profiles with drag-and-drop reordering
+- Built-in analytics (page views, link clicks, engagement)
+- Templates and full visual customization
+- API access and white-label options on paid plans
+
+## Key Pages
+
+- [Home](https://visicardly.com/): Product overview and features
+- [Restaurant Landing](https://visicardly.com/restaurant): Digital menu solution for restaurants
+- [Pricing](https://visicardly.com/pricing): Plans, features, and billing options
+- [Documentation](https://visicardly.com/docs): Full user guide for every feature
+- [About](https://visicardly.com/about): Company information
+- [Contact](https://visicardly.com/contact): Reach the team
+- [Support](https://visicardly.com/support): Help center and FAQ
+- [FAQ Data](https://visicardly.com/faq.json): Machine-readable FAQ
+
+## Legal
+
+- [Terms of Service](https://visicardly.com/terms)
+- [Privacy Policy](https://visicardly.com/privacy)
+- [GDPR Compliance](https://visicardly.com/gdpr)
+- [Refund Policy](https://visicardly.com/refund-policy)
+
+## Extended Content
+
+- [Full LLM Reference](https://visicardly.com/llms-full.txt)

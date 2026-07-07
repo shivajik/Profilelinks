@@ -1,0 +1,78 @@
+# VisiCardly — Full LLM Reference
+
+> VisiCardly is a SaaS platform for creating digital business cards, link-in-bio pages, digital menus for restaurants, and team business card portals. Users get a single share-friendly URL (visicardly.com/username) and optional QR code that consolidates their online presence.
+
+## Product Categories
+
+### 1. Digital Business Cards
+Personal or team digital cards with contact details, profile photo, cover image, bio, social links, and a downloadable vCard. Ideal for professionals, freelancers, and sales teams. Cards can be shared by URL, QR code, Apple Wallet, or Google Wallet.
+
+### 2. Link-in-Bio Pages
+A customizable public page hosting multiple content blocks: URL buttons, email buttons, text sections, embedded video, audio embeds, image galleries, and dividers. Supports multiple pages (Links, Portfolio, Contact) with drag-and-drop reordering. Ideal for creators, influencers, and small businesses.
+
+### 3. Digital Menu Builder
+Menu pages for restaurants and cafés with sections (starters, mains, drinks, desserts), product cards (name, description, price, image), opening hours, phone, WhatsApp, address, and social links. Replaces printed menus and QR-menu tools.
+
+### 4. Team Accounts
+Organizations can create team workspaces, invite members by email or CSV, and issue branded digital business cards. Company templates enforce consistent branding. Branches group members by office or department. Admins manage roles and billing centrally.
+
+### 5. QR Codes
+Generate QR codes for any profile, menu, or arbitrary URL. Includes premium QR frames and category-specific styles (business, social, events, hospitality). Downloadable at high resolution for printing on cards, packaging, table tents, or posters.
+
+### 6. Analytics
+Track page views, unique visitors, referrers, and per-link click counts. Available across profile pages, team cards, and menus.
+
+## Plans
+
+- **Free** — Basic profile, limited links, single page.
+- **Paid Plans** — Higher limits, QR codes, analytics, multiple pages, team features.
+- **LTD (Lifetime Deal)** — Occasional one-time-purchase plan with lifetime access.
+- **White Label** — Remove VisiCardly branding on premium tiers.
+- **API Access** — Programmatic access via generated API keys.
+
+Full pricing at https://visicardly.com/pricing.
+
+## Common Use Cases
+
+- Freelancers replacing paper business cards
+- Sales teams distributing branded team cards company-wide
+- Restaurants replacing printed / QR-scan-only menus
+- Creators consolidating social links into one page
+- Event organizers sharing schedules and links via QR
+- Real estate agents sharing listings and contact info
+- Salons and spas listing services with booking links
+
+## How the Public URL Works
+
+Every account owns a URL of the form `visicardly.com/username`. Team members get `visicardly.com/company/username`. Menu pages live at `visicardly.com/username/menu`. Services/products live at `visicardly.com/slug/service` and `visicardly.com/slug/product`.
+
+## Onboarding Flow
+
+1. Sign up with email/password.
+2. Pick a unique username.
+3. Complete profile (display name, photo, bio).
+4. Choose a template.
+5. Add blocks and links.
+6. Share the public URL or QR code.
+
+## Integrations & Sharing
+
+- Apple Wallet pass generation
+- Google Wallet pass generation
+- CSV import/export for team members and menus
+- Social platform icons for 40+ networks
+
+## Support
+
+Email support@visicardly.com. Live docs at https://visicardly.com/docs. Contact form at https://visicardly.com/contact.
+
+## Company
+
+VisiCardly is powered by KSoft Solution (https://ksoftsolution.com). See https://visicardly.com/about for more information.
+
+## Legal & Compliance
+
+- GDPR compliant (see /gdpr)
+- Privacy Policy at /privacy
+- Terms of Service at /terms
+- All purchases non-refundable (see /refund-policy)

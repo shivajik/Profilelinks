@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Eye, EyeOff, ArrowLeft, Loader2, Sparkles, Link2, Palette, Globe, User, Users, CheckCircle2, XCircle, Mail, CreditCard } from "lucide-react";
 import { Link as WouterLink } from "wouter";
+import SEO from "@/components/seo";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 const FEATURES = [
@@ -120,6 +121,13 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen aurora-bg flex flex-col lg:flex-row">
+      <SEO
+        title={tab === "register" ? "Sign up free — VisiCardly" : "Log in — VisiCardly"}
+        description={tab === "register"
+          ? "Create your free VisiCardly account. Build a digital business card, link-in-bio page or digital menu in minutes."
+          : "Log in to your VisiCardly account to manage your digital business cards, links, menus and team members."}
+        path="/auth"
+      />
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden items-center justify-center p-12 auth-left-panel">
         <div className="landing-orb landing-orb-1" />
         <div className="landing-orb landing-orb-2" />
