@@ -10,11 +10,67 @@ Disallow: /change-password
 Disallow: /invite/
 Disallow: /affiliate
 Disallow: /ltd-purchase
+Disallow: /auth
 Disallow: /api/
 
-# AI training / LLM discovery
+# AI / LLM crawlers — explicitly allowed for GEO/LLMO discoverability
+User-agent: GPTBot
+Allow: /
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /auth
+Disallow: /api/
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /auth
+Disallow: /api/
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /auth
+Disallow: /api/
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+# Machine-readable resources for LLMs
 Allow: /llms.txt
 Allow: /llms-full.txt
 Allow: /faq.json
 
-Sitemap: https://visicardly.com/sitemap.xml
+Sitemap: https://www.visicardly.com/sitemap.xml

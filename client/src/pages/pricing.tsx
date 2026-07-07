@@ -9,6 +9,15 @@ import { useAuth } from "@/lib/auth";
 import LegalLayout from "@/components/legal-layout";
 import SEO from "@/components/seo";
 
+const PRICING_FAQS: { q: string; a: string }[] = [
+  { q: "Can I upgrade or downgrade anytime?", a: "Yes! You can change your plan at any time. Changes take effect immediately." },
+  { q: "What payment methods are accepted?", a: "We accept all major credit/debit cards, UPI, net banking, and wallets via Razorpay." },
+  { q: "Is there a free plan?", a: "Yes, we offer a free plan to get you started. Upgrade when you need more features." },
+  { q: "What currencies are supported?", a: "Prices can be displayed in INR (₹) or USD ($) — use the currency toggle to switch. Payments are processed in INR via Razorpay." },
+  { q: "How do promo codes work?", a: "Enter a valid promo code before selecting a plan to get a percentage discount on your purchase." },
+];
+
+
 interface PricingPlan {
   id: string; name: string; description?: string;
   monthlyPrice: string; yearlyPrice: string;
@@ -200,6 +209,15 @@ export default function PricingPage() {
         title="Pricing & Plans — VisiCardly"
         description="Simple, transparent pricing for VisiCardly. Compare free and paid plans for digital business cards, link-in-bio, QR codes, analytics and team accounts."
         path="/pricing"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: PRICING_FAQS.map((f) => ({
+            "@type": "Question",
+            name: f.q,
+            acceptedAnswer: { "@type": "Answer", text: f.a },
+          })),
+        }}
       />
       <section className="py-12 text-center px-4">
         <div className="aurora-chip mb-6 mx-auto">— Pricing</div>
@@ -330,13 +348,7 @@ export default function PricingPage() {
         <div className="max-w-2xl mx-auto">
           <h2 className="text-2xl font-bold text-foreground text-center mb-8">Frequently Asked Questions</h2>
           <div className="space-y-4">
-            {[
-              { q: "Can I upgrade or downgrade anytime?", a: "Yes! You can change your plan at any time. Changes take effect immediately." },
-              { q: "What payment methods are accepted?", a: "We accept all major credit/debit cards, UPI, net banking, and wallets via Razorpay." },
-              { q: "Is there a free plan?", a: "Yes, we offer a free plan to get you started. Upgrade when you need more features." },
-              { q: "What currencies are supported?", a: "Prices can be displayed in INR (₹) or USD ($) — use the currency toggle to switch. Payments are processed in INR via Razorpay." },
-              { q: "How do promo codes work?", a: "Enter a valid promo code before selecting a plan to get a percentage discount on your purchase." },
-            ].map((item) => (
+            {PRICING_FAQS.map((item) => (
               <div key={item.q} className="bg-background border rounded-lg p-4">
                 <h3 className="font-semibold text-foreground mb-1">{item.q}</h3>
                 <p className="text-sm text-muted-foreground">{item.a}</p>

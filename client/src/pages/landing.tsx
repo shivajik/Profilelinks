@@ -70,6 +70,22 @@ export default function Landing() {
         title="VisiCardly — Digital Business Cards & Link-in-Bio Pages"
         description="Create stunning digital business cards, link-in-bio pages, and digital menus. Share your online presence with one custom link or QR code. Free to start."
         path="/"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: [
+            { q: "What is VisiCardly?", a: "VisiCardly is a free link-in-bio and digital business card platform. Create one shareable page — with your links, social profiles, contact card and even a restaurant menu — and share it via a custom URL or QR code." },
+            { q: "Is VisiCardly free to use?", a: "Yes. VisiCardly has a free plan that lets anyone create a public profile with essential features. Paid plans unlock multiple pages, premium QR codes, analytics, custom domains and team accounts." },
+            { q: "How is VisiCardly different from Linktree?", a: "VisiCardly combines link-in-bio, digital business cards, digital restaurant menus and team/branch management in one platform, with QR codes, vCard downloads and Apple/Google Wallet passes built in." },
+            { q: "Can I use VisiCardly for my restaurant menu?", a: "Yes. The Menu Builder lets restaurants publish digital menus with sections, prices, images, opening hours and contact info that customers open by scanning a QR code." },
+            { q: "What is a digital business card?", a: "A digital business card is a shareable web page and vCard that replaces paper cards. Recipients scan a QR code or open a link to save your contact, view your social profiles and connect instantly." },
+            { q: "Does VisiCardly support custom domains and teams?", a: "Yes. Paid plans support custom domains, team invites, branded templates, branches/departments and centrally-managed digital business cards for every team member." },
+          ].map((f) => ({
+            "@type": "Question",
+            name: f.q,
+            acceptedAnswer: { "@type": "Answer", text: f.a },
+          })),
+        }}
       />
 
 
