@@ -1176,6 +1176,22 @@ console.log(`Generated OTP for ${normalizedEmail}: ${otp}`); // Log OTP for debu
   }
 
   // Teams CRUD
+  // Preview whether a team name is available as a public URL slug.
+  // Used by onboarding + team-rename UI to show live validation.
+  app.get("/api/teams/check-name", requireAuth, async (req, res) => {
+    try {
+      const name = String(req.query.name || "").trim();
+      const excludeTeamId = req.query.excludeTeamId ? String(req.query.excludeTeamId) : undefined;
+      if (!name) {
+        return res.status(400).json({ message: "name is required" });
+      }
+      const result = await storage.checkTeamName(name, excludeTeamId);
+      res.json(result);
+    } catch (e) {
+      res.status(500).json({ message: "Failed to check team name" });
+    }
+  });
+
   app.post("/api/teams", requireAuth, async (req, res) => {
     try {
       const result = createTeamSchema.safeParse(req.body);

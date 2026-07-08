@@ -331,15 +331,53 @@ if (pool) pool.query(`
   VALUES ('trial_discount_percent', '20', now())
   ON CONFLICT (key) DO NOTHING;
 `).then(async () => {
-  // Backfill slugs for existing teams that don't have one
+  // Backfill + de-duplicate team slugs, then enforce uniqueness.
   try {
     if (!pool) return;
+    const baseSlugify = (name: string) =>
+      (name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').substring(0, 50) || 'team';
+
+    // 1) Backfill empty slugs (may create duplicates — handled next).
     const teamsWithoutSlug = await pool.query(`SELECT id, name FROM teams WHERE slug IS NULL OR slug = ''`);
     for (const row of teamsWithoutSlug.rows) {
-      const slug = row.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').substring(0, 50) || 'team';
-      await pool.query(`UPDATE teams SET slug = $1 WHERE id = $2`, [slug, row.id]);
+      await pool.query(`UPDATE teams SET slug = $1 WHERE id = $2`, [baseSlugify(row.name), row.id]);
     }
-  } catch (_) { /* ignore */ }
+
+    // 2) De-duplicate: keep the oldest team per slug, append -2, -3, ... to the rest.
+    const dupes = await pool.query(`
+      SELECT slug, array_agg(id ORDER BY id) AS ids
+      FROM teams
+      WHERE slug IS NOT NULL AND slug <> ''
+      GROUP BY slug
+      HAVING count(*) > 1
+    `);
+    for (const row of dupes.rows) {
+      const ids: string[] = row.ids;
+      const base: string = row.slug;
+      for (let i = 1; i < ids.length; i++) {
+        let n = i + 1;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const candidate = `${base}-${n}`.substring(0, 60);
+          const taken = await pool.query(
+            `SELECT 1 FROM teams WHERE slug = $1
+             UNION ALL
+             SELECT 1 FROM users WHERE username = $1
+             LIMIT 1`,
+            [candidate]
+          );
+          if (taken.rowCount === 0) {
+            await pool.query(`UPDATE teams SET slug = $1 WHERE id = $2`, [candidate, ids[i]]);
+            break;
+          }
+          n++;
+        }
+      }
+    }
+
+    // 3) Enforce uniqueness going forward.
+    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS uniq_teams_slug ON teams(slug)`);
+  } catch (_) { /* ignore — best-effort */ }
 }).catch(() => {/* Columns/tables may already exist */});
 
 
@@ -390,6 +428,7 @@ export interface IStorage {
   getTeamByOwnerId(ownerId: string): Promise<Team | undefined>;
   getTeamBySlug(slug: string): Promise<Team | undefined>;
   updateTeam(id: string, data: Partial<Pick<Team, "name" | "slug" | "size" | "websiteUrl" | "logoUrl">>): Promise<Team | undefined>;
+  checkTeamName(name: string, excludeTeamId?: string): Promise<{ baseSlug: string; availableSlug: string; isAvailable: boolean; reason: 'reserved' | 'taken-by-team' | 'taken-by-user' | null }>;
   deleteTeam(id: string): Promise<boolean>;
 
   getTeamMembers(teamId: string): Promise<(TeamMember & { user: Pick<User, "id" | "username" | "email" | "displayName" | "profileImage"> })[]>;
@@ -715,7 +754,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTeam(team: InsertTeam): Promise<Team> {
-    const slug = this.generateSlug(team.name);
+    const slug = await this.generateUniqueSlug(team.name);
     const [created] = await db.insert(teams).values({ ...team, slug }).returning();
     return created;
   }
@@ -739,19 +778,89 @@ export class DatabaseStorage implements IStorage {
     // Auto-update slug when name changes
     const updateData: any = { ...data };
     if (data.name && !data.slug) {
-      updateData.slug = this.generateSlug(data.name);
+      updateData.slug = await this.generateUniqueSlug(data.name, id);
+    } else if (data.slug) {
+      updateData.slug = await this.generateUniqueSlug(data.slug, id);
     }
     const [updated] = await db.update(teams).set(updateData).where(eq(teams.id, id)).returning();
     return updated;
   }
 
-  private generateSlug(name: string): string {
-    return name
+  // Slugs that would collide with app routes and must never be used by a team.
+  private static RESERVED_SLUGS = new Set<string>([
+    'auth', 'dashboard', 'onboarding', 'pricing', 'terms', 'privacy', 'docs',
+    'about', 'contact', 'support', 'gdpr', 'refund-policy', 'affiliate',
+    'ltd-register', 'ltd-purchase', 'admin', 'change-password', 'invite',
+    'restaurant', 'api', 'menu', 'service', 'product',
+  ]);
+
+  private baseSlug(name: string): string {
+    return (name || '')
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '')
       .substring(0, 50) || 'team';
   }
+
+  // Kept for backward compatibility (sync). Prefer generateUniqueSlug.
+  private generateSlug(name: string): string {
+    return this.baseSlug(name);
+  }
+
+  /**
+   * Public helper used by the frontend to preview slug availability before
+   * a team is created or renamed.
+   */
+  async checkTeamName(name: string, excludeTeamId?: string): Promise<{
+    baseSlug: string;
+    availableSlug: string;
+    isAvailable: boolean;
+    reason: 'reserved' | 'taken-by-team' | 'taken-by-user' | null;
+  }> {
+    const base = this.baseSlug(name);
+    let reason: 'reserved' | 'taken-by-team' | 'taken-by-user' | null = null;
+    if (DatabaseStorage.RESERVED_SLUGS.has(base)) {
+      reason = 'reserved';
+    } else {
+      const [teamRow] = await db.select().from(teams).where(eq(teams.slug, base));
+      if (teamRow && teamRow.id !== excludeTeamId) {
+        reason = 'taken-by-team';
+      } else {
+        const userRow = await this.getUserByUsername(base);
+        if (userRow) reason = 'taken-by-user';
+      }
+    }
+    const availableSlug = await this.generateUniqueSlug(name, excludeTeamId);
+    return { baseSlug: base, availableSlug, isAvailable: reason === null, reason };
+  }
+
+  /**
+   * Produce a slug that is:
+   *  - not a reserved app route
+   *  - not equal to any existing users.username
+   *  - not equal to any other team's slug (excluding `excludeTeamId`)
+   * Appends -2, -3, ... until free.
+   */
+  private async generateUniqueSlug(name: string, excludeTeamId?: string): Promise<string> {
+    let base = this.baseSlug(name);
+    if (DatabaseStorage.RESERVED_SLUGS.has(base)) base = `${base}-team`;
+
+    let candidate = base;
+    let n = 2;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const [teamRow] = await db.select().from(teams).where(eq(teams.slug, candidate));
+      const teamConflict = teamRow && teamRow.id !== excludeTeamId;
+      const userConflict = await this.getUserByUsername(candidate);
+      if (!teamConflict && !userConflict && !DatabaseStorage.RESERVED_SLUGS.has(candidate)) {
+        return candidate;
+      }
+      candidate = `${base}-${n}`.substring(0, 60);
+      n++;
+      if (n > 10000) return `${base}-${Date.now()}`; // safety
+    }
+  }
+
 
   async deleteTeam(id: string): Promise<boolean> {
     const result = await db.delete(teams).where(eq(teams.id, id)).returning();

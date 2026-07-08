@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, Redirect } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Check, ArrowRight, Loader2, X, GripVertical, Camera, Upload, User, Users, Building2, ChevronDown } from "lucide-react";
+import { Check, ArrowRight, Loader2, X, GripVertical, Camera, Upload, User, Users, Building2, ChevronDown, AlertCircle, CheckCircle2 } from "lucide-react";
 import {
   SiInstagram,
   SiX,
@@ -402,6 +402,35 @@ function WorkspaceStep({
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
 
+  // Live team-name availability check. Debounced ~450ms.
+  type NameCheck = {
+    baseSlug: string;
+    availableSlug: string;
+    isAvailable: boolean;
+    reason: 'reserved' | 'taken-by-team' | 'taken-by-user' | null;
+  };
+  const [nameCheck, setNameCheck] = useState<NameCheck | null>(null);
+  const [checkingName, setCheckingName] = useState(false);
+  useEffect(() => {
+    const trimmed = companyName.trim();
+    if (!trimmed) { setNameCheck(null); setCheckingName(false); return; }
+    setCheckingName(true);
+    const controller = new AbortController();
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/teams/check-name?name=${encodeURIComponent(trimmed)}`, {
+          credentials: "include",
+          signal: controller.signal,
+        });
+        if (!res.ok) { setNameCheck(null); return; }
+        const data: NameCheck = await res.json();
+        setNameCheck(data);
+      } catch { /* aborted or network */ }
+      finally { setCheckingName(false); }
+    }, 450);
+    return () => { controller.abort(); clearTimeout(t); };
+  }, [companyName]);
+
   const handleFileUpload = async (file: File) => {
     if (!file.type.startsWith("image/")) {
       toast({ title: "Invalid file", description: "Please upload an image file (JPEG, PNG, GIF, or WEBP)", variant: "destructive" });
@@ -506,11 +535,42 @@ function WorkspaceStep({
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
             data-testid="input-workspace-company-name"
-            className={!companyName.trim() ? "border-destructive/50 focus-visible:ring-destructive/30" : ""}
+            className={
+              !companyName.trim()
+                ? "border-destructive/50 focus-visible:ring-destructive/30"
+                : nameCheck && !nameCheck.isAvailable
+                  ? "border-amber-500/60 focus-visible:ring-amber-500/30"
+                  : nameCheck && nameCheck.isAvailable
+                    ? "border-emerald-500/60 focus-visible:ring-emerald-500/30"
+                    : ""
+            }
           />
-          {!companyName.trim() && (
+          {!companyName.trim() ? (
             <p className="text-xs text-destructive">Company name is required to proceed.</p>
-          )}
+          ) : checkingName ? (
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <Loader2 className="w-3 h-3 animate-spin" /> Checking availability…
+            </p>
+          ) : nameCheck ? (
+            nameCheck.isAvailable ? (
+              <p className="text-xs text-emerald-600 flex items-start gap-1.5" data-testid="text-team-name-available">
+                <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <span>Available! Your public URL will be <span className="font-mono font-medium">/{nameCheck.availableSlug}</span></span>
+              </p>
+            ) : (
+              <p className="text-xs text-amber-600 flex items-start gap-1.5" data-testid="text-team-name-taken">
+                <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <span>
+                  {nameCheck.reason === "reserved"
+                    ? "This name is reserved by the app."
+                    : nameCheck.reason === "taken-by-user"
+                      ? "This name is already used by another user."
+                      : "Another team already uses this name."}{" "}
+                  You can still continue — your URL will be <span className="font-mono font-medium">/{nameCheck.availableSlug}</span>.
+                </span>
+              </p>
+            )
+          ) : null}
         </div>
         <div className="space-y-2">
           <Label htmlFor="onb-company-size">Company Size <span className="text-destructive">*</span></Label>
