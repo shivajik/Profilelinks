@@ -58,6 +58,7 @@ function Router() {
         <Route path="/terms" component={TermsPage} />
         <Route path="/privacy" component={PrivacyPage} />
         <Route path="/docs" component={DocsPage} />
+        <Route path="/docs/:section" component={DocsPage} />
         <Route path="/about" component={AboutPage} />
         <Route path="/contact" component={ContactPage} />
         <Route path="/support" component={SupportPage} />
