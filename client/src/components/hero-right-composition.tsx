@@ -8,7 +8,7 @@ import {
   ArrowUpRight,
   MessageCircle,
 } from "lucide-react";
-import shivajiTemplate from "@/assets/images/template-ksoftsolution.png";
+import upayTemplate from "@/assets/images/template-uday.png";
 
 /**
  * Premium SaaS hero-right composition:
@@ -169,7 +169,7 @@ export function HeroRightComposition() {
               {/* Notch — slimmer pill */}
               <div className="absolute top-[6px] left-1/2 -translate-x-1/2 w-[70px] sm:w-[88px] h-[14px] sm:h-[16px] rounded-full bg-black z-20" />
               <img
-                src={shivajiTemplate}
+                src={upayTemplate}
                 alt="Shivaji Khandagale — VisiCardly profile preview"
                 className="block w-full h-full object-cover object-top"
                 loading="lazy"
