@@ -167,7 +167,7 @@ function buildTeamBranding(m: any, branches: any[], isOwner: boolean): Record<st
 
   return {
     companyLogo: tData.companyLogo || m.team_logo || undefined,
-    coverPhoto: tData.coverPhoto || undefined,
+    coverPhoto: tData.coverPhoto || m.cover_image || undefined,
     companyName: tData.companyName || m.team_name || undefined,
     companyPhone: tData.companyPhone || undefined,
     companyEmail: tData.companyEmail || undefined,

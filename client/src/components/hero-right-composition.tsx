@@ -159,10 +159,15 @@ export function HeroRightComposition() {
                 "0 40px 80px -20px rgba(109, 74, 255, 0.45), 0 20px 40px -12px rgba(255, 92, 138, 0.25), 0 0 0 1px rgba(255,255,255,0.06) inset",
             }}
           >
-            {/* Notch */}
-            <div className="absolute top-2 left-1/2 -translate-x-1/2 w-[80px] sm:w-[100px] h-[24px] sm:h-[26px] rounded-full bg-black/85 z-20" />
             {/* Screen */}
             <div className="relative w-full h-full rounded-[34px] sm:rounded-[38px] overflow-hidden bg-white">
+              {/* Status bar strip — matches phone bezel so no white gap flickers above the notch during float animation */}
+              <div
+                className="absolute top-0 left-0 right-0 h-[26px] sm:h-[28px] z-10"
+                style={{ background: "linear-gradient(180deg, #1a1130 0%, #1a1130 70%, rgba(26,17,48,0) 100%)" }}
+              />
+              {/* Notch — slimmer pill */}
+              <div className="absolute top-[6px] left-1/2 -translate-x-1/2 w-[70px] sm:w-[88px] h-[14px] sm:h-[16px] rounded-full bg-black z-20" />
               <img
                 src={shivajiTemplate}
                 alt="Shivaji Khandagale — VisiCardly profile preview"

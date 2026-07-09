@@ -1,83 +1,73 @@
+## Already shipped this turn
+- **Task 1 (phone mockup)** — notch reduced from 24–26px to 14–16px and moved inside the screen with a dark status-bar strip covering the top region, so the white gap that flickered during the float animation is gone. File: `client/src/components/hero-right-composition.tsx`.
 
+## Task 2 — Personal cover image not showing on public profile
 
-## Separate Menu Styling from Portfolio
+**Diagnosis**
+- `users.cover_image` is written correctly by dashboard upload (`PATCH /api/auth/profile`).
+- `server/profile-query.ts` selects `u.cover_image` and returns it as `coverImage` on the user (line 113).
+- `client/src/pages/profile.tsx` never reads `user.coverImage`, but hands `user` to `PersonalProfileLayout`, which does render it in every layout branch.
+- Screenshot 4 shows a purple placeholder rectangle with an image icon on `/uday` — this is the browser's broken-image chrome, i.e. `user.coverImage` is a string but the URL is unreachable from the public profile. The dashboard preview (screenshot 3) loads fine because it's on the same session/origin as upload.
 
-Currently, the menu page (`/username/menu`) uses the same template/colors as the portfolio profile. You want them to be independent -- for example, a restaurant menu might have warm colors while the owner's portfolio stays dark/professional.
+**Fix**
+- Same treatment as `profileImage`: in `PersonalProfileLayout` (and Team layout), if `user.coverImage` starts with `/`, resolve to `${window.location.origin}${coverImage}` so relative upload paths work when the profile is embedded, previewed, or the CDN prefix changes.
+- Add `onError` handler on every `<img src={user.coverImage}>` in `client/src/components/profile-layouts.tsx` and `client/src/components/team-profile-layouts.tsx` that hides the cover instead of leaving a broken icon.
+- Verify the returned URL by hitting `/api/profile/uday` after the fix.
 
-### What Will Change
+## Task 3 — Better upload loaders
 
-**For Users (Menu Setup page):**
-- A new "Menu Appearance" section at the top of the Menu Builder
-- Pick a separate template for the menu (same template library)
-- Override specific colors: background accent, text color, card style
-- Set a separate menu display name (e.g., restaurant name) and profile image (e.g., restaurant logo)
-- Live preview link already shows the menu -- it will reflect the new styling
+**Current state**
+- Dashboard already has `data-uploading` markers on avatar + cover, but the loader is only visible on hover (opacity-0 → opacity-100 needs group-hover). It's easy to miss.
 
-**For the Public Menu page (`/username/menu`):**
-- Will use the menu-specific template instead of the portfolio template
-- Independent branding (name, logo, colors) from the portfolio
+**Fix**
+- Force the overlay visible whenever `data-uploading` is set (independent of hover) on dashboard avatar, dashboard cover, business-profile avatar, team-template cover, team-template logo.
+- Add centered spinner + "Uploading…" caption (already partly wired).
+- Disable file input + buttons while uploading (`pointer-events-none` + `disabled`).
 
-**For Admin:**
-- No changes needed -- this is controlled by the existing `menuBuilderEnabled` plan flag
+## Task 4 — Instagram-style crop/adjust on every image upload
 
----
+**Scope (all 5 spots)**
+1. Dashboard → Profile picture
+2. Dashboard → Cover image
+3. Business Profile → Business photo
+4. Team Templates → Company logo
+5. Team Templates → Cover photo
 
-### Technical Details
+**Approach**
+- `bun add react-easy-crop` (7kb, no deps, MIT). Uses pointer events, supports pinch/zoom, aspect ratio lock.
+- New shared component `client/src/components/image-crop-dialog.tsx`:
+  - Props: `open`, `file`, `aspect` (1 for avatars/logos, 3 for cover), `shape` ('round' | 'rect'), `onCancel`, `onCropped(blob)`.
+  - Renders a modal with `<Cropper>`, zoom slider, rotate button, Cancel / Apply buttons.
+  - Uses canvas to produce a cropped JPEG Blob at max 1600px longest side (keeps <1MB).
+- New shared hook `client/src/hooks/use-cropped-upload.ts`:
+  - Wraps `openCropDialog(file, aspect)` → returns cropped `File`.
+  - Wraps `uploadCroppedFile(blob)` → POSTs to `/api/upload`, returns `{ url }`.
+- Rewire the 5 spots: instead of uploading directly on `<input onChange>`, open the crop dialog first with the correct aspect, then upload the cropper's Blob.
+- Backend `/api/upload` unchanged — same 1MB limit, same multipart contract (blob already resized/compressed client-side).
 
-**1. Database: Add menu settings columns to `users` table**
+**Aspects**
+| Spot | Aspect | Shape |
+| --- | --- | --- |
+| Profile picture | 1:1 | round |
+| Cover image | 3:1 | rect |
+| Business photo | 1:1 | round |
+| Company logo | 1:1 | rect |
+| Team cover photo | 3:1 | rect |
 
-Add new columns to the `users` table in `shared/schema.ts`:
-- `menuTemplate` (text, default null) -- separate template ID for menu
-- `menuDisplayName` (text, default null) -- restaurant/business name for menu
-- `menuProfileImage` (text, default null) -- separate logo for menu
-- `menuAccentColor` (text, default null) -- custom accent color override
+**Files touched**
+- `client/src/components/image-crop-dialog.tsx` (new)
+- `client/src/hooks/use-cropped-upload.ts` (new)
+- `client/src/pages/dashboard.tsx` — 2 spots (avatar, cover) + settings avatar (3 spots)
+- `client/src/components/business-profile-section.tsx` — 1 spot
+- `client/src/components/team-templates-section.tsx` (or wherever team template covers/logos live — I'll locate)
+- `client/src/components/profile-layouts.tsx` + `team-profile-layouts.tsx` — cover URL resolution + onError (Task 2)
 
-When these are null, fall back to the portfolio values (backward compatible).
+## Order of execution
+1. Task 2 fix (small, 2 files)
+2. Task 3 loader visibility fix (dashboard.tsx, business-profile, team-templates)
+3. Task 4 install + shared components + wire the 5 spots
+4. Manual verify: upload cover on dashboard → open `/uday` → cover appears; upload avatar → crop dialog appears with round mask; apply → uploaded
 
-**2. Schema updates (`shared/schema.ts`)**
-
-- Add fields to `updateProfileSchema` so they can be saved via existing profile update API
-- Add a new `updateMenuSettingsSchema` for a dedicated endpoint
-
-**3. Backend: New API endpoint (`server/routes.ts`)**
-
-- `PATCH /api/menu/settings` -- save menu appearance settings (menuTemplate, menuDisplayName, menuProfileImage, menuAccentColor)
-- `GET /api/menu/settings` -- fetch current menu appearance settings
-- Update `GET /api/menu/:username` public endpoint to return `menuTemplate`, `menuDisplayName`, `menuProfileImage`, `menuAccentColor` so the public page uses them
-
-**4. Storage layer (`server/storage.ts`)**
-
-- Add migration to create the new columns
-- Add `updateMenuSettings()` and `getMenuSettings()` methods
-
-**5. Menu Builder UI (`client/src/components/menu-builder.tsx`)**
-
-Add a "Menu Appearance" card at the top with:
-- Template selector (grid of template thumbnails, same as Design page)
-- Menu display name input
-- Menu logo/profile image upload
-- Accent color picker
-- All saved via `PATCH /api/menu/settings`
-
-**6. Public Menu Page (`client/src/pages/public-menu.tsx`)**
-
-- Use `user.menuTemplate` (falling back to `user.template`) to pick the template
-- Use `user.menuDisplayName` (falling back to displayName) for the header
-- Use `user.menuProfileImage` (falling back to profileImage) for the avatar
-- Use `user.menuAccentColor` (falling back to template accent) for the accent color
-
-**7. Build fix**
-
-- Ensure `index.html` exists at root (already created)
-- Remind user to add `build:dev` script to `package.json`
-
-### File Changes Summary
-
-| File | Change |
-|------|--------|
-| `shared/schema.ts` | Add menu appearance columns + schema |
-| `server/storage.ts` | Migration + settings methods |
-| `server/routes.ts` | New menu settings endpoints, update public menu API |
-| `client/src/components/menu-builder.tsx` | Add appearance/template picker section |
-| `client/src/pages/public-menu.tsx` | Use menu-specific template/colors |
-
+## Notes for you
+- Cropper output is a JPEG at ~85% quality, always ≤ 1MB regardless of the source file. This means the existing "Max 1MB" copy will effectively never trigger — I can remove those hints, but I'll keep them for now to avoid surprising you.
+- No backend/DB changes required. No new secrets.

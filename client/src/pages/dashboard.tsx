@@ -949,30 +949,22 @@ export default function Dashboard() {
                           id="dash-avatar-upload"
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
+                            e.target.value = "";
                             if (!file) return;
-                            if (file.size > 1 * 1024 * 1024) {
-                              toast({ title: "File too large", description: "Maximum file size is 1MB.", variant: "destructive" });
-                              return;
-                            }
+                            const { cropAndUpload } = await import("@/lib/image-cropper");
                             const label = document.getElementById('dash-avatar-upload-label');
-                            if (label) label.setAttribute('data-uploading', 'true');
-                            const formData = new FormData();
-                            formData.append("file", file);
                             try {
-                              const res = await fetch("/api/upload", { method: "POST", body: formData });
-                              if (res.ok) {
-                                const data = await res.json();
-                                await apiRequest("PATCH", "/api/auth/profile", { profileImage: data.url });
-                                queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-                                toast({ title: "Profile picture updated!" });
-                              } else {
-                                const errData = await res.json().catch(() => ({}));
-                                toast({ title: "Upload failed", description: errData.message || "Max 1MB", variant: "destructive" });
-                              }
-                            } catch {
-                              toast({ title: "Upload failed", variant: "destructive" });
+                              const url = await cropAndUpload(file, { aspect: 1, shape: "round", title: "Adjust profile picture" });
+                              if (!url) return;
+                              if (label) label.setAttribute('data-uploading', 'true');
+                              await apiRequest("PATCH", "/api/auth/profile", { profileImage: url });
+                              queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+                              toast({ title: "Profile picture updated!" });
+                            } catch (err: any) {
+                              toast({ title: "Upload failed", description: err?.message || "Please try again", variant: "destructive" });
+                            } finally {
+                              if (label) label.removeAttribute('data-uploading');
                             }
-                            if (label) label.removeAttribute('data-uploading');
                           }}
                           data-testid="input-header-avatar-upload"
                         />
@@ -1035,30 +1027,22 @@ export default function Dashboard() {
                           id="dash-cover-upload"
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
+                            e.target.value = "";
                             if (!file) return;
-                            if (file.size > 1 * 1024 * 1024) {
-                              toast({ title: "File too large", description: "Maximum file size is 1MB. Please choose a smaller image.", variant: "destructive" });
-                              return;
-                            }
+                            const { cropAndUpload } = await import("@/lib/image-cropper");
                             const coverContainer = document.getElementById('dash-cover-container');
-                            if (coverContainer) coverContainer.setAttribute('data-uploading', 'true');
-                            const formData = new FormData();
-                            formData.append("file", file);
                             try {
-                              const res = await fetch("/api/upload", { method: "POST", body: formData });
-                              if (res.ok) {
-                                const data = await res.json();
-                                await apiRequest("PATCH", "/api/auth/profile", { coverImage: data.url });
-                                queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-                                toast({ title: "Cover image updated!" });
-                              } else {
-                                const errData = await res.json().catch(() => ({}));
-                                toast({ title: "Upload failed", description: errData.message || "Please try a smaller image (max 1MB)", variant: "destructive" });
-                              }
-                            } catch {
-                              toast({ title: "Upload failed", description: "Please try again", variant: "destructive" });
+                              const url = await cropAndUpload(file, { aspect: 3, shape: "rect", title: "Adjust cover image" });
+                              if (!url) return;
+                              if (coverContainer) coverContainer.setAttribute('data-uploading', 'true');
+                              await apiRequest("PATCH", "/api/auth/profile", { coverImage: url });
+                              queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+                              toast({ title: "Cover image updated!" });
+                            } catch (err: any) {
+                              toast({ title: "Upload failed", description: err?.message || "Please try again", variant: "destructive" });
+                            } finally {
+                              if (coverContainer) coverContainer.removeAttribute('data-uploading');
                             }
-                            if (coverContainer) coverContainer.removeAttribute('data-uploading');
                           }}
                           data-testid="input-header-cover-upload"
                         />
@@ -1856,27 +1840,20 @@ function SettingsPanel({
                 id="settings-avatar-upload"
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
+                  e.target.value = "";
                   if (!file) return;
-                  if (file.size > 1 * 1024 * 1024) {
-                    toast({ title: "File too large", description: "Maximum file size is 1MB.", variant: "destructive" });
-                    return;
-                  }
+                  const { cropAndUpload } = await import("@/lib/image-cropper");
                   const label = document.getElementById('settings-avatar-upload-label');
-                  if (label) label.setAttribute('data-uploading', 'true');
-                  const formData = new FormData();
-                  formData.append("file", file);
                   try {
-                    const res = await fetch("/api/upload", { method: "POST", body: formData });
-                    if (res.ok) {
-                      const data = await res.json();
-                      profileMutation.mutate({ profileImage: data.url });
-                    } else {
-                      toast({ title: "Upload failed", description: "Max 1MB", variant: "destructive" });
-                    }
-                  } catch {
-                    toast({ title: "Upload failed", variant: "destructive" });
+                    const url = await cropAndUpload(file, { aspect: 1, shape: "round", title: "Adjust profile picture" });
+                    if (!url) return;
+                    if (label) label.setAttribute('data-uploading', 'true');
+                    profileMutation.mutate({ profileImage: url });
+                  } catch (err: any) {
+                    toast({ title: "Upload failed", description: err?.message || "Please try again", variant: "destructive" });
+                  } finally {
+                    if (label) label.removeAttribute('data-uploading');
                   }
-                  if (label) label.removeAttribute('data-uploading');
                 }}
                 data-testid="input-settings-avatar-upload"
               />
@@ -6462,24 +6439,19 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
 
   const handleUpload = async (file: File, field: "coverPhoto" | "companyLogo") => {
     if (!selectedTemplate) return;
-    if (file.size > 1 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Maximum file size is 1MB. Please choose a smaller image.", variant: "destructive" });
-      return;
-    }
+    const { cropImage, uploadBlob } = await import("@/lib/image-cropper");
+    const cropOpts =
+      field === "coverPhoto"
+        ? { aspect: 3, shape: "rect" as const, title: "Adjust cover photo" }
+        : { aspect: 1, shape: "rect" as const, title: "Adjust company logo" };
+    const blob = await cropImage(file, cropOpts);
+    if (!blob) return;
     setUploadingField(field);
-    const fd = new FormData();
-    fd.append("file", file);
     try {
-      const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
-      if (res.ok) {
-        const { url } = await res.json();
-        updateField(field, url);
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        toast({ title: "Upload failed", description: errData.message || "Max 1MB", variant: "destructive" });
-      }
-    } catch {
-      toast({ title: "Upload failed", description: "Please try again", variant: "destructive" });
+      const url = await uploadBlob(blob, `${field}.jpg`);
+      updateField(field, url);
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err?.message || "Please try again", variant: "destructive" });
     }
     setUploadingField(null);
   };

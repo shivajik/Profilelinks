@@ -71,29 +71,20 @@ export function BusinessProfileSection({ onNavigateToTemplates }: { onNavigateTo
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
-    if (file.size > 1 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Maximum file size is 1MB.", variant: "destructive" });
-      return;
-    }
+    const { cropAndUpload } = await import("@/lib/image-cropper");
     setImageUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
     try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.message || "Upload failed");
+      const url = await cropAndUpload(file, { aspect: 1, shape: "round", title: "Adjust business photo" });
+      if (!url) {
+        setImageUploading(false);
+        return;
       }
-      const { url } = await res.json();
       setBusinessProfileImage(url);
       updateMutation.mutate({ businessProfileImage: url });
     } catch (err: any) {
-      toast({ title: "Failed to upload image", description: err.message || "Max 1MB", variant: "destructive" });
+      toast({ title: "Failed to upload image", description: err.message || "Please try again", variant: "destructive" });
     }
     setImageUploading(false);
   };

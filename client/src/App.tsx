@@ -5,6 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/lib/auth";
+import { ImageCropperHost } from "@/lib/image-cropper";
 import { Loader2 } from "lucide-react";
 
 // Eagerly loaded (critical path)
@@ -89,6 +90,7 @@ function App() {
       <TooltipProvider>
         <AuthProvider>
           <Toaster />
+          <ImageCropperHost />
           <Router />
         </AuthProvider>
       </TooltipProvider>
