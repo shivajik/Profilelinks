@@ -339,9 +339,19 @@ export default function Dashboard() {
   const profileMutation = useMutation({
     mutationFn: async (data: { displayName?: string | null; bio?: string | null; profileImage?: string | null; coverImage?: string | null; useOriginalSocialColors?: boolean }) => {
       await apiRequest("PATCH", "/api/auth/profile", data);
+      return data;
+    },
+    onMutate: async (data) => {
+      // Optimistic: patch cached user immediately so PhonePreview updates before the network round-trip.
+      await queryClient.cancelQueries({ queryKey: ["/api/auth/me"] });
+      const previous = queryClient.getQueryData<any>(["/api/auth/me"]);
+      queryClient.setQueryData(["/api/auth/me"], (old: any) => (old ? { ...old, ...data } : old));
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(["/api/auth/me"], ctx.previous);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/business-profile"] });
       setHeaderDirty(false);
       toast({ title: "Profile updated!" });
@@ -958,7 +968,7 @@ export default function Dashboard() {
                               if (!url) return;
                               if (label) label.setAttribute('data-uploading', 'true');
                               await apiRequest("PATCH", "/api/auth/profile", { profileImage: url });
-                              queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+                              queryClient.setQueryData(["/api/auth/me"], (old: any) => (old ? { ...old, profileImage: url } : old));
                               toast({ title: "Profile picture updated!" });
                             } catch (err: any) {
                               toast({ title: "Upload failed", description: err?.message || "Please try again", variant: "destructive" });
@@ -1036,7 +1046,7 @@ export default function Dashboard() {
                               if (!url) return;
                               if (coverContainer) coverContainer.setAttribute('data-uploading', 'true');
                               await apiRequest("PATCH", "/api/auth/profile", { coverImage: url });
-                              queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+                              queryClient.setQueryData(["/api/auth/me"], (old: any) => (old ? { ...old, coverImage: url } : old));
                               toast({ title: "Cover image updated!" });
                             } catch (err: any) {
                               toast({ title: "Upload failed", description: err?.message || "Please try again", variant: "destructive" });
@@ -6350,9 +6360,34 @@ function TeamTemplatesPanel({ teamId }: { teamId: string }) {
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
       await apiRequest("PATCH", `/api/teams/${teamId}/templates/${id}`, data);
+      return { id, data };
+    },
+    onMutate: async ({ id, data }) => {
+      // Optimistic: patch the templates cache so any preview reading it updates instantly.
+      await queryClient.cancelQueries({ queryKey: ["/api/teams", teamId, "templates"] });
+      const previous = queryClient.getQueryData<any[]>(["/api/teams", teamId, "templates"]);
+      queryClient.setQueryData<any[]>(["/api/teams", teamId, "templates"], (old) => {
+        if (!old) return old;
+        return old.map((t) => {
+          if (t.id !== id) return t;
+          const next = { ...t };
+          for (const [k, v] of Object.entries(data)) {
+            if (k === "templateData") {
+              next.templateData = { ...(t.templateData || {}), ...(v as any) };
+            } else {
+              (next as any)[k] = v;
+            }
+          }
+          return next;
+        });
+      });
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(["/api/teams", teamId, "templates"], ctx.previous);
+      toast({ title: "Failed to save", variant: "destructive" });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/teams", teamId, "templates"] });
       toast({ title: "Saved" });
     },
   });
@@ -8306,6 +8341,7 @@ function ServicesProductsPanel({ teamId, teamSlug, type, businessType }: { teamI
   const [formPrice, setFormPrice] = useState("");
   const [formImage, setFormImage] = useState("");
   const [formUrl, setFormUrl] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Fetch items
   const { data: fetchedItems = [], isLoading } = useQuery<any[]>({
@@ -8518,9 +8554,61 @@ function ServicesProductsPanel({ teamId, teamSlug, type, businessType }: { teamI
               <Label>Price</Label>
               <Input value={formPrice} onChange={(e) => setFormPrice(e.target.value)} placeholder="e.g. ₹999 or Free" />
             </div>
-            <div>
-              <Label>Image URL</Label>
-              <Input value={formImage} onChange={(e) => setFormImage(e.target.value)} placeholder="https://..." />
+            <div className="space-y-2">
+              <Label>Image</Label>
+              {formImage ? (
+                <div className="relative w-full h-40 rounded-md overflow-hidden border bg-muted">
+                  <img src={formImage} alt="Preview" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setFormImage("")}
+                    className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white"
+                    aria-label="Remove image"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <label
+                  htmlFor={`sp-image-upload-${type}`}
+                  className={`flex flex-col items-center justify-center gap-1 w-full h-32 rounded-md border-2 border-dashed cursor-pointer text-muted-foreground hover-elevate ${uploadingImage ? "pointer-events-none opacity-70" : ""}`}
+                >
+                  {uploadingImage ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span className="text-xs">Uploading…</span>
+                    </>
+                  ) : (
+                    <>
+                      <ImageIcon className="w-5 h-5" />
+                      <span className="text-xs">Click to upload {type === "services" ? "service" : "product"} image</span>
+                      <span className="text-[10px] opacity-60">JPG, PNG, GIF or WebP</span>
+                    </>
+                  )}
+                </label>
+              )}
+              <input
+                id={`sp-image-upload-${type}`}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (!file) return;
+                  try {
+                    setUploadingImage(true);
+                    const { cropAndUpload } = await import("@/lib/image-cropper");
+                    const url = await cropAndUpload(file, { aspect: 1, shape: "rect", title: `Adjust ${type === "services" ? "service" : "product"} image` });
+                    if (url) setFormImage(url);
+                  } catch (err: any) {
+                    toast({ title: "Upload failed", description: err?.message || "Please try again", variant: "destructive" });
+                  } finally {
+                    setUploadingImage(false);
+                  }
+                }}
+              />
+              <Input value={formImage} onChange={(e) => setFormImage(e.target.value)} placeholder="Or paste an image URL" className="text-xs" />
             </div>
             <div>
               <Label>URL (opens on click)</Label>
