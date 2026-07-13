@@ -782,7 +782,7 @@ function ClassicTeamLayout(props: TeamLayoutProps) {
         <div className="relative px-5 pb-5">
           <div className="-mt-10 mb-4 flex items-end gap-3">
             <div className="shrink-0">
-              <Avatar className="w-20 h-20 border-4 border-card shadow-md">
+              <Avatar data-vc-avatar className="w-20 h-20 border-4 border-card shadow-md">
                 <AvatarImage src={user.profileImage || undefined} alt={displayName} />
                 <AvatarFallback className="text-xl" style={{ backgroundColor: brandColor + "30", color: brandColor }}>
                   {displayName.charAt(0).toUpperCase()}
@@ -826,7 +826,7 @@ function ModernTeamLayout(props: TeamLayoutProps) {
   if (mode === "mobile") {
     return (
       <div className="mb-6" data-testid="corporate-profile-card">
-        <div className={`${template.cardBg} rounded-xl shadow-lg border overflow-hidden`} style={{ borderColor: brandColor + "20" }}>
+        <div data-vc-card className={`${template.cardBg} rounded-xl shadow-lg border overflow-hidden`} style={{ borderColor: brandColor + "20" }}>
           {teamBranding.coverPhoto ? (
             <div className="h-20 relative">
               <img src={teamBranding.coverPhoto} alt="Cover" className="w-full h-full object-cover" />
@@ -837,7 +837,7 @@ function ModernTeamLayout(props: TeamLayoutProps) {
           )}
           <div className="p-4">
             <div className="flex items-start gap-3">
-              <Avatar className={`w-14 h-14 border-2 shadow-md shrink-0 ${avatarCls} ${teamBranding.coverPhoto ? "-mt-8 ring-2 ring-card" : ""}`} style={{ borderColor: brandColor + "40" }}>
+              <Avatar data-vc-avatar className={`w-14 h-14 border-2 shadow-md shrink-0 ${avatarCls} ${teamBranding.coverPhoto ? "-mt-8 ring-2 ring-card" : ""}`} style={{ borderColor: brandColor + "40" }}>
                 <AvatarImage src={user.profileImage || undefined} alt={displayName} />
                 <AvatarFallback className="text-lg font-bold" style={{ backgroundColor: brandColor + "30", color: brandColor }}>
                   {displayName.charAt(0).toUpperCase()}
@@ -883,7 +883,7 @@ function ModernTeamLayout(props: TeamLayoutProps) {
         <div className={isDesktop ? "flex flex-row" : `flex flex-col sm:flex-row`}>
           <div className={`${leftWidth} p-6 flex flex-col items-center justify-center text-center ${template.cardBg} ${teamBranding.coverPhoto ? "-mt-10 relative z-10" : ""}`}>
             {!teamBranding.coverPhoto && <div className="w-full h-1 rounded-full mb-4" style={{ backgroundColor: brandColor }} />}
-            <Avatar className={`w-24 h-24 border-4 shadow-lg mb-3 ${avatarCls} ${teamBranding.coverPhoto ? "ring-2 ring-card" : ""}`} style={{ borderColor: brandColor + "40" }}>
+            <Avatar data-vc-avatar className={`w-24 h-24 border-4 shadow-lg mb-3 ${avatarCls} ${teamBranding.coverPhoto ? "ring-2 ring-card" : ""}`} style={{ borderColor: brandColor + "40" }}>
               <AvatarImage src={user.profileImage || undefined} alt={displayName} />
               <AvatarFallback className="text-2xl font-bold" style={{ backgroundColor: brandColor + "30", color: brandColor }}>
                 {displayName.charAt(0).toUpperCase()}
@@ -924,7 +924,7 @@ function BoldTeamLayout(props: TeamLayoutProps) {
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
           <div className="absolute bottom-4 left-5 right-5 flex items-end gap-4">
-            <Avatar className={`w-24 h-24 border-4 shadow-xl shrink-0 ${avatarCls}`} style={{ borderColor: "white" }}>
+            <Avatar data-vc-avatar className={`w-24 h-24 border-4 shadow-xl shrink-0 ${avatarCls}`} style={{ borderColor: "white" }}>
               <AvatarImage src={user.profileImage || undefined} alt={displayName} />
               <AvatarFallback className="text-2xl font-bold" style={{ backgroundColor: brandColor, color: "white" }}>
                 {displayName.charAt(0).toUpperCase()}
@@ -983,7 +983,7 @@ function ElegantTeamLayout(props: TeamLayoutProps) {
         )}
         <div className="p-6">
           <div className="flex flex-col items-center text-center mb-6">
-            <Avatar className={`w-20 h-20 border-2 shadow-md mb-3 ${avatarCls} ${teamBranding.coverPhoto ? "-mt-14 ring-2 ring-card" : ""}`} style={{ borderColor: brandColor + "50" }}>
+            <Avatar data-vc-avatar className={`w-20 h-20 border-2 shadow-md mb-3 ${avatarCls} ${teamBranding.coverPhoto ? "-mt-14 ring-2 ring-card" : ""}`} style={{ borderColor: brandColor + "50" }}>
               <AvatarImage src={user.profileImage || undefined} alt={displayName} />
               <AvatarFallback className="text-xl" style={{ backgroundColor: brandColor + "20", color: brandColor }}>
                 {displayName.charAt(0).toUpperCase()}
@@ -1025,7 +1025,7 @@ function HeroTeamLayout(props: TeamLayoutProps) {
       <div className="px-6 -mt-20 relative z-10">
         <div className="rounded-2xl bg-card/95 backdrop-blur-xl p-6 shadow-2xl border border-white/10">
           <div className="flex flex-col items-center text-center -mt-16 mb-4">
-            <Avatar className={`w-24 h-24 border-4 shadow-2xl mb-3 ${avatarCls}`} style={{ borderColor: brandColor }}>
+            <Avatar data-vc-avatar className={`w-24 h-24 border-4 shadow-2xl mb-3 ${avatarCls}`} style={{ borderColor: brandColor }}>
               <AvatarImage src={user.profileImage || undefined} alt={displayName} />
               <AvatarFallback className="text-2xl font-bold" style={{ backgroundColor: brandColor + "30", color: brandColor }}>
                 {displayName.charAt(0).toUpperCase()}

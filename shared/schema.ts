@@ -46,6 +46,7 @@ export const users = pgTable("users", {
   showProductsOnProfile: boolean("show_products_on_profile").notNull().default(false),
   showCompanyOnServices: boolean("show_company_on_services").notNull().default(true),
   showCompanyOnProducts: boolean("show_company_on_products").notNull().default(true),
+  customStyles: jsonb("custom_styles"),
 });
 
 // ── Menu Social Links ──────────────────────────────────────────────────────
@@ -354,6 +355,14 @@ export const updateProfileSchema = z.object({
   showProductsOnProfile: z.boolean().optional(),
   showCompanyOnServices: z.boolean().optional(),
   showCompanyOnProducts: z.boolean().optional(),
+  customStyles: z.object({
+    textColor: z.string().optional().nullable(),
+    bgColor: z.string().optional().nullable(),
+    cardBg: z.string().optional().nullable(),
+    profileShadow: z.number().min(0).max(100).optional().nullable(),
+    profileBorder: z.number().min(0).max(100).optional().nullable(),
+    collapseBio: z.boolean().optional().nullable(),
+  }).nullable().optional(),
 });
 
 export const updateMenuSettingsSchema = z.object({

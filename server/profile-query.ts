@@ -128,6 +128,7 @@ function buildPublicUser(m: any): Record<string, any> {
     showCompanyOnServices: m.show_company_on_services,
     showCompanyOnProducts: m.show_company_on_products,
     whiteLabelEnabled: m.white_label_enabled,
+    customStyles: m.custom_styles || null,
   };
 }
 
@@ -326,6 +327,7 @@ export async function loadProfileByUsername(
       ru.contact_form_email, ru.meeting_link, ru.show_menu_on_profile,
       ru.show_services_on_profile, ru.show_products_on_profile,
       ru.show_company_on_services, ru.show_company_on_products, ru.is_disabled,
+      ru.custom_styles,
       rt.id AS team_id_resolved, rt.name AS team_name, rt.slug AS team_slug,
       rt.website_url AS team_website, rt.logo_url AS team_logo, rt.owner_id AS team_owner_id,
       tm.id AS member_id, tm.role AS member_role, tm.job_title AS member_job_title,
@@ -477,6 +479,7 @@ export async function loadTeamMemberProfile(
         u.meeting_link, u.show_menu_on_profile, u.show_services_on_profile,
         u.show_products_on_profile, u.is_disabled, u.onboarding_completed,
         u.show_company_on_services, u.show_company_on_products,
+        u.custom_styles,
         t.id AS team_id_resolved, t.name AS team_name, t.slug AS team_slug,
         t.website_url AS team_website, t.logo_url AS team_logo, t.owner_id AS team_owner_id,
         tm.id AS member_id, tm.role AS member_role, tm.job_title AS member_job_title,

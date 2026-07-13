@@ -425,8 +425,46 @@ export default function PublicProfile(props?: any) {
     { icon: SiLinkedin, color: "#0A66C2", label: "LinkedIn", url: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(profileUrl)}` },
   ];
 
+  const cs: any = (user as any)?.customStyles || {};
+  const csVars: React.CSSProperties = {
+    ["--vc-text" as any]: cs.textColor || undefined,
+    ["--vc-bg" as any]: cs.bgColor || undefined,
+    ["--vc-card-bg" as any]: cs.cardBg || undefined,
+    ["--vc-avatar-shadow" as any]: (cs.profileShadow ?? 0) > 0
+      ? `0 ${Math.round(cs.profileShadow / 10)}px ${Math.round(cs.profileShadow / 3)}px rgba(0,0,0,${(cs.profileShadow / 200).toFixed(2)})`
+      : "none",
+    ["--vc-avatar-border-width" as any]: `${Math.max(0, Math.round((cs.profileBorder ?? 0) / 20))}px`,
+    ["--vc-avatar-border-color" as any]: cs.textColor || undefined,
+    ["--vc-bio-clamp" as any]: cs.collapseBio ? "3" : "unset",
+  };
+  const hasCustomStyles = !!(cs.textColor || cs.bgColor || cs.cardBg || cs.profileShadow || cs.profileBorder || cs.collapseBio);
+
   return (
-    <div className={`min-h-screen ${template.bg}`}>
+    <div className={`min-h-screen preview-bg ${template.bg}`} data-vc-canvas style={csVars}>
+      {hasCustomStyles && (
+        <style>{`
+          [data-vc-canvas].preview-bg,
+          [data-vc-canvas] .preview-bg {
+            ${cs.bgColor ? `background-color: ${cs.bgColor} !important; background-image: none !important;` : ""}
+          }
+          [data-vc-canvas] [data-vc-card] {
+            ${cs.cardBg ? `background-color: ${cs.cardBg} !important;` : ""}
+          }
+          [data-vc-canvas] [data-testid^="text-profile-"],
+          [data-vc-canvas] [data-vc-text] {
+            ${cs.textColor ? `color: ${cs.textColor} !important;` : ""}
+          }
+          [data-vc-canvas] [data-vc-avatar] {
+            box-shadow: var(--vc-avatar-shadow) !important;
+            ${cs.profileBorder ? `border: var(--vc-avatar-border-width) solid var(--vc-avatar-border-color) !important;` : ""}
+          }
+          [data-vc-canvas] [data-testid="text-profile-bio"],
+          [data-vc-canvas] [data-vc-bio] {
+            ${cs.collapseBio ? `display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; -webkit-line-clamp: 3;` : ""}
+          }
+        `}</style>
+      )}
+
       <div className="max-w-2xl mx-auto px-6 py-12">
         <div className="flex items-center justify-between gap-4 mb-6">
           <Button
@@ -713,7 +751,7 @@ export default function PublicProfile(props?: any) {
             <DialogDescription className="sr-only">Share this profile</DialogDescription>
           </DialogHeader>
           <div className="flex justify-center">
-            <Avatar className="w-24 h-24 border-4 border-primary/20 shadow-lg">
+            <Avatar data-vc-avatar className="w-24 h-24 border-4 border-primary/20 shadow-lg">
               <AvatarImage src={user.profileImage || undefined} alt={displayName} />
               <AvatarFallback
                 className="text-2xl"

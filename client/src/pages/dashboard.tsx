@@ -3503,6 +3503,8 @@ function DesignPanel({
   const currentTemplate = getTemplate(currentTemplateId);
   const { data: designPlanLimits } = usePlanLimits();
   const allowedThemeCategories = designPlanLimits?.themeCategories ?? ["starter"];
+  const { user } = useAuth();
+  const cs: any = (user as any)?.customStyles || {};
 
   // Derive an initial hex color for the primary background from the template's
   // Tailwind bg class (falls back to a neutral if none is embedded).
@@ -3510,56 +3512,87 @@ function DesignPanel({
     return currentTemplate.bg.match(/#[0-9a-fA-F]{6}/)?.[0] || "#f5f0eb";
   }, [currentTemplate.bg]);
 
-  const [textColor, setTextColor] = useState<string>(currentTemplate.accent);
-  const [bgColor, setBgColor] = useState<string>(initialBgHex);
-  const [cardColor, setCardColor] = useState<string>("#ffffff");
-  const [profileShadow, setProfileShadow] = useState<number>(0);
-  const [profileBorder, setProfileBorder] = useState<number>(30);
-  const [collapseBio, setCollapseBio] = useState<boolean>(false);
+  const [textColor, setTextColor] = useState<string>(cs.textColor || currentTemplate.accent);
+  const [bgColor, setBgColor] = useState<string>(cs.bgColor || initialBgHex);
+  const [cardColor, setCardColor] = useState<string>(cs.cardBg || "#ffffff");
+  const [profileShadow, setProfileShadow] = useState<number>(cs.profileShadow ?? 0);
+  const [profileBorder, setProfileBorder] = useState<number>(cs.profileBorder ?? 30);
+  const [collapseBio, setCollapseBio] = useState<boolean>(cs.collapseBio ?? false);
 
   // Reset the pickers when the underlying template changes so the swatches
-  // reflect the newly-selected theme immediately.
+  // reflect the newly-selected theme immediately (unless user has custom values).
   useEffect(() => {
-    setTextColor(currentTemplate.accent);
-    setBgColor(initialBgHex);
+    if (!cs.textColor) setTextColor(currentTemplate.accent);
+    if (!cs.bgColor) setBgColor(initialBgHex);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTemplate.accent, initialBgHex]);
+
+  // Debounced persistence — preview reacts instantly via CSS vars (below),
+  // and the DB write happens ~500ms after the last change so the public URL
+  // reflects the same look without hammering the API on every drag tick.
+  const isFirstRun = useRef(true);
+  useEffect(() => {
+    if (isFirstRun.current) { isFirstRun.current = false; return; }
+    const payload = {
+      customStyles: {
+        textColor, bgColor, cardBg: cardColor,
+        profileShadow, profileBorder, collapseBio,
+      },
+    };
+    // Optimistic cache update so any other consumer sees the new values.
+    queryClient.setQueryData(["/api/auth/me"], (old: any) => (old ? { ...old, ...payload } : old));
+    const t = setTimeout(() => {
+      apiRequest("PATCH", "/api/auth/profile", payload).catch(() => {});
+    }, 500);
+    return () => clearTimeout(t);
+  }, [textColor, bgColor, cardColor, profileShadow, profileBorder, collapseBio]);
 
   // Push the current DesignPanel values to CSS variables so the live preview
   // (rendered elsewhere in the dashboard) can react instantly without any API hit.
   useEffect(() => {
     const root = document.documentElement;
-    root.style.setProperty("--preview-primary-text", textColor);
-    root.style.setProperty("--preview-primary-bg", bgColor);
-    root.style.setProperty("--preview-card-bg", cardColor);
-    root.style.setProperty("--preview-avatar-shadow", profileShadow > 0
+    root.style.setProperty("--vc-text", textColor);
+    root.style.setProperty("--vc-bg", bgColor);
+    root.style.setProperty("--vc-card-bg", cardColor);
+    root.style.setProperty("--vc-avatar-shadow", profileShadow > 0
       ? `0 ${Math.round(profileShadow / 10)}px ${Math.round(profileShadow / 3)}px rgba(0,0,0,${(profileShadow / 200).toFixed(2)})`
       : "none");
-    root.style.setProperty("--preview-avatar-border-width", `${Math.max(1, Math.round(profileBorder / 20))}px`);
-    root.style.setProperty("--preview-avatar-border-color", textColor);
-    root.style.setProperty("--preview-bio-clamp", collapseBio ? "2" : "unset");
-    return () => {
-      // Leave vars in place across renders; clean up only on unmount.
-    };
+    root.style.setProperty("--vc-avatar-border-width", `${Math.max(0, Math.round(profileBorder / 20))}px`);
+    root.style.setProperty("--vc-avatar-border-color", textColor);
+    root.style.setProperty("--vc-bio-clamp", collapseBio ? "3" : "unset");
   }, [textColor, bgColor, cardColor, profileShadow, profileBorder, collapseBio]);
 
   return (
     <div className="p-4 space-y-6">
-      {/* Scoped preview overrides — applied via CSS vars set above. */}
+      {/* Scoped overrides for both the in-dashboard preview AND the public profile.
+          A single stylesheet drives both surfaces so the user sees exactly what
+          visitors will see. Selectors target the shared visicardly canvas markers. */}
       <style>{`
-        [data-testid="phone-preview"] .preview-bg { background-color: var(--preview-primary-bg) !important; }
-        [data-testid="phone-preview"] .preview-avatar {
-          box-shadow: var(--preview-avatar-shadow, none);
-          border-width: var(--preview-avatar-border-width, 2px) !important;
-          border-color: var(--preview-avatar-border-color, currentColor) !important;
-          border-style: solid;
+        [data-vc-canvas] .preview-bg,
+        [data-vc-canvas].preview-bg {
+          background-color: var(--vc-bg) !important;
+          background-image: none !important;
         }
-        [data-testid="phone-preview"] .preview-bio {
+        [data-vc-canvas] [data-vc-card] {
+          background-color: var(--vc-card-bg) !important;
+        }
+        [data-vc-canvas] [data-testid^="text-profile-"],
+        [data-vc-canvas] [data-vc-text] {
+          color: var(--vc-text) !important;
+        }
+        [data-vc-canvas] [data-vc-avatar] {
+          box-shadow: var(--vc-avatar-shadow) !important;
+          border: var(--vc-avatar-border-width) solid var(--vc-avatar-border-color) !important;
+        }
+        [data-vc-canvas] [data-testid="text-profile-bio"],
+        [data-vc-canvas] [data-vc-bio] {
           display: -webkit-box;
           -webkit-box-orient: vertical;
           overflow: hidden;
-          -webkit-line-clamp: var(--preview-bio-clamp, unset);
+          -webkit-line-clamp: var(--vc-bio-clamp, unset);
         }
       `}</style>
+
       <div>
         <h3 className="text-sm font-semibold mb-4">General Styles</h3>
         <div className="space-y-4">
@@ -4020,7 +4053,9 @@ function PhonePreview({
         mode === "desktop" ? "w-[380px]" : "w-[280px]"
       }`}
       data-testid="phone-preview"
+      data-vc-canvas
     >
+
       <div className="rounded-[2rem] border-4 border-foreground/10 overflow-hidden shadow-xl">
         <div className="bg-foreground/10 h-7 flex items-center justify-center">
           <span className="text-[10px] text-muted-foreground font-medium truncate px-4">

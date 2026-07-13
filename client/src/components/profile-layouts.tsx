@@ -274,7 +274,7 @@ function ClassicLayout(props: PersonalLayoutProps) {
             <img src={user.coverImage} alt="Cover" className="w-full h-full object-cover" />
           </div>
         )}
-        <Avatar className={`w-24 h-24 border-4 border-white/20 shadow-lg ${avatarClass} ${user.coverImage ? "mb-5 relative z-10" : "mb-5"}`}>
+        <Avatar data-vc-avatar className={`w-24 h-24 border-4 border-white/20 shadow-lg ${avatarClass} ${user.coverImage ? "mb-5 relative z-10" : "mb-5"}`}>
           <AvatarImage src={user.profileImage || undefined} alt={displayName} />
           <AvatarFallback className="text-2xl" style={{ backgroundColor: template.accent + "30", color: template.accent }}>
             {displayName.charAt(0).toUpperCase()}
@@ -303,9 +303,9 @@ function ModernLayout(props: PersonalLayoutProps) {
             <img src={user.coverImage} alt="Cover" className="w-full h-full object-cover" />
           </div>
         )}
-        <div className={`${template.cardBg} backdrop-blur-md rounded-2xl p-6 shadow-lg`}>
+        <div data-vc-card className={`${template.cardBg} backdrop-blur-md rounded-2xl p-6 shadow-lg`}>
           <div className="flex items-start gap-5">
-            <Avatar className={`w-20 h-20 border-2 shadow-md shrink-0 ${avatarClass}`} style={{ borderColor: template.accent + "40" }}>
+            <Avatar data-vc-avatar className={`w-20 h-20 border-2 shadow-md shrink-0 ${avatarClass}`} style={{ borderColor: template.accent + "40" }}>
               <AvatarImage src={user.profileImage || undefined} alt={displayName} />
               <AvatarFallback className="text-xl" style={{ backgroundColor: template.accent + "30", color: template.accent }}>
                 {displayName.charAt(0).toUpperCase()}
@@ -346,7 +346,7 @@ function BoldLayout(props: PersonalLayoutProps) {
             )}
           </div>
           <div className="absolute -bottom-12 left-1/2 -translate-x-1/2">
-            <Avatar className={`w-28 h-28 border-4 shadow-xl ${avatarClass}`} style={{ borderColor: template.accent }}>
+            <Avatar data-vc-avatar className={`w-28 h-28 border-4 shadow-xl ${avatarClass}`} style={{ borderColor: template.accent }}>
               <AvatarImage src={user.profileImage || undefined} alt={displayName} />
               <AvatarFallback className="text-3xl font-bold" style={{ backgroundColor: template.accent + "30", color: template.accent }}>
                 {displayName.charAt(0).toUpperCase()}
@@ -380,11 +380,11 @@ function ElegantLayout(props: PersonalLayoutProps) {
           </div>
         )}
         <div className="h-1.5 rounded-full mb-8 shadow-sm" style={{ backgroundColor: template.accent }} />
-        <div className={`${template.cardBg} backdrop-blur-md rounded-2xl overflow-hidden shadow-lg`}>
+        <div data-vc-card className={`${template.cardBg} backdrop-blur-md rounded-2xl overflow-hidden shadow-lg`}>
           <div className="h-1" style={{ backgroundColor: template.accent }} />
           <div className="p-6">
             <div className="flex flex-col items-center text-center">
-              <Avatar className={`w-20 h-20 border-2 shadow-md mb-4 ${avatarClass}`} style={{ borderColor: template.accent + "50" }}>
+              <Avatar data-vc-avatar className={`w-20 h-20 border-2 shadow-md mb-4 ${avatarClass}`} style={{ borderColor: template.accent + "50" }}>
                 <AvatarImage src={user.profileImage || undefined} alt={displayName} />
                 <AvatarFallback className="text-xl" style={{ backgroundColor: template.accent + "20", color: template.accent }}>
                   {displayName.charAt(0).toUpperCase()}
@@ -427,9 +427,9 @@ function HeroLayout(props: PersonalLayoutProps) {
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
         </div>
         <div className="px-6 -mt-16 relative z-10">
-          <div className={`${template.cardBg} backdrop-blur-xl rounded-2xl p-6 shadow-xl border border-white/10`}>
+          <div data-vc-card className={`${template.cardBg} backdrop-blur-xl rounded-2xl p-6 shadow-xl border border-white/10`}>
             <div className="flex flex-col items-center text-center -mt-14 mb-3">
-              <Avatar className={`w-24 h-24 border-4 shadow-xl mb-3 ${avatarClass}`} style={{ borderColor: template.accent }}>
+              <Avatar data-vc-avatar className={`w-24 h-24 border-4 shadow-xl mb-3 ${avatarClass}`} style={{ borderColor: template.accent }}>
                 <AvatarImage src={user.profileImage || undefined} alt={displayName} />
                 <AvatarFallback className="text-2xl font-bold" style={{ backgroundColor: template.accent + "30", color: template.accent }}>
                   {displayName.charAt(0).toUpperCase()}
