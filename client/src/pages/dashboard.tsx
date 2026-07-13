@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { toPng } from "html-to-image";
 import { useLocation, Redirect, useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -2998,7 +2998,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
     return (
       <div
         className="text-center font-extrabold tracking-[0.15em] uppercase mt-2"
-        style={{ color: qr.style === "heart" ? "#ffffff" : qr.color, fontSize: `${fontSize}px` }}
+        style={{ color: qr.style === "heart" || qr.style === "full" ? "#ffffff" : qr.color, fontSize: `${fontSize}px` }}
         data-testid="text-scan-me"
       >
         SCAN ME
@@ -3271,6 +3271,16 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
             <div className="flex flex-col lg:flex-row gap-6">
               {/* Controls */}
               <div className="flex-1 space-y-4">
+                <div className="space-y-1.5 p-3 rounded-md border">
+                  <span className="text-sm">{qrStyle === "poster" ? "Poster Text (multi-line)" : "Custom Text (Name / Company)"}</span>
+                  {qrStyle === "poster" ? (
+                    <Textarea value={customText} onChange={(e) => setCustomText(e.target.value)}
+                      placeholder={"e.g.\nJohn Doe\nSoftware Engineer\n\nScan to connect!"} className="text-sm min-h-[80px]" maxLength={200} data-testid="input-qr-custom-text" />
+                  ) : (
+                    <Input value={customText} onChange={(e) => setCustomText(e.target.value)}
+                      placeholder="e.g. John Doe or Acme Inc." className="text-sm" maxLength={50} data-testid="input-qr-custom-text" />
+                  )}
+                </div>
                 <div>
                   <span className="text-xs font-medium text-muted-foreground mb-2 block">Frame Style</span>
                   <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5" data-testid="tabs-qr-style">
@@ -3345,17 +3355,6 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
                   </div>
                 )}
 
-                <div className="space-y-1.5 p-3 rounded-md border">
-                  <span className="text-sm">{qrStyle === "poster" ? "Poster Text (multi-line)" : "Custom Text (Name / Company)"}</span>
-                  {qrStyle === "poster" ? (
-                    <Textarea value={customText} onChange={(e) => setCustomText(e.target.value)}
-                      placeholder={"e.g.\nJohn Doe\nSoftware Engineer\n\nScan to connect!"} className="text-sm min-h-[80px]" maxLength={200} data-testid="input-qr-custom-text" />
-                  ) : (
-                    <Input value={customText} onChange={(e) => setCustomText(e.target.value)}
-                      placeholder="e.g. John Doe or Acme Inc." className="text-sm" maxLength={50} data-testid="input-qr-custom-text" />
-                  )}
-                </div>
-
                 <Button onClick={handleCreate} className="w-full" disabled={createQrMutation.isPending || updateQrMutation.isPending} data-testid="button-save-qr">
                   {(createQrMutation.isPending || updateQrMutation.isPending) && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                   {editingId ? "Save Changes" : "Create"}
@@ -3381,7 +3380,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
                       {renderScanText({ style: qrStyle, color: qrColor, scanText }, 160)}
                       {renderFrameDecorations({ style: qrStyle, color: qrColor, borderWidth })}
                       {customText.trim() && (
-                        <div className="text-center font-bold mt-1" style={{ color: qrColor, fontSize: "10px" }}>{customText.trim()}</div>
+                        <div className="text-center font-bold mt-1" style={{ color: qrStyle === "full" ? "#ffffff" : qrColor, fontSize: "10px" }}>{customText.trim()}</div>
                       )}
                     </div>
                   )}
@@ -3470,7 +3469,7 @@ function QRCodePanel({ profileUrl, username }: { profileUrl: string; username: s
                   {renderScanText(qr, 100)}
                   {renderFrameDecorations(qr)}
                   {qr.label && qr.label !== "Profile QR" && qr.label !== "QR Code" && (
-                    <div className="text-center font-bold mt-1" style={{ color: qr.color, fontSize: "8px" }}>
+                    <div className="text-center font-bold mt-1" style={{ color: qr.style === "full" ? "#ffffff" : qr.color, fontSize: "8px" }}>
                       {qr.label}
                     </div>
                   )}
@@ -3504,32 +3503,93 @@ function DesignPanel({
   const { data: designPlanLimits } = usePlanLimits();
   const allowedThemeCategories = designPlanLimits?.themeCategories ?? ["starter"];
 
+  // Derive an initial hex color for the primary background from the template's
+  // Tailwind bg class (falls back to a neutral if none is embedded).
+  const initialBgHex = useMemo(() => {
+    return currentTemplate.bg.match(/#[0-9a-fA-F]{6}/)?.[0] || "#f5f0eb";
+  }, [currentTemplate.bg]);
+
+  const [textColor, setTextColor] = useState<string>(currentTemplate.accent);
+  const [bgColor, setBgColor] = useState<string>(initialBgHex);
+  const [cardColor, setCardColor] = useState<string>("#ffffff");
+  const [profileShadow, setProfileShadow] = useState<number>(0);
+  const [profileBorder, setProfileBorder] = useState<number>(30);
+  const [collapseBio, setCollapseBio] = useState<boolean>(false);
+
+  // Reset the pickers when the underlying template changes so the swatches
+  // reflect the newly-selected theme immediately.
+  useEffect(() => {
+    setTextColor(currentTemplate.accent);
+    setBgColor(initialBgHex);
+  }, [currentTemplate.accent, initialBgHex]);
+
+  // Push the current DesignPanel values to CSS variables so the live preview
+  // (rendered elsewhere in the dashboard) can react instantly without any API hit.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--preview-primary-text", textColor);
+    root.style.setProperty("--preview-primary-bg", bgColor);
+    root.style.setProperty("--preview-card-bg", cardColor);
+    root.style.setProperty("--preview-avatar-shadow", profileShadow > 0
+      ? `0 ${Math.round(profileShadow / 10)}px ${Math.round(profileShadow / 3)}px rgba(0,0,0,${(profileShadow / 200).toFixed(2)})`
+      : "none");
+    root.style.setProperty("--preview-avatar-border-width", `${Math.max(1, Math.round(profileBorder / 20))}px`);
+    root.style.setProperty("--preview-avatar-border-color", textColor);
+    root.style.setProperty("--preview-bio-clamp", collapseBio ? "2" : "unset");
+    return () => {
+      // Leave vars in place across renders; clean up only on unmount.
+    };
+  }, [textColor, bgColor, cardColor, profileShadow, profileBorder, collapseBio]);
+
   return (
     <div className="p-4 space-y-6">
+      {/* Scoped preview overrides — applied via CSS vars set above. */}
+      <style>{`
+        [data-testid="phone-preview"] .preview-bg { background-color: var(--preview-primary-bg) !important; }
+        [data-testid="phone-preview"] .preview-avatar {
+          box-shadow: var(--preview-avatar-shadow, none);
+          border-width: var(--preview-avatar-border-width, 2px) !important;
+          border-color: var(--preview-avatar-border-color, currentColor) !important;
+          border-style: solid;
+        }
+        [data-testid="phone-preview"] .preview-bio {
+          display: -webkit-box;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          -webkit-line-clamp: var(--preview-bio-clamp, unset);
+        }
+      `}</style>
       <div>
         <h3 className="text-sm font-semibold mb-4">General Styles</h3>
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-4">
             <span className="text-sm text-muted-foreground">Primary Text Color</span>
-            <div
-              className="w-6 h-6 rounded-full border border-border shrink-0"
-              style={{ backgroundColor: currentTemplate.accent }}
-              data-testid="display-primary-text-color"
+            <input
+              type="color"
+              value={textColor}
+              onChange={(e) => setTextColor(e.target.value)}
+              className="w-6 h-6 rounded-full border border-border shrink-0 cursor-pointer p-0 bg-transparent"
+              data-testid="input-primary-text-color"
             />
           </div>
           <div className="flex items-center justify-between gap-4">
             <span className="text-sm text-muted-foreground">Primary Background</span>
-            <div
-              className={`w-6 h-6 rounded-full border border-border shrink-0 ${currentTemplate.bg.includes("gradient") ? currentTemplate.bg : ""}`}
-              style={!currentTemplate.bg.includes("gradient") ? { backgroundColor: currentTemplate.bg.match(/#[0-9a-fA-F]{6}/)?.[0] || "#f5f0eb" } : {}}
-              data-testid="display-primary-bg"
+            <input
+              type="color"
+              value={bgColor}
+              onChange={(e) => setBgColor(e.target.value)}
+              className="w-6 h-6 rounded-full border border-border shrink-0 cursor-pointer p-0 bg-transparent"
+              data-testid="input-primary-bg"
             />
           </div>
           <div className="flex items-center justify-between gap-4">
             <span className="text-sm text-muted-foreground">Card Background</span>
-            <div
-              className={`w-6 h-6 rounded-full border border-border shrink-0 ${currentTemplate.cardBg}`}
-              data-testid="display-card-bg"
+            <input
+              type="color"
+              value={cardColor}
+              onChange={(e) => setCardColor(e.target.value)}
+              className="w-6 h-6 rounded-full border border-border shrink-0 cursor-pointer p-0 bg-transparent"
+              data-testid="input-card-bg"
             />
           </div>
         </div>
@@ -3669,7 +3729,8 @@ function DesignPanel({
               type="range"
               min="0"
               max="100"
-              defaultValue="0"
+              value={profileShadow}
+              onChange={(e) => setProfileShadow(Number(e.target.value))}
               className="w-20 h-1 accent-primary"
               data-testid="slider-profile-shadow"
             />
@@ -3680,14 +3741,15 @@ function DesignPanel({
               type="range"
               min="0"
               max="100"
-              defaultValue="30"
+              value={profileBorder}
+              onChange={(e) => setProfileBorder(Number(e.target.value))}
               className="w-20 h-1 accent-primary"
               data-testid="slider-profile-border"
             />
           </div>
           <div className="flex items-center justify-between gap-4">
             <span className="text-sm text-muted-foreground">Collapse Long Bio</span>
-            <Switch defaultChecked={false} data-testid="switch-collapse-bio" />
+            <Switch checked={collapseBio} onCheckedChange={setCollapseBio} data-testid="switch-collapse-bio" />
           </div>
         </div>
       </div>
@@ -3819,14 +3881,14 @@ function PhonePreview({
           <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
         </div>
       )}
-      <Avatar className={`w-16 h-16 border-2 border-white/30 mb-3 ${avatarCls} ${coverImage ? "relative z-10" : ""}`}>
+      <Avatar className={`preview-avatar w-16 h-16 border-2 border-white/30 mb-3 ${avatarCls} ${coverImage ? "relative z-10" : ""}`}>
         <AvatarImage src={profileImage || undefined} />
         <AvatarFallback className="bg-white/20 text-lg" style={{ color: template.accent }}>
           {name.charAt(0).toUpperCase()}
         </AvatarFallback>
       </Avatar>
       <p className={`font-bold text-sm ${template.textColor}`}>{name}</p>
-      {shortBio && <p className={`text-[11px] mt-1 ${template.textColor} opacity-80 leading-relaxed max-w-[200px]`}>{shortBio}</p>}
+      {shortBio && <p className={`preview-bio text-[11px] mt-1 ${template.textColor} opacity-80 leading-relaxed max-w-[200px]`}>{shortBio}</p>}
       <div className="justify-center mt-3">{socialIcons}</div>
       {pageNav && <div className="mt-3">{pageNav}</div>}
       <div className="w-full mt-5">{blocksList}</div>
@@ -3842,7 +3904,7 @@ function PhonePreview({
       )}
       <div className={`${template.cardBg} backdrop-blur-md rounded-xl p-4 shadow-md`}>
         <div className="flex items-start gap-3">
-          <Avatar className={`w-12 h-12 border-2 shadow-md shrink-0 ${avatarCls}`} style={{ borderColor: template.accent + "40" }}>
+          <Avatar className={`preview-avatar w-12 h-12 border-2 shadow-md shrink-0 ${avatarCls}`} style={{ borderColor: template.accent + "40" }}>
             <AvatarImage src={profileImage || undefined} />
             <AvatarFallback className="text-sm" style={{ backgroundColor: template.accent + "30", color: template.accent }}>
               {name.charAt(0).toUpperCase()}
@@ -3851,7 +3913,7 @@ function PhonePreview({
           <div className="flex-1 min-w-0">
             <p className={`font-bold text-sm ${template.cardTextColor}`}>{name}</p>
             <p className={`text-[9px] ${template.cardTextColor} opacity-50`}>@{username}</p>
-            {shortBio && <p className={`text-[10px] mt-1 ${template.cardTextColor} opacity-75 leading-relaxed`}>{shortBio}</p>}
+            {shortBio && <p className={`preview-bio text-[10px] mt-1 ${template.cardTextColor} opacity-75 leading-relaxed`}>{shortBio}</p>}
             <div className="mt-2">{socialIcons}</div>
           </div>
         </div>
@@ -3872,7 +3934,7 @@ function PhonePreview({
           )}
         </div>
         <div className="absolute -bottom-8 left-1/2 -translate-x-1/2">
-          <Avatar className={`w-16 h-16 border-[3px] shadow-lg ${avatarCls}`} style={{ borderColor: template.accent }}>
+          <Avatar className={`preview-avatar w-16 h-16 border-[3px] shadow-lg ${avatarCls}`} style={{ borderColor: template.accent }}>
             <AvatarImage src={profileImage || undefined} />
             <AvatarFallback className="text-lg font-bold" style={{ backgroundColor: template.accent + "30", color: template.accent }}>
               {name.charAt(0).toUpperCase()}
@@ -3883,7 +3945,7 @@ function PhonePreview({
       <div className="text-center">
         <p className={`text-lg font-extrabold tracking-tight ${template.textColor}`}>{name}</p>
         <p className={`text-[9px] ${template.textColor} opacity-50`}>@{username}</p>
-        {shortBio && <p className={`text-[10px] mt-1 max-w-[200px] mx-auto leading-relaxed ${template.textColor} opacity-70`}>{shortBio}</p>}
+        {shortBio && <p className={`preview-bio text-[10px] mt-1 max-w-[200px] mx-auto leading-relaxed ${template.textColor} opacity-70`}>{shortBio}</p>}
         <div className="flex justify-center mt-2">{socialIcons}</div>
         {pageNav && <div className="mt-2">{pageNav}</div>}
       </div>
@@ -3902,7 +3964,7 @@ function PhonePreview({
       <div className={`${template.cardBg} backdrop-blur-md rounded-xl overflow-hidden shadow-md`}>
         <div className="h-0.5" style={{ backgroundColor: template.accent }} />
         <div className="p-4 flex flex-col items-center text-center">
-          <Avatar className={`w-14 h-14 border-2 shadow-md mb-3 ${avatarCls}`} style={{ borderColor: template.accent + "50" }}>
+          <Avatar className={`preview-avatar w-14 h-14 border-2 shadow-md mb-3 ${avatarCls}`} style={{ borderColor: template.accent + "50" }}>
             <AvatarImage src={profileImage || undefined} />
             <AvatarFallback className="text-sm" style={{ backgroundColor: template.accent + "20", color: template.accent }}>
               {name.charAt(0).toUpperCase()}
@@ -3910,7 +3972,7 @@ function PhonePreview({
           </Avatar>
           <p className={`font-semibold text-sm tracking-wide ${template.cardTextColor}`}>{name}</p>
           <p className={`text-[8px] ${template.cardTextColor} opacity-50 tracking-widest uppercase`}>@{username}</p>
-          {shortBio && <p className={`text-[10px] mt-2 leading-relaxed ${template.cardTextColor} opacity-70 max-w-[180px]`}>{shortBio}</p>}
+          {shortBio && <p className={`preview-bio text-[10px] mt-2 leading-relaxed ${template.cardTextColor} opacity-70 max-w-[180px]`}>{shortBio}</p>}
           <div className="w-8 h-px my-3" style={{ backgroundColor: template.accent + "40" }} />
           <div className="justify-center">{socialIcons}</div>
         </div>
@@ -3933,7 +3995,7 @@ function PhonePreview({
       <div className="px-4 -mt-10 relative z-10">
         <div className={`${template.cardBg} backdrop-blur-xl rounded-xl p-4 shadow-lg border border-white/10`}>
           <div className="flex flex-col items-center text-center -mt-10 mb-2">
-            <Avatar className={`w-14 h-14 border-[3px] shadow-lg mb-2 ${avatarCls}`} style={{ borderColor: template.accent }}>
+            <Avatar className={`preview-avatar w-14 h-14 border-[3px] shadow-lg mb-2 ${avatarCls}`} style={{ borderColor: template.accent }}>
               <AvatarImage src={profileImage || undefined} />
               <AvatarFallback className="text-lg font-bold" style={{ backgroundColor: template.accent + "30", color: template.accent }}>
                 {name.charAt(0).toUpperCase()}
@@ -3941,7 +4003,7 @@ function PhonePreview({
             </Avatar>
             <p className={`font-bold text-sm ${template.cardTextColor}`}>{name}</p>
             <p className={`text-[9px] ${template.cardTextColor} opacity-50`}>@{username}</p>
-            {shortBio && <p className={`text-[10px] mt-1 max-w-[180px] leading-relaxed ${template.cardTextColor} opacity-75`}>{shortBio}</p>}
+            {shortBio && <p className={`preview-bio text-[10px] mt-1 max-w-[180px] leading-relaxed ${template.cardTextColor} opacity-75`}>{shortBio}</p>}
             <div className="justify-center mt-2">{socialIcons}</div>
           </div>
           {pageNav && <div className="flex justify-center pt-2 border-t border-white/10">{pageNav}</div>}
@@ -3964,7 +4026,7 @@ function PhonePreview({
             visicardly.com/{username}
           </span>
         </div>
-        <div className={`min-h-[480px] ${template.bg} p-5`}>
+        <div className={`preview-bg min-h-[480px] ${template.bg} p-5`}>
           {layout === "modern" ? renderModern()
            : layout === "bold" ? renderBold()
            : layout === "elegant" ? renderElegant()
@@ -7537,7 +7599,7 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
       <div style={getContainerStyle()} data-qr-container>
         <QRCodeSVG {...qrProps} />
         {showScanText && (
-          <div className="text-center font-extrabold tracking-[0.15em] uppercase mt-2" style={{ color: qrStyle === "tag" ? "#ffffff" : qrColor, fontSize: `${Math.max(size * 0.06, 10)}px` }}>
+          <div className="text-center font-extrabold tracking-[0.15em] uppercase mt-2" style={{ color: qrStyle === "tag" || qrStyle === "full" ? "#ffffff" : qrColor, fontSize: `${Math.max(size * 0.06, 10)}px` }}>
             SCAN ME
           </div>
         )}
@@ -7548,7 +7610,7 @@ function URLQRGeneratorPanel({ username }: { username: string }) {
           <div style={{ position: "absolute", top: "-12px", left: "50%", transform: "translateX(-50%)", width: "20px", height: "20px", borderRadius: "50%", border: `3px solid ${qrColor}`, background: "white", boxShadow: `0 2px 8px ${qrColor}30` }} />
         )}
         {customText.trim() && (
-          <div className="text-center font-bold mt-1" style={{ color: qrStyle === "tag" ? "#ffffff" : qrColor, fontSize: `${Math.max(size * 0.055, 9)}px` }}>
+          <div className="text-center font-bold mt-1" style={{ color: qrStyle === "tag" || qrStyle === "full" ? "#ffffff" : qrColor, fontSize: `${Math.max(size * 0.055, 9)}px` }}>
             {customText.trim()}
           </div>
         )}
