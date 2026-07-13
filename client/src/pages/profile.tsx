@@ -208,6 +208,29 @@ export default function PublicProfile(props?: any) {
     return () => { document.title = 'VisiCardly — Digital Business Cards & Link-in-Bio Pages'; };
   }, [data, username]);
 
+  // Delegated click-to-expand: tapping a clamped bio unlocks the clamp
+  // locally via a data attribute — no re-renders, no extra components needed.
+  // Placed BEFORE conditional returns to keep hook order stable.
+  const collapseBioEnabled = !!(data?.user as any)?.customStyles?.collapseBio;
+  useEffect(() => {
+    if (!collapseBioEnabled) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      const bio = target.closest<HTMLElement>(
+        '[data-vc-bio], [data-testid="text-profile-bio"]'
+      );
+      if (!bio) return;
+      if (bio.getAttribute("data-vc-bio-expanded") === "true") {
+        bio.removeAttribute("data-vc-bio-expanded");
+      } else {
+        bio.setAttribute("data-vc-bio-expanded", "true");
+      }
+    };
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, [collapseBioEnabled]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -461,6 +484,11 @@ export default function PublicProfile(props?: any) {
           [data-vc-canvas] [data-testid="text-profile-bio"],
           [data-vc-canvas] [data-vc-bio] {
             ${cs.collapseBio ? `display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; -webkit-line-clamp: 3;` : ""}
+            ${cs.collapseBio ? `cursor: pointer;` : ""}
+          }
+          [data-vc-canvas] [data-testid="text-profile-bio"][data-vc-bio-expanded="true"],
+          [data-vc-canvas] [data-vc-bio][data-vc-bio-expanded="true"] {
+            -webkit-line-clamp: unset !important;
           }
         `}</style>
       )}

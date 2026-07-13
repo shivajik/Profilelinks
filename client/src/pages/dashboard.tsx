@@ -322,7 +322,11 @@ export default function Dashboard() {
       .then(r => { if (r.ok) return r.json(); throw new Error(); })
       .then(d => { setIsAffiliate(true); setAffiliateData(d); })
       .catch(() => setIsAffiliate(false));
-  }, [user]);
+    // Only refetch when the user identity actually changes — depending on the
+    // whole `user` object caused the affiliate endpoint to be hit on every
+    // style-slider tick because optimistic cache updates re-create the object.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   useEffect(() => {
     if (user) {
@@ -3562,6 +3566,27 @@ function DesignPanel({
     root.style.setProperty("--vc-bio-clamp", collapseBio ? "3" : "unset");
   }, [textColor, bgColor, cardColor, profileShadow, profileBorder, collapseBio]);
 
+  // Click-to-expand ellipsis: when a collapsed bio is tapped, flip an attribute
+  // that unlocks the clamp locally. Delegated so it works for both the in-
+  // dashboard preview and any bio node that shares the markers.
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      const bio = target.closest<HTMLElement>(
+        '[data-vc-bio], .preview-bio, [data-testid="text-profile-bio"]'
+      );
+      if (!bio) return;
+      if (bio.getAttribute("data-vc-bio-expanded") === "true") {
+        bio.removeAttribute("data-vc-bio-expanded");
+      } else {
+        bio.setAttribute("data-vc-bio-expanded", "true");
+      }
+    };
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, []);
+
   return (
     <div className="p-4 space-y-6">
       {/* Scoped overrides for both the in-dashboard preview AND the public profile.
@@ -3577,19 +3602,28 @@ function DesignPanel({
           background-color: var(--vc-card-bg) !important;
         }
         [data-vc-canvas] [data-testid^="text-profile-"],
-        [data-vc-canvas] [data-vc-text] {
+        [data-vc-canvas] [data-vc-text],
+        [data-vc-canvas] .preview-bio {
           color: var(--vc-text) !important;
         }
-        [data-vc-canvas] [data-vc-avatar] {
+        [data-vc-canvas] [data-vc-avatar],
+        [data-vc-canvas] .preview-avatar {
           box-shadow: var(--vc-avatar-shadow) !important;
           border: var(--vc-avatar-border-width) solid var(--vc-avatar-border-color) !important;
         }
         [data-vc-canvas] [data-testid="text-profile-bio"],
-        [data-vc-canvas] [data-vc-bio] {
+        [data-vc-canvas] [data-vc-bio],
+        [data-vc-canvas] .preview-bio {
           display: -webkit-box;
           -webkit-box-orient: vertical;
           overflow: hidden;
           -webkit-line-clamp: var(--vc-bio-clamp, unset);
+          cursor: ${collapseBio ? "pointer" : "auto"};
+        }
+        [data-vc-canvas] [data-testid="text-profile-bio"][data-vc-bio-expanded="true"],
+        [data-vc-canvas] [data-vc-bio][data-vc-bio-expanded="true"],
+        [data-vc-canvas] .preview-bio[data-vc-bio-expanded="true"] {
+          -webkit-line-clamp: unset !important;
         }
       `}</style>
 
