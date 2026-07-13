@@ -4236,8 +4236,9 @@ function TeamPhonePreview({
     <div
       className="rounded-2xl overflow-hidden border shadow-lg"
       style={{ width: containerWidth, height: 700 }}
+      data-vc-canvas
     >
-      <div className={`${template.bg} h-full overflow-y-auto`}>
+      <div className={`preview-bg ${template.bg} h-full overflow-y-auto`}>
         <div className="max-w-2xl mx-auto px-6 py-12">
           <TeamProfileLayout
             user={previewUser}
