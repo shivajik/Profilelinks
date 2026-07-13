@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { QRCodeSVG } from "qrcode.react";
 import { Loader2, Copy, Check, Package, QrCode, Phone, Mail, MapPin, Globe, Clock, MessageCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { normalizeImageUrl } from "@/lib/image-url";
 import { SocialIcon } from "@/components/social-icon";
 
 interface MenuSection {
@@ -390,7 +391,7 @@ export default function PublicMenu() {
                       {sectionProducts.map((product) => (
                         <div key={product.id} className={`rounded-xl overflow-hidden ${template.cardBg} backdrop-blur-sm flex flex-col`}>
                           {product.imageUrl ? (
-                            <img src={product.imageUrl} alt={product.name} className="w-full aspect-square object-cover" />
+                            <img src={normalizeImageUrl(product.imageUrl)} alt={product.name} className="w-full aspect-square object-cover" referrerPolicy="no-referrer" />
                           ) : (
                             <div className="w-full aspect-square flex items-center justify-center" style={{ backgroundColor: brandColor + "15" }}>
                               <Package className="w-10 h-10" style={{ color: brandColor + "60" }} />
@@ -414,7 +415,7 @@ export default function PublicMenu() {
                         <div key={product.id} className={`rounded-xl overflow-hidden ${template.cardBg} backdrop-blur-sm p-3`}>
                           <div className="flex items-start gap-3">
                             {product.imageUrl ? (
-                              <img src={product.imageUrl} alt={product.name} className="w-20 h-20 rounded-lg object-cover shrink-0 shadow-sm" />
+                              <img src={normalizeImageUrl(product.imageUrl)} alt={product.name} className="w-20 h-20 rounded-lg object-cover shrink-0 shadow-sm" referrerPolicy="no-referrer" />
                             ) : (
                               <div className="w-20 h-20 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: brandColor + "15" }}>
                                 <Package className="w-7 h-7" style={{ color: brandColor + "60" }} />

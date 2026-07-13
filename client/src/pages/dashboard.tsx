@@ -3,6 +3,7 @@ import { toPng } from "html-to-image";
 import { useLocation, Redirect, useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { normalizeImageUrl } from "@/lib/image-url";
 import { useAuth } from "@/lib/auth";
 import logoPath from "/logo.png";
 import { TEMPLATES, getTemplate, LAYOUT_LABELS, THEME_CATEGORIES } from "@/lib/templates";
@@ -8568,7 +8569,7 @@ function ServicesProductsPanel({ teamId, teamSlug, type, businessType }: { teamI
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
                   {item.imageUrl && (
-                    <img src={item.imageUrl} alt={item.title} className="w-16 h-16 rounded-md object-cover shrink-0" />
+                    <img src={normalizeImageUrl(item.imageUrl)} alt={item.title} className="w-16 h-16 rounded-md object-cover shrink-0" referrerPolicy="no-referrer" />
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
@@ -8620,7 +8621,7 @@ function ServicesProductsPanel({ teamId, teamSlug, type, businessType }: { teamI
               <Label>Image</Label>
               {formImage ? (
                 <div className="relative w-full h-40 rounded-md overflow-hidden border bg-muted">
-                  <img src={formImage} alt="Preview" className="w-full h-full object-cover" />
+                  <img src={normalizeImageUrl(formImage)} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   <button
                     type="button"
                     onClick={() => setFormImage("")}

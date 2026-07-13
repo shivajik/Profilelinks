@@ -7,6 +7,7 @@ import { ExternalLink, ChevronDown, Phone, Mail, Globe, MapPin, Building2, FileT
 import { SocialIcon } from "@/components/social-icon";
 import { getPlatform } from "@/lib/social-platforms";
 import { getAvatarClass, getButtonClass } from "@/lib/templates";
+import { normalizeImageUrl } from "@/lib/image-url";
 import type { Template } from "@/lib/templates";
 import type { Link, Social, Block } from "@shared/schema";
 import { useState, useRef, useEffect } from "react";
@@ -632,7 +633,7 @@ function InlineServicesProducts({ slug, type, brandColor }: { slug: string; type
           >
             {item.imageUrl && (
               <div className="aspect-video overflow-hidden">
-                <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
+                <img src={normalizeImageUrl(item.imageUrl)} alt={item.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
               </div>
             )}
             <div className="p-4">

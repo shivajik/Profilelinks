@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getTemplate } from "@/lib/templates";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SocialIcon } from "@/components/social-icon";
+import { normalizeImageUrl } from "@/lib/image-url";
 
 type ItemType = {
   id: string;
@@ -174,7 +175,7 @@ export default function PublicServicesProducts({ type }: { type: "services" | "p
                 >
                   {item.imageUrl && (
                     <div className="aspect-video overflow-hidden">
-                      <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
+                      <img src={normalizeImageUrl(item.imageUrl)} alt={item.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     </div>
                   )}
                   <div className="p-4">
