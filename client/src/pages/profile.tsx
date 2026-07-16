@@ -448,7 +448,13 @@ export default function PublicProfile(props?: any) {
     { icon: SiLinkedin, color: "#0A66C2", label: "LinkedIn", url: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(profileUrl)}` },
   ];
 
-  const cs: any = (user as any)?.customStyles || {};
+  const rawCs: any = (user as any)?.customStyles || {};
+  // When the user is in "default" color mode we ignore any previously-saved
+  // custom palette so the template's built-in colors apply — while still
+  // honoring non-color prefs (avatar shadow/border, bio collapse).
+  const cs: any = rawCs.colorMode === "default"
+    ? { profileShadow: rawCs.profileShadow, profileBorder: rawCs.profileBorder, collapseBio: rawCs.collapseBio }
+    : rawCs;
   const csVars: React.CSSProperties = {
     ["--vc-text" as any]: cs.textColor || undefined,
     ["--vc-bg" as any]: cs.bgColor || undefined,

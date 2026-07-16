@@ -3522,6 +3522,20 @@ function DesignPanel({
   const [profileShadow, setProfileShadow] = useState<number>(cs.profileShadow ?? 0);
   const [profileBorder, setProfileBorder] = useState<number>(cs.profileBorder ?? 30);
   const [collapseBio, setCollapseBio] = useState<boolean>(cs.collapseBio ?? false);
+  // Default vs Custom color mode. "default" applies the template's baked-in
+  // colors; "custom" applies the user's previously-picked palette. We keep the
+  // custom values in state even while in default mode so switching back
+  // restores exactly what the user had before.
+  const [colorMode, setColorMode] = useState<"default" | "custom">(
+    cs.colorMode === "custom" || cs.colorMode === "default"
+      ? cs.colorMode
+      : (cs.textColor || cs.bgColor || cs.cardBg) ? "custom" : "default"
+  );
+
+  // Effective colors that actually drive the preview & get pushed to CSS vars.
+  const effectiveText = colorMode === "default" ? currentTemplate.accent : textColor;
+  const effectiveBg = colorMode === "default" ? initialBgHex : bgColor;
+  const effectiveCard = colorMode === "default" ? "#ffffff" : cardColor;
 
   // Reset the pickers when the underlying template changes so the swatches
   // reflect the newly-selected theme immediately (unless user has custom values).
@@ -3541,6 +3555,7 @@ function DesignPanel({
       customStyles: {
         textColor, bgColor, cardBg: cardColor,
         profileShadow, profileBorder, collapseBio,
+        colorMode,
       },
     };
     // Optimistic cache update so any other consumer sees the new values.
@@ -3549,22 +3564,22 @@ function DesignPanel({
       apiRequest("PATCH", "/api/auth/profile", payload).catch(() => {});
     }, 500);
     return () => clearTimeout(t);
-  }, [textColor, bgColor, cardColor, profileShadow, profileBorder, collapseBio]);
+  }, [textColor, bgColor, cardColor, profileShadow, profileBorder, collapseBio, colorMode]);
 
   // Push the current DesignPanel values to CSS variables so the live preview
   // (rendered elsewhere in the dashboard) can react instantly without any API hit.
   useEffect(() => {
     const root = document.documentElement;
-    root.style.setProperty("--vc-text", textColor);
-    root.style.setProperty("--vc-bg", bgColor);
-    root.style.setProperty("--vc-card-bg", cardColor);
+    root.style.setProperty("--vc-text", effectiveText);
+    root.style.setProperty("--vc-bg", effectiveBg);
+    root.style.setProperty("--vc-card-bg", effectiveCard);
     root.style.setProperty("--vc-avatar-shadow", profileShadow > 0
       ? `0 ${Math.round(profileShadow / 10)}px ${Math.round(profileShadow / 3)}px rgba(0,0,0,${(profileShadow / 200).toFixed(2)})`
       : "none");
     root.style.setProperty("--vc-avatar-border-width", `${Math.max(0, Math.round(profileBorder / 20))}px`);
-    root.style.setProperty("--vc-avatar-border-color", textColor);
+    root.style.setProperty("--vc-avatar-border-color", effectiveText);
     root.style.setProperty("--vc-bio-clamp", collapseBio ? "3" : "unset");
-  }, [textColor, bgColor, cardColor, profileShadow, profileBorder, collapseBio]);
+  }, [effectiveText, effectiveBg, effectiveCard, profileShadow, profileBorder, collapseBio]);
 
   // Click-to-expand ellipsis: when a collapsed bio is tapped, flip an attribute
   // that unlocks the clamp locally. Delegated so it works for both the in-
@@ -3628,15 +3643,39 @@ function DesignPanel({
       `}</style>
 
       <div>
-        <h3 className="text-sm font-semibold mb-4">General Styles</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold">General Styles</h3>
+          <div className="inline-flex rounded-full border border-border bg-muted/40 p-0.5 text-xs" data-testid="color-mode-toggle">
+            <button
+              type="button"
+              onClick={() => setColorMode("default")}
+              className={`px-3 py-1 rounded-full transition-colors ${colorMode === "default" ? "bg-background shadow-sm font-medium text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              data-testid="button-color-mode-default"
+            >
+              Default
+            </button>
+            <button
+              type="button"
+              onClick={() => setColorMode("custom")}
+              className={`px-3 py-1 rounded-full transition-colors ${colorMode === "custom" ? "bg-background shadow-sm font-medium text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              data-testid="button-color-mode-custom"
+            >
+              Customize
+            </button>
+          </div>
+        </div>
+        {colorMode === "default" && (
+          <p className="text-xs text-muted-foreground mb-3">Using the theme's built-in colors. Switch to Customize to restore your saved palette.</p>
+        )}
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-4">
             <span className="text-sm text-muted-foreground">Primary Text Color</span>
             <input
               type="color"
-              value={textColor}
+              value={effectiveText}
               onChange={(e) => setTextColor(e.target.value)}
-              className="w-6 h-6 rounded-full border border-border shrink-0 cursor-pointer p-0 bg-transparent"
+              disabled={colorMode === "default"}
+              className={`w-6 h-6 rounded-full border border-border shrink-0 p-0 bg-transparent ${colorMode === "default" ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
               data-testid="input-primary-text-color"
             />
           </div>
@@ -3644,9 +3683,10 @@ function DesignPanel({
             <span className="text-sm text-muted-foreground">Primary Background</span>
             <input
               type="color"
-              value={bgColor}
+              value={effectiveBg}
               onChange={(e) => setBgColor(e.target.value)}
-              className="w-6 h-6 rounded-full border border-border shrink-0 cursor-pointer p-0 bg-transparent"
+              disabled={colorMode === "default"}
+              className={`w-6 h-6 rounded-full border border-border shrink-0 p-0 bg-transparent ${colorMode === "default" ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
               data-testid="input-primary-bg"
             />
           </div>
@@ -3654,9 +3694,10 @@ function DesignPanel({
             <span className="text-sm text-muted-foreground">Card Background</span>
             <input
               type="color"
-              value={cardColor}
+              value={effectiveCard}
               onChange={(e) => setCardColor(e.target.value)}
-              className="w-6 h-6 rounded-full border border-border shrink-0 cursor-pointer p-0 bg-transparent"
+              disabled={colorMode === "default"}
+              className={`w-6 h-6 rounded-full border border-border shrink-0 p-0 bg-transparent ${colorMode === "default" ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
               data-testid="input-card-bg"
             />
           </div>

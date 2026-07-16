@@ -769,7 +769,7 @@ function ClassicTeamLayout(props: TeamLayoutProps) {
   const displayName = user.displayName || user.username;
   return (
     <div className="mb-10">
-      <div className="rounded-md overflow-hidden bg-card/80 backdrop-blur-sm shadow-lg" style={{ overflowX: "hidden" }} data-testid="corporate-profile-card">
+      <div data-vc-card className="rounded-md overflow-hidden bg-card/80 backdrop-blur-sm shadow-lg" style={{ overflowX: "hidden" }} data-testid="corporate-profile-card">
         <div className="h-28 relative" style={{ backgroundColor: brandColor + "22" }}>
           {teamBranding.coverPhoto ? (
             <img src={teamBranding.coverPhoto} alt="Cover" className="w-full h-full object-cover" />
@@ -854,7 +854,7 @@ function ModernTeamLayout(props: TeamLayoutProps) {
             </div>
           </div>
         </div>
-        <div className="mt-3 rounded-xl bg-card/90 backdrop-blur-md p-4 shadow-sm border border-white/10">
+        <div data-vc-card className="mt-3 rounded-xl bg-card/90 backdrop-blur-md p-4 shadow-sm border border-white/10">
           {user.bio && <p className="text-sm text-muted-foreground leading-relaxed mb-3" data-testid="text-profile-bio">{user.bio}</p>}
            <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} cardStyle="accent" useOriginalSocialColors={user.useOriginalSocialColors} trackClick={trackClick} />
           <MeetingLinkSection teamBranding={teamBranding} brandColor={brandColor} />
@@ -873,7 +873,7 @@ function ModernTeamLayout(props: TeamLayoutProps) {
   const rightWidth = isDesktop ? "w-3/5" : "sm:w-3/5";
   return (
     <div className="mb-10">
-      <div className="rounded-2xl overflow-hidden shadow-xl border" style={{ borderColor: brandColor + "20" }} data-testid="corporate-profile-card">
+      <div data-vc-card className="rounded-2xl overflow-hidden shadow-xl border" style={{ borderColor: brandColor + "20" }} data-testid="corporate-profile-card">
         {teamBranding.coverPhoto && (
           <div className="relative h-36 w-full">
             <img src={teamBranding.coverPhoto} alt="Cover" className="w-full h-full object-cover" />
@@ -881,7 +881,7 @@ function ModernTeamLayout(props: TeamLayoutProps) {
           </div>
         )}
         <div className={isDesktop ? "flex flex-row" : `flex flex-col sm:flex-row`}>
-          <div className={`${leftWidth} p-6 flex flex-col items-center justify-center text-center ${template.cardBg} ${teamBranding.coverPhoto ? "-mt-10 relative z-10" : ""}`}>
+          <div data-vc-card className={`${leftWidth} p-6 flex flex-col items-center justify-center text-center ${template.cardBg} ${teamBranding.coverPhoto ? "-mt-10 relative z-10" : ""}`}>
             {!teamBranding.coverPhoto && <div className="w-full h-1 rounded-full mb-4" style={{ backgroundColor: brandColor }} />}
             <Avatar data-vc-avatar className={`w-24 h-24 border-4 shadow-lg mb-3 ${avatarCls} ${teamBranding.coverPhoto ? "ring-2 ring-card" : ""}`} style={{ borderColor: brandColor + "40" }}>
               <AvatarImage src={user.profileImage || undefined} alt={displayName} />
@@ -894,7 +894,7 @@ function ModernTeamLayout(props: TeamLayoutProps) {
             <p className={`text-xs ${template.cardTextColor} opacity-70 mt-0.5 break-words`} data-testid="text-profile-username">@{user.username}</p>
             <CompanyBadge teamBranding={teamBranding} template={template} compact />
           </div>
-          <div className={`${rightWidth} p-6 bg-card/90`}>
+          <div data-vc-card className={`${rightWidth} p-6 bg-card/90`}>
             {user.bio && <p className="text-sm text-muted-foreground leading-relaxed mb-4" data-testid="text-profile-bio">{user.bio}</p>}
             <ContactSection teamBranding={teamBranding} brandColor={brandColor} normalizeUrl={normalizeUrl} activeSocials={activeSocials} cardStyle="accent" useOriginalSocialColors={user.useOriginalSocialColors} />
           <MeetingLinkSection teamBranding={teamBranding} brandColor={brandColor} />
@@ -915,7 +915,7 @@ function BoldTeamLayout(props: TeamLayoutProps) {
   const avatarCls = getAvatarClass(template.avatarStyle);
   return (
     <div className="mb-10">
-      <div className="rounded-2xl overflow-hidden shadow-xl" data-testid="corporate-profile-card">
+      <div data-vc-card className="rounded-2xl overflow-hidden shadow-xl" data-testid="corporate-profile-card">
         <div className="relative h-44" style={{ backgroundColor: brandColor + "22" }}>
           {teamBranding.coverPhoto ? (
             <img src={teamBranding.coverPhoto} alt="Cover" className="w-full h-full object-cover" />
@@ -936,7 +936,7 @@ function BoldTeamLayout(props: TeamLayoutProps) {
             </div>
           </div>
         </div>
-        <div className="bg-card px-5 py-5">
+        <div data-vc-card className="bg-card px-5 py-5">
           <div className="flex items-center gap-3 mb-4 flex-wrap">
             {teamBranding.companyLogo && (
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border shadow-sm" style={{ borderColor: brandColor + "30", backgroundColor: brandColor + "08" }} data-testid="text-team-brand">
@@ -972,7 +972,7 @@ function ElegantTeamLayout(props: TeamLayoutProps) {
   return (
     <div className="mb-10">
       <div className="h-1.5 rounded-full shadow-sm mb-6" style={{ backgroundColor: brandColor }} />
-      <div className="rounded-2xl overflow-hidden shadow-lg bg-card/90 backdrop-blur-md border" style={{ borderColor: brandColor + "15" }} data-testid="corporate-profile-card">
+      <div data-vc-card className="rounded-2xl overflow-hidden shadow-lg bg-card/90 backdrop-blur-md border" style={{ borderColor: brandColor + "15" }} data-testid="corporate-profile-card">
         {teamBranding.coverPhoto ? (
           <div className="relative h-32 overflow-hidden">
             <img src={teamBranding.coverPhoto} alt="Cover" className="w-full h-full object-cover" />
@@ -1023,7 +1023,7 @@ function HeroTeamLayout(props: TeamLayoutProps) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
       </div>
       <div className="px-6 -mt-20 relative z-10">
-        <div className="rounded-2xl bg-card/95 backdrop-blur-xl p-6 shadow-2xl border border-white/10">
+        <div data-vc-card className="rounded-2xl bg-card/95 backdrop-blur-xl p-6 shadow-2xl border border-white/10">
           <div className="flex flex-col items-center text-center -mt-16 mb-4">
             <Avatar data-vc-avatar className={`w-24 h-24 border-4 shadow-2xl mb-3 ${avatarCls}`} style={{ borderColor: brandColor }}>
               <AvatarImage src={user.profileImage || undefined} alt={displayName} />

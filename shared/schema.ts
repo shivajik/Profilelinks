@@ -362,6 +362,7 @@ export const updateProfileSchema = z.object({
     profileShadow: z.number().min(0).max(100).optional().nullable(),
     profileBorder: z.number().min(0).max(100).optional().nullable(),
     collapseBio: z.boolean().optional().nullable(),
+    colorMode: z.enum(["default", "custom"]).optional().nullable(),
   }).nullable().optional(),
 });
 
