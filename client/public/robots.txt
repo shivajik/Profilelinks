@@ -73,4 +73,4 @@ Allow: /llms.txt
 Allow: /llms-full.txt
 Allow: /faq.json
 
-Sitemap: https://www.visicardly.com/sitemap.xml
+Sitemap: https://visicardly.com/sitemap.xml

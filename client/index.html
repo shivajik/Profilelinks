@@ -2,76 +2,107 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-    <title>VisiCardly — Digital Business Cards & Link-in-Bio Pages</title>
-    <meta name="description" content="Create stunning digital business cards, link-in-bio pages, and digital menus. Share your online presence with one custom link. Free to start." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b0b0f" />
+    <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
+    <title>VisiCardly — Digital Business Cards, Link-in-Bio & Digital Menus</title>
+    <meta name="description" content="VisiCardly is an all-in-one platform for digital business cards, link-in-bio pages, digital menus, and team card portals. One custom link, one QR code. Free to start." />
     <meta name="keywords" content="digital business card, link in bio, bio link page, digital menu, QR code business card, team business cards, online presence" />
+    <meta name="author" content="VisiCardly" />
     <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="canonical" href="https://visicardly.com/" />
+    <link rel="alternate" hreflang="en" href="https://visicardly.com/" />
+    <link rel="alternate" hreflang="x-default" href="https://visicardly.com/" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://visicardly.com/" />
-    <meta property="og:title" content="VisiCardly — Digital Business Cards & Link-in-Bio Pages" />
-    <meta property="og:description" content="Create stunning digital business cards, link-in-bio pages, and digital menus. Share your online presence with one custom link." />
+    <meta property="og:title" content="VisiCardly — Digital Business Cards, Link-in-Bio & Digital Menus" />
+    <meta property="og:description" content="Digital business cards, link-in-bio pages, and digital menus in one shareable link and QR code. Free to start." />
     <meta property="og:image" content="https://visicardly.com/logo.png" />
+    <meta property="og:image:alt" content="VisiCardly — digital business cards platform" />
     <meta property="og:site_name" content="VisiCardly" />
+    <meta property="og:locale" content="en_US" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@visicardly" />
-    <meta name="twitter:title" content="VisiCardly — Digital Business Cards & Link-in-Bio Pages" />
-    <meta name="twitter:description" content="Create stunning digital business cards, link-in-bio pages, and digital menus. Share your online presence with one custom link." />
+    <meta name="twitter:creator" content="@visicardly" />
+    <meta name="twitter:title" content="VisiCardly — Digital Business Cards, Link-in-Bio & Digital Menus" />
+    <meta name="twitter:description" content="Digital business cards, link-in-bio pages, and digital menus in one shareable link and QR code." />
     <meta name="twitter:image" content="https://visicardly.com/logo.png" />
 
-    <!-- JSON-LD Structured Data -->
+    <!-- JSON-LD: SoftwareApplication -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       "name": "VisiCardly",
-      "url": "https://www.visicardly.com",
+      "url": "https://visicardly.com",
       "applicationCategory": "BusinessApplication",
       "operatingSystem": "Web",
-      "description": "Create stunning digital business cards, link-in-bio pages, and digital menus. Share your online presence with one custom link.",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD"
-      },
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "4.8",
-        "ratingCount": "1200"
-      }
+      "description": "All-in-one platform for digital business cards, link-in-bio pages, digital menus and team business card portals.",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.8", "ratingCount": "1200" }
     }
     </script>
+
+    <!-- JSON-LD: Organization -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "Organization",
       "name": "VisiCardly",
-      "url": "https://www.visicardly.com",
-      "logo": "https://www.visicardly.com/logo.png",
+      "legalName": "VisiCardly",
+      "url": "https://visicardly.com",
+      "logo": "https://visicardly.com/logo.png",
       "description": "All-in-one platform for digital business cards, link-in-bio pages, digital menus and team business card portals.",
+      "email": "support@visicardly.com",
       "sameAs": [
         "https://www.facebook.com/visicardly/",
         "https://x.com/visicardly",
         "https://www.instagram.com/visicardly/",
         "https://in.pinterest.com/visicardly/"
-      ]
+      ],
+      "contactPoint": [{
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "email": "support@visicardly.com",
+        "availableLanguage": ["English"]
+      }]
     }
     </script>
+
+    <!-- JSON-LD: WebSite + SearchAction -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "WebSite",
       "name": "VisiCardly",
-      "url": "https://www.visicardly.com",
+      "url": "https://visicardly.com",
+      "publisher": { "@type": "Organization", "name": "VisiCardly" },
       "potentialAction": {
         "@type": "SearchAction",
-        "target": "https://www.visicardly.com/{search_term_string}",
+        "target": "https://visicardly.com/{search_term_string}",
         "query-input": "required name=search_term_string"
       }
+    }
+    </script>
+
+    <!-- JSON-LD: FAQPage (inline so crawlers + LLMs read without executing JS) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        { "@type": "Question", "name": "What is VisiCardly?", "acceptedAnswer": { "@type": "Answer", "text": "VisiCardly is a platform for creating digital business cards, link-in-bio pages, and digital menus. You get one shareable URL (visicardly.com/username) and a QR code that consolidates your online presence." } },
+        { "@type": "Question", "name": "Is VisiCardly free to use?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. VisiCardly offers a free plan with essential features. Paid plans unlock multiple pages, QR codes, analytics, and team accounts." } },
+        { "@type": "Question", "name": "How do I share my VisiCardly page?", "acceptedAnswer": { "@type": "Answer", "text": "Every account has a public URL at visicardly.com/username. Share this link on social media, email signatures, printed cards, or as a QR code." } },
+        { "@type": "Question", "name": "Can I use VisiCardly for my restaurant menu?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. The Menu Builder lets restaurants create digital menus with sections, products, prices, images, opening hours, and contact info, accessed via QR code." } },
+        { "@type": "Question", "name": "Does VisiCardly support teams?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Team plans let organizations invite members, issue branded digital business cards, apply company templates, and organize members into branches." } },
+        { "@type": "Question", "name": "Can I generate QR codes?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Generate QR codes for your profile, menu, or any custom URL, with multiple styles and print-ready high-resolution downloads." } },
+        { "@type": "Question", "name": "Is my data secure and GDPR compliant?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. VisiCardly is GDPR compliant. See our Privacy Policy and GDPR page for how we collect, store, and process personal data." } }
+      ]
     }
     </script>
 
@@ -81,6 +112,52 @@
   </head>
   <body>
     <div id="root"></div>
+
+    <!-- Crawler / no-JS fallback: gives search engines and AI answer engines real, extractable content even when JS is disabled or not executed. Hidden from sighted users when JS runs. -->
+    <noscript>
+      <div style="max-width:800px;margin:2rem auto;padding:1.5rem;font-family:system-ui,sans-serif;line-height:1.6;color:#111;">
+        <h1>VisiCardly — Digital Business Cards, Link-in-Bio &amp; Digital Menus</h1>
+        <p><strong>VisiCardly</strong> is an all-in-one platform for creating digital business cards, link-in-bio pages, digital menus, and team business card portals. Every account gets one shareable URL (<code>visicardly.com/username</code>) and a QR code that consolidates your entire online presence.</p>
+
+        <h2>What VisiCardly does</h2>
+        <ul>
+          <li><strong>Digital business cards</strong> — contact details, social links, and a QR code that opens your profile on any phone.</li>
+          <li><strong>Link-in-bio pages</strong> — multiple customizable blocks (links, video, audio, text, images) on one branded page.</li>
+          <li><strong>Digital menus</strong> — restaurant menus with sections, prices, images, opening hours, and QR access.</li>
+          <li><strong>Team portals</strong> — branded cards for every team member, company templates, branches and departments.</li>
+          <li><strong>QR generator</strong> — high-resolution, print-ready QR codes with premium templates.</li>
+          <li><strong>Built-in analytics</strong> — page views, link clicks, and engagement per profile.</li>
+        </ul>
+
+        <h2>Key pages</h2>
+        <ul>
+          <li><a href="/">Home</a> — product overview</li>
+          <li><a href="/restaurant">Restaurant digital menus</a></li>
+          <li><a href="/pricing">Pricing &amp; plans</a></li>
+          <li><a href="/docs">Documentation</a></li>
+          <li><a href="/about">About VisiCardly</a></li>
+          <li><a href="/contact">Contact</a></li>
+          <li><a href="/support">Support &amp; help center</a></li>
+          <li><a href="/faq.json">Machine-readable FAQ</a></li>
+          <li><a href="/llms.txt">LLM reference (llms.txt)</a></li>
+        </ul>
+
+        <h2>Frequently asked questions</h2>
+        <h3>What is VisiCardly?</h3>
+        <p>VisiCardly is a platform for creating digital business cards, link-in-bio pages, and digital menus. You get one shareable URL and a QR code that consolidates your online presence.</p>
+        <h3>Is VisiCardly free?</h3>
+        <p>Yes. There is a free plan with essential features. Paid plans unlock multiple pages, QR codes, analytics, and team accounts.</p>
+        <h3>Can restaurants use it for menus?</h3>
+        <p>Yes. The Menu Builder creates digital menus with sections, products, prices, images, opening hours, and contact info, accessed via QR code.</p>
+        <h3>Does it support teams?</h3>
+        <p>Yes. Team plans let organizations invite members, issue branded cards, apply company templates, and organize members into branches.</p>
+        <h3>Is data GDPR compliant?</h3>
+        <p>Yes. VisiCardly is GDPR compliant. See the <a href="/privacy">Privacy Policy</a> and <a href="/gdpr">GDPR page</a> for details.</p>
+
+        <p><a href="/auth">Create your free VisiCardly page →</a></p>
+      </div>
+    </noscript>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
