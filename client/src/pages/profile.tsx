@@ -455,23 +455,25 @@ export default function PublicProfile(props?: any) {
   const cs: any = rawCs.colorMode === "default"
     ? { profileShadow: rawCs.profileShadow, profileBorder: rawCs.profileBorder, collapseBio: rawCs.collapseBio }
     : rawCs;
+  // Effective "Primary Text Color" — matches what the design panel swatch shows.
+  // In custom mode: user's picked color. In default mode: fall back to the
+  // template's accent so the public profile mirrors the dashboard preview.
+  const effectivePrimaryText: string = cs.textColor || template.accent;
   const csVars: React.CSSProperties = {
-    ["--vc-text" as any]: cs.textColor || undefined,
+    ["--vc-text" as any]: effectivePrimaryText,
     ["--vc-bg" as any]: cs.bgColor || undefined,
     ["--vc-card-bg" as any]: cs.cardBg || undefined,
     ["--vc-avatar-shadow" as any]: (cs.profileShadow ?? 0) > 0
       ? `0 ${Math.round(cs.profileShadow / 10)}px ${Math.round(cs.profileShadow / 3)}px rgba(0,0,0,${(cs.profileShadow / 200).toFixed(2)})`
       : "none",
     ["--vc-avatar-border-width" as any]: `${Math.max(0, Math.round((cs.profileBorder ?? 0) / 20))}px`,
-    ["--vc-avatar-border-color" as any]: cs.textColor || undefined,
+    ["--vc-avatar-border-color" as any]: effectivePrimaryText,
     ["--vc-bio-clamp" as any]: cs.collapseBio ? "3" : "unset",
   };
-  const hasCustomStyles = !!(cs.textColor || cs.bgColor || cs.cardBg || cs.profileShadow || cs.profileBorder || cs.collapseBio);
 
   return (
     <div className={`min-h-screen preview-bg ${template.bg}`} data-vc-canvas style={csVars}>
-      {hasCustomStyles && (
-        <style>{`
+      <style>{`
           [data-vc-canvas].preview-bg,
           [data-vc-canvas] .preview-bg {
             ${cs.bgColor ? `background-color: ${cs.bgColor} !important; background-image: none !important;` : ""}
@@ -479,9 +481,12 @@ export default function PublicProfile(props?: any) {
           [data-vc-canvas] [data-vc-card] {
             ${cs.cardBg ? `background-color: ${cs.cardBg} !important;` : ""}
           }
-          [data-vc-canvas] [data-testid^="text-profile-"],
+          [data-vc-canvas] [data-testid="text-profile-name"],
+          [data-vc-canvas] [data-testid="text-profile-username"],
+          [data-vc-canvas] [data-testid="text-profile-bio"],
+          [data-vc-canvas] [data-testid="text-profile-jobtitle"],
           [data-vc-canvas] [data-vc-text] {
-            ${cs.textColor ? `color: ${cs.textColor} !important;` : ""}
+            color: ${effectivePrimaryText} !important;
           }
           [data-vc-canvas] [data-vc-avatar] {
             box-shadow: var(--vc-avatar-shadow) !important;
@@ -497,7 +502,6 @@ export default function PublicProfile(props?: any) {
             -webkit-line-clamp: unset !important;
           }
         `}</style>
-      )}
 
       <div className="max-w-2xl mx-auto px-6 py-12">
         <div className="flex items-center justify-between gap-4 mb-6">
